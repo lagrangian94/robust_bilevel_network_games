@@ -12,11 +12,13 @@ try
     using Revise
     # Revise will automatically track this file when it's included
     includet("network_generator.jl")
+    includet("build_uncertainty_set.jl")
 catch
     # If Revise is not available, fall back to regular include
     @warn "Revise.jl not available. Code changes will not be automatically reloaded."
     @warn "Install Revise with: using Pkg; Pkg.add(\"Revise\")"
     include("network_generator.jl")
+    include("build_uncertainty_set.jl")
 end
 
 using .NetworkGenerator
@@ -33,15 +35,17 @@ print_network_summary(network)
 # Generate capacity for one scenario
 println("\n[2] Generating capacity for a single scenario...")
 num_arcs = length(network.arcs)
-capacities, F, μ = generate_capacity_scenarios(num_arcs, 1, seed=120)
+num_scenarios = 5
+capacities, F, μ = generate_capacity_scenarios(num_arcs, num_scenarios, seed=120)
 C = vec(capacities[:, 1])  # Single scenario capacity vector
 
 # Display capacities
 println("\nCapacity for each arc:")
-for i in 1:length(network.arcs)
+for i in 1:min(10, length(network.arcs))
     arc = network.arcs[i]
     cap = C[i]
-    println("  Arc $i: $arc -> Capacity = $(round(cap, digits=2))")
+    interdictable = network.interdictable_arcs[i] ? "✓" : "✗"
+    println("  Arc $i: $arc -> Capacity = $(round(cap, digits=2)) [Interdictable: $interdictable]")
 end
 
 # Identify dummy arc index
@@ -164,3 +168,42 @@ end
 println("\n" * "="^80)
 println("Testing completed!")
 println("="^80)
+
+
+
+# ===== BUILD ROBUST COUNTERPART MATRICES R AND r =====
+println("\n" * "="^80)
+println("BUILD ROBUST COUNTERPART MATRICES (R, r)")
+println("="^80)
+
+# Remove dummy arc from capacity scenarios (|A| = regular arcs only)
+capacity_scenarios_regular = capacities[1:end-1, :]  # Remove last row (dummy arc)
+epsilon = 0.005  # Robustness parameter
+
+println("\n[3] Building R and r matrices...")
+println("Number of regular arcs |A|: $(size(capacity_scenarios_regular, 1))")
+println("Number of scenarios S: $num_scenarios")
+println("Robustness parameter ε: $epsilon")
+
+R, r_dict = build_robust_counterpart_matrices(capacity_scenarios_regular, epsilon)
+
+println("\n✓ Matrices successfully generated!")
+println("  R dimensions: $(size(R)) (constraints × ξ dimension)")
+println("  r dimensions: $(length(r_dict[1])) for each scenario")
+println("  ξ dimension: $(size(R, 2)) = |A| + 1")
+
+# Display R structure
+println("\n[4] Matrix R structure:")
+dim = size(R, 2)
+println("  Rows 1-$dim:      Identity (ξ ≥ ξ̂ - ε)")
+println("  Rows $(dim+1)-$(2*dim):   -Identity (ξ ≤ ξ̂ + ε)")
+println("  Row $(2*dim+1):        τ ≥ 1")
+println("  Row $(2*dim+2):        τ ≤ 1")
+
+println("\nFirst 5 rows of R:")
+display(R[1:5, 1:min(5, size(R, 2))])
+
+# Display r for first scenario
+println("\n\n[5] Vector r for Scenario 1:")
+println("  First 5 elements: ", round.(r_dict[1][1:5], digits=3))
+println("  Last 5 elements:  ", round.(r_dict[1][end-4:end], digits=3))
