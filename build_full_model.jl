@@ -151,13 +151,29 @@ function build_full_2DRNDP_model(network, S, ϕU, w, v, R, r_dict; optimizer=not
     # =========================================================================
     # COP CONSTRAINTS (14d-14i) - NOT IMPLEMENTED
     # =========================================================================
-    # 
+    @variable(model, ϑhat[1:S])   # Leader's auxiliary variable for COP (14d, 14e)
+    @variable(model, ϑtilde[1:S]) # Follower's auxiliary variable for COP (14g, 14h)
+    # --- COP matrices for constraints (14e, 14h) ---
+    # M̂s: Leader's COP matrix (|A|+1) × (|A|+1)
+    # M̃s: Follower's COP matrix (|A|+1) × (|A|+1)
+    @variable(model, Mhat[s=1:S, 1:num_arcs+1, 1:num_arcs+1])
+    @variable(model, Mtilde[s=1:S, 1:num_arcs+1, 1:num_arcs+1])
     # --- (14d) Leader's scenario bound: ϑˆs <= ηˆs ---
-    # 
+    # --- (14g) Follower's scenario bound: ϑ˜s <= η˜s ---
+    @constraint(model, l_cop_epigraph[s in 1:S], ϑhat[s] <= ηhat[s])
+    @constraint(model, f_cop_epigraph[s in 1:S],ϑtilde[s] <= ηtilde[s])
     # --- (14e, 14f) Leader's COP constraint ---
     # Matrix structure: 
     #   ηˆs * e_{|A|+1} * e_{|A|+1}^T - [Φˆs - v*Ψˆs | 0^T; 0 | 0] = Mˆs
-    # 
+    for i in 1:(num_arcs+1), j in 1:(num_arcs+1)
+        if i <= num_arcs && j <= num_arcs
+            @constraint(model, Mhat[s,i,j] == -(Φhat[s,i,j] - v*Ψhat[s,i,j]))
+        elseif i == num_arcs+1 && j == num_arcs+1
+            @constraint(model, Mhat[s,i,j] == ϑhat[s])
+        else
+            @constraint(model, Mhat[s,i,j] == 0)
+        end
+    end
     # where:
     #   - ηˆs: scalar (scenario cost upper bound)
     #   - Φˆs: |A|×|A| matrix (flow LDR coefficient)
@@ -169,6 +185,17 @@ function build_full_2DRNDP_model(network, S, ϕU, w, v, R, r_dict; optimizer=not
     #   Interpretation: ξ^T Mˆs ξ ≥ 0 for all ξ ∈ Ξs with ξ ≥ 0
     # 
     # --- (14g, 14h, 14i) Follower's COP constraint ---
+    for i in 1:(num_arcs+1), j in 1:(num_arcs+1)
+        if i <= num_arcs && j <= num_arcs
+            @constraint(model, Mtilde[s,i,j] == -(Φtilde[s,i,j] - v*Ψtilde[s,i,j]))
+        elseif i <= num_arcs && j == num_arcs+1
+            @constraint(model, Mtilde[s,i,j] == -Yts[s,i]/2)
+        elseif i == num_arcs+1 && j <= num_arcs
+            @constraint(model, Mtilde[s,i,j] == -Yts[s,j]/2)
+        else
+            @constraint(model, Mtilde[s,i,j] == ϑtilde[s])
+        end
+    end
     # Matrix structure:
     #   η˜s * e_{|A|+1} * e_{|A|+1}^T 
     #   - [Φ˜s - v*Ψ˜s | 0^T; 0 | 0]
