@@ -21,7 +21,7 @@ catch
     include("build_uncertainty_set.jl")
 end
 
-using .NetworkGenerator
+using .NetworkGenerator: generate_grid_network, generate_capacity_scenarios, print_network_summary
 
 println("="^80)
 println("MAXIMUM FLOW PROBLEM - Debugging Node-Incidence Matrix")
