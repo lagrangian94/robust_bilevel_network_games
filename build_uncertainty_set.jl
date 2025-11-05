@@ -22,19 +22,12 @@ Arguments:
 - num_regular_arcs: regular arcs 개수 |A| (dummy arc 제외)
 """
 function build_R_matrix(num_regular_arcs::Int)
-    dim = num_regular_arcs + 1  # ξ = (ζ; τ) dimension, ζ ∈ R^|A|
-    R = zeros(Float64, 2*dim + 2, dim)
+    dim = num_regular_arcs+1  # ξ = (ζ; τ) dimension, ζ ∈ R^|A|
+    R = zeros(Float64, 2*dim, dim)
     
     # Upper and lower bounds: I and -I
     R[1:dim, :] = Matrix{Float64}(I, dim, dim)
-    R[dim+1:2*dim, :] = -Matrix{Float64}(I, dim, dim)
-    
-    # τ = 1 constraint
-    e_last = zeros(Float64, dim)
-    e_last[end] = 1.0
-    R[2*dim+1, :] = e_last
-    R[2*dim+2, :] = -e_last
-    
+    R[dim+1:2*dim, :] = -Matrix{Float64}(I, dim, dim)    
     return R
 end
 
@@ -53,8 +46,8 @@ function build_r_vector(xi_hat::Vector{Float64}, epsilon::Float64)
     
     r = zeros(Float64, 2*dim + 2)
     r[1:dim] = xi_hat - epsilon * e
-    r[dim+1:2*dim] = -xi_hat - epsilon * e
-    r[2*dim+1] = 1.0
+    r[dim+1] = 1.0
+    r[dim+2:dim+2+dim-1] = -xi_hat - epsilon * e
     r[2*dim+2] = -1.0
     
     return r

@@ -33,7 +33,7 @@ function build_full_2DRNDP_model(network, S, ϕU, w, v, R, r_dict; optimizer=not
     
     # Extract network dimensions
     num_nodes = length(network.nodes)
-    num_arcs = length(network.arcs)
+    num_arcs = length(network.arcs)-1 #dummy arc 제외
     num_interdictable = sum(network.interdictable_arcs)
     
     # Node-arc incidence matrix (excluding source row)
@@ -108,22 +108,21 @@ function build_full_2DRNDP_model(network, S, ϕU, w, v, R, r_dict; optimizer=not
     # Second block: |A| rows for I_0^T Φ  
     # Third block: |A| rows for Φ itself
     # Total: (|V|-1 + |A| + |A|) × |A|
-    dim_Λhat1_rows = (num_nodes - 1) + num_arcs + num_arcs
-    @infiltrate
-    @variable(model, Λhat1[s=1:S, 1:dim_Λhat1_rows, 1:size(R, 2)] >= 0)
+    dim_Λhat1_rows = num_arcs+1 +(num_nodes - 1) + num_arcs #여기 차원 확인.
+    @variable(model, Λhat1[s=1:S, 1:dim_Λhat1_rows, 1:size(R, 1)] >= 0)
     
     # For Λhat2: corresponds to constraint (14n)
     # Dimension: |A| × |A|
-    @variable(model, Λhat2[s=1:S, 1:num_arcs, 1:size(r_dict[1],1)] >= 0)
+    @variable(model, Λhat2[s=1:S, 1:num_arcs, 1:size(R, 1)] >= 0)
     
     # For Λtilde1: corresponds to constraint (14o)  
     # Has additional blocks for Y terms
     # Structure: similar to Λhat1 but with more rows
-    dim_Λtilde1_rows = (num_nodes - 1) + num_arcs + num_arcs + num_arcs + num_arcs
-    @variable(model, Λtilde1[s=1:S, 1:dim_Λtilde1_rows, 1:size(R, 2)] >= 0)
+    dim_Λtilde1_rows = num_arcs+1 + (num_nodes - 1) + num_arcs + num_nodes-1 + num_arcs + num_arcs
+    @variable(model, Λtilde1[s=1:S, 1:dim_Λtilde1_rows, 1:size(R, 1)] >= 0)
     
     # For Λtilde2: corresponds to constraint (14p)
-    @variable(model, Λtilde2[s=1:S, 1:num_arcs, 1:size(r_dict[1],1)] >= 0)
+    @variable(model, Λtilde2[s=1:S, 1:num_arcs, 1:size(R, 1)] >= 0)
     
     println("  ✓ Decision variables created")
     
@@ -230,16 +229,132 @@ function build_full_2DRNDP_model(network, S, ϕU, w, v, R, r_dict; optimizer=not
     # - r̄: right-hand side vector for the dual constraints -> r_dict[s] 하면 됨
     
     println("  Adding dual constraints (14m-14p)...")
-    println("    WARNING: Dual constraints are INCOMPLETE - need problem-specific data")
-    println("    These constraints require:")
-    println("      - Proper definition of d0 (demand vector)")
-    println("      - Constraint matrix R structure")
-    println("      - Right-hand side vectors r̄")
-    
+    # --- Define auxiliary structures ---
+    # d0 = [0; 0; ...; 0; 1] ∈ ℝ^(|A|+1) - standard basis vector
+    d0 = zeros(num_arcs + 1)
+    d0[end] = 1.0
+    # I_0 = [I | 0] ∈ ℝ^(|A| × (|A|+1)) - identity with zero column
+    I_0 = [Matrix{Float64}(I, num_arcs, num_arcs) zeros(num_arcs)]
+    # Split N matrix: N = [N_y | N_ts]
+    N_y = N[:, 1:num_arcs]  # Regular arcs: (|V|-1) × |A|
+    N_ts = N[:, end]         # Dummy arc: (|V|-1) × 1
+    # --- Add constraints for each scenario ---
+    for s in 1:S
+        r_bar = r_dict[s]  # Get r̄ for this scenario
+        
+        # =====================================================================
+        # (14m) Leader's dual feasibility: Λˆs_1 * R = [Qˆs; Πˆs; Φˆs]
+        # =====================================================================
+        for j in 1:(num_arcs+1) #column 순으로
+            # Q^s[:, j] = N_y^T * Π^s[:, j] + I_0^T * Φ^s[:, j]
+            Q_col = N' * Πhat[s, :, j] + I_0' * Φhat[s, :, j]
+            Pi_col = Πhat[s, :, j]
+            Phi_col = Φhat[s, :, j]
+            rhs_col = vcat(Q_col, Pi_col, Phi_col)
+            
+            for i in 1:length(rhs_col) #row 순으로
+                @constraint(model, 
+                    sum(Λhat1[s, i, k] * R[k, j] for k in 1:size(R, 1)) == rhs_col[i]
+                )
+            end
+        end
+
+        # Λˆs_1 * r̄ ≥ [d0; 0; 0]
+        rhs_rbar = vcat(d0, zeros(num_nodes-1), zeros(num_arcs))
+        for i in 1:length(rhs_rbar)
+            @constraint(model,
+                sum(Λhat1[s, i, k] * r_bar[k] for k in 1:length(r_bar)) >= rhs_rbar[i]
+            )
+        end
+        # =====================================================================
+        # (14n) Leader's capacity dual: Λˆs_2 * R = -Φˆs
+        # =====================================================================
+        for j in 1:(num_arcs+1) #column 순으로
+            Phi_col = Φhat[s, :, j]
+            for i in 1:num_arcs #row 순으로
+                @constraint(model,
+                    sum(Λhat2[s, i, k] * R[k, j] for k in 1:size(R, 1)) == -Phi_col[i]
+                )
+            end
+        end
+        # Λˆs_2 * r̄ ≥ -μˆs
+        for i in 1:num_arcs
+            @constraint(model,
+                sum(Λhat2[s, i, k] * r_bar[k] for k in 1:length(r_bar)) >= -μhat[s, i]
+            )
+        end
+        
+        # =====================================================================
+        # (14o) Follower's dual feasibility (6 block structure)
+        # =====================================================================
+        for j in 1:(num_arcs+1)
+            # Block 1: Q˜s
+            Q_tilde_col = N' * Πtilde[s, :, j] + I_0' * Φtilde[s, :, j]
+            # Block 2: -N_y * Y˜s - N_ts * Y˜s_ts
+            block2 = -N_y * Y[s, :, j] - N_ts * Yts[s, j]
+            # Block 3: -Y˜s
+            block3 = -Y[s, :, j]
+            # Block 4: Π˜s
+            block4 = Πtilde[s, :, j]
+            # Block 5: Φ˜s
+            block5 = Φtilde[s, :, j]
+            # Block 6: Y˜s
+            block6 = Y[s, :, j]
+            
+            lhs_vec = vcat(Q_tilde_col, block2, block3, block4, block5, block6)
+            # RHS: [0; 0; diag(1-ψ0) or 0; 0; 0; 0]
+            rhs_vec = AffExpr[AffExpr(0.0) for _ in 1:length(lhs_vec)]
+            if j <= num_arcs  # Regular arc
+                block3_start = (num_arcs + 1) + (num_nodes - 1) + 1
+                rhs_vec[block3_start + j - 1] = 1 - ψ0[j]
+            end
+            
+            rhs_final = rhs_vec + lhs_vec
+            for i in 1:length(rhs_final)
+                @constraint(model,
+                    sum(Λtilde1[s, i, k] * R[k, j] for k in 1:size(R, 1)) == rhs_final[i]
+                )
+            end
+        end
+        # Λ˜s_1 * r̄ ≥ [λ*d0; 0; h; 0; 0; 0]
+        rhs_rbar_tilde = vcat(
+            λ .* d0,
+            zeros(num_nodes-1),
+            h,
+            zeros(num_nodes-1),
+            zeros(num_arcs),
+            zeros(num_arcs)
+        )
+        for i in 1:length(rhs_rbar_tilde)
+            @constraint(model,
+                sum(Λtilde1[s, i, k] * r_bar[k] for k in 1:length(r_bar)) >= rhs_rbar_tilde[i]
+            )
+        end
+        # 
+        # =====================================================================
+        # (14p) Follower's capacity dual: Λ˜s_2 * R = -Φ˜s
+        # =====================================================================
+        for j in 1:(num_arcs+1)
+            Phi_tilde_col = Φtilde[s, :, j]
+            for i in 1:num_arcs
+                @constraint(model,
+                    sum(Λtilde2[s, i, k] * R[k, j] for k in 1:size(R, 1)) == -Phi_tilde_col[i]
+                )
+            end
+        end
+        
+        # Λ˜s_2 * r̄ ≥ -μ˜s
+        for i in 1:num_arcs
+            @constraint(model,
+                sum(Λtilde2[s, i, k] * r_bar[k] for k in 1:length(r_bar)) >= -μtilde[s, i]
+            )
+        end
+    end
+    println("  ✓ Dual constraints (14m-14p) added for all scenarios")
+        # 
     # --- (14q) Linearization constraints for ψ0 ---
     # These linearize the product λ * x
     λU = 100.0  # Upper bound on λ (should be set based on problem)
-    
     for k in 1:num_arcs
         @constraint(model, ψ0[k] <= λU * x[k])
         @constraint(model, ψ0[k] <= λ)
