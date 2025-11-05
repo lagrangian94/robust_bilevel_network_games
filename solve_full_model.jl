@@ -1,4 +1,5 @@
 using JuMP
+using Gurobi
 using HiGHS
 using LinearAlgebra
 using Infiltrator
@@ -74,7 +75,7 @@ println("    ηhat: $(length(vars[:ηhat])) variables (S scenarios)")
 println("    ηtilde: $(length(vars[:ηtilde])) variables (S scenarios)")
 
 println("\n  Matrix variables per scenario:")
-num_arcs = length(network.arcs)
+num_arcs = length(network.arcs)-1
 num_nodes = length(network.nodes)
 println("    Φhat: $(S) × $(num_arcs) × $(num_arcs) = $(S * num_arcs * num_arcs) variables")
 println("    Ψhat: $(S) × $(num_arcs) × $(num_arcs) = $(S * num_arcs * num_arcs) variables")
@@ -95,17 +96,6 @@ println("  (14b) Resource budget constraint: ", budget_con !== nothing ? "✓" :
 cost_con = constraint_by_name(model, "total_cost")
 println("  (14c) Total cost constraint: ", cost_con !== nothing ? "✓" : "✗")
 
-# Count Big-M constraints (14j, 14k)
-bigM_count = 0
-for s in 1:S
-    for i in 1:num_arcs
-        for j in 1:num_arcs
-            # Each (s,i,j) triple has 6 constraints (3 for leader, 3 for follower)
-            bigM_count += 6
-        end
-    end
-end
-println("  (14j, 14k) Big-M constraints: $bigM_count constraints added")
 
 # Check budget constraint for dual variables (14l)
 println("  (14l) Dual budget constraints: $(num_arcs) constraints (one per arc)")
@@ -127,3 +117,13 @@ println("  1. COP constraints (14f, 14i) are NOT implemented yet")
 println("  2. Dual constraints (14m-14p) are INCOMPLETE")
 println("  3. Problem-specific data (d0, R matrix) need to be added")
 println("  4. Model is NOT ready to solve - this is a structure test only")
+
+
+# Set Gurobi
+println("[4] Setting Gurobi solver...")
+set_optimizer(model, Gurobi.Optimizer)
+set_optimizer_attribute(model, "TimeLimit", 3600)
+set_optimizer_attribute(model, "MIPGap", 1e-4)
+@constraint(model, vars[:t]>=0) #COP 제약 넣고 이거 빼야함.
+@infiltrate
+optimize!(model)
