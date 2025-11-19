@@ -6,12 +6,11 @@ using Infiltrator
 # Load modules
 using Revise
 includet("network_generator.jl")
-includet("build_uncertainty_set.jl")
-include("build_full_model.jl")
+includet("sdp_build_uncertainty_set.jl")
+include("sdp_build_full_model.jl")
 
 
 using .NetworkGenerator: generate_grid_network, generate_capacity_scenarios, print_network_summary
-# using .BuildFullModel
 
 println("="^80)
 println("TESTING FULL 2DRNDP MODEL CONSTRUCTION")
@@ -19,7 +18,7 @@ println("="^80)
 
 # Model parameters
 S = 3  # Number of scenarios
-ϕU = 10.0  # Upper bound on interdiction effectiveness
+ϕU = 100.0  # Upper bound on interdiction effectiveness
 w = 1.0  # Budget weight
 v = 1.0  # Interdiction effectiveness parameter (NOT the decision variable ν!)
 
@@ -46,7 +45,7 @@ println("Number of scenarios S: $S")
 println("Robustness parameter ε: $epsilon")
 
 R, r_dict = build_robust_counterpart_matrices(capacity_scenarios_regular, epsilon)
-
+uncertainty_set = Dict(:R => R, :r_dict => r_dict, :epsilon => epsilon)
 
 println("\n[2] Building model...")
 println("  Parameters:")
@@ -57,7 +56,7 @@ println("    v (interdiction effectiveness param) = $v")
 println("  Note: v is a parameter in COP matrix [Φ - v*W]")
 println("        ν (nu) is a decision variable in objective t + w*ν")
 # Build model (without optimizer for initial testing)
-model, vars = build_full_2DRNDP_model(network, S, ϕU, w, v, R, r_dict)
+model, vars = build_full_2DRNDP_model(network, S, ϕU, w, v,uncertainty_set)
 
 println("\n[3] Model structure verification:")
 println("  Scalar variables:")
@@ -121,9 +120,56 @@ println("  4. Model is NOT ready to solve - this is a structure test only")
 
 # Set Gurobi
 println("[4] Setting Gurobi solver...")
-set_optimizer(model, Gurobi.Optimizer)
-set_optimizer_attribute(model, "TimeLimit", 3600)
-set_optimizer_attribute(model, "MIPGap", 1e-4)
+# set_optimizer_attribute(model, "TimeLimit", 3600)
+# set_optimizer_attribute(model, "MIPGap", 1e-4)
 @constraint(model, vars[:t]>=0) #COP 제약 넣고 이거 빼야함.
-@infiltrate
 optimize!(model)
+# Save objective value and optimal solution after solving
+
+# Check if the model has a feasible solution
+t_status = termination_status(model)
+p_status = primal_status(model)
+
+if t_status == MOI.OPTIMAL || t_status == MOI.FEASIBLE_POINT
+    obj_value = objective_value(model)
+    println("\nOptimal objective value: ", obj_value)
+
+    # Save solution for selected variables
+    sol = Dict()
+    sol[:objective_value] = obj_value
+
+    # Extract primal variables (add more if needed)
+    sol[:x] = value.(vars[:x])
+    sol[:h] = value.(vars[:h])
+    sol[:nu] = value(vars[:nu])
+    sol[:λ] = value(vars[:λ])
+    sol[:t] = value(vars[:t])
+
+    # Save scenario values (examples)
+    sol[:ηhat] = value.(vars[:ηhat])
+    sol[:ηtilde] = value.(vars[:ηtilde])
+
+    # Optionally save any other variables you want (e.g., dual variables)
+    # ...
+
+    # Save to .jld2 file (assumes JLD2 is loaded elsewhere if not, replace with Serialization or plain text)
+    try
+        @info "Saving solution to 'full_model_solution.jld2'..."
+        using JLD2
+        JLD2.save("full_model_solution.jld2", "sol", sol)
+    catch err
+        @warn "Could not save using JLD2, writing to JSON instead."
+        try
+            using JSON
+            open("full_model_solution.json", "w") do io
+                JSON.print(io, sol)
+            end
+        catch err2
+            @error "Could not save solution to file: $err2"
+        end
+    end
+
+else
+    println("\nNo feasible/optimal solution found. Status: $t_status")
+end
+
