@@ -111,18 +111,10 @@ println("\n" * "="^80)
 println("MODEL CONSTRUCTION TEST COMPLETE")
 println("="^80)
 
-println("\n⚠️  IMPORTANT NOTES:")
-println("  1. COP constraints (14f, 14i) are NOT implemented yet")
-println("  2. Dual constraints (14m-14p) are INCOMPLETE")
-println("  3. Problem-specific data (d0, R matrix) need to be added")
-println("  4. Model is NOT ready to solve - this is a structure test only")
-
 
 # Set Gurobi
-println("[4] Setting Gurobi solver...")
 # set_optimizer_attribute(model, "TimeLimit", 3600)
 # set_optimizer_attribute(model, "MIPGap", 1e-4)
-@constraint(model, vars[:t]>=0) #COP 제약 넣고 이거 빼야함.
 optimize!(model)
 # Save objective value and optimal solution after solving
 
