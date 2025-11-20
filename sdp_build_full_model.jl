@@ -73,8 +73,8 @@ function build_full_2DRNDP_model(network, S, ϕU, w, v, uncertainty_set; optimiz
     # =========================================================================
     
     # --- Scalar variables ---
-    @variable(model, t>=0)  # Objective epigraph variable
-    @variable(model, nu>=-500)  # Budget for recourse decisions
+    @variable(model, t)  # Objective epigraph variable
+    @variable(model, nu)  # Budget for recourse decisions
     @variable(model, λ >= 0)  # Budget allocation parameter
     
     # --- Vector variables ---
@@ -341,7 +341,7 @@ function build_full_2DRNDP_model(network, S, ϕU, w, v, uncertainty_set; optimiz
         # Block 6: zeros(num_arcs, num_arcs)
         block6_rhs = zeros(num_arcs, num_arcs)
         rhs_mat = vcat(block1_rhs, block2_rhs, block3_rhs, block4_rhs, block5_rhs, block6_rhs)
-        @constraint(model, Λtilde1[s, :, :] * R .== rhs_mat)
+        @constraint(model, Λtilde1[s, :, :] * R .- lhs_mat .== rhs_mat)
         # Λ˜s_1 * r̄ ≥ [λ*d0; 0; h; 0; 0; 0]
         lhs_vec_1 =  N' * Πtilde_0[s, :] + I_0' * Φtilde_0[s, :]
         lhs_vec_2 = -N_y * Ytilde_0[s,:] - N_ts * Yts_tilde_0[s]
