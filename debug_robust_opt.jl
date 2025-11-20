@@ -58,7 +58,7 @@ function build_robust_model(network, S, ϕU, w, v, uncertainty_set; optimizer=no
     @variable(model, t1[s=1:S]>=0)  # Objective epigraph variable
     # @variable(model, nu>=-500)  # Budget for recourse decisions
     # @variable(model, λ >= 0)  # Budget allocation parameter
-    @objective(model, Min, sum(t1))
+    @objective(model, Max, sum(t1))
 
     # --- Vector variables ---
     # x: interdiction decisions (binary for interdictable arcs, 0 for others)
@@ -102,7 +102,7 @@ function build_robust_model(network, S, ϕU, w, v, uncertainty_set; optimizer=no
         # Block 3: diag(λ-v*ψ0) - 대각선 행렬 (JuMP 표현식 사용)
         block3_rhs = [AffExpr(0.0) for i in 1:num_arcs, j in 1:num_arcs]
         for j in 1:num_arcs
-            block3_rhs[j, j] = h[j] - v*x[j]
+            block3_rhs[j, j] = 1 - v*x[j]
         end
         block6_rhs = zeros(num_arcs, num_arcs)
         rhs_mat = vcat(block2_rhs, block3_rhs, block6_rhs)
