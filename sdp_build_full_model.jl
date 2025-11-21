@@ -158,7 +158,7 @@ function build_full_2DRNDP_model(network, S, ϕU, γ, w, v, uncertainty_set; opt
     # =========================================================================
     
     # --- (14a) Objective function ---
-    @objective(model, Min, t + w * nu)
+    @objective(model, Min, (1/S)*t + (1/S)*w * nu)
     
     # --- (14b) Initial resource and domain constraints ---
     @constraint(model, resource_budget, sum(h) <= λ * w)
@@ -171,7 +171,7 @@ function build_full_2DRNDP_model(network, S, ϕU, γ, w, v, uncertainty_set; opt
         end
     end
     # --- (14c) Scenario cost constraint ---
-    @constraint(model, total_cost, sum(ηhat[s] + ηtilde[s] for s in 1:S) <= S * t)
+    @constraint(model, total_cost, sum(ηhat[s] + ηtilde[s] for s in 1:S) <= t)
     
     println("  ✓ Constraints (14a-14c) added")
     # =========================================================================
@@ -263,7 +263,7 @@ function build_full_2DRNDP_model(network, S, ϕU, γ, w, v, uncertainty_set; opt
     
     # --- (14l) Budget constraint for dual variables ---
     for k in 1:num_arcs
-        @constraint(model, sum(μtilde[s,k] + μhat[s,k] for s in 1:S) <= S * nu)
+        @constraint(model, sum(μtilde[s,k] + μhat[s,k] for s in 1:S) <= nu)
     end
     
     println("  ✓ Budget constraint (14l) added")

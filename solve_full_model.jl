@@ -150,6 +150,15 @@ if solve_full_model
             @info "Saving solution to 'full_model_solution.jld2'..."
             using JLD2
             JLD2.save("full_model_solution.jld2", "sol", sol)
+        # Save the optimal objective value separately as a plain text file
+        try
+            open("full_model_objective_value.txt", "w") do io
+                println(io, obj_value)
+            end
+        catch err_txt
+            @warn "Could not save optimal objective value to txt: $err_txt"
+        end
+        # Save also in the JLD2 solution file (already included as sol[:objective_value])
         catch err
             @warn "Could not save using JLD2, writing to JSON instead."
             try
