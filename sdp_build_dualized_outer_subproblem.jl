@@ -162,7 +162,7 @@ function build_dualized_outer_subproblem(network, S, ϕU, γ, w, v, uncertainty_
     obj_term5 = [λ*d0'* βtilde1_1[s,:] for s=1:S] #이거만 maximize하면 dual infeasible
     obj_term6 = [-h'* βtilde1_3[s,:] for s=1:S]
     # @objective(model, Max, sum(obj_term1) + sum(obj_term2) + sum(obj_term3) + sum(obj_term5) + sum(obj_term6))
-    @objective(model, Max, sum(obj_term3))
+    # @objective(model, Max, sum(obj_term3))
     # =========================================================================
     # CONSTRAINTS
     # =========================================================================
@@ -225,6 +225,3 @@ function build_dualized_outer_subproblem(network, S, ϕU, γ, w, v, uncertainty_
     return model, vars
 end
 
-
-# test model construction
-network = generate_grid_network(3, 3, seed=42)
