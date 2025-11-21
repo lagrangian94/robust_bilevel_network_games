@@ -33,7 +33,9 @@ Note:
 - ν (nu) is a DECISION VARIABLE (appears in objective and constraint 14l)
 - v is a PARAMETER (appears in COP matrix Φ - vW)
 """
-function build_full_2DRNDP_model(network, S, ϕU, γ, w, v, uncertainty_set; optimizer=nothing)
+function build_full_2DRNDP_model(network, S, ϕU, γ, w, v, uncertainty_set; optimizer=nothing,
+    # Optional: if provided, these are treated as fixed parameters
+    x_fixed=nothing, λ_fixed=nothing, h_fixed=nothing, ψ0_fixed=nothing)
     
     # Extract network dimensions
     num_nodes = length(network.nodes)
@@ -76,16 +78,31 @@ function build_full_2DRNDP_model(network, S, ϕU, γ, w, v, uncertainty_set; opt
     # --- Scalar variables ---
     @variable(model, t)  # Objective epigraph variable
     @variable(model, nu)  # Budget for recourse decisions
-    @variable(model, λ >= 0)  # Budget allocation parameter
-    
+    if isnothing(λ_fixed)
+        @variable(model, λ >= 0)  # Budget allocation parameter
+    else
+        λ=λ_fixed
+    end
     # --- Vector variables ---
     # x: interdiction decisions (binary for interdictable arcs, 0 for others)
-    @variable(model, x[1:num_arcs], Bin)
+    if isnothing(x_fixed)
+        @variable(model, x[1:num_arcs], Bin)
+    else
+        x=x_fixed
+    end
     # h: initial resource allocation
-    @variable(model, h[1:num_arcs] >= 0)
+    if isnothing(h_fixed)
+        @variable(model, h[1:num_arcs] >= 0)
+    else
+        h=h_fixed
+    end
     
     # ψ0: auxiliary variable for linearization (14q)
-    @variable(model, ψ0[1:num_arcs] >= 0)
+    if isnothing(ψ0_fixed)
+        @variable(model, ψ0[1:num_arcs] >= 0)
+    else
+        ψ0=ψ0_fixed
+    end
     
     # --- Scenario-indexed variables (scalar per scenario) ---
     @variable(model, ηhat[1:S])   # Leader's scenario cost
