@@ -5,6 +5,7 @@ using Infiltrator
 using Pajarito
 using Gurobi
 using Mosek, MosekTools
+using Hypatia, HiGHS
 """
 @infiltrate 지점에서 멈추고 변수 확인 가능
 @locals 입력하면 모든 변수 확인
@@ -32,7 +33,7 @@ Note:
 - ν (nu) is a DECISION VARIABLE (appears in objective and constraint 14l)
 - v is a PARAMETER (appears in COP matrix Φ - vW)
 """
-function build_full_2DRNDP_model(network, S, ϕU, w, v, uncertainty_set; optimizer=nothing)
+function build_full_2DRNDP_model(network, S, ϕU, γ, w, v, uncertainty_set; optimizer=nothing)
     
     # Extract network dimensions
     num_nodes = length(network.nodes)
@@ -46,27 +47,27 @@ function build_full_2DRNDP_model(network, S, ϕU, w, v, uncertainty_set; optimiz
     dummy_arc_idx = findfirst(arc -> arc == ("t", "s"), network.arcs)
     
     # Create model
-    # model = Model(
-    #     optimizer_with_attributes(
-    #         Pajarito.Optimizer,
-    #         "oa_solver" => optimizer_with_attributes(
-    #             Gurobi.Optimizer,
-    #             MOI.Silent() => false,
-    #         ),
-    #         "conic_solver" =>
-    #             optimizer_with_attributes(Mosek.Optimizer, MOI.Silent() => false),
-    #     )
-    # )
-    model = Model(Mosek.Optimizer)
-    if !isnothing(optimizer)
-        set_optimizer(model, optimizer)
-    end
+    model = Model(
+        optimizer_with_attributes(
+            Pajarito.Optimizer,
+            "oa_solver" => optimizer_with_attributes(
+                Gurobi.Optimizer,
+                MOI.Silent() => false,
+            ),
+            "conic_solver" =>
+                optimizer_with_attributes(Mosek.Optimizer, MOI.Silent() => false),
+        )
+    )
+    # model = Model(Mosek.Optimizer)
+    # if !isnothing(optimizer)
+    #     set_optimizer(model, optimizer)
+    # end
     
     println("Building 2DRNDP model...")
     println("  Nodes: $num_nodes, Arcs: $num_arcs, Scenarios: $S")
     println("  Interdictable arcs: $num_interdictable")
     println("  Dummy arc index: $dummy_arc_idx")
-    println("  Parameters: ϕU = $ϕU, w = $w, v = $v")
+    println("  Parameters: ϕU = $ϕU, γ = $γ, w = $w, v = $v")
     
     # =========================================================================
     # DECISION VARIABLES
@@ -79,7 +80,7 @@ function build_full_2DRNDP_model(network, S, ϕU, w, v, uncertainty_set; optimiz
     
     # --- Vector variables ---
     # x: interdiction decisions (binary for interdictable arcs, 0 for others)
-    @variable(model, x[1:num_arcs]>=0)#, Bin)
+    @variable(model, x[1:num_arcs], Bin)
     # h: initial resource allocation
     @variable(model, h[1:num_arcs] >= 0)
     
@@ -161,7 +162,7 @@ function build_full_2DRNDP_model(network, S, ϕU, w, v, uncertainty_set; optimiz
     
     # --- (14b) Initial resource and domain constraints ---
     @constraint(model, resource_budget, sum(h) <= λ * w)
-    
+    @constraint(model, sum(x) <= γ) 
     # x must be binary, and only interdictable arcs can be selected
     for i in 1:num_arcs
         if !network.interdictable_arcs[i]
@@ -169,7 +170,6 @@ function build_full_2DRNDP_model(network, S, ϕU, w, v, uncertainty_set; optimiz
             println("Arc $i is not interdictable")
         end
     end
-    @constraint(model, x[9] == 1)
     # --- (14c) Scenario cost constraint ---
     @constraint(model, total_cost, sum(ηhat[s] + ηtilde[s] for s in 1:S) <= S * t)
     
@@ -342,7 +342,7 @@ function build_full_2DRNDP_model(network, S, ϕU, w, v, uncertainty_set; optimiz
         block6_rhs = zeros(num_arcs, num_arcs)
         rhs_mat = vcat(block1_rhs, block2_rhs, block3_rhs, block4_rhs, block5_rhs, block6_rhs)
         @constraint(model, Λtilde1[s, :, :] * R .- lhs_mat .== rhs_mat)
-        # Λ˜s_1 * r̄ ≥ [λ*d0; 0; h; 0; 0; 0]
+        # Λ˜s_1 * r̄ ≥ [λ*d0; 0; -h; 0; 0; 0]
         lhs_vec_1 =  N' * Πtilde_0[s, :] + I_0' * Φtilde_0[s, :]
         lhs_vec_2 = -N_y * Ytilde_0[s,:] - N_ts * Yts_tilde_0[s]
         lhs_vec_3 = -Ytilde_0[s,:]
@@ -353,7 +353,7 @@ function build_full_2DRNDP_model(network, S, ϕU, w, v, uncertainty_set; optimiz
         rhs_rbar_tilde = vcat(
             λ .* d0,
             zeros(num_nodes-1),
-            h,
+            -h,
             zeros(num_nodes-1),
             zeros(num_arcs),
             zeros(num_arcs)
@@ -425,47 +425,3 @@ function build_full_2DRNDP_model(network, S, ϕU, w, v, uncertainty_set; optimiz
     return model, vars
 end
 
-
-"""
-Add network-specific data (d0, capacities, etc.) to the model
-"""
-function add_problem_data!(model, vars, network, d0, capacities)
-    println("Adding problem-specific data...")
-    
-    # d0: demand vector (source to sink flow requirement)
-    # capacities: arc capacity data for each scenario
-    
-    # This function would add the remaining constraints (14m-14p)
-    # using the actual problem data
-    
-    println("  ✓ Problem data added")
-end
-
-
-"""
-Test function to verify model construction
-"""
-function test_model_construction()
-    println("="^80)
-    println("Testing model construction")
-    println("="^80)
-    
-
-    
-    # Generate a small test network
-    network = generate_grid_network(3, 3, seed=42)
-    print_network_summary(network)
-    
-    # Model parameters
-    S = 3  # Number of scenarios
-    ϕU = 10.0  # Upper bound on interdiction effectiveness
-    w = 1.0  # Budget weight
-    v = 0.5  # Interdiction effectiveness parameter (used in COP matrix Φ - v*W)
-    
-    # Build model (without optimizer for testing)
-    model, vars = build_full_2DRNDP_model(network, S, ϕU, w, v)
-    
-    println("\n✓ Model construction test PASSED")
-    
-    return model, vars
-end
