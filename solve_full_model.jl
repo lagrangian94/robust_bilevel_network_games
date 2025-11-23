@@ -238,7 +238,7 @@ else
 
     # Build the dualized outer subproblem using the loaded x, λ, h solution values
     # Assumes you have access to the following objects: network, S, ϕU, γ, w, v, uncertainty_set
-    dual_model, dual_vars = build_dualized_outer_subproblem(network, S, ϕU, γ, w, v, uncertainty_set, λ_sol, x_sol, h_sol, ψ0_sol)
+    dual_model, dual_vars, data = build_dualized_outer_subproblem(network, S, ϕU, γ, w, v, uncertainty_set, λ_sol, x_sol, h_sol, ψ0_sol)
     optimize!(dual_model)
     # Compare the optimal objective values of primal (obj_val, loaded) and dual (dual_model)
     dual_obj_val = termination_status(dual_model) == MOI.OPTIMAL ? objective_value(dual_model) : nothing

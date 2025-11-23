@@ -80,7 +80,6 @@ function build_dualized_outer_subproblem(network, S, ϕU, γ, w, v, uncertainty_
     @variable(model, βhat2[s=1:S,1:dim_Λhat2_rows]>=0)
     @variable(model, βtilde1[s=1:S,1:dim_Λtilde1_rows]>=0)
     @variable(model, βtilde2[s=1:S,1:dim_Λtilde2_rows]>=0)
-
     βhat1_1 = βhat1[:,1:num_arcs+1]
     block2_start = num_arcs+2
     block3_start = block2_start + num_nodes-1
@@ -247,9 +246,7 @@ function build_dualized_outer_subproblem(network, S, ϕU, γ, w, v, uncertainty_
         :βhat2 => βhat2,
         :βtilde1 => βtilde1,
         :βtilde2 => βtilde2,
-        # All matrix variables used in this model should be added here as needed.
-        # If any additional variables (e.g. multipliers Zhat1, Zhat2, etc.) are defined above, 
-        # include them here similarly, e.g.:
+        # Matrix variables
         :Zhat1 => Zhat1,
         :Zhat2 => Zhat2,
         :Ztilde1 => Ztilde1,
@@ -274,22 +271,39 @@ function build_dualized_outer_subproblem(network, S, ϕU, γ, w, v, uncertainty_
         :Ptilde2_Y => Ptilde2_Y,
         :Ptilde1_Yts => Ptilde1_Yts,
         :Ptilde2_Yts => Ptilde2_Yts,
+        :Γhat1 => Γhat1,
+        :Γhat2 => Γhat2,
+        :Γtilde1 => Γtilde1,
+        :Γtilde2 => Γtilde2,
+        # Block variables
+        :βhat1_1 => βhat1_1,
+        :βhat1_2 => βhat1_2,
+        :βhat1_3 => βhat1_3,
+        :βtilde1_1 => βtilde1_1,
+        :βtilde1_2 => βtilde1_2,
+        :βtilde1_3 => βtilde1_3,
+        :βtilde1_4 => βtilde1_4,
+        :βtilde1_5 => βtilde1_5,
+        :βtilde1_6 => βtilde1_6,
         :Zhat1_1 => Zhat1_1,
         :Zhat1_2 => Zhat1_2,
         :Zhat1_3 => Zhat1_3,
-        :Zhat2 => Zhat2,
         :Ztilde1_1 => Ztilde1_1,
         :Ztilde1_2 => Ztilde1_2,
         :Ztilde1_3 => Ztilde1_3,
         :Ztilde1_4 => Ztilde1_4,
         :Ztilde1_5 => Ztilde1_5,
         :Ztilde1_6 => Ztilde1_6,
-        :Ztilde2 => Ztilde2,
-        :Γhat1 => Γhat1,
-        :Γhat2 => Γhat2,
-        :Γtilde1 => Γtilde1,
-        :Γtilde2 => Γtilde2,
     )
-    return model, vars
+    data = Dict(
+        :E => E,
+        :num_arcs => num_arcs,
+        :num_nodes => num_nodes,
+        :v => v,
+        :ϕU => ϕU,
+        :S => S,
+        :d0 => d0
+    )
+    return model, vars, data
 end
 
