@@ -240,7 +240,56 @@ function build_dualized_outer_subproblem(network, S, ϕU, γ, w, v, uncertainty_
     @constraint(model, [s=1:S], Ztilde1[s,:,:]*R' + βtilde1[s,:]*r_dict[s]' + Γtilde1[s,:,:] .== 0.0)
     # --- From Λtilde2 ---
     @constraint(model, [s=1:S], Ztilde2[s,:,:]*R' + βtilde2[s,:]*r_dict[s]' + Γtilde2[s,:,:] .== 0.0)
-
+    vars = Dict(
+        # Vector variables
+        :α => α,
+        :βhat1 => βhat1,
+        :βhat2 => βhat2,
+        :βtilde1 => βtilde1,
+        :βtilde2 => βtilde2,
+        # All matrix variables used in this model should be added here as needed.
+        # If any additional variables (e.g. multipliers Zhat1, Zhat2, etc.) are defined above, 
+        # include them here similarly, e.g.:
+        :Zhat1 => Zhat1,
+        :Zhat2 => Zhat2,
+        :Ztilde1 => Ztilde1,
+        :Ztilde2 => Ztilde2,
+        :Mhat => Mhat,
+        :Mtilde => Mtilde,
+        :Uhat1 => Uhat1,
+        :Uhat2 => Uhat2,
+        :Uhat3 => Uhat3,
+        :Utilde1 => Utilde1,
+        :Utilde2 => Utilde2,
+        :Utilde3 => Utilde3,
+        :Phat1_Φ => Phat1_Φ,
+        :Phat2_Φ => Phat2_Φ,
+        :Ptilde1_Φ => Ptilde1_Φ,
+        :Ptilde2_Φ => Ptilde2_Φ,
+        :Phat1_Π => Phat1_Π,
+        :Phat2_Π => Phat2_Π,
+        :Ptilde1_Π => Ptilde1_Π,
+        :Ptilde2_Π => Ptilde2_Π,
+        :Ptilde1_Y => Ptilde1_Y,
+        :Ptilde2_Y => Ptilde2_Y,
+        :Ptilde1_Yts => Ptilde1_Yts,
+        :Ptilde2_Yts => Ptilde2_Yts,
+        :Zhat1_1 => Zhat1_1,
+        :Zhat1_2 => Zhat1_2,
+        :Zhat1_3 => Zhat1_3,
+        :Zhat2 => Zhat2,
+        :Ztilde1_1 => Ztilde1_1,
+        :Ztilde1_2 => Ztilde1_2,
+        :Ztilde1_3 => Ztilde1_3,
+        :Ztilde1_4 => Ztilde1_4,
+        :Ztilde1_5 => Ztilde1_5,
+        :Ztilde1_6 => Ztilde1_6,
+        :Ztilde2 => Ztilde2,
+        :Γhat1 => Γhat1,
+        :Γhat2 => Γhat2,
+        :Γtilde1 => Γtilde1,
+        :Γtilde2 => Γtilde2,
+    )
     return model, vars
 end
 
