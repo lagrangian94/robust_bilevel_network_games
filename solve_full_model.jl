@@ -38,7 +38,7 @@ println("="^80)
 
 # Remove dummy arc from capacity scenarios (|A| = regular arcs only)
 capacity_scenarios_regular = capacities[1:end-1, :]  # Remove last row (dummy arc)
-epsilon = 0.005  # Robustness parameter
+epsilon = 0.5  # Robustness parameter
 
 println("\n[3] Building R and r matrices...")
 println("Number of regular arcs |A|: $(size(capacity_scenarios_regular, 1))")
@@ -214,15 +214,46 @@ else
     println("Loaded λ: ", λ_sol)
     println("Loaded h: ", h_sol)
 
-    # # Build continuous conic subproblem
-    # model, vars = build_full_2DRNDP_model(network, S, ϕU, γ, w, v,uncertainty_set, x_fixed=x_sol, λ_fixed=λ_sol, h_fixed=h_sol, ψ0_fixed=ψ0_sol)
-    # @infiltrate
+    # Build continuous conic subproblem
+    model, vars = build_full_2DRNDP_model(network, S, ϕU, γ, w, v,uncertainty_set, x_fixed=x_sol, λ_fixed=λ_sol, h_fixed=h_sol, ψ0_fixed=ψ0_sol)
+    optimize!(model)
+    # objective value 파일에서 읽기 (간단하게)
+    obj_val = isfile("full_model_objective_value.txt") ? parse(Float64, readline(open("full_model_objective_value.txt"))) : nothing
+    new_obj = termination_status(model) == MOI.OPTIMAL ? objective_value(model) : nothing
+    if obj_val !== nothing && new_obj !== nothing
+        println("Stored objective value: ", obj_val)
+        println("Newly solved objective value: ", new_obj)
+        if isapprox(obj_val, new_obj; atol=1e-4, rtol=1e-6)
+            println("✓ Objective values match within tolerance.")
+        else
+            println("✗ Objective mismatch! Difference: ", abs(obj_val - new_obj))
+        end
+    elseif obj_val === nothing
+        println("No stored objective value found in file for comparison.")
+    else
+        println("Model did not solve to optimality, cannot compare objective values.")
+    end
     # using Dualization
     # dual_model = dualize(model; dual_names = DualNames("dual_var_", "dual_con_"))
 
     # Build the dualized outer subproblem using the loaded x, λ, h solution values
     # Assumes you have access to the following objects: network, S, ϕU, γ, w, v, uncertainty_set
     dual_model, dual_vars = build_dualized_outer_subproblem(network, S, ϕU, γ, w, v, uncertainty_set, λ_sol, x_sol, h_sol, ψ0_sol)
+    optimize!(dual_model)
+    # Compare the optimal objective values of primal (obj_val, loaded) and dual (dual_model)
+    dual_obj_val = termination_status(dual_model) == MOI.OPTIMAL ? objective_value(dual_model) : nothing
+    if obj_val !== nothing && dual_obj_val !== nothing
+        println("Primal model stored objective value: ", obj_val)
+        println("Dual model objective value:          ", dual_obj_val)
+        obj_diff = abs(obj_val - dual_obj_val)
+        if isapprox(obj_val, dual_obj_val; atol=1e-4, rtol=1e-6)
+            println("✓ Duality gap is vanished within tolerance.")
+        else
+            println("✗ Duality gap exists! Duality gap: ", obj_diff)
+        end
+    else
+        println("Could not compare primal (stored) and dual objectives: one or both objectives missing or not solved optimally. Duality gap cannot be calculated.")
+    end
     println("Dualized outer subproblem built.")
 end
 

@@ -148,18 +148,18 @@ function build_dualized_outer_subproblem(network, S, ϕU, γ, w, v, uncertainty_
     @variable(model, Γtilde1[s=1:S, 1:dim_Λtilde1_rows, 1:size(R,1)])
     @variable(model, Γtilde2[s=1:S, 1:dim_Λtilde2_rows, 1:size(R,1)])
 
-    @variable(model, Phat1_Φ[s=1:S, 1:num_arcs, 1:num_arcs+1]>=0)
-    @variable(model, Phat1_Π[s=1:S, 1:num_nodes-1, 1:num_arcs+1]>=0)
-    @variable(model, Phat2_Φ[s=1:S, 1:num_arcs, 1:num_arcs+1]>=0)
-    @variable(model, Phat2_Π[s=1:S, 1:num_nodes-1, 1:num_arcs+1]>=0)
-    @variable(model, Ptilde1_Φ[s=1:S, 1:num_arcs, 1:num_arcs+1]>=0)
-    @variable(model, Ptilde1_Π[s=1:S, 1:num_nodes-1, 1:num_arcs+1]>=0)
-    @variable(model, Ptilde2_Φ[s=1:S, 1:num_arcs, 1:num_arcs+1]>=0)
-    @variable(model, Ptilde2_Π[s=1:S, 1:num_nodes-1, 1:num_arcs+1]>=0)
-    @variable(model, Ptilde1_Y[s=1:S, 1:num_arcs, 1:num_arcs+1]>=0)
-    @variable(model, Ptilde2_Y[s=1:S, 1:num_arcs, 1:num_arcs+1]>=0)
-    @variable(model, Ptilde1_Yts[s=1:S, 1:num_arcs+1]>=0)
-    @variable(model, Ptilde2_Yts[s=1:S, 1:num_arcs+1]>=0)
+    @variable(model, Phat1_Φ[s=1:S, 1:num_arcs, 1:num_arcs+1], lower_bound=0.0)
+    @variable(model, Phat1_Π[s=1:S, 1:num_nodes-1, 1:num_arcs+1], lower_bound=0.0)
+    @variable(model, Phat2_Φ[s=1:S, 1:num_arcs, 1:num_arcs+1], lower_bound=0.0)
+    @variable(model, Phat2_Π[s=1:S, 1:num_nodes-1, 1:num_arcs+1], lower_bound=0.0)
+    @variable(model, Ptilde1_Φ[s=1:S, 1:num_arcs, 1:num_arcs+1], lower_bound=0.0)
+    @variable(model, Ptilde1_Π[s=1:S, 1:num_nodes-1, 1:num_arcs+1], lower_bound=0.0)
+    @variable(model, Ptilde2_Φ[s=1:S, 1:num_arcs, 1:num_arcs+1], lower_bound=0.0)
+    @variable(model, Ptilde2_Π[s=1:S, 1:num_nodes-1, 1:num_arcs+1], lower_bound=0.0)
+    @variable(model, Ptilde1_Y[s=1:S, 1:num_arcs, 1:num_arcs+1], lower_bound=0.0)
+    @variable(model, Ptilde2_Y[s=1:S, 1:num_arcs, 1:num_arcs+1], lower_bound=0.0)
+    @variable(model, Ptilde1_Yts[s=1:S, 1:num_arcs+1], lower_bound=0.0)
+    @variable(model, Ptilde2_Yts[s=1:S, 1:num_arcs+1], lower_bound=0.0)
 
     # =========================================================================
     # OBJECTIVE FUNCTION
@@ -181,7 +181,7 @@ function build_dualized_outer_subproblem(network, S, ϕU, γ, w, v, uncertainty_
     obj_term_lb_tilde = [-ϕU * sum(Ptilde2_Φ[s,:,:]) - ϕU * sum(Ptilde2_Π[s,:,:]) - ϕU * sum(Ptilde2_Y[s,:,:]) - ϕU * sum(Ptilde2_Yts[s,:]) for s=1:S]
     @objective(model, Max, sum(obj_term1) + sum(obj_term2) + sum(obj_term3) + sum(obj_term4) + sum(obj_term5) + sum(obj_term6)
     + sum(obj_term_ub_hat) + sum(obj_term_lb_hat) + sum(obj_term_ub_tilde) + sum(obj_term_lb_tilde))
-    # @objective(model, Max, sum(obj_term3))
+    # @objective(model, Max, sum(obj_term_ub_hat) + sum(obj_term_lb_hat) + sum(obj_term_ub_tilde) + sum(obj_term_lb_tilde))
     # @constraint(model, [s=1:S], βhat1[s,num_arcs+1] <= 500.0)
     # =========================================================================
     # CONSTRAINTS
@@ -199,7 +199,7 @@ function build_dualized_outer_subproblem(network, S, ϕU, γ, w, v, uncertainty_
     # Scalar constraints
     @constraint(model, [s=1:S], Mhat[s, num_arcs+1, num_arcs+1] == 1/S)
     @constraint(model, [s=1:S], Mtilde[s, num_arcs+1, num_arcs+1] == 1/S)
-    @constraint(model, sum(α) == w*(1/S))
+    @constraint(model, sum(α) <= w*(1/S))
     @constraint(model, [s=1:S], tr(Mhat[s, 1:num_arcs, 1:num_arcs]) - 2* Mhat[s,1:num_arcs,end]'*xi_bar[s] - Mhat[s,end,end]*((epsilon^2 - sum(xi_bar[s].^2))) <= 0)
     @constraint(model, [s=1:S], tr(Mtilde[s, 1:num_arcs, 1:num_arcs]) - 2* Mtilde[s,1:num_arcs,end]'*xi_bar[s] - Mtilde[s,end,end]*((epsilon^2 - sum(xi_bar[s].^2))) <= 0)
 
@@ -209,13 +209,13 @@ function build_dualized_outer_subproblem(network, S, ϕU, γ, w, v, uncertainty_
     + hcat(-1*(I_0*Zhat1_1[s,:,:] + Zhat1_3[s,:,:]) + Zhat2[s,:,:], I_0*βhat1_1[s,:] + βhat1_3[s,:] - βhat2[s,:])
     + Phat1_Φ[s,:,:] - Phat2_Φ[s,:,:] .== 0)
     # --- From Ψhat
-    @constraint(model, [s=1:S], v*Mhat[s,1:num_arcs, :] - Uhat1[s,:,:] - Uhat2[s,:,:] + Uhat3[s,:,:] .== 0)
+    @constraint(model, [s=1:S], v*Mhat[s,1:num_arcs, :] - Uhat1[s,:,:] - Uhat2[s,:,:] + Uhat3[s,:,:] .<= 0)
     # --- From Φtilde ---
     @constraint(model, [s=1:S], -Mtilde[s,1:num_arcs, :] + Utilde2[s,:,:] - Utilde3[s,:,:]
     + hcat(-I_0*Ztilde1_1[s,:,:] - Ztilde1_5[s,:,:] + Ztilde2[s,:,:], I_0*βtilde1_1[s,:] + βtilde1_5[s,:] - βtilde2[s,:])
     + Ptilde1_Φ[s,:,:] - Ptilde2_Φ[s,:,:] .== 0)
     # --- From Ψtilde ---
-    @constraint(model, [s=1:S], v*Mtilde[s,1:num_arcs, :] - Utilde1[s,:,:] - Utilde2[s,:,:] + Utilde3[s,:,:] .== 0)
+    @constraint(model, [s=1:S], v*Mtilde[s,1:num_arcs, :] - Utilde1[s,:,:] - Utilde2[s,:,:] + Utilde3[s,:,:] .<= 0)
     # --- From Ytilde_ts ---
     @constraint(model, [s=1:S], Mtilde[s,1, :]' + hcat(N_ts' * Ztilde1_2[s,:,:], -N_ts' * βtilde1_2[s,:])
     + Ptilde1_Yts[s,:]' - Ptilde2_Yts[s,:]' .== 0)
@@ -240,14 +240,7 @@ function build_dualized_outer_subproblem(network, S, ϕU, γ, w, v, uncertainty_
     @constraint(model, [s=1:S], Ztilde1[s,:,:]*R' + βtilde1[s,:]*r_dict[s]' + Γtilde1[s,:,:] .== 0.0)
     # --- From Λtilde2 ---
     @constraint(model, [s=1:S], Ztilde2[s,:,:]*R' + βtilde2[s,:]*r_dict[s]' + Γtilde2[s,:,:] .== 0.0)
-    optimize!(model)
-    t_status = termination_status(model)
-    p_status = primal_status(model)
-    if t_status == MOI.OPTIMAL || t_status == MOI.FEASIBLE_POINT
-        obj_value = objective_value(model)
-        println("\nOptimal objective value: ", obj_value)
-    end
-    @infiltrate
+
     return model, vars
 end
 

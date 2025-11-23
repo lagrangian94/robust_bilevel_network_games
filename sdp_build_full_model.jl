@@ -77,7 +77,7 @@ function build_full_2DRNDP_model(network, S, ϕU, γ, w, v, uncertainty_set; opt
     
     # --- Scalar variables ---
     @variable(model, t)  # Objective epigraph variable
-    @variable(model, nu)  # Budget for recourse decisions
+    @variable(model, nu>= 0)  # Budget for recourse decisions
     if isnothing(λ_fixed)
         @variable(model, λ >= 0)  # Budget allocation parameter
     else
@@ -105,19 +105,19 @@ function build_full_2DRNDP_model(network, S, ϕU, γ, w, v, uncertainty_set; opt
     end
     
     # --- Scenario-indexed variables (scalar per scenario) ---
-    @variable(model, ηhat[1:S])   # Leader's scenario cost
-    @variable(model, ηtilde[1:S]) # Follower's scenario cost
+    @variable(model, ηhat[1:S]>=0)   # Leader's scenario cost
+    @variable(model, ηtilde[1:S]) #IMPORTANT: lower bound is NOT 0!! # Follower's scenario cost
     
     # --- Scenario and arc-indexed variables ---
-    @variable(model, μhat[1:S, 1:num_arcs])   # Leader's dual variables
-    @variable(model, μtilde[1:S, 1:num_arcs]) # Follower's dual variables
+    @variable(model, μhat[1:S, 1:num_arcs]>=0)   # Leader's dual variables
+    @variable(model, μtilde[1:S, 1:num_arcs]>=0) # Follower's dual variables
     
     # --- Matrix variables (scenario-indexed) ---
     # LDR coefficient matrices - all are |A| × |A| matrices
     @variable(model, Φhat[s=1:S, 1:num_arcs, 1:num_arcs+1], lower_bound= -ϕU, upper_bound = ϕU)    # Leader's flow coefficient
-    @variable(model, Ψhat[s=1:S, 1:num_arcs, 1:num_arcs+1])    # Leader's W matrix
+    @variable(model, Ψhat[s=1:S, 1:num_arcs, 1:num_arcs+1], lower_bound= 0.0)    # Leader's W matrix
     @variable(model, Φtilde[s=1:S, 1:num_arcs, 1:num_arcs+1], lower_bound= -ϕU, upper_bound = ϕU)  # Follower's flow coefficient
-    @variable(model, Ψtilde[s=1:S, 1:num_arcs, 1:num_arcs+1])  # Follower's W matrix
+    @variable(model, Ψtilde[s=1:S, 1:num_arcs, 1:num_arcs+1], lower_bound= 0.0)  # Follower's W matrix
     
     # Additional LDR coefficients
     # Π: (|V|-1) × |A| matrices (node prices, excluding source)
