@@ -126,6 +126,8 @@ function benders_optimize!(rmp_model::Model, rmp_vars::Dict, network, ϕU, γ, w
     diag_x_E = Diagonal(x) * osp_data[:E]  # diag(x)E
     diag_λ_ψ = Diagonal(λ .-v.*ψ0)
     iter = 0
+    @infiltrate
+
     while (st == MOI.DUAL_INFEASIBLE || st == MOI.OPTIMAL)
         iter += 1
         @info "Iteration $iter"
@@ -133,6 +135,9 @@ function benders_optimize!(rmp_model::Model, rmp_vars::Dict, network, ϕU, γ, w
         st = MOI.get(rmp_model, MOI.TerminationStatus())
         x_sol, h_sol, λ_sol, ψ0_sol = value.(rmp_vars[:x]), value.(rmp_vars[:h]), value(rmp_vars[:λ]), value.(rmp_vars[:ψ0])
         t_0_sol = value(rmp_vars[:t_0])
+        if iter >= 2
+            @infiltrate
+        end
         (status, cut_info) =subprob_optimize!(osp_model, osp_vars, osp_data, λ_sol, x_sol, h_sol, ψ0_sol)
         if status == :OptimalityCut
             @info "Optimality cut added"
@@ -146,7 +151,8 @@ function benders_optimize!(rmp_model::Model, rmp_vars::Dict, network, ϕU, γ, w
                 cut_4 =  [cut_info[:λ_coeff2][s] * λ for s in 1:S]
                 cut_5 =  [cut_info[:h_coeff][s]'* h for s in 1:S]
                 cut_const = [cut_info[:constant][s] for s in 1:S]
-                @constraint(rmp_model, t_0 >= sum(cut_1)+ sum(cut_2)+ sum(cut_3)+ sum(cut_4)+ sum(cut_5)+ sum(cut_const))
+                cut_added = @constraint(rmp_model, t_0 >= sum(cut_1)+ sum(cut_2)+ sum(cut_3)+ sum(cut_4)+ sum(cut_5)+ sum(cut_const))
+                set_name(cut_added, "opt_cut_$iter")
             end
 
         end
