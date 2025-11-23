@@ -38,7 +38,7 @@ println("="^80)
 
 # Remove dummy arc from capacity scenarios (|A| = regular arcs only)
 capacity_scenarios_regular = capacities[1:end-1, :]  # Remove last row (dummy arc)
-epsilon = 0.05  # Robustness parameter
+epsilon = 0.005  # Robustness parameter
 
 println("\n[3] Building R and r matrices...")
 println("Number of regular arcs |A|: $(size(capacity_scenarios_regular, 1))")
@@ -213,6 +213,12 @@ else
     println("Loaded x: ", x_sol)
     println("Loaded λ: ", λ_sol)
     println("Loaded h: ", h_sol)
+
+    # # Build continuous conic subproblem
+    # model, vars = build_full_2DRNDP_model(network, S, ϕU, γ, w, v,uncertainty_set, x_fixed=x_sol, λ_fixed=λ_sol, h_fixed=h_sol, ψ0_fixed=ψ0_sol)
+    # @infiltrate
+    # using Dualization
+    # dual_model = dualize(model; dual_names = DualNames("dual_var_", "dual_con_"))
 
     # Build the dualized outer subproblem using the loaded x, λ, h solution values
     # Assumes you have access to the following objects: network, S, ϕU, γ, w, v, uncertainty_set

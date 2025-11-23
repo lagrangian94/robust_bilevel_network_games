@@ -178,13 +178,15 @@ function build_full_2DRNDP_model(network, S, ϕU, γ, w, v, uncertainty_set; opt
     @objective(model, Min, (1/S)*t + (1/S)*w * nu)
     
     # --- (14b) Initial resource and domain constraints ---
-    @constraint(model, resource_budget, sum(h) <= λ * w)
-    @constraint(model, sum(x) <= γ) 
-    # x must be binary, and only interdictable arcs can be selected
-    for i in 1:num_arcs
-        if !network.interdictable_arcs[i]
-            @constraint(model, x[i] == 0)
-            println("Arc $i is not interdictable")
+    if isnothing(λ_fixed)
+        @constraint(model, resource_budget, sum(h) <= λ * w)
+        @constraint(model, sum(x) <= γ) 
+        # x must be binary, and only interdictable arcs can be selected
+        for i in 1:num_arcs
+            if !network.interdictable_arcs[i]
+                @constraint(model, x[i] == 0)
+                println("Arc $i is not interdictable")
+            end
         end
     end
     # --- (14c) Scenario cost constraint ---
@@ -243,8 +245,8 @@ function build_full_2DRNDP_model(network, S, ϕU, γ, w, v, uncertainty_set; opt
             end
         end
     end
-    @constraint(model, [s=1:S], Mhat[s,:,:] in PSDCone())
-    @constraint(model, [s=1:S], Mtilde[s,:,:] in PSDCone())
+    @constraint(model, [s=1:S], Mhat[s,:,:] in PSDCone()) ##TODO:: 이거 주석 풀기
+    @constraint(model, [s=1:S], Mtilde[s,:,:] in PSDCone()) ##TODO:: 이거 주석 풀기
     # where:
     #   - ηˆs: scalar (scenario cost upper bound)
     #   - Φˆs: |A|×|A| matrix (flow LDR coefficient)
@@ -389,11 +391,13 @@ function build_full_2DRNDP_model(network, S, ϕU, γ, w, v, uncertainty_set; opt
     # --- (14q) Linearization constraints for ψ0 ---
     # These linearize the product λ * x
     λU = 100.0  # Upper bound on λ (should be set based on problem)
-    for k in 1:num_arcs
-        @constraint(model, ψ0[k] <= λU * x[k])
-        @constraint(model, ψ0[k] <= λ)
-        @constraint(model, ψ0[k] >= λ - λU * (1 - x[k]))
-        @constraint(model, ψ0[k] >= 0)
+    if isnothing(λ_fixed)
+        for k in 1:num_arcs
+            @constraint(model, ψ0[k] <= λU * x[k])
+            @constraint(model, ψ0[k] <= λ)
+            @constraint(model, ψ0[k] >= λ - λU * (1 - x[k]))
+            @constraint(model, ψ0[k] >= 0)
+        end
     end
     
     println("  ✓ Linearization constraints (14q) added")
@@ -436,8 +440,10 @@ function build_full_2DRNDP_model(network, S, ϕU, γ, w, v, uncertainty_set; opt
     println("  - Variables: $(num_variables(model))")
     println("  - Constraints: $(num_constraints(model, AffExpr, MOI.LessThan{Float64}) + 
                                  num_constraints(model, AffExpr, MOI.EqualTo{Float64}))")
-    println("  - Binary variables: $(sum(is_binary(x[i]) for i in 1:num_arcs))")
-    println("="^80)
+    if x_fixed === nothing
+        println("  - Binary variables: $(sum(is_binary(x[i]) for i in 1:num_arcs))")
+    end
+        println("="^80)
     
     return model, vars
 end
