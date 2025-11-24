@@ -63,7 +63,7 @@ function build_dualized_outer_subproblem(network, S, ϕU, γ, w, v, uncertainty_
     println("  Nodes: $num_nodes, Arcs: $num_arcs, Scenarios: $S")
     println("  Interdictable arcs: $num_interdictable")
     println("  Dummy arc index: $dummy_arc_idx")
-    println("  Parameters: ϕU = $ϕU, γ = $γ, w = $w, v = $v")
+    println("  Parameters: ϕU = $ϕU, λU = $λU, γ = $γ, w = $w, v = $v")
     
     # =========================================================================
     # DECISION VARIABLES

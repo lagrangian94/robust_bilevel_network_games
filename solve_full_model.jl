@@ -19,6 +19,7 @@ println("="^80)
 # Model parameters
 S = 3  # Number of scenarios
 ϕU = 100.0  # Upper bound on interdiction effectiveness
+λU = 10.0  # Upper bound on λ
 γ = 2.0  # Interdiction budget
 w = 1.0  # Budget weight
 v = 1.0  # Interdiction effectiveness parameter (NOT the decision variable ν!)
@@ -38,7 +39,7 @@ println("="^80)
 
 # Remove dummy arc from capacity scenarios (|A| = regular arcs only)
 capacity_scenarios_regular = capacities[1:end-1, :]  # Remove last row (dummy arc)
-epsilon = 0.7  # Robustness parameter
+epsilon = 0.01  # Robustness parameter
 
 println("\n[3] Building R and r matrices...")
 println("Number of regular arcs |A|: $(size(capacity_scenarios_regular, 1))")
@@ -48,7 +49,7 @@ println("Robustness parameter ε: $epsilon")
 R, r_dict = build_robust_counterpart_matrices(capacity_scenarios_regular, epsilon)
 uncertainty_set = Dict(:R => R, :r_dict => r_dict, :epsilon => epsilon)
 
-solve_full_model = false
+solve_full_model = true
 if solve_full_model
     println("\n[2] Building model...")
     println("  Parameters:")
@@ -60,7 +61,8 @@ if solve_full_model
     println("  Note: v is a parameter in COP matrix [Φ - v*W]")
     println("        ν (nu) is a decision variable in objective t + w*ν")
     # Build model (without optimizer for initial testing)
-    model, vars = build_full_2DRNDP_model(network, S, ϕU, γ, w, v,uncertainty_set)
+    model, vars = build_full_2DRNDP_model(network, S, ϕU, λU, γ, w, v,uncertainty_set, optimizer=Pajarito.Optimizer,
+    x_fixed=nothing, λ_fixed=nothing, h_fixed=nothing, ψ0_fixed=nothing)
 
     println("\n[3] Model structure verification:")
     println("  Scalar variables:")
@@ -108,7 +110,7 @@ if solve_full_model
 
     println("\n[5] Model statistics:")
     println("  Total variables: $(num_variables(model))")
-    println("  Binary variables: $(sum(is_binary(vars[:x][i]) for i in 1:num_arcs))")
+    # println("  Binary variables: $(sum(is_binary(vars[:x][i]) for i in 1:num_arcs))")
     println("  Total constraints: $(sum(num_constraints(model, F, S) for (F, S) in list_of_constraint_types(model)))")
 
     println("\n" * "="^80)
@@ -120,7 +122,6 @@ if solve_full_model
     # Check if the model has a feasible solution
     t_status = termination_status(model)
     p_status = primal_status(model)
-
     if t_status == MOI.OPTIMAL || t_status == MOI.FEASIBLE_POINT
         obj_value = objective_value(model)
         println("\nOptimal objective value: ", obj_value)
@@ -139,7 +140,6 @@ if solve_full_model
         # Save scenario values (examples)
         sol[:ηhat] = value.(vars[:ηhat])
         sol[:ηtilde] = value.(vars[:ηtilde])
-
         # Optionally save any other variables you want (e.g., dual variables)
         # ...
         println("interdicted arcs: ", [i for i in 1:length(sol[:x]) if sol[:x][i] == 1.0])
@@ -215,7 +215,7 @@ else
     println("Loaded h: ", h_sol)
 
     # Build continuous conic subproblem
-    model, vars = build_full_2DRNDP_model(network, S, ϕU, γ, w, v,uncertainty_set, x_fixed=x_sol, λ_fixed=λ_sol, h_fixed=h_sol, ψ0_fixed=ψ0_sol)
+    model, vars = build_full_2DRNDP_model(network, S, ϕU, λU, γ, w, v,uncertainty_set, x_fixed=x_sol, λ_fixed=λ_sol, h_fixed=h_sol, ψ0_fixed=ψ0_sol, optimizer=Mosek.Optimizer)
     optimize!(model)
     # objective value 파일에서 읽기 (간단하게)
     obj_val = isfile("full_model_objective_value.txt") ? parse(Float64, readline(open("full_model_objective_value.txt"))) : nothing
@@ -238,7 +238,7 @@ else
 
     # Build the dualized outer subproblem using the loaded x, λ, h solution values
     # Assumes you have access to the following objects: network, S, ϕU, γ, w, v, uncertainty_set
-    dual_model, dual_vars, data = build_dualized_outer_subproblem(network, S, ϕU, γ, w, v, uncertainty_set, λ_sol, x_sol, h_sol, ψ0_sol)
+    dual_model, dual_vars, data = build_dualized_outer_subproblem(network, S, ϕU, λU, γ, w, v, uncertainty_set, λ_sol, x_sol, h_sol, ψ0_sol)
     optimize!(dual_model)
     # Compare the optimal objective values of primal (obj_val, loaded) and dual (dual_model)
     dual_obj_val = termination_status(dual_model) == MOI.OPTIMAL ? objective_value(dual_model) : nothing

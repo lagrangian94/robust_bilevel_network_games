@@ -10,10 +10,11 @@ using Hypatia, HiGHS
 # Load network generator
 includet("network_generator.jl")
 includet("sdp_build_dualized_outer_subproblem.jl")
+includet("sdp_build_full_model.jl")
 using .NetworkGenerator
 
 
-function build_rmp(network, ϕU, γ, w, uncertainty_set; optimizer=nothing)
+function build_rmp(network, ϕU, λU, γ, w, uncertainty_set; optimizer=nothing)
     # Extract network dimensions
     num_nodes = length(network.nodes)
     num_arcs = length(network.arcs)-1 #dummy arc 제외
@@ -41,7 +42,6 @@ function build_rmp(network, ϕU, γ, w, uncertainty_set; optimizer=nothing)
         end
     end
     # mccormick envelope constraints for ψ0
-    λU = ϕU # 100  # Upper bound on λ (should be set based on problem)
     for k in 1:num_arcs
         @constraint(model, ψ0[k] <= λU * x[k])
         @constraint(model, ψ0[k] <= λ)
@@ -107,12 +107,13 @@ function subprob_optimize!(osp_model::Model, osp_vars::Dict, osp_data::Dict, λ_
         return (:OptimalityCut, Dict(:x_coeff1 => x_coeff1, :x_coeff2 => x_coeff2, :λ_coeff1 => λ_coeff1, :λ_coeff2 => λ_coeff2, :h_coeff => h_coeff,
          :constant => constant, :obj_val => obj_val))
     else
+        t_status = termination_status(osp_model)
         @infiltrate
         error("Subproblem is not optimal")
     end
 end
 
-function benders_optimize!(rmp_model::Model, rmp_vars::Dict, network, ϕU, γ, w, uncertainty_set; optimizer=nothing)
+function benders_optimize!(rmp_model::Model, rmp_vars::Dict, network, ϕU, λU, γ, w, uncertainty_set; optimizer=nothing)
     # Solve restricted master problem
     optimize!(rmp_model)
     st = MOI.get(rmp_model, MOI.TerminationStatus())
@@ -126,7 +127,6 @@ function benders_optimize!(rmp_model::Model, rmp_vars::Dict, network, ϕU, γ, w
     diag_x_E = Diagonal(x) * osp_data[:E]  # diag(x)E
     diag_λ_ψ = Diagonal(λ .-v.*ψ0)
     iter = 0
-    @infiltrate
 
     while (st == MOI.DUAL_INFEASIBLE || st == MOI.OPTIMAL)
         iter += 1
@@ -135,9 +135,12 @@ function benders_optimize!(rmp_model::Model, rmp_vars::Dict, network, ϕU, γ, w
         st = MOI.get(rmp_model, MOI.TerminationStatus())
         x_sol, h_sol, λ_sol, ψ0_sol = value.(rmp_vars[:x]), value.(rmp_vars[:h]), value(rmp_vars[:λ]), value.(rmp_vars[:ψ0])
         t_0_sol = value(rmp_vars[:t_0])
-        if iter >= 2
-            @infiltrate
-        end
+        # if iter >= 2
+        #     model, vars = build_full_2DRNDP_model(network, S, ϕU, λU, γ, w, v, uncertainty_set; optimizer=Mosek.Optimizer,
+        #     x_fixed=x_sol, λ_fixed=λ_sol, h_fixed=h_sol, ψ0_fixed=ψ0_sol)
+        #     optimize!(model)
+        #     @infiltrate
+        # end
         (status, cut_info) =subprob_optimize!(osp_model, osp_vars, osp_data, λ_sol, x_sol, h_sol, ψ0_sol)
         if status == :OptimalityCut
             @info "Optimality cut added"

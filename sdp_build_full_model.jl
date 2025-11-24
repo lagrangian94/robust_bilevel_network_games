@@ -33,7 +33,7 @@ Note:
 - ν (nu) is a DECISION VARIABLE (appears in objective and constraint 14l)
 - v is a PARAMETER (appears in COP matrix Φ - vW)
 """
-function build_full_2DRNDP_model(network, S, ϕU, γ, w, v, uncertainty_set; optimizer=nothing,
+function build_full_2DRNDP_model(network, S, ϕU, λU, γ, w, v, uncertainty_set; optimizer=nothing,
     # Optional: if provided, these are treated as fixed parameters
     x_fixed=nothing, λ_fixed=nothing, h_fixed=nothing, ψ0_fixed=nothing)
     
@@ -49,27 +49,27 @@ function build_full_2DRNDP_model(network, S, ϕU, γ, w, v, uncertainty_set; opt
     dummy_arc_idx = findfirst(arc -> arc == ("t", "s"), network.arcs)
     
     # Create model
-    model = Model(
-        optimizer_with_attributes(
-            Pajarito.Optimizer,
-            "oa_solver" => optimizer_with_attributes(
-                Gurobi.Optimizer,
-                MOI.Silent() => false,
-            ),
-            "conic_solver" =>
-                optimizer_with_attributes(Mosek.Optimizer, MOI.Silent() => false),
+    if optimizer == Pajarito.Optimizer
+        model = Model(
+            optimizer_with_attributes(
+                Pajarito.Optimizer,
+                "oa_solver" => optimizer_with_attributes(
+                    Gurobi.Optimizer,
+                    MOI.Silent() => false,
+                ),
+                "conic_solver" =>
+                    optimizer_with_attributes(Mosek.Optimizer, MOI.Silent() => false),
+            )
         )
-    )
-    # model = Model(Mosek.Optimizer)
-    # if !isnothing(optimizer)
-    #     set_optimizer(model, optimizer)
-    # end
+    else
+        model = Model(optimizer)
+    end
     
     println("Building 2DRNDP model...")
     println("  Nodes: $num_nodes, Arcs: $num_arcs, Scenarios: $S")
     println("  Interdictable arcs: $num_interdictable")
     println("  Dummy arc index: $dummy_arc_idx")
-    println("  Parameters: ϕU = $ϕU, γ = $γ, w = $w, v = $v")
+    println("  Parameters: ϕU = $ϕU, λU = $λU, γ = $γ, w = $w, v = $v")
     
     # =========================================================================
     # DECISION VARIABLES
@@ -390,7 +390,6 @@ function build_full_2DRNDP_model(network, S, ϕU, γ, w, v, uncertainty_set; opt
         # 
     # --- (14q) Linearization constraints for ψ0 ---
     # These linearize the product λ * x
-    λU = 100.0  # Upper bound on λ (should be set based on problem)
     if isnothing(λ_fixed)
         for k in 1:num_arcs
             @constraint(model, ψ0[k] <= λU * x[k])
