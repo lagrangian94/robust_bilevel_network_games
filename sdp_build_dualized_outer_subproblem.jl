@@ -36,7 +36,7 @@ Note:
 - ν (nu) is a DECISION VARIABLE (appears in objective and constraint 14l)
 - v is a PARAMETER (appears in COP matrix Φ - vW)
 """
-function build_dualized_outer_subproblem(network, S, ϕU, γ, w, v, uncertainty_set, λ, x, h, ψ0; optimizer=nothing)
+function build_dualized_outer_subproblem(network, S, ϕU,λU, γ, w, v, uncertainty_set, λ, x, h, ψ0; optimizer=nothing)
     # Extract network dimensions
     num_nodes = length(network.nodes)
     num_arcs = length(network.arcs)-1 #dummy arc 제외
@@ -141,6 +141,9 @@ function build_dualized_outer_subproblem(network, S, ϕU, γ, w, v, uncertainty_
     # check if the blocks are correct (block들 column dimension 합이 dim_Λtilde1_rows와 같은지 확인)
     @assert sum([size(Ztilde1_1,2), size(Ztilde1_2,2), size(Ztilde1_3,2), size(Ztilde1_4,2), size(Ztilde1_5,2), size(Ztilde1_6,2)]) == dim_Λtilde1_rows
     dim_Λhat1_cols = num_arcs+1
+    dim_Λhat2_cols = num_arcs+1
+    dim_Λtilde1_cols = num_arcs+1
+    dim_Λtilde2_cols = num_arcs+1
     @variable(model, Γhat1[s=1:S, 1:dim_Λhat1_rows, 1:dim_Λhat1_cols])
     @variable(model, Γhat2[s=1:S, 1:dim_Λhat2_rows, 1:dim_Λhat2_cols])
     @variable(model, Γtilde1[s=1:S, 1:dim_Λtilde1_rows, 1:dim_Λtilde1_cols])
@@ -195,9 +198,9 @@ function build_dualized_outer_subproblem(network, S, ϕU, γ, w, v, uncertainty_
     @constraint(model, [s=1:S, i=1:dim_Λtilde2_rows], Γtilde2[s, i, :] in SecondOrderCone())
 
     # Scalar constraints
-    @constraint(model, [s=1:S], Mhat[s, num_arcs+1, num_arcs+1] == 1/S)
+    @constraint(model, [s=1:S], Mhat[s, num_arcs+1, num_arcs+1] <= 1/S)
     @constraint(model, [s=1:S], Mtilde[s, num_arcs+1, num_arcs+1] == 1/S)
-    @constraint(model, sum(α) <= w*(1/S))
+    @constraint(model, sum(α) <= w*1/S)
     for s in 1:S
         D_inv = diagm(1 ./ xi_bar[s])
         D_inv_square = D_inv .^ 2

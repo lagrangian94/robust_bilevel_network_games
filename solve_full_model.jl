@@ -18,8 +18,8 @@ println("="^80)
 
 # Model parameters
 S = 3  # Number of scenarios
-ϕU = 100.0  # Upper bound on interdiction effectiveness
-λU = 100.0  # Upper bound on λ
+ϕU = 10.0  # Upper bound on interdiction effectiveness
+λU = 10.0  # Upper bound on λ
 γ = 2.0  # Interdiction budget
 w = 1.0  # Budget weight
 v = 1.0  # Interdiction effectiveness parameter (NOT the decision variable ν!)
@@ -39,7 +39,7 @@ println("="^80)
 
 # Remove dummy arc from capacity scenarios (|A| = regular arcs only)
 capacity_scenarios_regular = capacities[1:end-1, :]  # Remove last row (dummy arc)
-epsilon = 0.1  # Robustness parameter
+epsilon = 1.0  # Robustness parameter
 
 println("\n[3] Building R and r matrices...")
 println("Number of regular arcs |A|: $(size(capacity_scenarios_regular, 1))")
@@ -63,7 +63,8 @@ if solve_full_model
     # Build model (without optimizer for initial testing)
     model, vars = build_full_2DRNDP_model(network, S, ϕU, λU, γ, w, v,uncertainty_set, optimizer=Pajarito.Optimizer,
     x_fixed=nothing, λ_fixed=nothing, h_fixed=nothing, ψ0_fixed=nothing)
-
+    @constraint(model, vars[:λ]>=1)
+    @constraint(model, vars[:h].<=0.0)
     println("\n[3] Model structure verification:")
     println("  Scalar variables:")
     println("    t: $(vars[:t])")
@@ -122,7 +123,6 @@ if solve_full_model
     # Check if the model has a feasible solution
     t_status = termination_status(model)
     p_status = primal_status(model)
-    @infiltrate
     if t_status == MOI.OPTIMAL || t_status == MOI.FEASIBLE_POINT
         obj_value = objective_value(model)
         println("\nOptimal objective value: ", obj_value)
@@ -153,6 +153,7 @@ if solve_full_model
             JLD2.save("full_model_solution.jld2", "sol", sol)
         # Save the optimal objective value separately as a plain text file
         try
+            @info "Saving optimal objective value to txt file..."
             open("full_model_objective_value.txt", "w") do io
                 println(io, obj_value)
             end
@@ -175,6 +176,7 @@ if solve_full_model
     else
         println("\nNo feasible/optimal solution found. Status: $t_status")
     end
+    @infiltrate
 else
     # Load previously saved solution for x, λ, h (JLD2 preferred, JSON as fallback)
     local sol = nothing
@@ -214,28 +216,26 @@ else
     println("Loaded x: ", x_sol)
     println("Loaded λ: ", λ_sol)
     println("Loaded h: ", h_sol)
-
-    # Build continuous conic subproblem
-    model, vars = build_full_2DRNDP_model(network, S, ϕU, λU, γ, w, v,uncertainty_set, x_fixed=x_sol, λ_fixed=λ_sol, h_fixed=h_sol, ψ0_fixed=ψ0_sol, optimizer=Mosek.Optimizer)
-    optimize!(model)
-    # objective value 파일에서 읽기 (간단하게)
+    # # Build continuous conic subproblem
+    # model, vars = build_full_2DRNDP_model(network, S, ϕU, λU, γ, w, v,uncertainty_set, x_fixed=x_sol, λ_fixed=λ_sol, h_fixed=h_sol, ψ0_fixed=ψ0_sol, optimizer=Mosek.Optimizer)
+    # optimize!(model)
+    # # objective value 파일에서 읽기 (간단하게)
     obj_val = isfile("full_model_objective_value.txt") ? parse(Float64, readline(open("full_model_objective_value.txt"))) : nothing
-    new_obj = termination_status(model) == MOI.OPTIMAL ? objective_value(model) : nothing
-    if obj_val !== nothing && new_obj !== nothing
-        println("Stored objective value: ", obj_val)
-        println("Newly solved objective value: ", new_obj)
-        if isapprox(obj_val, new_obj; atol=1e-4, rtol=1e-6)
-            println("✓ Objective values match within tolerance.")
-        else
-            println("✗ Objective mismatch! Difference: ", abs(obj_val - new_obj))
-        end
-    elseif obj_val === nothing
-        println("No stored objective value found in file for comparison.")
-    else
-        println("Model did not solve to optimality, cannot compare objective values.")
-    end
-    # using Dualization
-    # dual_model = dualize(model; dual_names = DualNames("dual_var_", "dual_con_"))
+    # new_obj = termination_status(model) == MOI.OPTIMAL ? objective_value(model) : nothing
+    # if obj_val !== nothing && new_obj !== nothing
+    #     println("Stored objective value: ", obj_val)
+    #     println("Newly solved objective value: ", new_obj)
+    #     if isapprox(obj_val, new_obj; atol=1e-4, rtol=1e-6)
+    #         println("✓ Objective values match within tolerance.")
+    #     else
+    #         println("✗ Objective mismatch! Difference: ", abs(obj_val - new_obj))
+    #     end
+    # elseif obj_val === nothing
+    #     println("No stored objective value found in file for comparison.")
+    # else
+    #     @infiltrate
+    #     println("Model did not solve to optimality, cannot compare objective values.")
+    # end
 
     # Build the dualized outer subproblem using the loaded x, λ, h solution values
     # Assumes you have access to the following objects: network, S, ϕU, γ, w, v, uncertainty_set
@@ -253,6 +253,7 @@ else
             println("✗ Duality gap exists! Duality gap: ", obj_diff)
         end
     else
+        @infiltrate
         println("Could not compare primal (stored) and dual objectives: one or both objectives missing or not solved optimally. Duality gap cannot be calculated.")
     end
     println("Dualized outer subproblem built.")
