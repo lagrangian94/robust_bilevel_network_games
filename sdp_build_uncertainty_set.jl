@@ -80,16 +80,19 @@ Example:
     
     R, r_dict = build_robust_counterpart_matrices(capacity_scenarios_regular, epsilon)
 """
-function build_robust_counterpart_matrices(capacity_scenarios::Matrix{Float64}, epsilon::Float64)
+function build_robust_counterpart_matrices(capacity_scenarios::Matrix{Float64}, epsilon::Float64, rsoc::Bool=false)
     num_regular_arcs, num_scenarios = size(capacity_scenarios)
     R = Dict{Int, Matrix{Float64}}()
     r_dict = Dict{Int, Vector{Float64}}()
     xi_bar = Dict{Int, Vector{Float64}}()
     for s in 1:num_scenarios
-        # R[s] = build_R_matrix(capacity_scenarios[:, s])
-        # r_dict[s] = build_r_vector(num_regular_arcs, capacity_scenarios[:, s], epsilon)
-        R[s] = build_R_matrix_rsoc(capacity_scenarios[:, s])
-        r_dict[s] = build_r_vector_rsoc(num_regular_arcs, capacity_scenarios[:, s], epsilon)
+        if rsoc
+            R[s] = build_R_matrix_rsoc(capacity_scenarios[:, s])
+            r_dict[s] = build_r_vector_rsoc(num_regular_arcs, capacity_scenarios[:, s], epsilon)
+        else
+            R[s] = build_R_matrix(capacity_scenarios[:, s])
+            r_dict[s] = build_r_vector(num_regular_arcs, capacity_scenarios[:, s], epsilon)
+        end
         xi_bar[s] = capacity_scenarios[:,s]
     end
     
