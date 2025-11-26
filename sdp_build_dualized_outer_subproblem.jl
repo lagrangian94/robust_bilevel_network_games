@@ -140,10 +140,10 @@ function build_dualized_outer_subproblem(network, S, ϕU,λU, γ, w, v, uncertai
     block2_start, block3_start, block4_start, block5_start, block6_start= -1, -1, -1, -1, -1 ## 이후에 다시 쓰이는데 초기화
     # check if the blocks are correct (block들 column dimension 합이 dim_Λtilde1_rows와 같은지 확인)
     @assert sum([size(Ztilde1_1,2), size(Ztilde1_2,2), size(Ztilde1_3,2), size(Ztilde1_4,2), size(Ztilde1_5,2), size(Ztilde1_6,2)]) == dim_Λtilde1_rows
-    dim_Λhat1_cols = num_arcs+1
-    dim_Λhat2_cols = num_arcs+1
-    dim_Λtilde1_cols = num_arcs+1
-    dim_Λtilde2_cols = num_arcs+1
+    dim_Λhat1_cols = size(R[1], 1)
+    dim_Λhat2_cols = size(R[1], 1)
+    dim_Λtilde1_cols = size(R[1], 1)
+    dim_Λtilde2_cols = size(R[1], 1)
     @variable(model, Γhat1[s=1:S, 1:dim_Λhat1_rows, 1:dim_Λhat1_cols])
     @variable(model, Γhat2[s=1:S, 1:dim_Λhat2_rows, 1:dim_Λhat2_cols])
     @variable(model, Γtilde1[s=1:S, 1:dim_Λtilde1_rows, 1:dim_Λtilde1_cols])
@@ -200,7 +200,7 @@ function build_dualized_outer_subproblem(network, S, ϕU,λU, γ, w, v, uncertai
     # Scalar constraints
     @constraint(model, [s=1:S], Mhat[s, num_arcs+1, num_arcs+1] <= 1/S)
     @constraint(model, [s=1:S], Mtilde[s, num_arcs+1, num_arcs+1] == 1/S)
-    @constraint(model, sum(α) <= w*1/S)
+    @constraint(model, sum(α) <= w*(1/S))
     for s in 1:S
         D_inv = diagm(1 ./ xi_bar[s])
         D_inv_square = D_inv .^ 2

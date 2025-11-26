@@ -28,6 +28,13 @@ function build_R_matrix(xi_hat::Vector{Float64})
     return R
 end
 
+function build_R_matrix_rsoc(xi_hat::Vector{Float64})
+    D = diagm(xi_hat)
+    D_inv = inv(D)
+    dim = length(xi_hat)
+    R = vcat(zeros(2, dim), D_inv)
+    return R
+end
 """
     build_r_vector(xi_hat::Vector{Float64}, epsilon::Float64)
 Arguments:
@@ -45,6 +52,14 @@ function build_r_vector(num_regular_arcs::Int, xi_hat::Vector{Float64}, epsilon:
     return r
 end
 
+function build_r_vector_rsoc(num_regular_arcs::Int, xi_hat::Vector{Float64}, epsilon::Float64)
+    if size(xi_hat, 1) != num_regular_arcs
+        error("xi_hat must have size $num_regular_arcs")
+    end
+    r_lower = ones(num_regular_arcs) # D_inv*xi_hat = ones(num_regular_arcs)
+    r = vcat(-1, -(1/2)*epsilon^2, r_lower)
+    return r
+end
 """
     build_robust_counterpart_matrices(capacity_scenarios::Matrix{Float64}, epsilon::Float64)
 
@@ -71,8 +86,10 @@ function build_robust_counterpart_matrices(capacity_scenarios::Matrix{Float64}, 
     r_dict = Dict{Int, Vector{Float64}}()
     xi_bar = Dict{Int, Vector{Float64}}()
     for s in 1:num_scenarios
-        R[s] = build_R_matrix(capacity_scenarios[:, s])
-        r_dict[s] = build_r_vector(num_regular_arcs, capacity_scenarios[:, s], epsilon)
+        # R[s] = build_R_matrix(capacity_scenarios[:, s])
+        # r_dict[s] = build_r_vector(num_regular_arcs, capacity_scenarios[:, s], epsilon)
+        R[s] = build_R_matrix_rsoc(capacity_scenarios[:, s])
+        r_dict[s] = build_r_vector_rsoc(num_regular_arcs, capacity_scenarios[:, s], epsilon)
         xi_bar[s] = capacity_scenarios[:,s]
     end
     

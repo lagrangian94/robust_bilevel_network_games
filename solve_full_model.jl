@@ -39,7 +39,7 @@ println("="^80)
 
 # Remove dummy arc from capacity scenarios (|A| = regular arcs only)
 capacity_scenarios_regular = capacities[1:end-1, :]  # Remove last row (dummy arc)
-epsilon = 1.0  # Robustness parameter
+epsilon = 0.1  # Robustness parameter
 
 println("\n[3] Building R and r matrices...")
 println("Number of regular arcs |A|: $(size(capacity_scenarios_regular, 1))")
@@ -49,7 +49,7 @@ println("Robustness parameter ε: $epsilon")
 R, r_dict, xi_bar = build_robust_counterpart_matrices(capacity_scenarios_regular, epsilon)
 uncertainty_set = Dict(:R => R, :r_dict => r_dict, :xi_bar => xi_bar, :epsilon => epsilon)
 
-solve_full_model = true
+solve_full_model = false
 if solve_full_model
     println("\n[2] Building model...")
     println("  Parameters:")
