@@ -46,8 +46,7 @@ function build_dualized_outer_subproblem(network, S, ϕU, γ, w, v, uncertainty_
     N = network.N
     N_y = N[:, 1:num_arcs]  # Regular arcs: (|V|-1) × |A|
     N_ts = N[:, end]         # Dummy arc: (|V|-1) × 1
-    R, r_dict, epsilon = uncertainty_set[:R], uncertainty_set[:r_dict], uncertainty_set[:epsilon]
-    xi_bar = Dict(s=>r_dict[s][2:end] for s in 1:S)
+    R, r_dict, xi_bar, epsilon = uncertainty_set[:R], uncertainty_set[:r_dict], uncertainty_set[:xi_bar], uncertainty_set[:epsilon]
     # Dummy arc index (t,s)
     dummy_arc_idx = findfirst(arc -> arc == ("t", "s"), network.arcs)
     E = ones(num_arcs, num_arcs+1) # num_arcs × num_arcs+1 matrix of ones
@@ -111,7 +110,7 @@ function build_dualized_outer_subproblem(network, S, ϕU, γ, w, v, uncertainty_
     @variable(model, Utilde1[s=1:S,1:num_arcs, 1:num_arcs+1]>=0)
     @variable(model, Utilde2[s=1:S,1:num_arcs, 1:num_arcs+1]>=0)
     @variable(model, Utilde3[s=1:S,1:num_arcs, 1:num_arcs+1]>=0)
-    dim_R_cols = size(R,2)
+    dim_R_cols = num_arcs
     @variable(model, Zhat1[s=1:S,1:dim_Λhat1_rows,1:dim_R_cols])
     @variable(model, Zhat2[s=1:S,1:dim_Λhat2_rows,1:dim_R_cols])
     @variable(model, Ztilde1[s=1:S,1:dim_Λtilde1_rows,1:dim_R_cols])
@@ -141,11 +140,11 @@ function build_dualized_outer_subproblem(network, S, ϕU, γ, w, v, uncertainty_
     block2_start, block3_start, block4_start, block5_start, block6_start= -1, -1, -1, -1, -1 ## 이후에 다시 쓰이는데 초기화
     # check if the blocks are correct (block들 column dimension 합이 dim_Λtilde1_rows와 같은지 확인)
     @assert sum([size(Ztilde1_1,2), size(Ztilde1_2,2), size(Ztilde1_3,2), size(Ztilde1_4,2), size(Ztilde1_5,2), size(Ztilde1_6,2)]) == dim_Λtilde1_rows
-    #dim_Λhat1_cols = size(R,1)
-    @variable(model, Γhat1[s=1:S, 1:dim_Λhat1_rows, 1:size(R,1)])
-    @variable(model, Γhat2[s=1:S, 1:dim_Λhat2_rows, 1:size(R,1)])
-    @variable(model, Γtilde1[s=1:S, 1:dim_Λtilde1_rows, 1:size(R,1)])
-    @variable(model, Γtilde2[s=1:S, 1:dim_Λtilde2_rows, 1:size(R,1)])
+    dim_Λhat1_cols = num_arcs+1
+    @variable(model, Γhat1[s=1:S, 1:dim_Λhat1_rows, 1:dim_Λhat1_cols])
+    @variable(model, Γhat2[s=1:S, 1:dim_Λhat2_rows, 1:dim_Λhat2_cols])
+    @variable(model, Γtilde1[s=1:S, 1:dim_Λtilde1_rows, 1:dim_Λtilde1_cols])
+    @variable(model, Γtilde2[s=1:S, 1:dim_Λtilde2_rows, 1:dim_Λtilde2_cols])
 
     @variable(model, Phat1_Φ[s=1:S, 1:num_arcs, 1:num_arcs+1], lower_bound=0.0)
     @variable(model, Phat1_Π[s=1:S, 1:num_nodes-1, 1:num_arcs+1], lower_bound=0.0)
@@ -199,9 +198,12 @@ function build_dualized_outer_subproblem(network, S, ϕU, γ, w, v, uncertainty_
     @constraint(model, [s=1:S], Mhat[s, num_arcs+1, num_arcs+1] == 1/S)
     @constraint(model, [s=1:S], Mtilde[s, num_arcs+1, num_arcs+1] == 1/S)
     @constraint(model, sum(α) <= w*(1/S))
-    @constraint(model, [s=1:S], tr(Mhat[s, 1:num_arcs, 1:num_arcs]) - 2* Mhat[s,1:num_arcs,end]'*xi_bar[s] - Mhat[s,end,end]*((epsilon^2 - sum(xi_bar[s].^2))) <= 0)
-    @constraint(model, [s=1:S], tr(Mtilde[s, 1:num_arcs, 1:num_arcs]) - 2* Mtilde[s,1:num_arcs,end]'*xi_bar[s] - Mtilde[s,end,end]*((epsilon^2 - sum(xi_bar[s].^2))) <= 0)
-
+    for s in 1:S
+        D_inv = diagm(1 ./ xi_bar[s])
+        D_inv_square = D_inv .^ 2
+        @constraint(model, tr(D_inv_square * Mhat[s, 1:num_arcs, 1:num_arcs]) - 2* Mhat[s,1:num_arcs,end]'*inv.(xi_bar[s]) - Mhat[s,end,end]*((epsilon^2 - num_arcs)) <= 0)
+        @constraint(model, tr(D_inv_square *Mtilde[s, 1:num_arcs, 1:num_arcs]) - 2* Mtilde[s,1:num_arcs,end]'*inv.(xi_bar[s]) - Mtilde[s,end,end]*((epsilon^2 - num_arcs)) <= 0)
+    end
     # Matrix Constraints
     # --- From Φhat ---
     @constraint(model, [s=1:S], -Mhat[s,1:num_arcs, :] + Uhat2[s,:,:] - Uhat3[s,:,:]
@@ -232,13 +234,13 @@ function build_dualized_outer_subproblem(network, S, ϕU, γ, w, v, uncertainty_
     @constraint(model, [s=1:S], hcat(N_y' * Ztilde1_2[s,:,:]+Ztilde1_3[s,:,:]-Ztilde1_6[s,:,:], -N_y' * βtilde1_2[s,:]-βtilde1_3[s,:]+βtilde1_6[s,:])
     + Ptilde1_Y[s,:,:] - Ptilde2_Y[s,:,:] .== 0.0)
     # --- From Λhat1 ---
-    @constraint(model, [s=1:S], Zhat1[s,:,:]*R' + βhat1[s,:]*r_dict[s]' + Γhat1[s,:,:] .== 0.0)
+    @constraint(model, [s=1:S], Zhat1[s,:,:]*R[s]' + βhat1[s,:]*r_dict[s]' + Γhat1[s,:,:] .== 0.0)
     # --- From Λhat2 ---
-    @constraint(model, [s=1:S], Zhat2[s,:,:]*R' + βhat2[s,:]*r_dict[s]' + Γhat2[s,:,:] .== 0.0)
+    @constraint(model, [s=1:S], Zhat2[s,:,:]*R[s]' + βhat2[s,:]*r_dict[s]' + Γhat2[s,:,:] .== 0.0)
     # --- From Λtilde1 ---
-    @constraint(model, [s=1:S], Ztilde1[s,:,:]*R' + βtilde1[s,:]*r_dict[s]' + Γtilde1[s,:,:] .== 0.0)
+    @constraint(model, [s=1:S], Ztilde1[s,:,:]*R[s]' + βtilde1[s,:]*r_dict[s]' + Γtilde1[s,:,:] .== 0.0)
     # --- From Λtilde2 ---
-    @constraint(model, [s=1:S], Ztilde2[s,:,:]*R' + βtilde2[s,:]*r_dict[s]' + Γtilde2[s,:,:] .== 0.0)
+    @constraint(model, [s=1:S], Ztilde2[s,:,:]*R[s]' + βtilde2[s,:]*r_dict[s]' + Γtilde2[s,:,:] .== 0.0)
     vars = Dict(
         # Vector variables
         :α => α,

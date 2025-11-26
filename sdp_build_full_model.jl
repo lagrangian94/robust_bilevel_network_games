@@ -44,7 +44,7 @@ function build_full_2DRNDP_model(network, S, ϕU, λU, γ, w, v, uncertainty_set
     
     # Node-arc incidence matrix (excluding source row)
     N = network.N
-    R, r_dict, epsilon = uncertainty_set[:R], uncertainty_set[:r_dict], uncertainty_set[:epsilon]
+    R, r_dict, xi_bar, epsilon = uncertainty_set[:R], uncertainty_set[:r_dict], uncertainty_set[:xi_bar], uncertainty_set[:epsilon]
     # Dummy arc index (t,s)
     dummy_arc_idx = findfirst(arc -> arc == ("t", "s"), network.arcs)
     
@@ -148,25 +148,31 @@ function build_full_2DRNDP_model(network, S, ϕU, λU, γ, w, v, uncertainty_set
     # Third block: |A| rows for Φ itself
     # Total: (|V|-1 + |A| + |A|) × |A|
     dim_Λhat1_rows = num_arcs+1 +(num_nodes - 1) + num_arcs #여기 차원 확인.
-    @variable(model, Λhat1[s=1:S, 1:dim_Λhat1_rows, 1:size(R, 1)])
+    dim_Λhat1_cols = num_arcs+1 # row dimension of R[s]
+    @variable(model, Λhat1[s=1:S, 1:dim_Λhat1_rows, 1:dim_Λhat1_cols])
     # For Λhat2: corresponds to constraint (14n)
     # Dimension: |A| × |A|
-    @variable(model, Λhat2[s=1:S, 1:num_arcs, 1:size(R, 1)])
+    dim_Λhat2_rows = num_arcs
+    dim_Λhat2_cols = num_arcs+1 # row dimension of R[s]
+    @variable(model, Λhat2[s=1:S, 1:dim_Λhat2_rows, 1:dim_Λhat2_cols])
     
     # For Λtilde1: corresponds to constraint (14o)  
     # Has additional blocks for Y terms
     # Structure: similar to Λhat1 but with more rows
     dim_Λtilde1_rows = num_arcs+1 + (num_nodes - 1) + num_arcs + num_nodes-1 + num_arcs + num_arcs
-    @variable(model, Λtilde1[s=1:S, 1:dim_Λtilde1_rows, 1:size(R, 1)])
+    dim_Λtilde1_cols = num_arcs+1 # row dimension of R[s]
+    @variable(model, Λtilde1[s=1:S, 1:dim_Λtilde1_rows, 1:dim_Λtilde1_cols])
     
     # For Λtilde2: corresponds to constraint (14p)
-    @variable(model, Λtilde2[s=1:S, 1:num_arcs, 1:size(R, 1)])
+    dim_Λtilde2_rows = num_arcs
+    dim_Λtilde2_cols = num_arcs+1 # row dimension of R[s]
+    @variable(model, Λtilde2[s=1:S, 1:dim_Λtilde2_rows, 1:dim_Λtilde2_cols])
 
     # Second order cone constraints
     @constraint(model, [s=1:S, i=1:dim_Λhat1_rows], Λhat1[s, i, :] in SecondOrderCone())
-    @constraint(model, [s=1:S, i=1:num_arcs], Λhat2[s, i, :] in SecondOrderCone())
+    @constraint(model, [s=1:S, i=1:dim_Λhat2_rows], Λhat2[s, i, :] in SecondOrderCone())
     @constraint(model, [s=1:S, i=1:dim_Λtilde1_rows], Λtilde1[s, i, :] in SecondOrderCone())
-    @constraint(model, [s=1:S, i=1:num_arcs], Λtilde2[s, i, :] in SecondOrderCone())
+    @constraint(model, [s=1:S, i=1:dim_Λtilde2_rows], Λtilde2[s, i, :] in SecondOrderCone())
     
     println("  ✓ Decision variables created")
     
@@ -206,22 +212,22 @@ function build_full_2DRNDP_model(network, S, ϕU, λU, γ, w, v, uncertainty_set
     # --- (14d) Leader's scenario bound: ϑˆs <= ηˆs ---
     # --- (14g) Follower's scenario bound: ϑ˜s <= η˜s ---
     for s in 1:S
-        xi_bar = r_dict[s][2:num_arcs+1]
+        xi_bar_s = xi_bar[s]
         # --- (18d) Leader's SDP constraint ---
         # Matrix structure: 
         for i in 1:(num_arcs+1), j in 1:(num_arcs+1)
             if i <= num_arcs && j <= num_arcs
                 if i == j
-                    @constraint(model, Mhat[s,i,j] == ϑhat[s]-(Φhat_L[s,i,j] - v*Ψhat_L[s,i,j]))
+                    @constraint(model, Mhat[s,i,j] == ϑhat[s]*(1/(xi_bar_s[i]^2))-(Φhat_L[s,i,j] - v*Ψhat_L[s,i,j]))
                 else
                     @constraint(model, Mhat[s,i,j] == -(Φhat_L[s,i,j] - v*Ψhat_L[s,i,j]))
                 end
             elseif i == num_arcs+1 && j <= num_arcs
-                @constraint(model, Mhat[s,i,j] == -(1/2)*(Φhat_0[s,j]-v*Ψhat_0[s,j])-ϑhat[s]*xi_bar[j])
+                @constraint(model, Mhat[s,i,j] == -(1/2)*(Φhat_0[s,j]-v*Ψhat_0[s,j])-ϑhat[s]*(1/xi_bar_s[j]))
             elseif i <= num_arcs && j == num_arcs+1
-                @constraint(model, Mhat[s,i,j] == -(1/2)*(Φhat_0[s,i]-v*Ψhat_0[s,i])-ϑhat[s]*xi_bar[i])
+                @constraint(model, Mhat[s,i,j] == -(1/2)*(Φhat_0[s,i]-v*Ψhat_0[s,i])-ϑhat[s]*(1/xi_bar_s[i]))
             elseif i == num_arcs+1 && j == num_arcs+1
-                @constraint(model, Mhat[s,i,j] == ηhat[s] - ϑhat[s]*(epsilon^2 - sum(xi_bar.^2)))
+                @constraint(model, Mhat[s,i,j] == ηhat[s] - ϑhat[s]*(epsilon^2 - num_arcs))
             else
                 @constraint(model, Mhat[s,i,j] == 0)
             end
@@ -230,16 +236,16 @@ function build_full_2DRNDP_model(network, S, ϕU, λU, γ, w, v, uncertainty_set
         for i in 1:(num_arcs+1), j in 1:(num_arcs+1)
             if i <= num_arcs && j <= num_arcs
                 if i == j
-                    @constraint(model, Mtilde[s,i,j] == ϑtilde[s]-(Φtilde_L[s,i,j] - v*Ψtilde_L[s,i,j]))
+                    @constraint(model, Mtilde[s,i,j] == ϑtilde[s]*(1/(xi_bar_s[i]^2))-(Φtilde_L[s,i,j] - v*Ψtilde_L[s,i,j]))
                 else
                     @constraint(model, Mtilde[s,i,j] == -(Φtilde_L[s,i,j] - v*Ψtilde_L[s,i,j]))
                 end
             elseif i == num_arcs+1 && j <= num_arcs
-                @constraint(model, Mtilde[s,i,j] == -(1/2)*(Φtilde_0[s,j]-v*Ψtilde_0[s,j]-Yts_tilde_L[s,1,j])-ϑtilde[s]*xi_bar[j])
+                @constraint(model, Mtilde[s,i,j] == -(1/2)*(Φtilde_0[s,j]-v*Ψtilde_0[s,j]-Yts_tilde_L[s,1,j])-ϑtilde[s]*(1/xi_bar_s[j]))
             elseif i <= num_arcs && j == num_arcs+1
-                @constraint(model, Mtilde[s,i,j] == -(1/2)*(Φtilde_0[s,i]-v*Ψtilde_0[s,i]-Yts_tilde_L[s,1,i])-ϑtilde[s]*xi_bar[i])
+                @constraint(model, Mtilde[s,i,j] == -(1/2)*(Φtilde_0[s,i]-v*Ψtilde_0[s,i]-Yts_tilde_L[s,1,i])-ϑtilde[s]*(1/xi_bar_s[i]))
             elseif i == num_arcs+1 && j == num_arcs+1
-                @constraint(model, Mtilde[s,i,j] == ηtilde[s] + Yts_tilde_0[s] - ϑtilde[s]*(epsilon^2 - sum(xi_bar.^2)))
+                @constraint(model, Mtilde[s,i,j] == ηtilde[s] + Yts_tilde_0[s] - ϑtilde[s]*(epsilon^2 - num_arcs))
             else
                 @constraint(model, Mtilde[s,i,j] == 0)
             end
@@ -288,9 +294,9 @@ function build_full_2DRNDP_model(network, S, ϕU, λU, γ, w, v, uncertainty_set
     println("  ✓ Budget constraint (14l) added")
     
     # --- (14m) Leader's dual feasibility constraints ---
-    # Λˆs_1 R = [Qˆs(Πˆs, Φˆs); Πˆs; Φˆs]
+    # Λˆs_1 R^s = [Qˆs(Πˆs, Φˆs); Πˆs; Φˆs]
     # where Qˆs = N^T Πˆs + I_0^T Φˆs
-    # R is the constraint matrix from the inner problem
+    # R^s is the constraint matrix from the inner problem
     
     # We need to define:
     # - d0: demand vector (assuming it's related to source-sink flow) -> demand vector 아님. num_arcs+1 차원 벡터고 마지막 num_arcs+1 index만 1인 standard basis vector
@@ -308,13 +314,14 @@ function build_full_2DRNDP_model(network, S, ϕU, λU, γ, w, v, uncertainty_set
     N_ts = N[:, end]         # Dummy arc: (|V|-1) × 1
     # --- Add constraints for each scenario ---
     for s in 1:S
+        R_bar = R[s]
         r_bar = r_dict[s]  # Get r̄ for this scenario
         # =====================================================================
-        # Leader's Lambda_hat1 constraint 1: Λˆs_1 * R = [Qˆs; Πˆs; Φˆs]
+        # Leader's Lambda_hat1 constraint 1: Λˆs_1 * R^s = [Qˆs; Πˆs; Φˆs]
         # =====================================================================
         Q_hat = N' * Πhat_L[s, :, :] + I_0' * Φhat_L[s, :, :]
         rhs_mat = vcat(Q_hat, Πhat_L[s, :, :], Φhat_L[s, :, :])
-        @constraint(model, Λhat1[s, :, :] * R .== rhs_mat)
+        @constraint(model, Λhat1[s, :, :] * R_bar .== rhs_mat)
         # =====================================================================
         # Leader's Lambda_hat1 constraint 2
         lhs_mat = vcat(N' * Πhat_0[s, :] + I_0' * Φhat_0[s, :], Πhat_0[s, :], Φhat_0[s, :])
@@ -322,13 +329,13 @@ function build_full_2DRNDP_model(network, S, ϕU, λU, γ, w, v, uncertainty_set
         rhs_rbar = vcat(d0, zeros(num_nodes-1), zeros(num_arcs))
         @constraint(model, Λhat1[s, :, :] * r_bar .+ lhs_mat .>= rhs_rbar)
         # =====================================================================
-        # Leader's Lambda_hat2 constraint: Λˆs_2 * R = -Φˆs
+        # Leader's Lambda_hat2 constraint: Λˆs_2 * R^s = -Φˆs
         # =====================================================================
-        @constraint(model, Λhat2[s, :, :] * R .== -Φhat_L[s, :, :])
+        @constraint(model, Λhat2[s, :, :] * R_bar .== -Φhat_L[s, :, :])
         # Λˆs_2 * r̄ ≥ -μˆs + phi_hat_0
         @constraint(model, Λhat2[s, :, :] * r_bar .- Φhat_0[s, :] .+ μhat[s, :] .>= 0.0)
         # =====================================================================
-        # Follower's Lambda_tilde1 constraint 1: Λ˜s_1 * R = [Q˜s; Π˜s; Φ˜s]
+        # Follower's Lambda_tilde1 constraint 1: Λ˜s_1 * R^s = [Q˜s; Π˜s; Φ˜s]
         # =====================================================================
         # Block 1: Q˜s
         Q_tilde_col = N' * Πtilde_L[s, :, :] + I_0' * Φtilde_L[s, :, :]
@@ -360,7 +367,7 @@ function build_full_2DRNDP_model(network, S, ϕU, λU, γ, w, v, uncertainty_set
         # Block 6: zeros(num_arcs, num_arcs)
         block6_rhs = zeros(num_arcs, num_arcs)
         rhs_mat = vcat(block1_rhs, block2_rhs, block3_rhs, block4_rhs, block5_rhs, block6_rhs)
-        @constraint(model, Λtilde1[s, :, :] * R .- lhs_mat .== rhs_mat)
+        @constraint(model, Λtilde1[s, :, :] * R_bar .- lhs_mat .== rhs_mat)
         # Λ˜s_1 * r̄ ≥ [λ*d0; 0; -h; 0; 0; 0]
         lhs_vec_1 =  N' * Πtilde_0[s, :] + I_0' * Φtilde_0[s, :]
         lhs_vec_2 = -N_y * Ytilde_0[s,:] - N_ts * Yts_tilde_0[s]
@@ -380,9 +387,9 @@ function build_full_2DRNDP_model(network, S, ϕU, λU, γ, w, v, uncertainty_set
         @constraint(model, Λtilde1[s, :, :] * r_bar .+ lhs_vec .>= rhs_rbar_tilde)
         # 
         # =====================================================================
-        # (14p) Follower's capacity dual: Λ˜s_2 * R = -Φ˜s
+        # (14p) Follower's capacity dual: Λ˜s_2 * R^s = -Φ˜s
         # =====================================================================
-        @constraint(model, Λtilde2[s, :, :] * R .+ Φtilde_L[s, :, :] .== 0.0)
+        @constraint(model, Λtilde2[s, :, :] * R_bar .+ Φtilde_L[s, :, :] .== 0.0)
         # Λ˜s_2 * r̄ ≥ -μ˜s
         @constraint(model, Λtilde2[s, :, :] * r_bar .- Φtilde_0[s, :] .+ μtilde[s, :] .>= 0.0)
     end

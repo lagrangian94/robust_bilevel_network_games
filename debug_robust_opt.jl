@@ -23,7 +23,7 @@ function build_robust_model(network, S, ϕU, w, v, uncertainty_set; optimizer=no
     
     # Node-arc incidence matrix (excluding source row)
     N = network.N
-    R, r_dict, epsilon = uncertainty_set[:R], uncertainty_set[:r_dict], uncertainty_set[:epsilon]
+    R, r_dict, xi_bar, epsilon = uncertainty_set[:R], uncertainty_set[:r_dict], uncertainty_set[:xi_bar], uncertainty_set[:epsilon]
     # Dummy arc index (t,s)
     dummy_arc_idx = findfirst(arc -> arc == ("t", "s"), network.arcs)
     
@@ -76,15 +76,17 @@ function build_robust_model(network, S, ϕU, w, v, uncertainty_set; optimizer=no
     Ytilde_L, Yts_tilde_L =  Ytilde[:,:,1:num_arcs], Yts_tilde[:,:,1:num_arcs]
     Ytilde_0, Yts_tilde_0 =  Ytilde[:,:,num_arcs+1], Yts_tilde[:,1,num_arcs+1]
     dim_Λtilde1_rows = (num_nodes - 1) + num_arcs + num_arcs
-    @variable(model, Λtilde1[s=1:S, 1:dim_Λtilde1_rows, 1:size(R, 1)])
+    dim_Λtilde1_cols = num_arcs+1 #num_arcs+1 = size(R[s],1)
+    @variable(model, Λtilde1[s=1:S, 1:dim_Λtilde1_rows, 1:dim_Λtilde1_cols])
     @constraint(model, [s=1:S, i=1:dim_Λtilde1_rows], Λtilde1[s, i, :] in SecondOrderCone())
-    @variable(model, mu[s=1:S, 1:size(R, 1)])
+    @variable(model, mu[s=1:S, 1:num_arcs+1]) #num_arcs+1 = size(R[s],1)
     @constraint(model, [s=1:S], mu[s, :] in SecondOrderCone())
     I_0 = [Matrix{Float64}(I, num_arcs, num_arcs) zeros(num_arcs)]
     # Split N matrix: N = [N_y | N_ts]
     N_y = N[:, 1:num_arcs]  # Regular arcs: (|V|-1) × |A|
     N_ts = N[:, end]         # Dummy arc: (|V|-1) × 1
     for s in 1:S
+        R_bar = R[s]
         r_bar = r_dict[s]  # Get r̄ for this scenario
         # =====================================================================
         # Follower's Lambda_tilde1 constraint 1: Λ˜s_1 * R = [Q˜s; Π˜s; Φ˜s]
@@ -106,14 +108,14 @@ function build_robust_model(network, S, ϕU, w, v, uncertainty_set; optimizer=no
         end
         block6_rhs = zeros(num_arcs, num_arcs)
         rhs_mat = vcat(block2_rhs, block3_rhs, block6_rhs)
-        @constraint(model, Λtilde1[s, :, :] * R -lhs_mat .== rhs_mat)
+        @constraint(model, Λtilde1[s, :, :] * R_bar -lhs_mat .== rhs_mat)
         # Λ˜s_1 * r̄ ≥ [λ*d0; 0; h; 0; 0; 0]
         lhs_vec_2 = -N_y * Ytilde_0[s,:] - N_ts * Yts_tilde_0[s]
         lhs_vec_3 = -Ytilde_0[s,:]
         lhs_vec_6 = Ytilde_0[s,:]
         lhs_vec = vcat(lhs_vec_2, lhs_vec_3, lhs_vec_6)
         @constraint(model, Λtilde1[s, :, :] * r_bar .+ lhs_vec .>= 0.0)
-        @constraint(model, mu[s,:]'*R .== Yts_tilde_L[s,:,:])
+        @constraint(model, mu[s,:]'*R_bar .== Yts_tilde_L[s,:,:])
         @constraint(model, mu[s,:]'*r_bar .- t1[s] .+ Yts_tilde_0[s] .>= 0.0)
     end
 
@@ -170,13 +172,13 @@ println("="^80)
 
 # Remove dummy arc from capacity scenarios (|A| = regular arcs only)
 capacity_scenarios_regular = capacities[1:end-1, :]  # Remove last row (dummy arc)
-epsilon = 0.005  # Robustness parameter
+epsilon = 0.5  # Robustness parameter
 
 println("\n[3] Building R and r matrices...")
 println("Number of regular arcs |A|: $(size(capacity_scenarios_regular, 1))")
 println("Number of scenarios S: $S")
 println("Robustness parameter ε: $epsilon")
 
-R, r_dict = build_robust_counterpart_matrices(capacity_scenarios_regular, epsilon)
-uncertainty_set = Dict(:R => R, :r_dict => r_dict, :epsilon => epsilon)
+R, r_dict, xi_bar_dict = build_robust_counterpart_matrices(capacity_scenarios_regular, epsilon)
+uncertainty_set = Dict(:R => R, :r_dict => r_dict, :xi_bar_dict => xi_bar_dict, :epsilon => epsilon)
 build_robust_model(network, S, ϕU, w, v, uncertainty_set)

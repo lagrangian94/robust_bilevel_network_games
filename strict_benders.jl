@@ -14,17 +14,9 @@ includet("sdp_build_full_model.jl")
 using .NetworkGenerator
 
 
-function build_rmp(network, ϕU, λU, γ, w, uncertainty_set; optimizer=nothing)
+function build_rmp(network, ϕU, λU, γ, w, optimizer=nothing)
     # Extract network dimensions
-    num_nodes = length(network.nodes)
     num_arcs = length(network.arcs)-1 #dummy arc 제외
-    num_interdictable = sum(network.interdictable_arcs)
-    
-    # Node-arc incidence matrix (excluding source row)
-    N = network.N
-    R, r_dict, epsilon = uncertainty_set[:R], uncertainty_set[:r_dict], uncertainty_set[:epsilon]
-    # Dummy arc index (t,s)
-    dummy_arc_idx = findfirst(arc -> arc == ("t", "s"), network.arcs)
     # Create model
     model = Model(optimizer_with_attributes(optimizer, MOI.Silent() => false))
     @variable(model, t_0 >= 0)  # Objective epigraph variable

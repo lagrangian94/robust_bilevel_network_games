@@ -5,14 +5,14 @@ build_R_r.jl
 Box-uncertainty set U_s = {ξ : Rξ ≥ r}의 R과 r을 생성하는 코드
 
 where:
-    R = [0 \\ I]
-    r = [-ε \\ ξ̂^s]
+    R = [0 \\ D_s^{-1}]
+    r = [-ε \\ D_s^{-1}ξ̂^s]
 
 NOTE: |A|는 regular arcs만 포함 (dummy arc 제외)
 """
 
 using LinearAlgebra
-
+using Infiltrator
 """
     build_R_matrix(num_regular_arcs::Int)
 
@@ -20,9 +20,11 @@ using LinearAlgebra
 Arguments:
 - num_regular_arcs: regular arcs 개수 |A| (dummy arc 제외)
 """
-function build_R_matrix(num_regular_arcs::Int)
-    dim = num_regular_arcs
-    R = vcat(zeros(1, dim), Matrix{Float64}(I, dim, dim))
+function build_R_matrix(xi_hat::Vector{Float64})
+    D = diagm(xi_hat)
+    D_inv = inv(D)
+    dim = length(xi_hat)
+    R = vcat(zeros(1, dim), D_inv)
     return R
 end
 
@@ -36,7 +38,10 @@ function build_r_vector(num_regular_arcs::Int, xi_hat::Vector{Float64}, epsilon:
     if size(xi_hat, 1) != num_regular_arcs
         error("xi_hat must have size $num_regular_arcs")
     end
-    r = vcat(-epsilon, xi_hat)
+    # D = diagm(xi_hat)
+    # D_inv = inv(D)
+    r_lower = ones(num_regular_arcs) # D_inv*xi_hat = ones(num_regular_arcs)
+    r = vcat(-epsilon, r_lower)
     return r
 end
 
@@ -62,13 +67,14 @@ Example:
 """
 function build_robust_counterpart_matrices(capacity_scenarios::Matrix{Float64}, epsilon::Float64)
     num_regular_arcs, num_scenarios = size(capacity_scenarios)
-    
-    R = build_R_matrix(num_regular_arcs)
-    
+    R = Dict{Int, Matrix{Float64}}()
     r_dict = Dict{Int, Vector{Float64}}()
+    xi_bar = Dict{Int, Vector{Float64}}()
     for s in 1:num_scenarios
+        R[s] = build_R_matrix(capacity_scenarios[:, s])
         r_dict[s] = build_r_vector(num_regular_arcs, capacity_scenarios[:, s], epsilon)
+        xi_bar[s] = capacity_scenarios[:,s]
     end
     
-    return R, r_dict
+    return R, r_dict, xi_bar
 end

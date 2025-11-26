@@ -45,8 +45,8 @@ println("Number of regular arcs |A|: $(size(capacity_scenarios_regular, 1))")
 println("Number of scenarios S: $S")
 println("Robustness parameter ε: $epsilon")
 
-R, r_dict = build_robust_counterpart_matrices(capacity_scenarios_regular, epsilon)
-uncertainty_set = Dict(:R => R, :r_dict => r_dict, :epsilon => epsilon)
+R, r_dict, xi_bar = build_robust_counterpart_matrices(capacity_scenarios_regular, epsilon)
+uncertainty_set = Dict(:R => R, :r_dict => r_dict, :xi_bar => xi_bar, :epsilon => epsilon)
 
 
 println("\n[2] Building model...")
@@ -59,7 +59,7 @@ println("    v (interdiction effectiveness param) = $v")
 println("  Note: v is a parameter in COP matrix [Φ - v*W]")
 println("        ν (nu) is a decision variable in objective t + w*ν")
 # Build model (without optimizer for initial testing)
-model, vars = build_rmp(network, ϕU, λU, γ, w, uncertainty_set, optimizer=Gurobi.Optimizer)
+model, vars = build_rmp(network, ϕU, λU, γ, w, optimizer=Gurobi.Optimizer)
 benders_optimize!(model, vars, network, ϕU, λU, γ, w, uncertainty_set, optimizer=Gurobi.Optimizer)
 
 
