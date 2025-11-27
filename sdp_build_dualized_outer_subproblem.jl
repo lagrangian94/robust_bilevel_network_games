@@ -110,7 +110,7 @@ function build_dualized_outer_subproblem(network, S, ϕU,λU, γ, w, v, uncertai
     @variable(model, Utilde1[s=1:S,1:num_arcs, 1:num_arcs+1]>=0)
     @variable(model, Utilde2[s=1:S,1:num_arcs, 1:num_arcs+1]>=0)
     @variable(model, Utilde3[s=1:S,1:num_arcs, 1:num_arcs+1]>=0)
-    dim_R_cols = num_arcs
+    dim_R_cols = size(R[1],2)
     @variable(model, Zhat1[s=1:S,1:dim_Λhat1_rows,1:dim_R_cols])
     @variable(model, Zhat2[s=1:S,1:dim_Λhat2_rows,1:dim_R_cols])
     @variable(model, Ztilde1[s=1:S,1:dim_Λtilde1_rows,1:dim_R_cols])
@@ -235,7 +235,7 @@ function build_dualized_outer_subproblem(network, S, ϕU,λU, γ, w, v, uncertai
         Adj_0_Mtilde_22 = v*xi_bar[s] * Mtilde[s,end,end]
         @constraint(model, hcat(Adj_L_Mtilde_11+Adj_L_Mtilde_22, 2*Adj_0_Mtilde_12+Adj_0_Mtilde_22) - Utilde1[s,:,:] - Utilde2[s,:,:] + Utilde3[s,:,:] .<= 0)
         # --- From Ytilde_ts ---
-        Adj_L_Mtilde_12 = (1/2)*D_s*Mtilde[s,end,1:num_arcs]
+        Adj_L_Mtilde_12 = (1/2)*D_s*Mtilde[s,1:num_arcs, end]
         Adj_L_Mtilde_22 = xi_bar[s] * Mtilde[s,end,end]
         Adj_0_Mtilde_22 = Mtilde[s,end,end]
         @constraint(model, hcat(adjoint(2*Adj_L_Mtilde_12+Adj_L_Mtilde_22), Adj_0_Mtilde_22) + hcat(N_ts' * Ztilde1_2[s,:,:], -N_ts' * βtilde1_2[s,:])
