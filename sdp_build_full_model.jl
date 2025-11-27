@@ -213,39 +213,51 @@ function build_full_2DRNDP_model(network, S, ϕU, λU, γ, w, v, uncertainty_set
     # --- (14g) Follower's scenario bound: ϑ˜s <= η˜s ---
     for s in 1:S
         xi_bar_s = xi_bar[s]
+        Q_hat_s = (xi_bar_s)' * (Φhat_L[s,:,:] - v*Ψhat_L[s,:,:]) * (xi_bar_s) + (Φhat_0[s,:] - v*Ψhat_0[s,:])' * xi_bar_s
         # --- (18d) Leader's SDP constraint ---
         # Matrix structure: 
         for i in 1:(num_arcs+1), j in 1:(num_arcs+1)
             if i <= num_arcs && j <= num_arcs
                 if i == j
-                    @constraint(model, Mhat[s,i,j] == ϑhat[s]*(1/(xi_bar_s[i]^2))-(Φhat_L[s,i,j] - v*Ψhat_L[s,i,j]))
+                    # @constraint(model, Mhat[s,i,j] == ϑhat[s]*(1/(xi_bar_s[i]^2))-(Φhat_L[s,i,j] - v*Ψhat_L[s,i,j]))
+                    @constraint(model, Mhat[s,i,j] == ϑhat[s] - (xi_bar_s[i]^2)*(Φhat_L[s,i,j] - v*Ψhat_L[s,i,j]))
                 else
-                    @constraint(model, Mhat[s,i,j] == -(Φhat_L[s,i,j] - v*Ψhat_L[s,i,j]))
+                    # @constraint(model, Mhat[s,i,j] == -(Φhat_L[s,i,j] - v*Ψhat_L[s,i,j]))
+                    @constraint(model, Mhat[s,i,j] == -(xi_bar_s[i]^2)*(Φhat_L[s,i,j] - v*Ψhat_L[s,i,j]))
                 end
             elseif i == num_arcs+1 && j <= num_arcs
-                @constraint(model, Mhat[s,i,j] == -(1/2)*(Φhat_0[s,j]-v*Ψhat_0[s,j])-ϑhat[s]*(1/xi_bar_s[j]))
+                # @constraint(model, Mhat[s,i,j] == -(1/2)*(Φhat_0[s,j]-v*Ψhat_0[s,j])-ϑhat[s]*(1/xi_bar_s[j]))
+                @constraint(model, Mhat[s,i,j] == -(1/2)*(xi_bar_s[j])*(Φhat_0[s,j]-v*Ψhat_0[s,j]))
             elseif i <= num_arcs && j == num_arcs+1
-                @constraint(model, Mhat[s,i,j] == -(1/2)*(Φhat_0[s,i]-v*Ψhat_0[s,i])-ϑhat[s]*(1/xi_bar_s[i]))
+                # @constraint(model, Mhat[s,i,j] == -(1/2)*(Φhat_0[s,i]-v*Ψhat_0[s,i])-ϑhat[s]*(1/xi_bar_s[i]))
+                @constraint(model, Mhat[s,i,j] == -(1/2)*(xi_bar_s[i])*(Φhat_0[s,i]-v*Ψhat_0[s,i]))
             elseif i == num_arcs+1 && j == num_arcs+1
-                @constraint(model, Mhat[s,i,j] == ηhat[s] - ϑhat[s]*(epsilon^2 - num_arcs))
+                # @constraint(model, Mhat[s,i,j] == ηhat[s] - ϑhat[s]*(epsilon^2 - num_arcs))
+                @constraint(model, Mhat[s,i,j] == ηhat[s] - Q_hat_s - ϑhat[s]*(epsilon^2))
             else
                 @constraint(model, Mhat[s,i,j] == 0)
             end
         end
+        Q_tilde_s = (xi_bar_s)' * (Φtilde_L[s,:,:] - v*Ψtilde_L[s,:,:]) * (xi_bar_s) + (Φtilde_0[s,:] - v*Ψtilde_0[s,:] - Yts_tilde_L[s,1,:].data)' * xi_bar_s
         # --- (18e) Follower's SDP constraint ---
         for i in 1:(num_arcs+1), j in 1:(num_arcs+1)
             if i <= num_arcs && j <= num_arcs
                 if i == j
-                    @constraint(model, Mtilde[s,i,j] == ϑtilde[s]*(1/(xi_bar_s[i]^2))-(Φtilde_L[s,i,j] - v*Ψtilde_L[s,i,j]))
+                    # @constraint(model, Mtilde[s,i,j] == ϑtilde[s]*(1/(xi_bar_s[i]^2))-(Φtilde_L[s,i,j] - v*Ψtilde_L[s,i,j]))
+                    @constraint(model, Mtilde[s,i,j] == ϑtilde[s] - (xi_bar_s[i]^2)*(Φtilde_L[s,i,j] - v*Ψtilde_L[s,i,j]))
                 else
-                    @constraint(model, Mtilde[s,i,j] == -(Φtilde_L[s,i,j] - v*Ψtilde_L[s,i,j]))
+                    # @constraint(model, Mtilde[s,i,j] == -(Φtilde_L[s,i,j] - v*Ψtilde_L[s,i,j]))
+                    @constraint(model, Mtilde[s,i,j] == -(xi_bar_s[i]^2)*(Φtilde_L[s,i,j] - v*Ψtilde_L[s,i,j]))
                 end
             elseif i == num_arcs+1 && j <= num_arcs
-                @constraint(model, Mtilde[s,i,j] == -(1/2)*(Φtilde_0[s,j]-v*Ψtilde_0[s,j]-Yts_tilde_L[s,1,j])-ϑtilde[s]*(1/xi_bar_s[j]))
+                # @constraint(model, Mtilde[s,i,j] == -(1/2)*(Φtilde_0[s,j]-v*Ψtilde_0[s,j]-Yts_tilde_L[s,1,j])-ϑtilde[s]*(1/xi_bar_s[j]))
+                @constraint(model, Mtilde[s,i,j] == -(1/2)*(xi_bar_s[j])*(Φtilde_0[s,j]-v*Ψtilde_0[s,j]-Yts_tilde_L[s,1,j]))
             elseif i <= num_arcs && j == num_arcs+1
-                @constraint(model, Mtilde[s,i,j] == -(1/2)*(Φtilde_0[s,i]-v*Ψtilde_0[s,i]-Yts_tilde_L[s,1,i])-ϑtilde[s]*(1/xi_bar_s[i]))
+                # @constraint(model, Mtilde[s,i,j] == -(1/2)*(Φtilde_0[s,i]-v*Ψtilde_0[s,i]-Yts_tilde_L[s,1,i])-ϑtilde[s]*(1/xi_bar_s[i]))
+                @constraint(model, Mtilde[s,i,j] == -(1/2)*(xi_bar_s[i])*(Φtilde_0[s,i]-v*Ψtilde_0[s,i]-Yts_tilde_L[s,1,i]))
             elseif i == num_arcs+1 && j == num_arcs+1
-                @constraint(model, Mtilde[s,i,j] == ηtilde[s] + Yts_tilde_0[s] - ϑtilde[s]*(epsilon^2 - num_arcs))
+                # @constraint(model, Mtilde[s,i,j] == ηtilde[s] + Yts_tilde_0[s] - ϑtilde[s]*(epsilon^2 - num_arcs))
+                @constraint(model, Mtilde[s,i,j] == ηtilde[s] + Yts_tilde_0[s] - Q_tilde_s - ϑtilde[s]*(epsilon^2))
             else
                 @constraint(model, Mtilde[s,i,j] == 0)
             end
@@ -316,24 +328,30 @@ function build_full_2DRNDP_model(network, S, ϕU, λU, γ, w, v, uncertainty_set
     for s in 1:S
         R_bar = R[s]
         r_bar = r_dict[s]  # Get r̄ for this scenario
+        D_s = diagm(xi_bar[s])
         # =====================================================================
         # Leader's Lambda_hat1 constraint 1: Λˆs_1 * R^s = [Qˆs; Πˆs; Φˆs]
         # =====================================================================
         Q_hat = N' * Πhat_L[s, :, :] + I_0' * Φhat_L[s, :, :]
-        rhs_mat = vcat(Q_hat, Πhat_L[s, :, :], Φhat_L[s, :, :])
-        @constraint(model, Λhat1[s, :, :] * R_bar .== rhs_mat)
+        decision_mat = vcat(Q_hat, Πhat_L[s, :, :], Φhat_L[s, :, :])
+        @constraint(model, Λhat1[s, :, :] * R_bar .== decision_mat)
+        # @constraint(model, Λhat1[s, :, :] * R_bar .== decision_mat*D_s) ## scaled version
         # =====================================================================
         # Leader's Lambda_hat1 constraint 2
         lhs_mat = vcat(N' * Πhat_0[s, :] + I_0' * Φhat_0[s, :], Πhat_0[s, :], Φhat_0[s, :])
         # Λˆs_1 * r̄ ≥ [d0; 0; 0]
         rhs_rbar = vcat(d0, zeros(num_nodes-1), zeros(num_arcs))
         @constraint(model, Λhat1[s, :, :] * r_bar .+ lhs_mat .>= rhs_rbar)
+        # @constraint(model, Λhat1[s, :, :] * r_bar + lhs_mat + decision_mat*xi_bar[s] .>= rhs_rbar) ## scaled version
         # =====================================================================
         # Leader's Lambda_hat2 constraint: Λˆs_2 * R^s = -Φˆs
         # =====================================================================
-        @constraint(model, Λhat2[s, :, :] * R_bar .== -Φhat_L[s, :, :])
+        decision_mat = -Φhat_L[s, :, :]
+        @constraint(model, Λhat2[s, :, :] * R_bar .== decision_mat)
+        # @constraint(model, Λhat2[s, :, :] * R_bar .== decision_mat*D_s) ## scaled version
         # Λˆs_2 * r̄ ≥ -μˆs + phi_hat_0
         @constraint(model, Λhat2[s, :, :] * r_bar .- Φhat_0[s, :] .+ μhat[s, :] .>= 0.0)
+        # @constraint(model, Λhat2[s, :, :] * r_bar - Φhat_0[s, :] + μhat[s, :] + decision_mat*xi_bar[s] .>= 0.0) ## scaled version
         # =====================================================================
         # Follower's Lambda_tilde1 constraint 1: Λ˜s_1 * R^s = [Q˜s; Π˜s; Φ˜s]
         # =====================================================================
@@ -349,7 +367,7 @@ function build_full_2DRNDP_model(network, S, ϕU, λU, γ, w, v, uncertainty_set
         block5 = Φtilde_L[s, :, :]
         # Block 6: Y˜s
         block6 = Ytilde_L[s, :, :]
-        lhs_mat = vcat(Q_tilde_col, block2, block3, block4, block5, block6)
+        decision_mat = vcat(Q_tilde_col, block2, block3, block4, block5, block6)
         # RHS: [0; 0; diag(λ-v*ψ0); 0; 0; 0]
         # Block 1: zeros(num_arcs+1, num_arcs)
         block1_rhs = zeros(num_arcs+1, num_arcs)
@@ -366,8 +384,9 @@ function build_full_2DRNDP_model(network, S, ϕU, λU, γ, w, v, uncertainty_set
         block5_rhs = zeros(num_arcs, num_arcs)
         # Block 6: zeros(num_arcs, num_arcs)
         block6_rhs = zeros(num_arcs, num_arcs)
-        rhs_mat = vcat(block1_rhs, block2_rhs, block3_rhs, block4_rhs, block5_rhs, block6_rhs)
-        @constraint(model, Λtilde1[s, :, :] * R_bar .- lhs_mat .== rhs_mat)
+        parameter_mat = vcat(block1_rhs, block2_rhs, block3_rhs, block4_rhs, block5_rhs, block6_rhs)
+        @constraint(model, Λtilde1[s, :, :] * R_bar .- decision_mat .== parameter_mat)
+        # @constraint(model, Λtilde1[s, :, :] * R_bar .== decision_mat*D_s + parameter_mat*D_s) ## scaled version
         # Λ˜s_1 * r̄ ≥ [λ*d0; 0; -h; 0; 0; 0]
         lhs_vec_1 =  N' * Πtilde_0[s, :] + I_0' * Φtilde_0[s, :]
         lhs_vec_2 = -N_y * Ytilde_0[s,:] - N_ts * Yts_tilde_0[s]
@@ -385,13 +404,17 @@ function build_full_2DRNDP_model(network, S, ϕU, λU, γ, w, v, uncertainty_set
             zeros(num_arcs)
         )
         @constraint(model, Λtilde1[s, :, :] * r_bar .+ lhs_vec .>= rhs_rbar_tilde)
+        # @constraint(model, Λtilde1[s, :, :] * r_bar + lhs_vec + decision_mat*xi_bar[s] .>= rhs_rbar_tilde - parameter_mat*xi_bar[s]) ## scaled version
         # 
         # =====================================================================
         # (14p) Follower's capacity dual: Λ˜s_2 * R^s = -Φ˜s
         # =====================================================================
-        @constraint(model, Λtilde2[s, :, :] * R_bar .+ Φtilde_L[s, :, :] .== 0.0)
+        decision_mat = -Φtilde_L[s, :, :]
+        @constraint(model, Λtilde2[s, :, :] * R_bar .== decision_mat)
+        # @constraint(model, Λtilde2[s, :, :] * R_bar .== decision_mat*D_s) ## scaled version
         # Λ˜s_2 * r̄ ≥ -μ˜s
         @constraint(model, Λtilde2[s, :, :] * r_bar .- Φtilde_0[s, :] .+ μtilde[s, :] .>= 0.0)
+        # @constraint(model, Λtilde2[s, :, :] * r_bar - Φtilde_0[s, :] + μtilde[s, :] + decision_mat*xi_bar[s] .>= 0.0) ## scaled version
     end
     println("  ✓ Dual constraints (14m-14p) added for all scenarios")
         # 

@@ -39,7 +39,7 @@ println("="^80)
 
 # Remove dummy arc from capacity scenarios (|A| = regular arcs only)
 capacity_scenarios_regular = capacities[1:end-1, :]  # Remove last row (dummy arc)
-epsilon = 1.0  # Robustness parameter
+epsilon = 0.9  # Robustness parameter
 
 println("\n[3] Building R and r matrices...")
 println("Number of regular arcs |A|: $(size(capacity_scenarios_regular, 1))")
@@ -49,7 +49,7 @@ println("Robustness parameter ε: $epsilon")
 R, r_dict, xi_bar = build_robust_counterpart_matrices(capacity_scenarios_regular, epsilon)
 uncertainty_set = Dict(:R => R, :r_dict => r_dict, :xi_bar => xi_bar, :epsilon => epsilon)
 
-solve_full_model = false
+solve_full_model = true
 if solve_full_model
     println("\n[2] Building model...")
     println("  Parameters:")
@@ -63,8 +63,6 @@ if solve_full_model
     # Build model (without optimizer for initial testing)
     model, vars = build_full_2DRNDP_model(network, S, ϕU, λU, γ, w, v,uncertainty_set, optimizer=Pajarito.Optimizer,
     x_fixed=nothing, λ_fixed=nothing, h_fixed=nothing, ψ0_fixed=nothing)
-    @constraint(model, vars[:λ]>=1)
-    @constraint(model, vars[:h].<=0.0)
     println("\n[3] Model structure verification:")
     println("  Scalar variables:")
     println("    t: $(vars[:t])")
@@ -217,25 +215,26 @@ else
     println("Loaded λ: ", λ_sol)
     println("Loaded h: ", h_sol)
     # # Build continuous conic subproblem
-    # model, vars = build_full_2DRNDP_model(network, S, ϕU, λU, γ, w, v,uncertainty_set, x_fixed=x_sol, λ_fixed=λ_sol, h_fixed=h_sol, ψ0_fixed=ψ0_sol, optimizer=Mosek.Optimizer)
-    # optimize!(model)
+    model, vars = build_full_2DRNDP_model(network, S, ϕU, λU, γ, w, v,uncertainty_set, x_fixed=x_sol, λ_fixed=λ_sol, h_fixed=h_sol, ψ0_fixed=ψ0_sol, optimizer=Mosek.Optimizer)
+    optimize!(model)
     # # objective value 파일에서 읽기 (간단하게)
     obj_val = isfile("full_model_objective_value.txt") ? parse(Float64, readline(open("full_model_objective_value.txt"))) : nothing
-    # new_obj = termination_status(model) == MOI.OPTIMAL ? objective_value(model) : nothing
-    # if obj_val !== nothing && new_obj !== nothing
-    #     println("Stored objective value: ", obj_val)
-    #     println("Newly solved objective value: ", new_obj)
-    #     if isapprox(obj_val, new_obj; atol=1e-4, rtol=1e-6)
-    #         println("✓ Objective values match within tolerance.")
-    #     else
-    #         println("✗ Objective mismatch! Difference: ", abs(obj_val - new_obj))
-    #     end
-    # elseif obj_val === nothing
-    #     println("No stored objective value found in file for comparison.")
-    # else
-    #     @infiltrate
-    #     println("Model did not solve to optimality, cannot compare objective values.")
-    # end
+    new_obj = termination_status(model) == MOI.OPTIMAL ? objective_value(model) : nothing
+    if obj_val !== nothing && new_obj !== nothing
+        println("Stored objective value: ", obj_val)
+        println("Newly solved objective value: ", new_obj)
+        if isapprox(obj_val, new_obj; atol=1e-4, rtol=1e-6)
+            println("✓ Objective values match within tolerance.")
+        else
+            @infiltrate
+            println("✗ Objective mismatch! Difference: ", abs(obj_val - new_obj))
+        end
+    elseif obj_val === nothing
+        println("No stored objective value found in file for comparison.")
+    else
+        @infiltrate
+        println("Model did not solve to optimality, cannot compare objective values.")
+    end
 
     # Build the dualized outer subproblem using the loaded x, λ, h solution values
     # Assumes you have access to the following objects: network, S, ϕU, γ, w, v, uncertainty_set
@@ -251,6 +250,7 @@ else
             println("✓ Duality gap is vanished within tolerance.")
         else
             println("✗ Duality gap exists! Duality gap: ", obj_diff)
+            @infiltrate
         end
     else
         @infiltrate

@@ -25,6 +25,11 @@ function build_R_matrix(xi_hat::Vector{Float64})
     D_inv = inv(D)
     dim = length(xi_hat)
     R = vcat(zeros(1, dim), D_inv)
+
+    ## ================================
+    ## Scaled Version
+    ## ================================
+    # R = vcat(zeros(1, length(xi_hat)), Matrix{Float64}(I, length(xi_hat), length(xi_hat)))
     return R
 end
 
@@ -49,6 +54,11 @@ function build_r_vector(num_regular_arcs::Int, xi_hat::Vector{Float64}, epsilon:
     # D_inv = inv(D)
     r_lower = ones(num_regular_arcs) # D_inv*xi_hat = ones(num_regular_arcs)
     r = vcat(-epsilon, r_lower)
+
+    ## ================================
+    ## Scaled Version
+    ## ================================
+    # r = vcat(-epsilon, zeros(length(xi_hat)))
     return r
 end
 
