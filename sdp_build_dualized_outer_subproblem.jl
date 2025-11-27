@@ -182,8 +182,6 @@ function build_dualized_outer_subproblem(network, S, ϕU,λU, γ, w, v, uncertai
     obj_term_lb_tilde = [-ϕU * sum(Ptilde2_Φ[s,:,:]) - ϕU * sum(Ptilde2_Π[s,:,:]) - ϕU * sum(Ptilde2_Y[s,:,:]) - ϕU * sum(Ptilde2_Yts[s,:]) for s=1:S]
     @objective(model, Max, sum(obj_term1) + sum(obj_term2) + sum(obj_term3) + sum(obj_term4) + sum(obj_term5) + sum(obj_term6)
     + sum(obj_term_ub_hat) + sum(obj_term_lb_hat) + sum(obj_term_ub_tilde) + sum(obj_term_lb_tilde))
-    # @objective(model, Max, sum(obj_term_ub_hat) + sum(obj_term_lb_hat) + sum(obj_term_ub_tilde) + sum(obj_term_lb_tilde))
-    # @constraint(model, [s=1:S], βhat1[s,num_arcs+1] <= 500.0)
     # =========================================================================
     # CONSTRAINTS
     # =========================================================================
@@ -202,13 +200,8 @@ function build_dualized_outer_subproblem(network, S, ϕU,λU, γ, w, v, uncertai
     @constraint(model, [s=1:S], Mtilde[s, num_arcs+1, num_arcs+1] == 1/S)
     @constraint(model, sum(α) <= w*(1/S))
     for s in 1:S
-        D_inv = diagm(1 ./ xi_bar[s])
-        D_inv_square = D_inv .^ 2
-        @constraint(model, tr(D_inv_square*Mhat[s, 1:num_arcs, 1:num_arcs]) - 2* Mhat[s,1:num_arcs,end]'*inv.(xi_bar[s]) - Mhat[s,end,end]*((epsilon^2 - num_arcs)) <= 0)
-        @constraint(model, tr(D_inv_square*Mtilde[s, 1:num_arcs, 1:num_arcs]) - 2* Mtilde[s,1:num_arcs,end]'*inv.(xi_bar[s]) - Mtilde[s,end,end]*((epsilon^2 - num_arcs)) <= 0)
-        
-        # @constraint(model, tr(Mhat[s, 1:num_arcs, 1:num_arcs]) - Mhat[s,end,end]*(epsilon^2) <= 0)
-        # @constraint(model, tr(Mtilde[s, 1:num_arcs, 1:num_arcs]) - Mtilde[s,end,end]*(epsilon^2) <= 0)
+        @constraint(model, tr(Mhat[s, 1:num_arcs, 1:num_arcs]) - Mhat[s,end,end]*(epsilon^2) <= 0)
+        @constraint(model, tr(Mtilde[s, 1:num_arcs, 1:num_arcs]) - Mtilde[s,end,end]*(epsilon^2) <= 0)
     end
     # Matrix Constraints
     for s in 1:S
@@ -218,45 +211,35 @@ function build_dualized_outer_subproblem(network, S, ϕU,λU, γ, w, v, uncertai
         Adj_L_Mhat_22 = -xi_bar[s] * Mhat[s,end,end] * xi_bar[s]'
         Adj_0_Mhat_12 = -(1/2)*D_s * Mhat[s, 1:num_arcs, end]
         Adj_0_Mhat_22 = -xi_bar[s] * Mhat[s,end,end]
-        @constraint(model, [s=1:S], -Mhat[s,1:num_arcs, :] + Uhat2[s,:,:] - Uhat3[s,:,:]
+        @constraint(model, hcat(Adj_L_Mhat_11+Adj_L_Mhat_22, 2*Adj_0_Mhat_12+Adj_0_Mhat_22) + Uhat2[s,:,:] - Uhat3[s,:,:]
         + hcat(-1*(I_0*Zhat1_1[s,:,:] + Zhat1_3[s,:,:]) + Zhat2[s,:,:], I_0*βhat1_1[s,:] + βhat1_3[s,:] - βhat2[s,:])
         + Phat1_Φ[s,:,:] - Phat2_Φ[s,:,:] .== 0)
-        # @constraint(model, hcat(Adj_L_Mhat_11+Adj_L_Mhat_22, 2*Adj_0_Mhat_12+Adj_0_Mhat_22) + Uhat2[s,:,:] - Uhat3[s,:,:]
-        # + hcat(-1*(I_0*Zhat1_1[s,:,:] + Zhat1_3[s,:,:]) + Zhat2[s,:,:], I_0*βhat1_1[s,:] + βhat1_3[s,:] - βhat2[s,:])
-        # + Phat1_Φ[s,:,:] - Phat2_Φ[s,:,:] .== 0)
         # --- From Ψhat
         Adj_L_Mhat_11 = v*D_s*Mhat[s,1:num_arcs,1:num_arcs]*D_s'
         Adj_L_Mhat_22 = v*xi_bar[s] * Mhat[s,end,end] * xi_bar[s]'
         Adj_0_Mhat_12 = v*(1/2)*D_s * Mhat[s, 1:num_arcs, end]
         Adj_0_Mhat_22 = v*xi_bar[s] * Mhat[s,end,end]
-        @constraint(model,  v*Mhat[s,1:num_arcs, :] - Uhat1[s,:,:] - Uhat2[s,:,:] + Uhat3[s,:,:] .<= 0)
-        # @constraint(model, hcat(Adj_L_Mhat_11+Adj_L_Mhat_22, 2*Adj_0_Mhat_12+Adj_0_Mhat_22) - Uhat1[s,:,:] - Uhat2[s,:,:] + Uhat3[s,:,:] .<= 0)
+        @constraint(model, hcat(Adj_L_Mhat_11+Adj_L_Mhat_22, 2*Adj_0_Mhat_12+Adj_0_Mhat_22) - Uhat1[s,:,:] - Uhat2[s,:,:] + Uhat3[s,:,:] .<= 0)
         # --- From Φtilde ---
         Adj_L_Mtilde_11 = -D_s*Mtilde[s,1:num_arcs,1:num_arcs]*D_s'
         Adj_L_Mtilde_22 = -xi_bar[s] * Mtilde[s,end,end] * xi_bar[s]'
         Adj_0_Mtilde_12 = -(1/2)*D_s * Mtilde[s, 1:num_arcs, end]
         Adj_0_Mtilde_22 = -xi_bar[s] * Mtilde[s,end,end]
-        @constraint(model, -Mtilde[s,1:num_arcs, :] + Utilde2[s,:,:] - Utilde3[s,:,:]
+        @constraint(model, hcat(Adj_L_Mtilde_11+Adj_L_Mtilde_22, 2*Adj_0_Mtilde_12+Adj_0_Mtilde_22) + Utilde2[s,:,:] - Utilde3[s,:,:]
         + hcat(-I_0*Ztilde1_1[s,:,:] - Ztilde1_5[s,:,:] + Ztilde2[s,:,:], I_0*βtilde1_1[s,:] + βtilde1_5[s,:] - βtilde2[s,:])
         + Ptilde1_Φ[s,:,:] - Ptilde2_Φ[s,:,:] .== 0)
-        # @constraint(model, hcat(Adj_L_Mtilde_11+Adj_L_Mtilde_22, 2*Adj_0_Mtilde_12+Adj_0_Mtilde_22) + Utilde2[s,:,:] - Utilde3[s,:,:]
-        # + hcat(-I_0*Ztilde1_1[s,:,:] - Ztilde1_5[s,:,:] + Ztilde2[s,:,:], I_0*βtilde1_1[s,:] + βtilde1_5[s,:] - βtilde2[s,:])
-        # + Ptilde1_Φ[s,:,:] - Ptilde2_Φ[s,:,:] .== 0)
         # --- From Ψtilde ---
         Adj_L_Mtilde_11 = v*D_s*Mtilde[s,1:num_arcs,1:num_arcs]*D_s'
         Adj_L_Mtilde_22 = v*xi_bar[s] * Mtilde[s,end,end] * xi_bar[s]'
         Adj_0_Mtilde_12 = v*(1/2)*D_s * Mtilde[s, 1:num_arcs, end]
         Adj_0_Mtilde_22 = v*xi_bar[s] * Mtilde[s,end,end]
-        @constraint(model, v*Mtilde[s,1:num_arcs, :] - Utilde1[s,:,:] - Utilde2[s,:,:] + Utilde3[s,:,:] .<= 0)
-        # @constraint(model, hcat(Adj_L_Mtilde_11+Adj_L_Mtilde_22, 2*Adj_0_Mtilde_12+Adj_0_Mtilde_22) - Utilde1[s,:,:] - Utilde2[s,:,:] + Utilde3[s,:,:] .<= 0)
+        @constraint(model, hcat(Adj_L_Mtilde_11+Adj_L_Mtilde_22, 2*Adj_0_Mtilde_12+Adj_0_Mtilde_22) - Utilde1[s,:,:] - Utilde2[s,:,:] + Utilde3[s,:,:] .<= 0)
         # --- From Ytilde_ts ---
         Adj_L_Mtilde_12 = (1/2)*D_s*Mtilde[s,end,1:num_arcs]
         Adj_L_Mtilde_22 = xi_bar[s] * Mtilde[s,end,end]
         Adj_0_Mtilde_22 = Mtilde[s,end,end]
-        @constraint(model, [s=1:S], Mtilde[s,1, :]' + hcat(N_ts' * Ztilde1_2[s,:,:], -N_ts' * βtilde1_2[s,:])
+        @constraint(model, hcat(adjoint(2*Adj_L_Mtilde_12+Adj_L_Mtilde_22), Adj_0_Mtilde_22) + hcat(N_ts' * Ztilde1_2[s,:,:], -N_ts' * βtilde1_2[s,:])
         + Ptilde1_Yts[s,:]' - Ptilde2_Yts[s,:]' .== 0)
-        # @constraint(model, hcat(adjoint(2*Adj_L_Mtilde_12+Adj_L_Mtilde_22), Adj_0_Mtilde_22) + hcat(N_ts' * Ztilde1_2[s,:,:], -N_ts' * βtilde1_2[s,:])
-        # + Ptilde1_Yts[s,:]' - Ptilde2_Yts[s,:]' .== 0)
     end
     # --- From μhat ---
     @constraint(model, [s=1:S, k=1:num_arcs], βhat2[s,k] <= α[k])

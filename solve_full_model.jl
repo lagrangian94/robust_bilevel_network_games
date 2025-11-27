@@ -39,7 +39,7 @@ println("="^80)
 
 # Remove dummy arc from capacity scenarios (|A| = regular arcs only)
 capacity_scenarios_regular = capacities[1:end-1, :]  # Remove last row (dummy arc)
-epsilon = 0.9  # Robustness parameter
+epsilon = 1.0  # Robustness parameter
 
 println("\n[3] Building R and r matrices...")
 println("Number of regular arcs |A|: $(size(capacity_scenarios_regular, 1))")
@@ -49,7 +49,7 @@ println("Robustness parameter ε: $epsilon")
 R, r_dict, xi_bar = build_robust_counterpart_matrices(capacity_scenarios_regular, epsilon)
 uncertainty_set = Dict(:R => R, :r_dict => r_dict, :xi_bar => xi_bar, :epsilon => epsilon)
 
-solve_full_model = true
+solve_full_model = false
 if solve_full_model
     println("\n[2] Building model...")
     println("  Parameters:")
@@ -63,6 +63,7 @@ if solve_full_model
     # Build model (without optimizer for initial testing)
     model, vars = build_full_2DRNDP_model(network, S, ϕU, λU, γ, w, v,uncertainty_set, optimizer=Pajarito.Optimizer,
     x_fixed=nothing, λ_fixed=nothing, h_fixed=nothing, ψ0_fixed=nothing)
+    @constraint(model, vars[:λ]>= 1)
     println("\n[3] Model structure verification:")
     println("  Scalar variables:")
     println("    t: $(vars[:t])")
@@ -214,9 +215,11 @@ else
     println("Loaded x: ", x_sol)
     println("Loaded λ: ", λ_sol)
     println("Loaded h: ", h_sol)
-    # # Build continuous conic subproblem
+    # Build continuous conic subproblem
     model, vars = build_full_2DRNDP_model(network, S, ϕU, λU, γ, w, v,uncertainty_set, x_fixed=x_sol, λ_fixed=λ_sol, h_fixed=h_sol, ψ0_fixed=ψ0_sol, optimizer=Mosek.Optimizer)
     optimize!(model)
+    println("here")
+    @infiltrate
     # # objective value 파일에서 읽기 (간단하게)
     obj_val = isfile("full_model_objective_value.txt") ? parse(Float64, readline(open("full_model_objective_value.txt"))) : nothing
     new_obj = termination_status(model) == MOI.OPTIMAL ? objective_value(model) : nothing
