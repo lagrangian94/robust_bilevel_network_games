@@ -201,7 +201,7 @@ function generate_capacity_scenarios(num_arcs::Int, num_scenarios::Int;
     F = rand(num_regular_arcs, k)
     
     # Randomly generate mean vector μ from Uniform(0,1)
-    μ = rand(k)*10
+    μ = rand(k)
     
     # Generate scenarios: c^k = F * ξ^k for k = 1, ..., |K|
     capacity_scenarios = zeros(Float64, num_arcs, num_scenarios)
