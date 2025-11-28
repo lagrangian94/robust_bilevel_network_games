@@ -3,7 +3,7 @@ module NetworkGenerator
 using Random
 using Distributions
 using LinearAlgebra
-using Revise
+
 export GridNetworkData, generate_grid_network, generate_capacity_scenarios, print_network_summary
 
 """
@@ -152,34 +152,26 @@ function generate_grid_network(m::Int, n::Int; seed::Union{Int,Nothing}=nothing)
     
     return GridNetworkData(m, n, nodes, arcs, N, interdictable, arc_directions)
 end
+
 """
     generate_capacity_scenarios(num_arcs::Int, num_scenarios::Int; seed::Union{Int,Nothing}=nothing)
 
 Generate capacity scenarios using the factor model from Sadana & Delage (2022).
 
-*** CORRECTED VERSION ***
-The factor loading matrix F is generated ONLY for regular arcs (excluding dummy arc).
-
 The factor model is: c = F * ξ, where
-- F ∈ R^{|A| × 2}_+ is a randomly generated factor loading matrix (REGULAR ARCS ONLY)
+- F ∈ R^{|E| × 2}_+ is a randomly generated factor loading matrix
 - ξ_i ~ Exponential(μ_i) for i=1,2 are independent factor realizations
 - μ ∈ R^2_+ is randomly generated mean vector
 
 # Arguments
-- `num_arcs::Int`: number of arcs in the network (|E|) INCLUDING dummy arc
+- `num_arcs::Int`: number of arcs in the network (|E|)
 - `num_scenarios::Int`: number of scenarios to generate (|K|)
 - `seed::Union{Int,Nothing}`: random seed for reproducibility (optional)
 
 # Returns
 - `capacity_scenarios::Matrix{Float64}`: matrix of size |E| × |K| where each column is a scenario
-- `F::Matrix{Float64}`: factor loading matrix (|A| × 2, for regular arcs only)
+- `F::Matrix{Float64}`: factor loading matrix (for reference)
 - `μ::Vector{Float64}`: mean vector (for reference)
-
-# Fix Summary
-- OLD (WRONG): F = rand(num_arcs, k)  # included dummy arc → dimension (|E|, 2)
-- NEW (CORRECT): F = rand(num_arcs - 1, k)  # excludes dummy arc → dimension (|A|, 2)
-
-This matches Sadana's MATLAB code: F = rand(E-size_set_non_rem, k)
 """
 function generate_capacity_scenarios(num_arcs::Int, num_scenarios::Int; 
                                      seed::Union{Int,Nothing}=nothing)
@@ -189,19 +181,12 @@ function generate_capacity_scenarios(num_arcs::Int, num_scenarios::Int;
     
     # Number of factors
     k = 2
-    
-    # ============================================================
-    # CRITICAL FIX: F matrix는 regular arcs (더미 arc 제외)에 대해서만 생성
-    # ============================================================
-    # Number of REGULAR arcs (excluding dummy arc)
-    num_regular_arcs = num_arcs - 1
-    
+    # Randomly generate factor loading matrix F ∈ R^{|E| × 2}_+
     # Randomly generate factor loading matrix F from Uniform(0,1)
-    # F ∈ R^{|A| × 2}_+ where |A| = num_regular_arcs
-    F = rand(num_regular_arcs, k)
+    F = rand(num_arcs, k)
     
     # Randomly generate mean vector μ from Uniform(0,1)
-    μ = rand(k)*10
+    μ = rand(k)
     
     # Generate scenarios: c^k = F * ξ^k for k = 1, ..., |K|
     capacity_scenarios = zeros(Float64, num_arcs, num_scenarios)
@@ -210,12 +195,10 @@ function generate_capacity_scenarios(num_arcs::Int, num_scenarios::Int;
         # Generate independent ξ_i ~ Exponential(μ_i) for i=1,2
         ξ = [rand(Exponential(μ[i])) for i in 1:k]
         
-        # Apply factor model ONLY to regular arcs
-        capacity_scenarios[1:num_regular_arcs, scenario] = F * ξ
-        
+        capacity_scenarios[:, scenario] = F * ξ
         # Set dummy arc (last arc) capacity to sum of all regular arc capacities
         # This is large enough but numerically stable
-        regular_arcs_capacity_sum = sum(capacity_scenarios[1:num_regular_arcs, scenario])
+        regular_arcs_capacity_sum = sum(capacity_scenarios[1:end-1, scenario])
         capacity_scenarios[end, scenario] = regular_arcs_capacity_sum
     end
     
