@@ -1,0 +1,11 @@
+Delage의 옛날 TS 페이퍼보면
+
+LDR이 arc uncertainty의 linear function으로
+
+근데 이러면 arc 개수에 따라 너무 변수가 많아지고.. dual 문제 제약식도 많아지니까
+
+적당히 인접한 arc 끼리만 reflect되게 matrix하나 만들어서
+
+Mask * \Phi = 0
+
+제약식으로 넣어주면..
