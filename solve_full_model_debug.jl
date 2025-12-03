@@ -17,11 +17,11 @@ println("TESTING FULL 2DRNDP MODEL CONSTRUCTION")
 println("="^80)
 
 # Model parameters
-S = 3  # Number of scenarios
-ϕU = 100.0  # Upper bound on interdiction effectiveness
-λU = 100.0  # Upper bound on λ
+S = 1  # Number of scenarios
+ϕU = 10.0  # Upper bound on interdiction effectiveness
+λU = 10.0  # Upper bound on λ
 γ = 2.0  # Interdiction budget
-w = 10.0  # Budget weight
+w = 1.0  # Budget weight
 v = 1.0  # Interdiction effectiveness parameter (NOT the decision variable ν!)
 
 
@@ -30,8 +30,7 @@ println("\n[1] Generating 3×3 grid network...")
 network = generate_grid_network(3, 3, seed=42)
 print_network_summary(network)
 # capacities, F, μ = generate_capacity_scenarios(length(network.arcs), network.interdictable_arcs, S, seed=120)
-capacities, F, μ = generate_capacity_scenarios(length(network.arcs), S, seed=120)
-# @infiltrate
+capacities, F, μ = generate_capacity_scenarios(length(network.arcs), S, seed=42)
 # Build uncertainty set
 # ===== BUILD ROBUST COUNTERPART MATRICES R AND r =====
 println("\n" * "="^80)
@@ -50,7 +49,7 @@ println("Robustness parameter ε: $epsilon")
 R, r_dict, xi_bar = build_robust_counterpart_matrices(capacity_scenarios_regular, epsilon)
 uncertainty_set = Dict(:R => R, :r_dict => r_dict, :xi_bar => xi_bar, :epsilon => epsilon)
 
-solve_full_model = true
+solve_full_model = false
 if solve_full_model
     println("\n[2] Building model...")
     println("  Parameters:")
@@ -63,7 +62,7 @@ if solve_full_model
     println("        ν (nu) is a decision variable in objective t + w*ν")
     # Build model (without optimizer for initial testing)
     model, vars = build_full_2DRNDP_model(network, S, ϕU, λU, γ, w, v,uncertainty_set)
-    @constraint(model, vars[:λ] >= 1.0)
+    @constraint(model, lambda_bound, vars[:λ] >= 2.0)
     println("\n[3] Model structure verification:")
     println("  Scalar variables:")
     println("    nu: $(vars[:nu])")
@@ -139,6 +138,14 @@ if solve_full_model
         # Save scenario values (examples)
         sol[:ηhat] = value.(vars[:ηhat])
         sol[:ηtilde] = value.(vars[:ηtilde])
+        sol[:Yts_tilde] = value.(vars[:Yts_tilde])
+        sol[:Ytilde] = value.(vars[:Ytilde])
+        sol[:Πhat] = value.(vars[:Πhat])
+        sol[:Πtilde] = value.(vars[:Πtilde])
+        sol[:Φhat] = value.(vars[:Φhat])
+        sol[:Φtilde] = value.(vars[:Φtilde])
+        sol[:Ψhat] = value.(vars[:Ψhat])
+        sol[:Ψtilde] = value.(vars[:Ψtilde])
         # Optionally save any other variables you want (e.g., dual variables)
         # ...
         println("interdicted arcs: ", [i for i in 1:length(sol[:x]) if sol[:x][i] == 1.0])
@@ -173,6 +180,7 @@ if solve_full_model
     else
         println("\nNo feasible/optimal solution found. Status: $t_status")
     end
+    @infiltrate
 else
     # Load previously saved solution for x, λ, h (JLD2 preferred, JSON as fallback)
     local sol = nothing
@@ -234,7 +242,14 @@ else
     end
     # using Dualization
     # dual_model = dualize(model; dual_names = DualNames("dual_var_", "dual_con_"))
-
+    # Convert DenseAxisArray to regular array for findall
+    Yts_tilde_array = Array(sol[:Yts_tilde])
+    inds = findall(>(0.01), Yts_tilde_array)
+    vals = Yts_tilde_array[inds]
+    println("Indices where Yts_tilde > 0.01: ", inds)
+    println("Values: ", vals)
+    @infiltrate
+    # Print elements of sol[:Φtilde] > 0.01, including their indices
     # Build the dualized outer subproblem using the loaded x, λ, h solution values
     # Assumes you have access to the following objects: network, S, ϕU, γ, w, v, uncertainty_set
     dual_model, dual_vars = build_dualized_outer_subproblem(network, S, ϕU, λU, γ, w, v, uncertainty_set, MosekTools.Optimizer, λ_sol, x_sol, h_sol, ψ0_sol)

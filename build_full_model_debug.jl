@@ -178,7 +178,8 @@ function build_full_2DRNDP_model(network, S, ϕU, λU, γ, w, v, uncertainty_set
     # =========================================================================
 
     # --- (14a) Objective function ---
-    @objective(model, Min, (1/S)*sum(ηhat[s] + ηtilde[s] for s in 1:S) + (1/S)*w * nu)
+    # @objective(model, Min, (1/S)*sum(ηhat[s] + ηtilde[s] for s in 1:S) + (1/S)*w * nu)
+    @objective(model, Min, sum(ηhat[s] + ηtilde[s] for s in 1:S) + w * nu)
 
     # --- (14b) Initial resource and domain constraints ---
     if isnothing(λ_fixed)
@@ -294,14 +295,14 @@ function build_full_2DRNDP_model(network, S, ϕU, λU, γ, w, v, uncertainty_set
         # Leader's Lambda_hat1 constraint 1: Λˆs_1 * R = [Qˆs; Πˆs; Φˆs]
         # =====================================================================
         Q_hat = N' * Πhat_L[s, :, :] + I_0' * Φhat_L[s, :, :]
-        rhs_mat = vcat(Q_hat, Πhat_L[s, :, :], Φhat_L[s, :, :])
-        @constraint(model, Λhat1[s, :, :] * R[s] .== rhs_mat)
+        lhs_mat = vcat(Q_hat, Πhat_L[s, :, :], Φhat_L[s, :, :])
+        @constraint(model, Λhat1[s, :, :] * R[s] - lhs_mat .== 0.0)
         # =====================================================================
         # Leader's Lambda_hat1 constraint 2
         lhs_mat = vcat(N' * Πhat_0[s, :] + I_0' * Φhat_0[s, :], Πhat_0[s, :], Φhat_0[s, :])
         # Λˆs_1 * r̄ ≥ [d0; 0; 0]
         rhs_rbar = vcat(d0, zeros(num_nodes-1), zeros(num_arcs))
-        @constraint(model, Λhat1[s, :, :] * r_bar .+ lhs_mat .>= rhs_rbar)
+        @constraint(model, Λhat1[s, :, :] * r_bar + lhs_mat .>= rhs_rbar)
         # =====================================================================
         # Leader's Lambda_hat2 constraint: Λˆs_2 * R = -Φˆs
         # =====================================================================
@@ -363,9 +364,9 @@ function build_full_2DRNDP_model(network, S, ϕU, λU, γ, w, v, uncertainty_set
         # =====================================================================
         # (14p) Follower's capacity dual: Λ˜s_2 * R = -Φ˜s
         # =====================================================================
-        @constraint(model, Λtilde2[s, :, :] * R[s] .+ Φtilde_L[s, :, :] .== 0.0)
+        @constraint(model, Λtilde2[s, :, :] * R[s] + Φtilde_L[s, :, :] .== 0.0)
         # Λ˜s_2 * r̄ ≥ -μ˜s
-        @constraint(model, Λtilde2[s, :, :] * r_bar .- Φtilde_0[s, :] .+ μtilde[s, :] .>= 0.0)
+        @constraint(model, Λtilde2[s, :, :] * r_bar - Φtilde_0[s, :] + μtilde[s, :] .>= 0.0)
     end
     println("  ✓ Dual constraints (14m-14p) added for all scenarios")
         # 

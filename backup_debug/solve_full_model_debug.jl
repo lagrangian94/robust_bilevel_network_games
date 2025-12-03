@@ -48,7 +48,7 @@ println("Robustness parameter ε: $epsilon")
 R, r_dict = build_robust_counterpart_matrices(capacity_scenarios_regular, epsilon)
 uncertainty_set = Dict(:R => R, :r_dict => r_dict, :epsilon => epsilon)
 
-solve_full_model = false
+solve_full_model = true
 if solve_full_model
     println("\n[2] Building model...")
     println("  Parameters:")
@@ -139,7 +139,16 @@ if solve_full_model
         # Save scenario values (examples)
         sol[:ηhat] = value.(vars[:ηhat])
         sol[:ηtilde] = value.(vars[:ηtilde])
-
+        sol[:μhat] = value.(vars[:μhat])
+        sol[:μtilde] = value.(vars[:μtilde])
+        sol[:Φhat] = value.(vars[:Φhat])
+        sol[:Ψhat] = value.(vars[:Ψhat])
+        sol[:Φtilde] = value.(vars[:Φtilde])
+        sol[:Ψtilde] = value.(vars[:Ψtilde])
+        sol[:Πhat] = value.(vars[:Πhat])
+        sol[:Πtilde] = value.(vars[:Πtilde])
+        sol[:Ytilde] = value.(vars[:Ytilde])
+        sol[:Yts_tilde] = value.(vars[:Yts_tilde])
         # Optionally save any other variables you want (e.g., dual variables)
         # ...
         println("interdicted arcs: ", [i for i in 1:length(sol[:x]) if sol[:x][i] == 1.0])

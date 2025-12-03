@@ -3,9 +3,10 @@ module NetworkGenerator
 using Random
 using Distributions
 using LinearAlgebra
+using Statistics
 using Revise
 export GridNetworkData, generate_grid_network, generate_capacity_scenarios, print_network_summary
-
+using Infiltrator
 """
     GridNetworkData
 
@@ -188,7 +189,7 @@ function generate_capacity_scenarios(num_arcs::Int, num_scenarios::Int;
     end
     
     # Number of factors
-    k = 2
+    k = 1
     
     # ============================================================
     # CRITICAL FIX: F matrix는 regular arcs (더미 arc 제외)에 대해서만 생성
@@ -198,7 +199,8 @@ function generate_capacity_scenarios(num_arcs::Int, num_scenarios::Int;
     
     # Randomly generate factor loading matrix F from Uniform(0,1)
     # F ∈ R^{|A| × 2}_+ where |A| = num_regular_arcs
-    F = rand(num_regular_arcs, k)
+    # F = rand(num_regular_arcs, k)
+    F = rand(1:10, num_regular_arcs, k)
     
     # Randomly generate mean vector μ from Uniform(0,1)
     μ = rand(k)
@@ -208,10 +210,16 @@ function generate_capacity_scenarios(num_arcs::Int, num_scenarios::Int;
     
     for scenario in 1:num_scenarios
         # Generate independent ξ_i ~ Exponential(μ_i) for i=1,2
-        ξ = [rand(Exponential(μ[i])) for i in 1:k]
+        # ξ = [rand(Exponential(μ[i])) for i in 1:k]
+        ξ = ones(k)
         
         # Apply factor model ONLY to regular arcs
-        capacity_scenarios[1:num_regular_arcs, scenario] = F * ξ
+        scenarios = F * ξ
+        # scenarios = scenarios ./mean(scenarios, dims=1)
+        capacity_scenarios[1:num_regular_arcs, scenario] = scenarios
+
+        # 만약 scenarios가 행렬이고, 각 column별 평균을 구하려면:
+        # col_means = mean(scenarios, dims=1)  # 결과는 1행 N열 (여러 시나리오의 열 평균)
         
         # Set dummy arc (last arc) capacity to sum of all regular arc capacities
         # This is large enough but numerically stable
