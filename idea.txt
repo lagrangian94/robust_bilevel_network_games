@@ -1,3 +1,5 @@
+1.
+
 Delage의 옛날 TS 페이퍼보면
 
 LDR이 arc uncertainty의 linear function으로
@@ -9,3 +11,18 @@ LDR이 arc uncertainty의 linear function으로
 Mask * \Phi = 0
 
 제약식으로 넣어주면..
+
+
+2.
+
+RO 때문에 지금 대부분 LDR coeff가 0이 나옴. 아니면 내가 실수?
+
+3.
+
+lambda가 uniform model에서도 seed 값에 따라 0에 가깝게 나올때도 있고 8 이렇게 나올 때도 있는데 이게 numerical error 때문에 0에 가깝게 나오는게 optimal인건지..
+=> 이건 일단 nominal sp 풀어서 lambda 값을 봐야할듯..
+그리고 이거랑 epsilon=0 넣은 RO랑 목적함수 같게 나오는지 체크.
+
+=>lambda는 특정 값 이하로는 다 optimal이 나오나? 대충 2이하로는 아무리 작아도 다 optimal이 나오는데... lambda의 ub 찾을수있나?
+lambda를 variable transform하기 이전을 보면 걸리는게 pi_ts >= lambda 밖에 없음. 즉, node t의 dual variable의 lower bound를 제한하는 역할만함.
+목적함수에는 b_x(xi)pi 를 풀어써서 lambda가 작아져도 scaling해서 optimal인지 보기.

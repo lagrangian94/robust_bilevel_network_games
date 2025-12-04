@@ -9,15 +9,29 @@ includet("network_generator.jl")
 includet("build_uncertainty_set_debug.jl")
 includet("build_full_model_debug.jl")
 includet("dualized_outer_debug.jl")
-
-using .NetworkGenerator: generate_grid_network, generate_capacity_scenarios, print_network_summary
+includet("build_nominal_sp.jl")
+using .NetworkGenerator: generate_grid_network, generate_capacity_scenarios_factor_model, generate_capacity_scenarios_uniform_model, print_network_summary
 
 println("="^80)
 println("TESTING FULL 2DRNDP MODEL CONSTRUCTION")
 println("="^80)
-
+function show_nonzero(var; tol=1e-8)
+    indices = findall(x -> abs(x) > tol, var)
+    
+    if isempty(indices)
+        println("All values ≈ 0")
+        return
+    end
+    
+    println("Non-zero values ($(length(indices)) entries):")
+    for idx in indices
+        # CartesianIndex를 튜플로 변환
+        pos = Tuple(idx)
+        println("  $pos => $(var[idx])")
+    end
+end
 # Model parameters
-S = 1  # Number of scenarios
+S = 2# Number of scenarios
 ϕU = 10.0  # Upper bound on interdiction effectiveness
 λU = 10.0  # Upper bound on λ
 γ = 2.0  # Interdiction budget
@@ -29,8 +43,15 @@ v = 1.0  # Interdiction effectiveness parameter (NOT the decision variable ν!)
 println("\n[1] Generating 3×3 grid network...")
 network = generate_grid_network(3, 3, seed=42)
 print_network_summary(network)
-# capacities, F, μ = generate_capacity_scenarios(length(network.arcs), network.interdictable_arcs, S, seed=120)
-capacities, F, μ = generate_capacity_scenarios(length(network.arcs), S, seed=42)
+
+# ===== Use Factor Model =====
+# capacities, F = generate_capacity_scenarios(length(network.arcs), network.interdictable_arcs, S, seed=120)
+# ===== Use Uniform Model =====
+capacities, F = generate_capacity_scenarios_uniform_model(length(network.arcs), S, seed=42)
+
+# S=1
+# capacities = capacities[:,2]
+# @infiltrate
 # Build uncertainty set
 # ===== BUILD ROBUST COUNTERPART MATRICES R AND r =====
 println("\n" * "="^80)
@@ -40,7 +61,7 @@ println("="^80)
 # Remove dummy arc from capacity scenarios (|A| = regular arcs only)
 capacity_scenarios_regular = capacities[1:end-1, :]  # Remove last row (dummy arc)
 epsilon = 0.5  # Robustness parameter
-
+# @infiltrate
 println("\n[3] Building R and r matrices...")
 println("Number of regular arcs |A|: $(size(capacity_scenarios_regular, 1))")
 println("Number of scenarios S: $S")
@@ -48,8 +69,10 @@ println("Robustness parameter ε: $epsilon")
 
 R, r_dict, xi_bar = build_robust_counterpart_matrices(capacity_scenarios_regular, epsilon)
 uncertainty_set = Dict(:R => R, :r_dict => r_dict, :xi_bar => xi_bar, :epsilon => epsilon)
-
-solve_full_model = false
+solve_full_model = true
+model, vars = build_full_2SP_model(network, S, ϕU, λU, γ, w, v,uncertainty_set)
+optimize!(model)
+@infiltrate
 if solve_full_model
     println("\n[2] Building model...")
     println("  Parameters:")
@@ -62,7 +85,6 @@ if solve_full_model
     println("        ν (nu) is a decision variable in objective t + w*ν")
     # Build model (without optimizer for initial testing)
     model, vars = build_full_2DRNDP_model(network, S, ϕU, λU, γ, w, v,uncertainty_set)
-    @constraint(model, lambda_bound, vars[:λ] >= 2.0)
     println("\n[3] Model structure verification:")
     println("  Scalar variables:")
     println("    nu: $(vars[:nu])")
@@ -146,6 +168,8 @@ if solve_full_model
         sol[:Φtilde] = value.(vars[:Φtilde])
         sol[:Ψhat] = value.(vars[:Ψhat])
         sol[:Ψtilde] = value.(vars[:Ψtilde])
+        sol[:μhat] = value.(vars[:μhat])
+        sol[:μtilde] = value.(vars[:μtilde])
         # Optionally save any other variables you want (e.g., dual variables)
         # ...
         println("interdicted arcs: ", [i for i in 1:length(sol[:x]) if sol[:x][i] == 1.0])
