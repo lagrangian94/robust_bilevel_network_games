@@ -20,6 +20,8 @@ Stores the complete data structure for a grid network instance.
 - `N::Matrix{Float64}`: node-incidence matrix (|V|-1 × |A|+1), first row (source) removed
 - `interdictable_arcs::Vector{Bool}`: indicates which arcs can be interdicted
 - `arc_directions::Vector{Int}`: stores random directions (+1 or -1) for within-column arcs
+- `arc_adjacency::Matrix{Bool}`: (|A| × |A|) arc i and arc j are adjacent if they share a node
+- `node_arc_incidence::Matrix{Bool}`: ((|V|-1) × |A|) node i is incident to arc j
 """
 struct GridNetworkData
     m::Int  # number of rows
@@ -29,6 +31,8 @@ struct GridNetworkData
     N::Matrix{Float64}
     interdictable_arcs::Vector{Bool}
     arc_directions::Vector{Int}
+    arc_adjacency::Matrix{Bool}
+    node_arc_incidence::Matrix{Bool}
 end
 
 """
@@ -52,7 +56,86 @@ Generate a grid network with m rows and n columns following Sadana & Delage (202
 # Returns
 - `GridNetworkData`: complete network data structure
 """
+
+
+function generate_arc_adjacency(arcs::Vector{Tuple{String,String}}, num_arcs::Int)
+    """
+    # Generate arc adjacency matrix where arc_adjacency[i,j] = true if arcs i and j share a common node.
+
+    # Arguments
+    - `arcs::Vector{Tuple{String,String}}`: list of all arcs (including dummy arc)
+    - `num_arcs::Int`: number of regular arcs (excluding dummy arc)
+
+    # Returns
+    - `arc_adjacency::Matrix{Bool}`: num_arcs × num_arcs adjacency matrix
+    """
+    arc_adjacency = falses(num_arcs, num_arcs)
+    
+    for i in 1:num_arcs, j in 1:num_arcs
+        arc_i = arcs[i]
+        arc_j = arcs[j]
+        
+        # Arcs are adjacent if they share any common node
+        if (arc_i[1] == arc_j[1] || arc_i[1] == arc_j[2] ||
+            arc_i[2] == arc_j[1] || arc_i[2] == arc_j[2])
+            arc_adjacency[i,j] = true
+        end
+    end
+    
+    return arc_adjacency
+end
+
+function generate_node_arc_incidence(nodes::Vector{String}, 
+                                     arcs::Vector{Tuple{String,String}},
+                                     num_nodes::Int, num_arcs::Int)
+    """
+    Generate node-arc incidence matrix where node_arc_incidence[i,j] = true if node i is 
+    incident to arc j (i.e., arc j has node i as either tail or head).
+
+    # Arguments
+    - `nodes::Vector{String}`: list of all nodes (including source)
+    - `arcs::Vector{Tuple{String,String}}`: list of all arcs (including dummy arc)
+    - `num_nodes::Int`: number of nodes excluding source
+    - `num_arcs::Int`: number of regular arcs (excluding dummy arc)
+
+    # Returns
+    - `node_arc_incidence::Matrix{Bool}`: num_nodes × num_arcs incidence matrix
+    """
+    node_arc_incidence = falses(num_nodes, num_arcs)
+    
+    for j in 1:num_arcs
+        arc = arcs[j]
+        
+        for i in 1:num_nodes
+            node_name = nodes[i+1]  # Skip source node (index 1)
+            if arc[1] == node_name || arc[2] == node_name
+                node_arc_incidence[i,j] = true
+            end
+        end
+    end
+    
+    return node_arc_incidence
+end
+
+
 function generate_grid_network(m::Int, n::Int; seed::Union{Int,Nothing}=nothing)
+    """
+    # Network Structure
+    - Source node 's' on the left
+    - Sink node 't' on the right
+    - Internal nodes arranged in m×n grid
+    - Within same column: arcs can point upward or downward with equal probability
+    - Between columns: arcs always point toward the sink (rightward)
+    - Arcs in first/last columns and arcs from source/to sink: NOT interdictable, infinite capacity
+
+    # Arguments
+    - `m::Int`: number of rows
+    - `n::Int`: number of columns
+    - `seed::Union{Int,Nothing}`: random seed for reproducibility (optional)
+
+    # Returns
+    - `GridNetworkData`: complete network data structure
+    """
     if !isnothing(seed)
         Random.seed!(seed)
     end
@@ -129,7 +212,7 @@ function generate_grid_network(m::Int, n::Int; seed::Union{Int,Nothing}=nothing)
     push!(interdictable, false)
     
     num_arcs = length(arcs)
-    
+    num_regular_arcs = num_arcs - 1  # Exclude dummy arc
     # Build node-incidence matrix N
     # N has dimensions (|V|-1) × (|A|+1) where we remove the source node row
     # Columns: regular arcs + dummy arc
@@ -150,8 +233,11 @@ function generate_grid_network(m::Int, n::Int; seed::Union{Int,Nothing}=nothing)
             N[to_idx - 1, arc_idx] = -1.0  # flow entering
         end
     end
-    
-    return GridNetworkData(m, n, nodes, arcs, N, interdictable, arc_directions)
+    # Generate adjacency structures
+    arc_adjacency = generate_arc_adjacency(arcs, num_regular_arcs)
+    node_arc_incidence = generate_node_arc_incidence(nodes, arcs, 
+                                                      num_nodes - 1, num_regular_arcs)
+    return GridNetworkData(m, n, nodes, arcs, N, interdictable, arc_directions, arc_adjacency, node_arc_incidence)
 end
 """
     generate_capacity_scenarios(num_arcs::Int, num_scenarios::Int; seed::Union{Int,Nothing}=nothing)
@@ -268,14 +354,34 @@ end
 Print a summary of the network structure.
 """
 function print_network_summary(network::GridNetworkData)
+    num_regular_arcs = length(network.arcs) - 1
+    num_nodes_excl_source = length(network.nodes) - 1
+    
     println("=" ^ 60)
     println("Grid Network Summary")
     println("=" ^ 60)
     println("Grid size: $(network.m) rows × $(network.n) columns")
     println("Number of nodes: $(length(network.nodes))")
-    println("Number of arcs: $(length(network.arcs))")
+    println("Number of arcs (incl. dummy): $(length(network.arcs))")
+    println("Number of regular arcs: $num_regular_arcs")
     println("Number of interdictable arcs: $(sum(network.interdictable_arcs))")
     println("Node-incidence matrix dimensions: $(size(network.N))")
+    
+    # Sparsity statistics
+    num_arc_pairs = num_regular_arcs * num_regular_arcs
+    num_adjacent_pairs = sum(network.arc_adjacency)
+    sparsity_arc = 100 * (1 - num_adjacent_pairs / num_arc_pairs)
+    
+    num_node_arc_pairs = num_nodes_excl_source * num_regular_arcs
+    num_incident_pairs = sum(network.node_arc_incidence)
+    sparsity_node = 100 * (1 - num_incident_pairs / num_node_arc_pairs)
+    
+    println("\nSparsity Information:")
+    println("  Arc-arc adjacency: $num_adjacent_pairs / $num_arc_pairs pairs " *
+            "($(round(sparsity_arc, digits=1))% sparse)")
+    println("  Node-arc incidence: $num_incident_pairs / $num_node_arc_pairs pairs " *
+            "($(round(sparsity_node, digits=1))% sparse)")
+    
     println("\nNodes: $(network.nodes)")
     println("\nFirst 10 arcs:")
     for i in 1:min(10, length(network.arcs))

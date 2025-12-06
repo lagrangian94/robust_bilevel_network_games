@@ -148,17 +148,17 @@ function build_full_2SP_model(network, S, ϕU, λU, γ, w, v, uncertainty_set; o
     """
     아래는 LDR coefficient 0으로 둘 때와 비교. (SP니까 0으로 둬도 objective value는 변하지 않아야 함)
     """
-    @constraint(model, Φhat_L[:,:,:] .== 0.0)
-    @constraint(model, Ψhat_L[:,:,:] .== 0.0)
-    @constraint(model, Φtilde_L[:,:,:] .== 0.0)
-    @constraint(model, Ψtilde_L[:,:,:] .== 0.0)
-    @constraint(model, Πhat_L[:,:,:] .== 0.0)
-    @constraint(model, Πtilde_L[:,:,:] .== 0.0)
-    @constraint(model, Ytilde_L[:,:,:] .== 0.0)
-    @constraint(model, Yts_tilde_L[:,:,:] .== 0.0)
+    # @constraint(model, Φhat_L[:,:,:] .== 0.0)
+    # @constraint(model, Ψhat_L[:,:,:] .== 0.0)
+    # @constraint(model, Φtilde_L[:,:,:] .== 0.0)
+    # @constraint(model, Ψtilde_L[:,:,:] .== 0.0)
+    # @constraint(model, Πhat_L[:,:,:] .== 0.0)
+    # @constraint(model, Πtilde_L[:,:,:] .== 0.0)
+    # @constraint(model, Ytilde_L[:,:,:] .== 0.0)
+    # @constraint(model, Yts_tilde_L[:,:,:] .== 0.0)
 
-    @constraint(model, λ.==0.00001 ) ## lambda는 특정 값 이하로는 다 optimal이 나오나? 대충 2이하로는 아무리 작아도 다 optimal이 나오는데... lambda의 ub 찾을수있나?
-                                
+    # @constraint(model, λ.==0.00001 ) ## lambda는 특정 값 이하로는 다 optimal이 나오나? 대충 2이하로는 아무리 작아도 다 optimal이 나오는데... lambda의 ub 찾을수있나?
+
     # --- Dual variables for inner problems ---
     # These arise from dualizing the inner problems
     # Dimensions are based on the dual formulation structure

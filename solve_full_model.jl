@@ -1,24 +1,37 @@
 using JuMP
-using Gurobi
+using Gurobi, Mosek, MosekTools
 using HiGHS
 using LinearAlgebra
 using Infiltrator
 # Load modules
 using Revise
 includet("network_generator.jl")
-includet("sdp_build_uncertainty_set.jl")
-include("sdp_build_full_model.jl")
-include("sdp_build_dualized_outer_subproblem.jl")
-# include("build_full_model_debug.jl")
-# include("dualized_outer_debug.jl")
-using .NetworkGenerator: generate_grid_network, generate_capacity_scenarios, print_network_summary
+includet("build_uncertainty_set.jl")
+includet("build_full_model.jl")
+includet("dualized_outer_subprob.jl")
+includet("build_nominal_sp.jl")
+using .NetworkGenerator: generate_grid_network, generate_capacity_scenarios_factor_model, generate_capacity_scenarios_uniform_model, print_network_summary
 
 println("="^80)
 println("TESTING FULL 2DRNDP MODEL CONSTRUCTION")
 println("="^80)
-
+function show_nonzero(var; tol=1e-8)
+    indices = findall(x -> abs(x) > tol, var)
+    
+    if isempty(indices)
+        println("All values ≈ 0")
+        return
+    end
+    
+    println("Non-zero values ($(length(indices)) entries):")
+    for idx in indices
+        # CartesianIndex를 튜플로 변환
+        pos = Tuple(idx)
+        println("  $pos => $(var[idx])")
+    end
+end
 # Model parameters
-S = 3  # Number of scenarios
+S = 2# Number of scenarios
 ϕU = 10.0  # Upper bound on interdiction effectiveness
 λU = 10.0  # Upper bound on λ
 γ = 2.0  # Interdiction budget
@@ -30,8 +43,15 @@ v = 1.0  # Interdiction effectiveness parameter (NOT the decision variable ν!)
 println("\n[1] Generating 3×3 grid network...")
 network = generate_grid_network(3, 3, seed=42)
 print_network_summary(network)
-capacities, F, μ = generate_capacity_scenarios(length(network.arcs), S, seed=120)
 
+# ===== Use Factor Model =====
+# capacities, F = generate_capacity_scenarios(length(network.arcs), network.interdictable_arcs, S, seed=120)
+# ===== Use Uniform Model =====
+capacities, F = generate_capacity_scenarios_uniform_model(length(network.arcs), S, seed=42)
+
+# S=1
+# capacities = capacities[:,2]
+# @infiltrate
 # Build uncertainty set
 # ===== BUILD ROBUST COUNTERPART MATRICES R AND r =====
 println("\n" * "="^80)
@@ -41,7 +61,7 @@ println("="^80)
 # Remove dummy arc from capacity scenarios (|A| = regular arcs only)
 capacity_scenarios_regular = capacities[1:end-1, :]  # Remove last row (dummy arc)
 epsilon = 0.5  # Robustness parameter
-
+# @infiltrate
 println("\n[3] Building R and r matrices...")
 println("Number of regular arcs |A|: $(size(capacity_scenarios_regular, 1))")
 println("Number of scenarios S: $S")
@@ -49,8 +69,10 @@ println("Robustness parameter ε: $epsilon")
 
 R, r_dict, xi_bar = build_robust_counterpart_matrices(capacity_scenarios_regular, epsilon)
 uncertainty_set = Dict(:R => R, :r_dict => r_dict, :xi_bar => xi_bar, :epsilon => epsilon)
-
 solve_full_model = false
+# model, vars = build_full_2SP_model(network, S, ϕU, λU, γ, w, v,uncertainty_set)
+# optimize!(model)
+# @infiltrate
 if solve_full_model
     println("\n[2] Building model...")
     println("  Parameters:")
@@ -62,11 +84,11 @@ if solve_full_model
     println("  Note: v is a parameter in COP matrix [Φ - v*W]")
     println("        ν (nu) is a decision variable in objective t + w*ν")
     # Build model (without optimizer for initial testing)
-    model, vars = build_full_2DRNDP_model(network, S, ϕU, λU, γ, w, v,uncertainty_set, optimizer=Pajarito.Optimizer,
-    x_fixed=nothing, λ_fixed=nothing, h_fixed=nothing, ψ0_fixed=nothing)
+    model, vars = build_full_2DRNDP_model(network, S, ϕU, λU, γ, w, v,uncertainty_set)
+    add_sparsity_constraints!(model, vars, network, S)
+    # model, vars = build_full_2SP_model(network, S, ϕU, λU, γ, w, v,uncertainty_set)
     println("\n[3] Model structure verification:")
     println("  Scalar variables:")
-    println("    t: $(vars[:t])")
     println("    nu: $(vars[:nu])")
     println("    λ: $(vars[:λ])")
 
@@ -110,7 +132,7 @@ if solve_full_model
 
     println("\n[5] Model statistics:")
     println("  Total variables: $(num_variables(model))")
-    # println("  Binary variables: $(sum(is_binary(vars[:x][i]) for i in 1:num_arcs))")
+    println("  Binary variables: $(sum(is_binary(vars[:x][i]) for i in 1:num_arcs))")
     println("  Total constraints: $(sum(num_constraints(model, F, S) for (F, S) in list_of_constraint_types(model)))")
 
     println("\n" * "="^80)
@@ -122,6 +144,7 @@ if solve_full_model
     # Check if the model has a feasible solution
     t_status = termination_status(model)
     p_status = primal_status(model)
+
     if t_status == MOI.OPTIMAL || t_status == MOI.FEASIBLE_POINT
         obj_value = objective_value(model)
         println("\nOptimal objective value: ", obj_value)
@@ -135,11 +158,20 @@ if solve_full_model
         sol[:h] = value.(vars[:h])
         sol[:nu] = value(vars[:nu])
         sol[:λ] = value(vars[:λ])
-        sol[:t] = value(vars[:t])
         sol[:ψ0] = value.(vars[:ψ0])
         # Save scenario values (examples)
         sol[:ηhat] = value.(vars[:ηhat])
         sol[:ηtilde] = value.(vars[:ηtilde])
+        sol[:Yts_tilde] = value.(vars[:Yts_tilde])
+        sol[:Ytilde] = value.(vars[:Ytilde])
+        sol[:Πhat] = value.(vars[:Πhat])
+        sol[:Πtilde] = value.(vars[:Πtilde])
+        sol[:Φhat] = value.(vars[:Φhat])
+        sol[:Φtilde] = value.(vars[:Φtilde])
+        sol[:Ψhat] = value.(vars[:Ψhat])
+        sol[:Ψtilde] = value.(vars[:Ψtilde])
+        sol[:μhat] = value.(vars[:μhat])
+        sol[:μtilde] = value.(vars[:μtilde])
         # Optionally save any other variables you want (e.g., dual variables)
         # ...
         println("interdicted arcs: ", [i for i in 1:length(sol[:x]) if sol[:x][i] == 1.0])
@@ -152,7 +184,6 @@ if solve_full_model
             JLD2.save("full_model_solution.jld2", "sol", sol)
         # Save the optimal objective value separately as a plain text file
         try
-            @info "Saving optimal objective value to txt file..."
             open("full_model_objective_value.txt", "w") do io
                 println(io, obj_value)
             end
@@ -215,12 +246,12 @@ else
     println("Loaded x: ", x_sol)
     println("Loaded λ: ", λ_sol)
     println("Loaded h: ", h_sol)
+
     # Build continuous conic subproblem
-    model, vars = build_full_2DRNDP_model(network, S, ϕU, λU, γ, w, v,uncertainty_set, x_fixed=x_sol, λ_fixed=λ_sol, h_fixed=h_sol, ψ0_fixed=ψ0_sol, optimizer=Mosek.Optimizer)
+    model, vars = build_full_2DRNDP_model(network, S, ϕU, λU, γ, w, v,uncertainty_set, optimizer=MosekTools.Optimizer, x_fixed=x_sol, λ_fixed=λ_sol, h_fixed=h_sol, ψ0_fixed=ψ0_sol)
+    add_sparsity_constraints!(model, vars, network, S)
     optimize!(model)
-    println("here")
-    @infiltrate
-    # # objective value 파일에서 읽기 (간단하게)
+    # objective value 파일에서 읽기 (간단하게)
     obj_val = isfile("full_model_objective_value.txt") ? parse(Float64, readline(open("full_model_objective_value.txt"))) : nothing
     new_obj = termination_status(model) == MOI.OPTIMAL ? objective_value(model) : nothing
     if obj_val !== nothing && new_obj !== nothing
@@ -229,19 +260,25 @@ else
         if isapprox(obj_val, new_obj; atol=1e-4, rtol=1e-6)
             println("✓ Objective values match within tolerance.")
         else
-            @infiltrate
             println("✗ Objective mismatch! Difference: ", abs(obj_val - new_obj))
         end
     elseif obj_val === nothing
         println("No stored objective value found in file for comparison.")
     else
-        @infiltrate
         println("Model did not solve to optimality, cannot compare objective values.")
     end
-
+    # using Dualization
+    # dual_model = dualize(model; dual_names = DualNames("dual_var_", "dual_con_"))
+    # Convert DenseAxisArray to regular array for findall
+    Yts_tilde_array = Array(sol[:Yts_tilde])
+    inds = findall(>(0.01), Yts_tilde_array)
+    vals = Yts_tilde_array[inds]
+    println("Indices where Yts_tilde > 0.01: ", inds)
+    println("Values: ", vals)
+    # Print elements of sol[:Φtilde] > 0.01, including their indices
     # Build the dualized outer subproblem using the loaded x, λ, h solution values
     # Assumes you have access to the following objects: network, S, ϕU, γ, w, v, uncertainty_set
-    dual_model, dual_vars, data = build_dualized_outer_subproblem(network, S, ϕU, λU, γ, w, v, uncertainty_set, λ_sol, x_sol, h_sol, ψ0_sol)
+    dual_model, dual_vars = build_dualized_outer_subproblem(network, S, ϕU, λU, γ, w, v, uncertainty_set, MosekTools.Optimizer, λ_sol, x_sol, h_sol, ψ0_sol)
     optimize!(dual_model)
     # Compare the optimal objective values of primal (obj_val, loaded) and dual (dual_model)
     dual_obj_val = termination_status(dual_model) == MOI.OPTIMAL ? objective_value(dual_model) : nothing
@@ -250,10 +287,11 @@ else
         println("Dual model objective value:          ", dual_obj_val)
         obj_diff = abs(obj_val - dual_obj_val)
         if isapprox(obj_val, dual_obj_val; atol=1e-4, rtol=1e-6)
+            @infiltrate
             println("✓ Duality gap is vanished within tolerance.")
         else
-            println("✗ Duality gap exists! Duality gap: ", obj_diff)
             @infiltrate
+            println("✗ Duality gap exists! Duality gap: ", obj_diff)
         end
     else
         @infiltrate
@@ -261,4 +299,3 @@ else
     end
     println("Dualized outer subproblem built.")
 end
-

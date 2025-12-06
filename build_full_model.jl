@@ -426,3 +426,97 @@ function build_full_2DRNDP_model(network, S, ϕU, λU, γ, w, v, uncertainty_set
 
     return model, vars
 end
+
+function add_sparsity_constraints!(model, vars, network, S)
+    """
+    Add sparsity constraints to LDR coefficient matrices based on network adjacency structure.
+
+    This enforces that:
+    - Φ_L[s,i,j] = 0 if arcs i and j are NOT adjacent
+    - Π_L[s,i,j] = 0 if node i is NOT incident to arc j
+    - Similar for Ψ, Y matrices
+
+    # Arguments
+    - `model`: JuMP model
+    - `vars`: Dictionary containing decision variables
+    - `network`: GridNetworkData structure with adjacency information
+    - `S`: Number of scenarios
+
+    # Implementation Note
+    These constraints reduce the problem dimension by enforcing that LDR coefficients
+    are only non-zero for "nearby" arcs/nodes, which is physically reasonable since
+    decisions at one location should primarily depend on uncertainty at nearby locations.
+    """
+    num_arcs = length(network.arcs) - 1  # Exclude dummy arc
+    num_nodes = length(network.nodes)
+
+    println("\n" * "="^80)
+    println("ADDING SPARSITY CONSTRAINTS")
+    println("="^80)
+
+    # Extract LDR coefficient matrices from vars
+    Φhat_L = vars[:Φhat][:, :, 1:num_arcs]
+    Φtilde_L = vars[:Φtilde][:, :, 1:num_arcs]
+    Ψhat_L = vars[:Ψhat][:, :, 1:num_arcs]
+    Ψtilde_L = vars[:Ψtilde][:, :, 1:num_arcs]
+    Πhat_L = vars[:Πhat][:, :, 1:num_arcs]
+    Πtilde_L = vars[:Πtilde][:, :, 1:num_arcs]
+    Ytilde_L = vars[:Ytilde][:, :, 1:num_arcs]
+    Yts_tilde_L = vars[:Yts_tilde][:, :, 1:num_arcs]
+
+    # Count constraints
+    num_arc_sparsity = 0
+    num_node_sparsity = 0
+
+    # =========================================================================
+    # Arc-to-arc sparsity: Φ, Ψ, Y matrices
+    # =========================================================================
+    println("\nAdding arc-to-arc sparsity constraints...")
+
+    for s in 1:S, i in 1:num_arcs, j in 1:num_arcs
+        if !network.arc_adjacency[i,j]
+            # Φhat
+            @constraint(model, Φhat_L[s,i,j] == 0)
+            # Φtilde
+            @constraint(model, Φtilde_L[s,i,j] == 0)
+            # Ψhat
+            @constraint(model, Ψhat_L[s,i,j] == 0)
+            # Ψtilde
+            @constraint(model, Ψtilde_L[s,i,j] == 0)
+            # Ytilde
+            @constraint(model, Ytilde_L[s,i,j] == 0)
+            num_arc_sparsity += 5  # 5 constraints per (s,i,j)
+        end
+    end
+
+    # =========================================================================
+    # Node-to-arc sparsity: Π matrices
+    # =========================================================================
+    println("Adding node-to-arc sparsity constraints...")
+
+    for s in 1:S, i in 1:num_nodes-1, j in 1:num_arcs
+        if !network.node_arc_incidence[i,j]
+            # Πhat
+            @constraint(model, Πhat_L[s,i,j] == 0)
+            # Πtilde
+            @constraint(model, Πtilde_L[s,i,j] == 0)
+            
+            num_node_sparsity += 2  # 2 constraints per (s,i,j)
+        end
+    end
+
+    # =========================================================================
+    # Summary
+    # =========================================================================
+    total_sparsity = num_arc_sparsity + num_node_sparsity
+
+    println("\n" * "="^80)
+    println("SPARSITY CONSTRAINTS SUMMARY")
+    println("="^80)
+    println("Arc-to-arc constraints (Φ, Ψ, Y):  $num_arc_sparsity")
+    println("Node-to-arc constraints (Π):       $num_node_sparsity")
+    println("Total sparsity constraints:        $total_sparsity")
+    println("="^80 * "\n")
+
+    return nothing
+end

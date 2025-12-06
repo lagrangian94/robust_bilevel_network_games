@@ -9,10 +9,9 @@ using Mosek, MosekTools
 
 # Load network generator
 include("network_generator.jl")
-includet("sdp_build_uncertainty_set.jl")
-
+includet("build_uncertainty_set.jl")
+includet("build_full_model.jl")
 using .NetworkGenerator
-
 
 function build_robust_model(network, S, ϕU, w, v, uncertainty_set; optimizer=nothing)
     
@@ -39,9 +38,11 @@ function build_robust_model(network, S, ϕU, w, v, uncertainty_set; optimizer=no
     #             optimizer_with_attributes(Mosek.Optimizer, MOI.Silent() => false),
     #     )
     # )
-    model = Model(Mosek.Optimizer)
+
     if !isnothing(optimizer)
         set_optimizer(model, optimizer)
+    else
+        model = Model(Mosek.Optimizer)
     end
     
     println("Building 2DRNDP model...")
@@ -63,10 +64,10 @@ function build_robust_model(network, S, ϕU, w, v, uncertainty_set; optimizer=no
     # --- Vector variables ---
     # x: interdiction decisions (binary for interdictable arcs, 0 for others)
     @variable(model, x[1:num_arcs]>=0)#, Bin)
-    @constraint(model, [i=1:num_arcs], x[i] <= 0)
+    @constraint(model, [i=1:num_arcs], x[i] <= γ)
     # h: initial resource allocation
     @variable(model, h[1:num_arcs] >= 0)
-    @constraint(model, sum(h) == 0.0)
+    @constraint(model, sum(h) <= w)
     
     # Y: |A| × |A| matrix (follower's additional LDR coefficient)
     @variable(model, Ytilde[s=1:S, 1:num_arcs, 1:num_arcs+1], lower_bound= -ϕU, upper_bound = ϕU)  
@@ -119,6 +120,12 @@ function build_robust_model(network, S, ϕU, w, v, uncertainty_set; optimizer=no
         @constraint(model, mu[s,:]'*r_bar .- t1[s] .+ Yts_tilde_0[s] .>= 0.0)
     end
 
+    for s in 1:S, i in 1:num_arcs, j in 1:num_arcs
+        if !network.arc_adjacency[i,j]
+            # Ytilde
+            @constraint(model, Ytilde_L[s,i,j] == 0)
+        end
+    end
      # =========================================================================
     # Return model and variables
     # =========================================================================
@@ -142,18 +149,12 @@ function build_robust_model(network, S, ϕU, w, v, uncertainty_set; optimizer=no
                                  num_constraints(model, AffExpr, MOI.EqualTo{Float64}))")
     println("  - Binary variables: $(sum(is_binary(x[i]) for i in 1:num_arcs))")
     println("="^80)
-    optimize!(model)
-    @infiltrate
     return model, vars
 end
-
-println("="^80)
-println("TESTING FULL 2DRNDP MODEL CONSTRUCTION")
-println("="^80)
-
-# Model parameters
-S = 3  # Number of scenarios
-ϕU = 100.0  # Upper bound on interdiction effectiveness
+S = 2# Number of scenarios
+ϕU = 10.0  # Upper bound on interdiction effectiveness
+λU = 10.0  # Upper bound on λ
+γ = 2.0  # Interdiction budget
 w = 1.0  # Budget weight
 v = 1.0  # Interdiction effectiveness parameter (NOT the decision variable ν!)
 
@@ -162,8 +163,15 @@ v = 1.0  # Interdiction effectiveness parameter (NOT the decision variable ν!)
 println("\n[1] Generating 3×3 grid network...")
 network = generate_grid_network(3, 3, seed=42)
 print_network_summary(network)
-capacities, F, μ = generate_capacity_scenarios(length(network.arcs), S, seed=120)
+@infiltrate
+# ===== Use Factor Model =====
+# capacities, F = generate_capacity_scenarios(length(network.arcs), network.interdictable_arcs, S, seed=120)
+# ===== Use Uniform Model =====
+capacities, F = generate_capacity_scenarios_uniform_model(length(network.arcs), S, seed=42)
 
+# S=1
+# capacities = capacities[:,2]
+# @infiltrate
 # Build uncertainty set
 # ===== BUILD ROBUST COUNTERPART MATRICES R AND r =====
 println("\n" * "="^80)
@@ -172,13 +180,17 @@ println("="^80)
 
 # Remove dummy arc from capacity scenarios (|A| = regular arcs only)
 capacity_scenarios_regular = capacities[1:end-1, :]  # Remove last row (dummy arc)
-epsilon = 0.5  # Robustness parameter
-
+epsilon = 0.0  # Robustness parameter
+# @infiltrate
 println("\n[3] Building R and r matrices...")
 println("Number of regular arcs |A|: $(size(capacity_scenarios_regular, 1))")
 println("Number of scenarios S: $S")
 println("Robustness parameter ε: $epsilon")
 
-R, r_dict, xi_bar_dict = build_robust_counterpart_matrices(capacity_scenarios_regular, epsilon)
-uncertainty_set = Dict(:R => R, :r_dict => r_dict, :xi_bar_dict => xi_bar_dict, :epsilon => epsilon)
-build_robust_model(network, S, ϕU, w, v, uncertainty_set)
+R, r_dict, xi_bar = build_robust_counterpart_matrices(capacity_scenarios_regular, epsilon)
+uncertainty_set = Dict(:R => R, :r_dict => r_dict, :xi_bar => xi_bar, :epsilon => epsilon)
+model, vars = build_robust_model(network, S, ϕU, w, v, uncertainty_set)
+# @constraint(model, vars[:x][[9,10]] .== 1.0)
+optimize!(model)
+
+@infiltrate

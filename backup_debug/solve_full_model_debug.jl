@@ -47,7 +47,7 @@ println("Robustness parameter ε: $epsilon")
 
 R, r_dict = build_robust_counterpart_matrices(capacity_scenarios_regular, epsilon)
 uncertainty_set = Dict(:R => R, :r_dict => r_dict, :epsilon => epsilon)
-
+@infiltrate
 solve_full_model = true
 if solve_full_model
     println("\n[2] Building model...")

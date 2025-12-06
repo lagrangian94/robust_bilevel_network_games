@@ -211,9 +211,22 @@ function build_dualized_outer_subproblem(network, S, ϕU, λU, γ, w, v, uncerta
 
         Adj_0_Mhat_12 = -D_s * Mhat_12
         Adj_0_Mhat_22 = -xi_bar[s] * Mhat_22
-        @constraint(model, hcat(Adj_L_Mhat_11+Adj_L_Mhat_12+Adj_L_Mhat_22, Adj_0_Mhat_12+Adj_0_Mhat_22) + Uhat2[s,:,:] - Uhat3[s,:,:]
-        + hcat(-1*(I_0*Zhat1_1[s,:,:] + Zhat1_3[s,:,:]) + Zhat2[s,:,:], I_0*βhat1_1[s,:] + βhat1_3[s,:] - βhat2[s,:])
-        + Phat1_Φ[s,:,:] - Phat2_Φ[s,:,:] .== 0)
+
+        ## Φhat_L constraint
+        lhs_L = Adj_L_Mhat_11+Adj_L_Mhat_12+Adj_L_Mhat_22 + Uhat2[s,:,1:num_arcs] - Uhat3[s,:,1:num_arcs]
+        -I_0*Zhat1_1[s,:,:] - Zhat1_3[s,:,:] + Zhat2[s,:,:] + Phat1_Φ[s,:,1:num_arcs] - Phat2_Φ[s,:,1:num_arcs]
+
+        # Original LDR constraints
+        # @constraint(model, Adj_L_Mhat_11+Adj_L_Mhat_12+Adj_L_Mhat_22 + Uhat2[s,:,1:num_arcs] - Uhat3[s,:,1:num_arcs]
+        # -I_0*Zhat1_1[s,:,:] - Zhat1_3[s,:,:] + Zhat2[s,:,:] + Phat1_Φ[s,:,1:num_arcs] - Phat2_Φ[s,:,1:num_arcs] .== 0)
+
+        for i in 1:num_arcs, j in 1:num_arcs
+            if network.arc_adjacency[i,j]
+                @constraint(model, lhs_L[i,j] == 0)
+            end
+        end
+        ## Φhat_0 constraint
+        @constraint(model, Adj_0_Mhat_12+Adj_0_Mhat_22 + Uhat2[s,:,end] - Uhat3[s,:,end] + I_0*βhat1_1[s,:] + βhat1_3[s,:] - βhat2[s,:] + Phat1_Φ[s,:,end] - Phat2_Φ[s,:,end] .== 0)
         # --- From Ψhat
         Adj_L_Mhat_11 = v*D_s*Mhat_11*D_s'
         Adj_L_Mhat_12 = v*(D_s*Mhat_12*xi_bar[s]' + xi_bar[s]*Mhat_12'*D_s')
@@ -221,7 +234,16 @@ function build_dualized_outer_subproblem(network, S, ϕU, λU, γ, w, v, uncerta
 
         Adj_0_Mhat_12 = v*D_s * Mhat_12
         Adj_0_Mhat_22 = v*xi_bar[s] * Mhat_22
-        @constraint(model, hcat(Adj_L_Mhat_11+Adj_L_Mhat_12+Adj_L_Mhat_22, Adj_0_Mhat_12+Adj_0_Mhat_22) - Uhat1[s,:,:] - Uhat2[s,:,:] + Uhat3[s,:,:] .<= 0)
+        ## Ψhat_L constraint
+        lhs_L = Adj_L_Mhat_11+Adj_L_Mhat_12+Adj_L_Mhat_22 -Uhat1[s,:,1:num_arcs] - Uhat2[s,:,1:num_arcs] + Uhat3[s,:,1:num_arcs]
+        # @constraint(model, Adj_L_Mhat_11+Adj_L_Mhat_12+Adj_L_Mhat_22 -Uhat1[s,:,1:num_arcs] - Uhat2[s,:,1:num_arcs] + Uhat3[s,:,1:num_arcs] .<= 0.0)
+        for i in 1:num_arcs, j in 1:num_arcs
+            if network.arc_adjacency[i,j]
+                @constraint(model, lhs_L[i,j] <= 0)
+            end
+        end
+        ## Ψhat_0 constraint
+        @constraint(model, Adj_0_Mhat_12+Adj_0_Mhat_22 - Uhat1[s,:,end] - Uhat2[s,:,end] + Uhat3[s,:,end] .<= 0.0)
         # --- From Φtilde ---
         Adj_L_Mtilde_11 = -D_s*Mtilde_11*D_s'
         Adj_L_Mtilde_12 = -(D_s*Mtilde_12*xi_bar[s]' + xi_bar[s]*Mtilde_12'*D_s')
@@ -229,9 +251,18 @@ function build_dualized_outer_subproblem(network, S, ϕU, λU, γ, w, v, uncerta
 
         Adj_0_Mtilde_12 = -D_s * Mtilde_12
         Adj_0_Mtilde_22 = -xi_bar[s] * Mtilde_22
-        @constraint(model, hcat(Adj_L_Mtilde_11+Adj_L_Mtilde_12+Adj_L_Mtilde_22, Adj_0_Mtilde_12+Adj_0_Mtilde_22) + Utilde2[s,:,:] - Utilde3[s,:,:]
-        + hcat(-I_0*Ztilde1_1[s,:,:] - Ztilde1_5[s,:,:] + Ztilde2[s,:,:], I_0*βtilde1_1[s,:] + βtilde1_5[s,:] - βtilde2[s,:])
-        + Ptilde1_Φ[s,:,:] - Ptilde2_Φ[s,:,:] .== 0)
+        # --- Φtilde_L constraint
+        lhs_L = Adj_L_Mtilde_11+Adj_L_Mtilde_12+Adj_L_Mtilde_22 + Utilde2[s,:,1:num_arcs] - Utilde3[s,:,1:num_arcs]
+        -I_0*Ztilde1_1[s,:,:] - Ztilde1_5[s,:,:] + Ztilde2[s,:,:] + Ptilde1_Φ[s,:,1:num_arcs] - Ptilde2_Φ[s,:,1:num_arcs]
+        # @constraint(model, Adj_L_Mtilde_11+Adj_L_Mtilde_12+Adj_L_Mtilde_22 + Utilde2[s,:,1:num_arcs] - Utilde3[s,:,1:num_arcs]
+        # -I_0*Ztilde1_1[s,:,:] - Ztilde1_5[s,:,:] + Ztilde2[s,:,:] + Ptilde1_Φ[s,:,1:num_arcs] - Ptilde2_Φ[s,:,1:num_arcs] .== 0)
+        for i in 1:num_arcs, j in 1:num_arcs
+            if network.arc_adjacency[i,j]
+                @constraint(model, lhs_L[i,j] == 0)
+            end
+        end
+        # --- Φtilde_0 constraint
+        @constraint(model, Adj_0_Mtilde_12+Adj_0_Mtilde_22 + Utilde2[s,:,end] - Utilde3[s,:,end] + I_0*βtilde1_1[s,:] + βtilde1_5[s,:] - βtilde2[s,:] + Ptilde1_Φ[s,:,end] - Ptilde2_Φ[s,:,end] .== 0)
         # --- From Ψtilde ---
         Adj_L_Mtilde_11 = v*D_s*Mtilde_11*D_s'
         Adj_L_Mtilde_12 = v*(D_s*Mtilde_12*xi_bar[s]' + xi_bar[s]*Mtilde_12'*D_s')
@@ -239,27 +270,62 @@ function build_dualized_outer_subproblem(network, S, ϕU, λU, γ, w, v, uncerta
 
         Adj_0_Mtilde_12 = v*D_s * Mtilde_12
         Adj_0_Mtilde_22 = v*xi_bar[s] * Mtilde_22
-        @constraint(model, hcat(Adj_L_Mtilde_11+Adj_L_Mtilde_12+Adj_L_Mtilde_22, Adj_0_Mtilde_12+Adj_0_Mtilde_22) - Utilde1[s,:,:] - Utilde2[s,:,:] + Utilde3[s,:,:] .<= 0)
+        # --- Ψtilde_L constraint
+        lhs_L = Adj_L_Mtilde_11+Adj_L_Mtilde_12+Adj_L_Mtilde_22 - Utilde1[s,:,1:num_arcs] - Utilde2[s,:,1:num_arcs] + Utilde3[s,:,1:num_arcs]
+        # @constraint(model, Adj_L_Mtilde_11+Adj_L_Mtilde_12+Adj_L_Mtilde_22 - Utilde1[s,:,1:num_arcs] - Utilde2[s,:,1:num_arcs] + Utilde3[s,:,1:num_arcs] .<= 0.0)
+        for i in 1:num_arcs, j in 1:num_arcs
+            if network.arc_adjacency[i,j]
+                @constraint(model, lhs_L[i,j] <= 0.0)
+            end
+        end
+        # --- Ψtilde_0 constraint
+        @constraint(model, Adj_0_Mtilde_12+Adj_0_Mtilde_22 - Utilde1[s,:,end] - Utilde2[s,:,end] + Utilde3[s,:,end] .<= 0.0)
         # --- From Ytilde_ts ---
         Adj_L_Mtilde_12 = D_s*Mtilde_12
         Adj_L_Mtilde_22 = xi_bar[s] * Mtilde_22
         Adj_0_Mtilde_22 = Mtilde_22
-        @constraint(model, hcat(adjoint(Adj_L_Mtilde_12+Adj_L_Mtilde_22), Adj_0_Mtilde_22) + hcat(N_ts' * Ztilde1_2[s,:,:], -N_ts' * βtilde1_2[s,:])
-        + Ptilde1_Yts[s,:]' - Ptilde2_Yts[s,:]' .== 0)
+        # --- Ytilde_ts_L constraint
+        @constraint(model, adjoint(Adj_L_Mtilde_12+Adj_L_Mtilde_22) + N_ts' * Ztilde1_2[s,:,:] + Ptilde1_Yts[s,1:num_arcs]' - Ptilde2_Yts[s,1:num_arcs]' .== 0)
+        # --- Ytilde_ts_0 constraint
+        @constraint(model, Adj_0_Mtilde_22 - N_ts' * βtilde1_2[s,:] + Ptilde1_Yts[s,end]' - Ptilde2_Yts[s,end]' .== 0)
     end
     # --- From μhat ---
     @constraint(model, [s=1:S, k=1:num_arcs], βhat2[s,k] <= α[k])
     # --- From μtilde ---
     @constraint(model, [s=1:S, k=1:num_arcs], βtilde2[s,k] <= α[k])
     # --- From Πhat ---
-    @constraint(model, [s=1:S], hcat(-N*Zhat1_1[s,:,:]-Zhat1_2[s,:,:], N*βhat1_1[s,:]+ βhat1_2[s,:])
-    + Phat1_Π[s,:,:] - Phat2_Π[s,:,:] .== 0.0)
+    # --- Πhat_L constraint
+    for i in 1:(num_nodes-1), j in 1:num_arcs
+        if network.node_arc_incidence[i,j]
+            @constraint(model, [s=1:S], (-N*Zhat1_1[s,:,:])[i,j]-Zhat1_2[s,i,j] + Phat1_Π[s,i,j] - Phat2_Π[s,i,j] == 0.0)
+        end
+    end
+    # @constraint(model, [s=1:S], hcat(-N*Zhat1_1[s,:,:]-Zhat1_2[s,:,:], N*βhat1_1[s,:]+ βhat1_2[s,:])
+    # + Phat1_Π[s,:,:] - Phat2_Π[s,:,:] .== 0.0)
+    # --- Πhat_0 constraint
+    @constraint(model, [s=1:S], N*βhat1_1[s,:]+ βhat1_2[s,:] + Phat1_Π[s,:,end] - Phat2_Π[s,:,end] .== 0)
     # --- From Πtilde ---
-    @constraint(model, [s=1:S], hcat(-N*Ztilde1_1[s,:,:]-Ztilde1_4[s,:,:], N*βtilde1_1[s,:]+ βtilde1_4[s,:])
-    + Ptilde1_Π[s,:,:] - Ptilde2_Π[s,:,:] .== 0.0)
+    # --- Πtilde_L constraint
+    for i in 1:(num_nodes-1), j in 1:num_arcs
+        if network.node_arc_incidence[i,j]
+            @constraint(model, [s=1:S], (-N*Ztilde1_1[s,:,:])[i,j]-Ztilde1_4[s,i,j] + Ptilde1_Π[s,i,j] - Ptilde2_Π[s,i,j] == 0.0)
+        end
+    end
+    # @constraint(model, [s=1:S], hcat(-N*Ztilde1_1[s,:,:]-Ztilde1_4[s,:,:], N*βtilde1_1[s,:]+ βtilde1_4[s,:])
+    # + Ptilde1_Π[s,:,:] - Ptilde2_Π[s,:,:] .== 0.0)
+    # --- Πtilde_0 constraint
+    @constraint(model, [s=1:S], N*βtilde1_1[s,:]+ βtilde1_4[s,:] + Ptilde1_Π[s,:,end] - Ptilde2_Π[s,:,end] .== 0)
     # --- From Ytilde ---
-    @constraint(model, [s=1:S], hcat(N_y' * Ztilde1_2[s,:,:]+Ztilde1_3[s,:,:]-Ztilde1_6[s,:,:], -N_y' * βtilde1_2[s,:]-βtilde1_3[s,:]+βtilde1_6[s,:])
-    + Ptilde1_Y[s,:,:] - Ptilde2_Y[s,:,:] .== 0.0)
+    # --- From Ytilde_L constraint
+    for i in 1:num_arcs, j in 1:num_arcs
+        if network.arc_adjacency[i,j]
+            @constraint(model, [s=1:S], (N_y' * Ztilde1_2[s,:,:])[i,j]+Ztilde1_3[s,i,j]-Ztilde1_6[s,i,j] + Ptilde1_Y[s,i,j] - Ptilde2_Y[s,i,j] == 0.0)
+        end
+    end
+    # @constraint(model, [s=1:S], hcat(N_y' * Ztilde1_2[s,:,:]+Ztilde1_3[s,:,:]-Ztilde1_6[s,:,:], -N_y' * βtilde1_2[s,:]-βtilde1_3[s,:]+βtilde1_6[s,:])
+    # + Ptilde1_Y[s,:,:] - Ptilde2_Y[s,:,:] .== 0.0)
+    # --- Ytilde_0 constraint
+    @constraint(model, [s=1:S], -N_y' * βtilde1_2[s,:]-βtilde1_3[s,:]+βtilde1_6[s,:]+ Ptilde1_Y[s,:,end] - Ptilde2_Y[s,:,end] .== 0)
     # --- From Λhat1 ---
     @constraint(model, [s=1:S], Zhat1[s,:,:]*R[s]' + βhat1[s,:]*r_dict[s]' + Γhat1[s,:,:] .== 0.0)
     # --- From Λhat2 ---
