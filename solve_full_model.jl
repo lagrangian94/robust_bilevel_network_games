@@ -31,7 +31,7 @@ function show_nonzero(var; tol=1e-8)
     end
 end
 # Model parameters
-S = 2# Number of scenarios
+S = 1# Number of scenarios
 ϕU = 10.0  # Upper bound on interdiction effectiveness
 λU = 10.0  # Upper bound on λ
 γ = 2.0  # Interdiction budget
@@ -60,7 +60,7 @@ println("="^80)
 
 # Remove dummy arc from capacity scenarios (|A| = regular arcs only)
 capacity_scenarios_regular = capacities[1:end-1, :]  # Remove last row (dummy arc)
-epsilon = 0.5  # Robustness parameter
+epsilon = 0.9  # Robustness parameter
 # @infiltrate
 println("\n[3] Building R and r matrices...")
 println("Number of regular arcs |A|: $(size(capacity_scenarios_regular, 1))")
