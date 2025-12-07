@@ -26,3 +26,9 @@ lambda가 uniform model에서도 seed 값에 따라 0에 가깝게 나올때도 
 =>lambda는 특정 값 이하로는 다 optimal이 나오나? 대충 2이하로는 아무리 작아도 다 optimal이 나오는데... lambda의 ub 찾을수있나?
 lambda를 variable transform하기 이전을 보면 걸리는게 pi_ts >= lambda 밖에 없음. 즉, node t의 dual variable의 lower bound를 제한하는 역할만함.
 목적함수에는 b_x(xi)pi 를 풀어써서 lambda가 작아져도 scaling해서 optimal인지 보기.
+
+4. 
+
+\xi를 1~10 사이로, D를 1/10로.
+Hypatia로 풀면 some primal equality constraints are inconsistent (residual 7.958078640513122e-13, tolerance 2.220446049250313e-13)
+에러나는데 이게 어디서발생하는지 추적할수있다면 수치 디버깅이 더 쉬울듯
