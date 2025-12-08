@@ -21,14 +21,14 @@ Arguments:
 - num_regular_arcs: regular arcs 개수 |A| (dummy arc 제외)
 """
 function build_R_matrix(xi_hat::Vector{Float64})
-    # num_regular_arcs = length(xi_hat)
-    # dim = num_regular_arcs
-    # R = vcat(zeros(1, dim), Matrix{Float64}(I, dim, dim))
+    num_regular_arcs = length(xi_hat)
+    dim = num_regular_arcs
+    R = vcat(zeros(1, dim), Matrix{Float64}(I, dim, dim))
 
-    D = diagm(xi_hat)
-    D_inv = inv(D)
-    dim = length(xi_hat)
-    R = vcat(zeros(1, dim), D_inv)
+    # D = diagm(xi_hat)
+    # D_inv = inv(D)
+    # dim = length(xi_hat)
+    # R = vcat(zeros(1, dim), D_inv)
     return R
 end
 
@@ -44,7 +44,8 @@ function build_r_vector(num_regular_arcs::Int, xi_hat::Vector{Float64}, epsilon:
     end
     # r = vcat(-epsilon, xi_hat)
 
-    r_lower = ones(num_regular_arcs) # D_inv*xi_hat = ones(num_regular_arcs)
+    # r_lower = ones(num_regular_arcs) # D_inv*xi_hat = ones(num_regular_arcs)
+    r_lower = zeros(num_regular_arcs)
     r = vcat(-epsilon, r_lower)
     return r
 end

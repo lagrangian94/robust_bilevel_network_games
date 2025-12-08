@@ -1,6 +1,6 @@
 using JuMP
 using Gurobi, Mosek, MosekTools
-using HiGHS
+using HiGHS, Hypatia
 using LinearAlgebra
 using Infiltrator
 # Load modules
@@ -38,6 +38,8 @@ S = 1# Number of scenarios
 w = 1.0  # Budget weight
 v = 1.0  # Interdiction effectiveness parameter (NOT the decision variable ν!)
 
+mip_solver = Gurobi.Optimizer
+conic_solver = Mosek.Optimizer
 
 # Generate a small test network
 println("\n[1] Generating 3×3 grid network...")
@@ -60,7 +62,7 @@ println("="^80)
 
 # Remove dummy arc from capacity scenarios (|A| = regular arcs only)
 capacity_scenarios_regular = capacities[1:end-1, :]  # Remove last row (dummy arc)
-epsilon = 0.9  # Robustness parameter
+epsilon = 0.1  # Robustness parameter
 # @infiltrate
 println("\n[3] Building R and r matrices...")
 println("Number of regular arcs |A|: $(size(capacity_scenarios_regular, 1))")
@@ -69,7 +71,7 @@ println("Robustness parameter ε: $epsilon")
 
 R, r_dict, xi_bar = build_robust_counterpart_matrices(capacity_scenarios_regular, epsilon)
 uncertainty_set = Dict(:R => R, :r_dict => r_dict, :xi_bar => xi_bar, :epsilon => epsilon)
-solve_full_model = false
+solve_full_model = true
 # model, vars = build_full_2SP_model(network, S, ϕU, λU, γ, w, v,uncertainty_set)
 # optimize!(model)
 # @infiltrate
@@ -84,7 +86,7 @@ if solve_full_model
     println("  Note: v is a parameter in COP matrix [Φ - v*W]")
     println("        ν (nu) is a decision variable in objective t + w*ν")
     # Build model (without optimizer for initial testing)
-    model, vars = build_full_2DRNDP_model(network, S, ϕU, λU, γ, w, v,uncertainty_set)
+    model, vars = build_full_2DRNDP_model(network, S, ϕU, λU, γ, w, v,uncertainty_set, mip_solver=mip_solver, conic_solver=conic_solver)
     add_sparsity_constraints!(model, vars, network, S)
     # model, vars = build_full_2SP_model(network, S, ϕU, λU, γ, w, v,uncertainty_set)
     println("\n[3] Model structure verification:")
@@ -248,8 +250,9 @@ else
     println("Loaded h: ", h_sol)
 
     # Build continuous conic subproblem
-    model, vars = build_full_2DRNDP_model(network, S, ϕU, λU, γ, w, v,uncertainty_set, optimizer=MosekTools.Optimizer, x_fixed=x_sol, λ_fixed=λ_sol, h_fixed=h_sol, ψ0_fixed=ψ0_sol)
+    model, vars = build_full_2DRNDP_model(network, S, ϕU, λU, γ, w, v,uncertainty_set, conic_solver=conic_solver, x_fixed=x_sol, λ_fixed=λ_sol, h_fixed=h_sol, ψ0_fixed=ψ0_sol)
     add_sparsity_constraints!(model, vars, network, S)
+    @infiltrate
     optimize!(model)
     # objective value 파일에서 읽기 (간단하게)
     obj_val = isfile("full_model_objective_value.txt") ? parse(Float64, readline(open("full_model_objective_value.txt"))) : nothing
@@ -270,6 +273,7 @@ else
     # using Dualization
     # dual_model = dualize(model; dual_names = DualNames("dual_var_", "dual_con_"))
     # Convert DenseAxisArray to regular array for findall
+    @infiltrate
     Yts_tilde_array = Array(sol[:Yts_tilde])
     inds = findall(>(0.01), Yts_tilde_array)
     vals = Yts_tilde_array[inds]
