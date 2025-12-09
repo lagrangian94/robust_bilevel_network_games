@@ -169,7 +169,6 @@ function build_dualized_outer_subproblem(network, S, ϕU, λU, γ, w, v, uncerta
     obj_term4 = [sum(Ztilde1_3[s, :, :] .* (diag_λ_ψ * diagm(xi_bar[s]))) for s=1:S]
     obj_term5 = [(λ*d0')* βtilde1_1[s,:] for s=1:S] #이거만 maximize하면 dual infeasible
     obj_term6 = [-(h+diag_λ_ψ*xi_bar[s])'* βtilde1_3[s,:] for s=1:S]
-
     obj_term_ub_hat = [-ϕU * sum(Phat1_Φ[s,:,:]) - ϕU * sum(Phat1_Π[s,:,:]) for s=1:S]
     obj_term_lb_hat = [-ϕU * sum(Phat2_Φ[s,:,:]) - ϕU * sum(Phat2_Π[s,:,:]) for s=1:S]
     obj_term_ub_tilde = [-ϕU * sum(Ptilde1_Φ[s,:,:]) - ϕU * sum(Ptilde1_Π[s,:,:]) - ϕU * sum(Ptilde1_Y[s,:,:]) - ϕU * sum(Ptilde1_Yts[s,:]) for s=1:S]
@@ -323,12 +322,48 @@ function build_dualized_outer_subproblem(network, S, ϕU, λU, γ, w, v, uncerta
     # --- From Λtilde2 ---
     @constraint(model, [s=1:S], Ztilde2[s,:,:]*R[s]' + βtilde2[s,:]*r_dict[s]' + Γtilde2[s,:,:] .== 0.0)
 
+    vars = Dict(
+        :Mhat => Mhat,
+        :Mtilde => Mtilde,
+        :Zhat1 => Zhat1,
+        :Zhat2 => Zhat2,
+        :Ztilde1 => Ztilde1,
+        :Ztilde2 => Ztilde2,
+        :Γhat1 => Γhat1,
+        :Γhat2 => Γhat2,
+        :Γtilde1 => Γtilde1,
+        :Γtilde2 => Γtilde2,
+        :Phat1_Φ => Phat1_Φ,
+        :Phat1_Π => Phat1_Π,
+        :Phat2_Φ => Phat2_Φ,
+        :Phat2_Π => Phat2_Π,
+        :Ptilde1_Φ => Ptilde1_Φ,
+        :Ptilde1_Π => Ptilde1_Π,
+        :Ptilde2_Φ => Ptilde2_Φ,
+        :Ptilde2_Π => Ptilde2_Π,
+        :Ptilde1_Y => Ptilde1_Y,
+        :Ptilde1_Yts => Ptilde1_Yts,
+        :Ptilde2_Y => Ptilde2_Y,
+        :Ptilde2_Yts => Ptilde2_Yts,
+        :Uhat1 => Uhat1,
+        :Uhat3 => Uhat3,
+        :Utilde1 => Utilde1,
+        :Utilde3 => Utilde3,
+        :βhat1_1 => βhat1_1,
+        :βtilde1_1 => βtilde1_1,
+        :βtilde1_3 => βtilde1_3,
+        :Ztilde1_3 => Ztilde1_3,
+    )
+
+    data = Dict(
+        :E => E,
+        :v => v,
+        :ϕU => ϕU,
+        :S => S,
+        :d0 => d0,
+        :uncertainty_set => uncertainty_set,
+    )
 
 
-
-
-
-
-
-    return model, vars
+    return model, vars, data
 end

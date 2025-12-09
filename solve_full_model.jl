@@ -8,7 +8,7 @@ using Revise
 includet("network_generator.jl")
 includet("build_uncertainty_set.jl")
 includet("build_full_model.jl")
-includet("dualized_outer_subprob.jl")
+includet("build_dualized_outer_subprob.jl")
 includet("build_nominal_sp.jl")
 using .NetworkGenerator: generate_grid_network, generate_capacity_scenarios_factor_model, generate_capacity_scenarios_uniform_model, print_network_summary
 
@@ -31,7 +31,7 @@ function show_nonzero(var; tol=1e-8)
     end
 end
 # Model parameters
-S = 3# Number of scenarios
+S = 1# Number of scenarios
 ϕU = 10.0  # Upper bound on interdiction effectiveness
 λU = 10.0  # Upper bound on λ
 γ = 2.0  # Interdiction budget
@@ -71,7 +71,7 @@ println("Robustness parameter ε: $epsilon")
 
 R, r_dict, xi_bar = build_robust_counterpart_matrices(capacity_scenarios_regular, epsilon)
 uncertainty_set = Dict(:R => R, :r_dict => r_dict, :xi_bar => xi_bar, :epsilon => epsilon)
-solve_full_model = false
+solve_full_model = true
 # model, vars = build_full_2SP_model(network, S, ϕU, λU, γ, w, v,uncertainty_set)
 # optimize!(model)
 # @infiltrate
@@ -272,7 +272,6 @@ else
     # using Dualization
     # dual_model = dualize(model; dual_names = DualNames("dual_var_", "dual_con_"))
     # Convert DenseAxisArray to regular array for findall
-    @infiltrate
     Yts_tilde_array = Array(sol[:Yts_tilde])
     inds = findall(>(0.01), Yts_tilde_array)
     vals = Yts_tilde_array[inds]
@@ -281,7 +280,8 @@ else
     # Print elements of sol[:Φtilde] > 0.01, including their indices
     # Build the dualized outer subproblem using the loaded x, λ, h solution values
     # Assumes you have access to the following objects: network, S, ϕU, γ, w, v, uncertainty_set
-    dual_model, dual_vars = build_dualized_outer_subproblem(network, S, ϕU, λU, γ, w, v, uncertainty_set, MosekTools.Optimizer, λ_sol, x_sol, h_sol, ψ0_sol)
+
+    dual_model, dual_vars, _ = build_dualized_outer_subproblem(network, S, ϕU, λU, γ, w, v, uncertainty_set, MosekTools.Optimizer, λ_sol, x_sol, h_sol, ψ0_sol)
     optimize!(dual_model)
     # Compare the optimal objective values of primal (obj_val, loaded) and dual (dual_model)
     dual_obj_val = termination_status(dual_model) == MOI.OPTIMAL ? objective_value(dual_model) : nothing
@@ -301,4 +301,5 @@ else
         println("Could not compare primal (stored) and dual objectives: one or both objectives missing or not solved optimally. Duality gap cannot be calculated.")
     end
     println("Dualized outer subproblem built.")
+    @infiltrate
 end

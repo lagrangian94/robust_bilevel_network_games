@@ -9,12 +9,12 @@ using Hypatia, HiGHS
 
 # Load network generator
 includet("network_generator.jl")
-includet("sdp_build_dualized_outer_subproblem.jl")
-includet("sdp_build_full_model.jl")
+includet("build_dualized_outer_subprob.jl")
+includet("build_full_model.jl")
 using .NetworkGenerator
 
 
-function build_rmp(network, ϕU, λU, γ, w, optimizer=nothing)
+function build_rmp(network, ϕU, λU, γ, w; optimizer=nothing)
     # Extract network dimensions
     num_arcs = length(network.arcs)-1 #dummy arc 제외
     # Create model
@@ -57,6 +57,10 @@ function subprob_optimize!(osp_model::Model, osp_vars::Dict, osp_data::Dict, λ_
     ϕU = osp_data[:ϕU]
     S = osp_data[:S]
     d0 = osp_data[:d0]
+    uncertainty_set = osp_data[:uncertainty_set]
+    xi_bar = uncertainty_set[:xi_bar]
+    num_arcs = length(xi_bar[1])
+
 
     Uhat1, Uhat3, Utilde1, Utilde3 = osp_vars[:Uhat1], osp_vars[:Uhat3], osp_vars[:Utilde1], osp_vars[:Utilde3]
     βhat1_1, βtilde1_1 = osp_vars[:βhat1_1], osp_vars[:βtilde1_1]
@@ -69,15 +73,15 @@ function subprob_optimize!(osp_model::Model, osp_vars::Dict, osp_data::Dict, λ_
     Ptilde2_Y, Ptilde2_Yts = osp_vars[:Ptilde2_Y], osp_vars[:Ptilde2_Yts]
     Ztilde1_3 = osp_vars[:Ztilde1_3]
     diag_x_E = Diagonal(x_sol) * E  # diag(x)E
-    diag_λ_ψ = Diagonal(λ_sol .-v.*ψ0_sol)
+    diag_λ_ψ = Diagonal(λ_sol*ones(num_arcs) - v.*ψ0_sol)
     # s에 대해 summing이 필요하다면 sum over s 추가
     # matrix inner product: sum(M .* N)
     obj_term1 = [-ϕU * sum((Uhat1[s, :, :] + Utilde1[s, :, :]) .* diag_x_E) for s=1:S]
     obj_term2 = [-ϕU * sum((Uhat3[s, :, :] + Utilde3[s, :, :]) .* (E-diag_x_E)) for s=1:S]
     obj_term3 = [(d0')* βhat1_1[s,:] for s=1:S] #이거만 maximize하면 dual infeasible
-    obj_term4 = [sum(Ztilde1_3[s, :, :] .* diag_λ_ψ) for s=1:S]
+    obj_term4 = [sum(Ztilde1_3[s, :, :] .* (diag_λ_ψ * diagm(xi_bar[s]))) for s=1:S]
     obj_term5 = [(λ_sol*d0')* βtilde1_1[s,:] for s=1:S] #이거만 maximize하면 dual infeasible
-    obj_term6 = [-h_sol'* βtilde1_3[s,:] for s=1:S]
+    obj_term6 = [-(h_sol + diag_λ_ψ * xi_bar[s])'* βtilde1_3[s,:] for s=1:S]
 
     obj_term_ub_hat = [-ϕU * sum(Phat1_Φ[s,:,:]) - ϕU * sum(Phat1_Π[s,:,:]) for s=1:S]
     obj_term_lb_hat = [-ϕU * sum(Phat2_Φ[s,:,:]) - ϕU * sum(Phat2_Π[s,:,:]) for s=1:S]
@@ -86,18 +90,25 @@ function subprob_optimize!(osp_model::Model, osp_vars::Dict, osp_data::Dict, λ_
     @objective(osp_model, Max, sum(obj_term1) + sum(obj_term2) + sum(obj_term3) + sum(obj_term4) + sum(obj_term5) + sum(obj_term6)
     + sum(obj_term_ub_hat) + sum(obj_term_lb_hat) + sum(obj_term_ub_tilde) + sum(obj_term_lb_tilde))
 
+
+
     optimize!(osp_model)
     st = MOI.get(osp_model, MOI.TerminationStatus())
     if st == MOI.OPTIMAL
         obj_val = objective_value(osp_model)
-        x_coeff1 = [-ϕU * value.(Uhat1[s, :, :] + Utilde1[s, :, :]) for s=1:S]
-        x_coeff2 = [-ϕU * value.(Uhat3[s, :, :] + Utilde3[s, :, :]) for s=1:S]
-        λ_coeff1 = [value.(Ztilde1_3[s, :, :] ) for s=1:S]
-        λ_coeff2 = [d0'* value.(βtilde1_1[s,:]) for s=1:S]
-        h_coeff = [-value.(βtilde1_3[s,:]) for s=1:S]
         constant = value.(obj_term3) .+ value.(obj_term_ub_hat) .+ value.(obj_term_lb_hat) .+ value.(obj_term_ub_tilde) .+ value.(obj_term_lb_tilde)
-        return (:OptimalityCut, Dict(:x_coeff1 => x_coeff1, :x_coeff2 => x_coeff2, :λ_coeff1 => λ_coeff1, :λ_coeff2 => λ_coeff2, :h_coeff => h_coeff,
-         :constant => constant, :obj_val => obj_val))
+        cut_coeff = Dict(
+            :Uhat1 => value.(Uhat1),
+            :Utilde1 => value.(Utilde1),
+            :Uhat3 => value.(Uhat3),
+            :Utilde3 => value.(Utilde3),
+            :βtilde1_1 => value.(βtilde1_1),
+            :βtilde1_3 => value.(βtilde1_3),
+            :Ztilde1_3 => value.(Ztilde1_3),
+            :constant => constant,
+            :obj_val => obj_val
+        )
+        return (:OptimalityCut, cut_coeff)
     else
         t_status = termination_status(osp_model)
         @infiltrate
@@ -115,11 +126,15 @@ function benders_optimize!(rmp_model::Model, rmp_vars::Dict, network, ϕU, λU, 
     nopt_cons, nfeas_cons = (0,0)
     cuts = Dict(:x_coeff1 => [], :x_coeff2 => [], :λ_coeff1 => [], :λ_coeff2 => [], :h_coeff => [], :constant => [])
     @info "Initial status $st"
-    osp_model, osp_vars, osp_data = build_dualized_outer_subproblem(network, S, ϕU, γ, w, v, uncertainty_set, λ_sol, x_sol, h_sol, ψ0_sol, optimizer=Mosek.Optimizer)
+    osp_model, osp_vars, osp_data = build_dualized_outer_subproblem(network, S, ϕU, λU, γ, w, v, uncertainty_set, MosekTools.Optimizer, λ_sol, x_sol, h_sol, ψ0_sol)
+    
     diag_x_E = Diagonal(x) * osp_data[:E]  # diag(x)E
     diag_λ_ψ = Diagonal(λ .-v.*ψ0)
+    xi_bar = uncertainty_set[:xi_bar]
     iter = 0
 
+    past_obj = []
+    cuts = Dict()
     while (st == MOI.DUAL_INFEASIBLE || st == MOI.OPTIMAL)
         iter += 1
         @info "Iteration $iter"
@@ -127,36 +142,62 @@ function benders_optimize!(rmp_model::Model, rmp_vars::Dict, network, ϕU, λU, 
         st = MOI.get(rmp_model, MOI.TerminationStatus())
         x_sol, h_sol, λ_sol, ψ0_sol = value.(rmp_vars[:x]), value.(rmp_vars[:h]), value(rmp_vars[:λ]), value.(rmp_vars[:ψ0])
         t_0_sol = value(rmp_vars[:t_0])
-        # if iter >= 2
-        #     model, vars = build_full_2DRNDP_model(network, S, ϕU, λU, γ, w, v, uncertainty_set; optimizer=Mosek.Optimizer,
-        #     x_fixed=x_sol, λ_fixed=λ_sol, h_fixed=h_sol, ψ0_fixed=ψ0_sol)
-        #     optimize!(model)
-        #     @infiltrate
-        # end
+
         (status, cut_info) =subprob_optimize!(osp_model, osp_vars, osp_data, λ_sol, x_sol, h_sol, ψ0_sol)
         if status == :OptimalityCut
-            @info "Optimality cut added"
-            if t_0_sol >= cut_info[:obj_val]
-                break
+            if t_0_sol >= cut_info[:obj_val]-1e-4
+                @info "Termination condition met"
+                println("t_0_sol: ", t_0_sol, ", cut_info[:obj_val]: ", cut_info[:obj_val])
+                push!(past_obj, t_0_sol)
+                cuts[:past_obj] = past_obj
+                """
+                    Variable types: 36 continuous, 17 integer (17 binary)
+                    Coefficient statistics:
+                    Matrix range     [3e-10, 4e+03]
+                    Objective range  [1e+00, 1e+00]
+                    Bounds range     [0e+00, 0e+00]
+                    RHS range        [2e+00, 6e+02]
+                    Warning: Model contains large matrix coefficient range
+                            Consider reformulating model or setting NumericFocus parameter
+                            to avoid numerical issues.
+
+                    MIP start from previous solve produced solution with objective 13.3585 (0.00s)
+                    Loaded MIP start from previous solve with objective 13.3585
+
+                    Presolve removed 69 rows and 37 columns
+                    Presolve time: 0.00s
+                    Presolved: 17 rows, 16 columns, 80 nonzeros
+                    Variable types: 12 continuous, 4 integer (4 binary)
+
+                    Root relaxation: interrupted, 0 iterations, 0.00 seconds (0.00 work units)
+
+                    Explored 1 nodes (0 simplex iterations) in 0.00 seconds (0.00 work units)
+                    Thread count was 24 (of 24 available processors)
+
+                    Solution count 1: 13.3585
+
+                    Optimal solution found (tolerance 1.00e-04)
+                    Best objective 1.335846384616e+01, best bound 1.335824729951e+01, gap 0.0016%
+
+                    User-callback calls 300, time in user-callback 0.00 sec
+                """
+                return cuts
             else
+                push!(past_obj, t_0_sol)
                 nopt_cons +=1
-                cut_1 =  [sum(cut_info[:x_coeff1][s] .* diag_x_E) for s in 1:S]
-                cut_2 =  [sum(cut_info[:x_coeff2][s] .* (osp_data[:E] - diag_x_E)) for s in 1:S]
-                cut_3 =  [sum(cut_info[:λ_coeff1][s] .* diag_λ_ψ) for s in 1:S]
-                cut_4 =  [cut_info[:λ_coeff2][s] * λ for s in 1:S]
-                cut_5 =  [cut_info[:h_coeff][s]'* h for s in 1:S]
+                cut_1 =  [sum((cut_info[:Uhat1][s] + cut_info[:Utilde1][s]) .* diag_x_E) for s in 1:S]
+                cut_2 =  [sum((cut_info[:Uhat3][s] + cut_info[:Utilde3][s]) .* (osp_data[:E] - diag_x_E)) for s in 1:S]
+                cut_3 =  [sum(cut_info[:Ztilde1_3][s] .* (diag_λ_ψ * diagm(xi_bar[s]))) for s in 1:S]
+                cut_4 =  [(osp_data[:d0]'*cut_info[:βtilde1_1][s,:]) * λ for s in 1:S]
+                cut_5 =  [-(h + diag_λ_ψ * xi_bar[s])'* cut_info[:βtilde1_3][s,:] for s in 1:S]
                 cut_const = [cut_info[:constant][s] for s in 1:S]
                 cut_added = @constraint(rmp_model, t_0 >= sum(cut_1)+ sum(cut_2)+ sum(cut_3)+ sum(cut_4)+ sum(cut_5)+ sum(cut_const))
                 set_name(cut_added, "opt_cut_$iter")
+                cuts["opt_cut_$iter"] = cut_added
+                @info "Optimality cut added"
             end
 
         end
-        # push!(cuts[:x_coeff1], cut_info[:x_coeff1])
-        # push!(cuts[:x_coeff2], cut_info[:x_coeff2])
-        # push!(cuts[:λ_coeff1], cut_info[:λ_coeff1])
-        # push!(cuts[:λ_coeff2], cut_info[:λ_coeff2])
-        # push!(cuts[:h_coeff], cut_info[:h_coeff])
-        # push!(cuts[:constant], cut_info[:constant])
 
     end
 end
