@@ -11,7 +11,6 @@ using Hypatia, HiGHS
 includet("network_generator.jl")
 includet("build_dualized_outer_subprob.jl")
 includet("build_full_model.jl")
-includet("inner_benders.jl")
 using .NetworkGenerator
 
 
@@ -125,14 +124,12 @@ function initialize_omp(omp_model::Model, omp_vars::Dict, network, ϕU, λU, γ,
     return st, value(omp_vars[:λ]), value.(omp_vars[:x]), value.(omp_vars[:h]), value.(omp_vars[:ψ0])
 end
 
-function benders_optimize!(omp_model::Model, omp_vars::Dict, network, ϕU, λU, γ, w, uncertainty_set; optimizer=nothing, nested_benders=false)
+function strict_benders_optimize!(omp_model::Model, omp_vars::Dict, network, ϕU, λU, γ, w, uncertainty_set; optimizer=nothing)
     ### --------Begin Initialization--------
     st, λ_sol, x_sol, h_sol, ψ0_sol = initialize_omp(omp_model, omp_vars, network, ϕU, λU, γ, w, uncertainty_set; optimizer=optimizer)
     x, h, λ, ψ0, t_0 = omp_vars[:x], omp_vars[:h], omp_vars[:λ], omp_vars[:ψ0], omp_vars[:t_0]
     num_arcs = length(network.arcs) - 1
-    if !nested_benders
-        osp_model, osp_vars, osp_data = build_dualized_outer_subproblem(network, S, ϕU, λU, γ, w, v, uncertainty_set, MosekTools.Optimizer, λ_sol, x_sol, h_sol, ψ0_sol)
-    end
+    osp_model, osp_vars, osp_data = build_dualized_outer_subproblem(network, S, ϕU, λU, γ, w, v, uncertainty_set, MosekTools.Optimizer, λ_sol, x_sol, h_sol, ψ0_sol)
     
     diag_x_E = Diagonal(x) * osp_data[:E]  # diag(x)E
     diag_λ_ψ = Diagonal(λ*ones(num_arcs)-v.*ψ0)
