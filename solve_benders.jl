@@ -16,7 +16,7 @@ println("TESTING STRICT BENDERS MODEL CONSTRUCTION")
 println("="^80)
 
 # Model parameters
-S = 1  # Number of scenarios
+S = 2  # Number of scenarios
 ϕU = 10.0  # Upper bound on interdiction effectiveness
 λU = 10.0  # Upper bound on λ
 γ = 2.0  # Interdiction budget
@@ -62,8 +62,8 @@ println("    v (interdiction effectiveness param) = $v")
 println("  Note: v is a parameter in COP matrix [Φ - v*W]")
 println("        ν (nu) is a decision variable in objective t + w*ν")
 # Build model (without optimizer for initial testing)
-model, vars = build_rmp(network, ϕU, λU, γ, w; optimizer=Gurobi.Optimizer)
-cuts = benders_optimize!(model, vars, network, ϕU, λU, γ, w, uncertainty_set, optimizer=Gurobi.Optimizer)
+model, vars = build_omp(network, ϕU, λU, γ, w; optimizer=Gurobi.Optimizer)
+result = benders_optimize!(model, vars, network, ϕU, λU, γ, w, uncertainty_set, optimizer=Gurobi.Optimizer, nested_benders=false)
 # cuts = [constraint_by_name(model, "opt_cut_$iter") for iter in 1:length(cuts)]
 
 

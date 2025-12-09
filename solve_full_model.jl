@@ -31,7 +31,7 @@ function show_nonzero(var; tol=1e-8)
     end
 end
 # Model parameters
-S = 1# Number of scenarios
+S = 2# Number of scenarios
 ϕU = 10.0  # Upper bound on interdiction effectiveness
 λU = 10.0  # Upper bound on λ
 γ = 2.0  # Interdiction budget

@@ -14,7 +14,7 @@ includet("build_full_model.jl")
 using .NetworkGenerator
 
 
-function build_rmp(network, ϕU, λU, γ, w; optimizer=nothing)
+function build_omp(network, ϕU, λU, γ, w; optimizer=nothing)
     # Extract network dimensions
     num_arcs = length(network.arcs)-1 #dummy arc 제외
     # Create model
@@ -53,7 +53,7 @@ function build_rmp(network, ϕU, λU, γ, w; optimizer=nothing)
     return model, vars
 end
 
-function subprob_optimize!(osp_model::Model, osp_vars::Dict, osp_data::Dict, λ_sol, x_sol, h_sol, ψ0_sol)
+function osp_optimize!(osp_model::Model, osp_vars::Dict, osp_data::Dict, λ_sol, x_sol, h_sol, ψ0_sol)
     E = osp_data[:E]
     v = osp_data[:v]
     ϕU = osp_data[:ϕU]
@@ -116,18 +116,22 @@ function subprob_optimize!(osp_model::Model, osp_vars::Dict, osp_data::Dict, λ_
     end
 end
 
-function benders_optimize!(rmp_model::Model, rmp_vars::Dict, network, ϕU, λU, γ, w, uncertainty_set; optimizer=nothing)
-    # Solve restricted master problem
-    optimize!(rmp_model)
-    st = MOI.get(rmp_model, MOI.TerminationStatus())
-    # restricted master has a solution or is unbounded
-    λ_sol, x_sol, h_sol, ψ0_sol = value(rmp_vars[:λ]), value.(rmp_vars[:x]), value.(rmp_vars[:h]), value.(rmp_vars[:ψ0])
-    x, h, λ, ψ0, t_0 = rmp_vars[:x], rmp_vars[:h], rmp_vars[:λ], rmp_vars[:ψ0], rmp_vars[:t_0]
+function initialize_omp(omp_model::Model, omp_vars::Dict, network, ϕU, λU, γ, w, uncertainty_set; optimizer=nothing)
+    optimize!(omp_model) # 여기서 최적화를 하는 이유는 초기해를 뽑아서 subproblem을 build하기 위함임.
+    st = MOI.get(omp_model, MOI.TerminationStatus())    
+    @info "Initial status $st" # restricted master has a solution or is unbounded
+
+    return st, value(omp_vars[:λ]), value.(omp_vars[:x]), value.(omp_vars[:h]), value.(omp_vars[:ψ0])
+end
+
+function benders_optimize!(omp_model::Model, omp_vars::Dict, network, ϕU, λU, γ, w, uncertainty_set; optimizer=nothing, nested_benders=false)
+    ### --------Begin Initialization--------
+    st, λ_sol, x_sol, h_sol, ψ0_sol = initialize_omp(omp_model, omp_vars, network, ϕU, λU, γ, w, uncertainty_set; optimizer=optimizer)
+    x, h, λ, ψ0, t_0 = omp_vars[:x], omp_vars[:h], omp_vars[:λ], omp_vars[:ψ0], omp_vars[:t_0]
     num_arcs = length(network.arcs) - 1
-    nopt_cons, nfeas_cons = (0,0)
-    cuts = Dict(:x_coeff1 => [], :x_coeff2 => [], :λ_coeff1 => [], :λ_coeff2 => [], :h_coeff => [], :constant => [])
-    @info "Initial status $st"
-    osp_model, osp_vars, osp_data = build_dualized_outer_subproblem(network, S, ϕU, λU, γ, w, v, uncertainty_set, MosekTools.Optimizer, λ_sol, x_sol, h_sol, ψ0_sol)
+    if !nested_benders
+        osp_model, osp_vars, osp_data = build_dualized_outer_subproblem(network, S, ϕU, λU, γ, w, v, uncertainty_set, MosekTools.Optimizer, λ_sol, x_sol, h_sol, ψ0_sol)
+    end
     
     diag_x_E = Diagonal(x) * osp_data[:E]  # diag(x)E
     diag_λ_ψ = Diagonal(λ*ones(num_arcs)-v.*ψ0)
@@ -136,24 +140,26 @@ function benders_optimize!(rmp_model::Model, rmp_vars::Dict, network, ϕU, λU, 
 
     past_obj = []
     subprob_obj = []
-    cuts = Dict()
+    result = Dict()
+    result[:cuts] = Dict()
+    ### --------End Initialization--------
     while (st == MOI.DUAL_INFEASIBLE || st == MOI.OPTIMAL)
         iter += 1
         @info "Iteration $iter"
-        optimize!(rmp_model)
-        st = MOI.get(rmp_model, MOI.TerminationStatus())
-        x_sol, h_sol, λ_sol, ψ0_sol = value.(rmp_vars[:x]), value.(rmp_vars[:h]), value(rmp_vars[:λ]), value.(rmp_vars[:ψ0])
-        t_0_sol = value(rmp_vars[:t_0])
+        optimize!(omp_model)
+        st = MOI.get(omp_model, MOI.TerminationStatus())
+        x_sol, h_sol, λ_sol, ψ0_sol = value.(omp_vars[:x]), value.(omp_vars[:h]), value(omp_vars[:λ]), value.(omp_vars[:ψ0])
+        t_0_sol = value(omp_vars[:t_0])
 
-        (status, cut_info) =subprob_optimize!(osp_model, osp_vars, osp_data, λ_sol, x_sol, h_sol, ψ0_sol)
+        (status, cut_info) =osp_optimize!(osp_model, osp_vars, osp_data, λ_sol, x_sol, h_sol, ψ0_sol)
         if status == :OptimalityCut
             if t_0_sol >= cut_info[:obj_val]-1e-4
                 @info "Termination condition met"
                 println("t_0_sol: ", t_0_sol, ", cut_info[:obj_val]: ", cut_info[:obj_val])
                 push!(past_obj, t_0_sol)
                 push!(subprob_obj, cut_info[:obj_val])
-                cuts[:past_obj] = past_obj
-                cuts[:subprob_obj] = subprob_obj
+                result[:past_obj] = past_obj
+                result[:subprob_obj] = subprob_obj
                 """
                     Variable types: 36 continuous, 17 integer (17 binary)
                     Coefficient statistics:
@@ -185,11 +191,10 @@ function benders_optimize!(rmp_model::Model, rmp_vars::Dict, network, ϕU, λU, 
 
                     User-callback calls 300, time in user-callback 0.00 sec
                 """
-                return cuts
+                return result
             else
                 push!(past_obj, t_0_sol)
                 push!(subprob_obj, cut_info[:obj_val])
-                nopt_cons +=1
                 cut_1 =  -ϕU * [sum((cut_info[:Uhat1][s,:,:] + cut_info[:Utilde1][s,:,:]) .* diag_x_E) for s in 1:S]
                 cut_2 =  -ϕU * [sum((cut_info[:Uhat3][s,:,:] + cut_info[:Utilde3][s,:,:]) .* (osp_data[:E] - diag_x_E)) for s in 1:S]
                 cut_3 =  [sum(cut_info[:Ztilde1_3][s,:,:] .* (diag_λ_ψ * diagm(xi_bar[s]))) for s in 1:S]
@@ -198,31 +203,36 @@ function benders_optimize!(rmp_model::Model, rmp_vars::Dict, network, ϕU, λU, 
                 cut_const = cut_info[:constant]
                 opt_cut = sum(cut_1)+ sum(cut_2)+ sum(cut_3)+ sum(cut_4)+ sum(cut_5)+ sum(cut_const)
                 
-                cut_added = @constraint(rmp_model, t_0 >= opt_cut)
+                cut_added = @constraint(omp_model, t_0 >= opt_cut)
                 set_name(cut_added, "opt_cut_$iter")
-                cuts["opt_cut_$iter"] = cut_added
+                
+                
+                result[:cuts]["opt_cut_$iter"] = cut_added
                 
                 println("subproblem objective: ", cut_info[:obj_val])
                 @info "Optimality cut added"
 
-                # y = Dict(
-                #     [rmp_vars[:x][k] => x_sol[k] for k in 1:num_arcs]...,
-                #     [rmp_vars[:h][k] => h_sol[k] for k in 1:num_arcs]...,
-                #     rmp_vars[:λ] => λ_sol,
-                #     [rmp_vars[:ψ0][k] => ψ0_sol[k] for k in 1:num_arcs]...
-                # )
-                # function evaluate_expr(expr::AffExpr, var_values::Dict)
-                #     result = expr.constant
-                #     for (var, coef) in expr.terms
-                #         if haskey(var_values, var)
-                #             result += coef * var_values[var]
-                #         else
-                #             error("Variable $var not found in var_values")
-                #         end
-                #     end
-                #     return result
-                # end
-
+                y = Dict(
+                    [omp_vars[:x][k] => x_sol[k] for k in 1:num_arcs]...,
+                    [omp_vars[:h][k] => h_sol[k] for k in 1:num_arcs]...,
+                    omp_vars[:λ] => λ_sol,
+                    [omp_vars[:ψ0][k] => ψ0_sol[k] for k in 1:num_arcs]...
+                )
+                function evaluate_expr(expr::AffExpr, var_values::Dict)
+                    eval_result = expr.constant
+                    for (var, coef) in expr.terms
+                        if haskey(var_values, var)
+                            eval_result += coef * var_values[var]
+                        else
+                            error("Variable $var not found in var_values")
+                        end
+                    end
+                    return eval_result
+                end
+                if abs(cut_info[:obj_val] - evaluate_expr(opt_cut, y)) > 1e-4
+                    println("something went wrong")
+                    @infiltrate
+                end
             end
         end
     end
