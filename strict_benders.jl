@@ -33,6 +33,8 @@ function build_rmp(network, ϕU, λU, γ, w; optimizer=nothing)
             println("Arc $i is not interdictable")
         end
     end
+
+    @constraint(model, λ>=0.01)
     # mccormick envelope constraints for ψ0
     for k in 1:num_arcs
         @constraint(model, ψ0[k] <= λU * x[k])
@@ -90,8 +92,6 @@ function subprob_optimize!(osp_model::Model, osp_vars::Dict, osp_data::Dict, λ_
     @objective(osp_model, Max, sum(obj_term1) + sum(obj_term2) + sum(obj_term3) + sum(obj_term4) + sum(obj_term5) + sum(obj_term6)
     + sum(obj_term_ub_hat) + sum(obj_term_lb_hat) + sum(obj_term_ub_tilde) + sum(obj_term_lb_tilde))
 
-
-
     optimize!(osp_model)
     st = MOI.get(osp_model, MOI.TerminationStatus())
     if st == MOI.OPTIMAL
@@ -123,17 +123,19 @@ function benders_optimize!(rmp_model::Model, rmp_vars::Dict, network, ϕU, λU, 
     # restricted master has a solution or is unbounded
     λ_sol, x_sol, h_sol, ψ0_sol = value(rmp_vars[:λ]), value.(rmp_vars[:x]), value.(rmp_vars[:h]), value.(rmp_vars[:ψ0])
     x, h, λ, ψ0, t_0 = rmp_vars[:x], rmp_vars[:h], rmp_vars[:λ], rmp_vars[:ψ0], rmp_vars[:t_0]
+    num_arcs = length(network.arcs) - 1
     nopt_cons, nfeas_cons = (0,0)
     cuts = Dict(:x_coeff1 => [], :x_coeff2 => [], :λ_coeff1 => [], :λ_coeff2 => [], :h_coeff => [], :constant => [])
     @info "Initial status $st"
     osp_model, osp_vars, osp_data = build_dualized_outer_subproblem(network, S, ϕU, λU, γ, w, v, uncertainty_set, MosekTools.Optimizer, λ_sol, x_sol, h_sol, ψ0_sol)
     
     diag_x_E = Diagonal(x) * osp_data[:E]  # diag(x)E
-    diag_λ_ψ = Diagonal(λ .-v.*ψ0)
+    diag_λ_ψ = Diagonal(λ*ones(num_arcs)-v.*ψ0)
     xi_bar = uncertainty_set[:xi_bar]
     iter = 0
 
     past_obj = []
+    subprob_obj = []
     cuts = Dict()
     while (st == MOI.DUAL_INFEASIBLE || st == MOI.OPTIMAL)
         iter += 1
@@ -149,7 +151,9 @@ function benders_optimize!(rmp_model::Model, rmp_vars::Dict, network, ϕU, λU, 
                 @info "Termination condition met"
                 println("t_0_sol: ", t_0_sol, ", cut_info[:obj_val]: ", cut_info[:obj_val])
                 push!(past_obj, t_0_sol)
+                push!(subprob_obj, cut_info[:obj_val])
                 cuts[:past_obj] = past_obj
+                cuts[:subprob_obj] = subprob_obj
                 """
                     Variable types: 36 continuous, 17 integer (17 binary)
                     Coefficient statistics:
@@ -184,20 +188,42 @@ function benders_optimize!(rmp_model::Model, rmp_vars::Dict, network, ϕU, λU, 
                 return cuts
             else
                 push!(past_obj, t_0_sol)
+                push!(subprob_obj, cut_info[:obj_val])
                 nopt_cons +=1
-                cut_1 =  [sum((cut_info[:Uhat1][s] + cut_info[:Utilde1][s]) .* diag_x_E) for s in 1:S]
-                cut_2 =  [sum((cut_info[:Uhat3][s] + cut_info[:Utilde3][s]) .* (osp_data[:E] - diag_x_E)) for s in 1:S]
-                cut_3 =  [sum(cut_info[:Ztilde1_3][s] .* (diag_λ_ψ * diagm(xi_bar[s]))) for s in 1:S]
+                cut_1 =  -ϕU * [sum((cut_info[:Uhat1][s,:,:] + cut_info[:Utilde1][s,:,:]) .* diag_x_E) for s in 1:S]
+                cut_2 =  -ϕU * [sum((cut_info[:Uhat3][s,:,:] + cut_info[:Utilde3][s,:,:]) .* (osp_data[:E] - diag_x_E)) for s in 1:S]
+                cut_3 =  [sum(cut_info[:Ztilde1_3][s,:,:] .* (diag_λ_ψ * diagm(xi_bar[s]))) for s in 1:S]
                 cut_4 =  [(osp_data[:d0]'*cut_info[:βtilde1_1][s,:]) * λ for s in 1:S]
-                cut_5 =  [-(h + diag_λ_ψ * xi_bar[s])'* cut_info[:βtilde1_3][s,:] for s in 1:S]
-                cut_const = [cut_info[:constant][s] for s in 1:S]
-                cut_added = @constraint(rmp_model, t_0 >= sum(cut_1)+ sum(cut_2)+ sum(cut_3)+ sum(cut_4)+ sum(cut_5)+ sum(cut_const))
+                cut_5 =  -1* [(h + diag_λ_ψ * xi_bar[s])'* cut_info[:βtilde1_3][s,:] for s in 1:S]
+                cut_const = cut_info[:constant]
+                opt_cut = sum(cut_1)+ sum(cut_2)+ sum(cut_3)+ sum(cut_4)+ sum(cut_5)+ sum(cut_const)
+                
+                cut_added = @constraint(rmp_model, t_0 >= opt_cut)
                 set_name(cut_added, "opt_cut_$iter")
                 cuts["opt_cut_$iter"] = cut_added
+                
+                println("subproblem objective: ", cut_info[:obj_val])
                 @info "Optimality cut added"
+
+                # y = Dict(
+                #     [rmp_vars[:x][k] => x_sol[k] for k in 1:num_arcs]...,
+                #     [rmp_vars[:h][k] => h_sol[k] for k in 1:num_arcs]...,
+                #     rmp_vars[:λ] => λ_sol,
+                #     [rmp_vars[:ψ0][k] => ψ0_sol[k] for k in 1:num_arcs]...
+                # )
+                # function evaluate_expr(expr::AffExpr, var_values::Dict)
+                #     result = expr.constant
+                #     for (var, coef) in expr.terms
+                #         if haskey(var_values, var)
+                #             result += coef * var_values[var]
+                #         else
+                #             error("Variable $var not found in var_values")
+                #         end
+                #     end
+                #     return result
+                # end
+
             end
-
         end
-
     end
 end
