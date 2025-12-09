@@ -1,3 +1,15 @@
+using JuMP
+using LinearAlgebra
+using SparseArrays
+using Infiltrator
+using Pajarito
+using Gurobi
+using Mosek, MosekTools
+using Hypatia, HiGHS
+
+"""
+Build the Inner Master and Inner Subproblem
+"""
 function imp_optimize!(network, S, ϕU, λU, γ, w, v, uncertainty_set, optimizer, λ_sol, x_sol, h_sol, ψ0_sol)
     
     imp_model, imp_vars = build_imp(network, S, ϕU, λU, γ, w, v, uncertainty_set, optimizer, λ_sol, x_sol, h_sol, ψ0_sol)
@@ -20,9 +32,6 @@ function imp_optimize!(network, S, ϕU, λU, γ, w, v, uncertainty_set, optimize
     end
 end
 
-function isp_optimize!(network, S, ϕU, λU, γ, w, v, uncertainty_set, optimizer, λ_sol, x_sol, h_sol, ψ0_sol, α_sol, t_1_sol)
-    
-
 function build_imp(network, S, ϕU, λU, γ, w, v, uncertainty_set,optimizer, λ, x, h, ψ0)
     num_arcs = length(network.arcs) - 1
     R, r_dict, xi_bar, epsilon = uncertainty_set[:R], uncertainty_set[:r_dict], uncertainty_set[:xi_bar], uncertainty_set[:epsilon]
@@ -41,3 +50,7 @@ function build_imp(network, S, ϕU, λU, γ, w, v, uncertainty_set,optimizer, λ
     return model, vars
 end
 
+
+function isp_optimize!(network, S, ϕU, λU, γ, w, v, uncertainty_set, optimizer, λ_sol, x_sol, h_sol, ψ0_sol, α_sol, t_1_sol)
+    isp_model, isp_vars = build_isp(network, S, ϕU, λU, γ, w, v, uncertainty_set, optimizer, λ_sol, x_sol, h_sol, ψ0_sol, α_sol, t_1_sol)
+end

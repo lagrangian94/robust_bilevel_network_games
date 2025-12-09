@@ -11,6 +11,7 @@ using Hypatia, HiGHS
 includet("network_generator.jl")
 includet("build_dualized_outer_subprob.jl")
 includet("build_full_model.jl")
+includet("inner_benders.jl")
 using .NetworkGenerator
 
 
