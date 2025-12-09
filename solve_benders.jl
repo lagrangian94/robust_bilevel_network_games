@@ -8,6 +8,7 @@ using Revise
 includet("network_generator.jl")
 includet("build_uncertainty_set.jl")
 includet("strict_benders.jl")
+includet("nested_benders.jl")
 
 using .NetworkGenerator: generate_grid_network, generate_capacity_scenarios_factor_model, generate_capacity_scenarios_uniform_model, print_network_summary
 
@@ -64,10 +65,14 @@ println("        ν (nu) is a decision variable in objective t + w*ν")
 # Build model (without optimizer for initial testing)
 model, vars = build_omp(network, ϕU, λU, γ, w; optimizer=Gurobi.Optimizer)
 
-nested_benders = false
+nested_benders = true
+
+if nested_benders
+    result = nested_benders_optimize!(model, vars, network, ϕU, λU, γ, w, uncertainty_set; optimizer=Gurobi.Optimizer)
+else
+    result = strict_benders_optimize!(model, vars, network, ϕU, λU, γ, w, uncertainty_set; optimizer=Gurobi.Optimizer)
+end
 
 
-result = strict_benders_optimize!(model, vars, network, ϕU, λU, γ, w, uncertainty_set, optimizer=Gurobi.Optimizer)
-# cuts = [constraint_by_name(model, "opt_cut_$iter") for iter in 1:length(cuts)]
 
 
