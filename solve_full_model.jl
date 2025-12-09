@@ -31,7 +31,7 @@ function show_nonzero(var; tol=1e-8)
     end
 end
 # Model parameters
-S = 1# Number of scenarios
+S = 3# Number of scenarios
 ϕU = 10.0  # Upper bound on interdiction effectiveness
 λU = 10.0  # Upper bound on λ
 γ = 2.0  # Interdiction budget
@@ -62,7 +62,7 @@ println("="^80)
 
 # Remove dummy arc from capacity scenarios (|A| = regular arcs only)
 capacity_scenarios_regular = capacities[1:end-1, :]  # Remove last row (dummy arc)
-epsilon = 0.1  # Robustness parameter
+epsilon = 0.5  # Robustness parameter
 # @infiltrate
 println("\n[3] Building R and r matrices...")
 println("Number of regular arcs |A|: $(size(capacity_scenarios_regular, 1))")
@@ -71,7 +71,7 @@ println("Robustness parameter ε: $epsilon")
 
 R, r_dict, xi_bar = build_robust_counterpart_matrices(capacity_scenarios_regular, epsilon)
 uncertainty_set = Dict(:R => R, :r_dict => r_dict, :xi_bar => xi_bar, :epsilon => epsilon)
-solve_full_model = true
+solve_full_model = false
 # model, vars = build_full_2SP_model(network, S, ϕU, λU, γ, w, v,uncertainty_set)
 # optimize!(model)
 # @infiltrate
@@ -252,7 +252,6 @@ else
     # Build continuous conic subproblem
     model, vars = build_full_2DRNDP_model(network, S, ϕU, λU, γ, w, v,uncertainty_set, conic_solver=conic_solver, x_fixed=x_sol, λ_fixed=λ_sol, h_fixed=h_sol, ψ0_fixed=ψ0_sol)
     add_sparsity_constraints!(model, vars, network, S)
-    @infiltrate
     optimize!(model)
     # objective value 파일에서 읽기 (간단하게)
     obj_val = isfile("full_model_objective_value.txt") ? parse(Float64, readline(open("full_model_objective_value.txt"))) : nothing

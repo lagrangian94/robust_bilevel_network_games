@@ -175,7 +175,7 @@ function build_full_2DRNDP_model(network, S, ϕU, λU, γ, w, v, uncertainty_set
     # Second order cone constraints
     @constraint(model, [s=1:S, i=1:dim_Λhat1_rows], Λhat1[s, i, :] in SecondOrderCone()) ## TODO:: 주석풀기
     @constraint(model, [s=1:S, i=1:num_arcs], Λhat2[s, i, :] in SecondOrderCone()) ## TODO:: 주석풀기
-    # @constraint(model, [s=1:S, i=1:dim_Λtilde1_rows], Λtilde1[s, i, :] in SecondOrderCone()) ## TODO:: 주석풀기 ## 이게 numerical 문제??
+    @constraint(model, [s=1:S, i=1:dim_Λtilde1_rows], Λtilde1[s, i, :] in SecondOrderCone()) ## TODO:: 주석풀기 ## 이게 numerical 문제??
     @constraint(model, [s=1:S, i=1:num_arcs], Λtilde2[s, i, :] in SecondOrderCone()) ## TODO:: 주석풀기
 
     # @constraint(model, [s=1:S, i=1:num_arcs], Λtilde1[s, i, 1] <= model[:nu])
@@ -203,14 +203,10 @@ function build_full_2DRNDP_model(network, S, ϕU, λU, γ, w, v, uncertainty_set
     end
 
     println("  ✓ Constraints (14a-14c) added")
-    # =========================================================================
-    # COP CONSTRAINTS (14d-14i) - NOT IMPLEMENTED
-    # =========================================================================
+    
     @variable(model, ϑhat[1:S]>=0)   # Leader's auxiliary variable for SDP (14d, 14e)
     @variable(model, ϑtilde[1:S]>=0) # Follower's auxiliary variable for SDP (14g, 14h)
-    # --- COP matrices for constraints (14e, 14h) ---
-    # M̂s: Leader's SDP matrix (|A|+1) × (|A|+1)
-    # M̃s: Follower's SDP matrix (|A|+1) × (|A|+1)
+    
     @variable(model, Mhat[1:S, 1:num_arcs+1, 1:num_arcs+1])
     @variable(model, Mtilde[1:S, 1:num_arcs+1, 1:num_arcs+1])
     # --- (14d) Leader's scenario bound: ϑˆs <= ηˆs ---
@@ -223,16 +219,15 @@ function build_full_2DRNDP_model(network, S, ϕU, λU, γ, w, v, uncertainty_set
         Mhat_21 = Mhat[s, end, 1:num_arcs]
         Mhat_22 = Mhat[s, end, end]
         @constraint(model, Mhat_11.== ϑhat[s]*Matrix{Float64}(I, num_arcs, num_arcs) - adjoint(D_s)*(Φhat_L[s,:,:] - v*Ψhat_L[s,:,:]))
-        @constraint(model, Mhat_12.== -(1/2)*(Φhat_L[s,:,:]-v*Ψhat_L[s,:,:]-v*Ψhat_L[s,:,:])*xi_bar[s] + adjoint(D_s)*(Φhat_0[s,:]-v*Ψhat_0[s,:]))
+        @constraint(model, Mhat_12.== -(1/2)*((Φhat_L[s,:,:]-v*Ψhat_L[s,:,:]-v*Ψhat_L[s,:,:])*xi_bar[s] + adjoint(D_s)*(Φhat_0[s,:]-v*Ψhat_0[s,:])))
         @constraint(model, Mhat_22.== ηhat[s] - (Φhat_0[s,:]-v*Ψhat_0[s,:])'*xi_bar[s] - ϑhat[s]*(epsilon^2))
         Mtilde_11 = Mtilde[s, 1:num_arcs, 1:num_arcs]
         Mtilde_12 = Mtilde[s, 1:num_arcs, end]
         Mtilde_21 = Mtilde[s, end, 1:num_arcs]
         Mtilde_22 = Mtilde[s, end, end]
-        # @constraint(model, ηtilde[s] >= 0.0) # TODO:: 지우기
         @constraint(model, Mtilde_11.== ϑtilde[s]*Matrix{Float64}(I, num_arcs, num_arcs) - adjoint(D_s)*(Φtilde_L[s,:,:] - v*Ψtilde_L[s,:,:]))
-        @constraint(model, Mtilde_12.== -(1/2)*(Φtilde_L[s,:,:]-v*Ψtilde_L[s,:,:])*xi_bar[s] + adjoint(D_s)*(Φtilde_0[s,:]-v*Ψtilde_0[s,:])-Yts_tilde_L[s,1,:].data)
-        @constraint(model, Mtilde_22.== ηtilde[s] + Yts_tilde_0[s] - Q_tilde_s - ϑtilde[s]*(epsilon^2))
+        @constraint(model, Mtilde_12.== -(1/2)*((Φtilde_L[s,:,:]-v*Ψtilde_L[s,:,:])*xi_bar[s] + adjoint(D_s)*(Φtilde_0[s,:]-v*Ψtilde_0[s,:])-Yts_tilde_L[s,1,:].data))
+        @constraint(model, Mtilde_22.== ηtilde[s] -(Φtilde_0[s,:]-v*Ψtilde_0[s,:])'*xi_bar[s] + Yts_tilde_0[s] - ϑtilde[s]*(epsilon^2)) 
     end
     
     @constraint(model, [s=1:S], Mhat[s,:,:] in PSDCone()) 
@@ -324,15 +319,15 @@ function build_full_2DRNDP_model(network, S, ϕU, λU, γ, w, v, uncertainty_set
         # Block 2: -N_y * Y˜s - N_ts * Y˜s_ts
         block2 = -N_y * Ytilde_L[s, :, :] - N_ts * Yts_tilde_L[s, :,:]
         # Block 3: -Y˜s
-        block3 = -Ytilde_L[s, :, :] + diagm(λ*nu*ones(num_arcs)- v*ψ0)*D_s
+        block3 = -Ytilde_L[s, :, :] + diagm(λ*ones(num_arcs)- v*ψ0)*D_s
         # Block 4: Π˜s
         block4 = Πtilde_L[s, :, :]
         # Block 5: Φ˜s
         block5 = Φtilde_L[s, :, :]
         # Block 6: Y˜s
         block6 = Ytilde_L[s, :, :]
-        lhs_mat = vcat(Q_tilde_col, block2, block3, block4, block5, block6)
-        @constraint(model, Λtilde1[s, :, :] * R[s] .- lhs_mat .== 0.0) ##TODO:: 주석 풀기
+        rhs_mat = vcat(Q_tilde_col, block2, block3, block4, block5, block6)
+        @constraint(model, Λtilde1[s, :, :] * R[s] .== rhs_mat) ##TODO:: 주석 풀기
         # Λ˜s_1 * r̄ ≥ [λ*d0; 0; -h; 0; 0; 0]
         rhs_vec_1 =  λ*d0 - adjoint(N)*Πtilde_0[s, :] - adjoint(I_0)*Φtilde_0[s, :]
         rhs_vec_2 = N_y * Ytilde_0[s,:] + N_ts * Yts_tilde_0[s]

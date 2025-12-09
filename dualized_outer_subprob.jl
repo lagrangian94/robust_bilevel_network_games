@@ -160,15 +160,15 @@ function build_dualized_outer_subproblem(network, S, ϕU, λU, γ, w, v, uncerta
     # OBJECTIVE FUNCTION
     # =========================================================================
     diag_x_E = Diagonal(x) * E  # diag(x)E
-    diag_λ_ψ = Diagonal(λ .-v.*ψ0)
+    diag_λ_ψ = Diagonal(λ*ones(num_arcs)-v.*ψ0)
     # s에 대해 summing이 필요하다면 sum over s 추가
     # matrix inner product: sum(M .* N)
     obj_term1 = [-ϕU * sum((Uhat1[s, :, :] + Utilde1[s, :, :]) .* diag_x_E) for s=1:S]
     obj_term2 = [-ϕU * sum((Uhat3[s, :, :] + Utilde3[s, :, :]) .* (E-diag_x_E)) for s=1:S]
     obj_term3 = [(d0')* βhat1_1[s,:] for s=1:S] #이거만 maximize하면 dual infeasible
-    obj_term4 = [sum(Ztilde1_3[s, :, :] .* diag_λ_ψ) for s=1:S]
+    obj_term4 = [sum(Ztilde1_3[s, :, :] .* (diag_λ_ψ * diagm(xi_bar[s]))) for s=1:S]
     obj_term5 = [(λ*d0')* βtilde1_1[s,:] for s=1:S] #이거만 maximize하면 dual infeasible
-    obj_term6 = [-h'* βtilde1_3[s,:] for s=1:S]
+    obj_term6 = [-(h+diag_λ_ψ*xi_bar[s])'* βtilde1_3[s,:] for s=1:S]
 
     obj_term_ub_hat = [-ϕU * sum(Phat1_Φ[s,:,:]) - ϕU * sum(Phat1_Π[s,:,:]) for s=1:S]
     obj_term_lb_hat = [-ϕU * sum(Phat2_Φ[s,:,:]) - ϕU * sum(Phat2_Π[s,:,:]) for s=1:S]
@@ -205,20 +205,15 @@ function build_dualized_outer_subproblem(network, S, ϕU, λU, γ, w, v, uncerta
         Mtilde_11 = Mtilde[s, 1:num_arcs, 1:num_arcs]
         Mtilde_12 = Mtilde[s, 1:num_arcs, end]
         Mtilde_22 = Mtilde[s, end, end]
-        Adj_L_Mhat_11 = -D_s*Mhat_11*D_s'
-        Adj_L_Mhat_12 = -(D_s*Mhat_12*xi_bar[s]' + xi_bar[s]*Mhat_12'*D_s')
-        Adj_L_Mhat_22 = -xi_bar[s] * Mhat_22 * xi_bar[s]'
+        Adj_L_Mhat_11 = -D_s*Mhat_11
+        Adj_L_Mhat_12 = -Mhat_12*adjoint(xi_bar[s])
 
         Adj_0_Mhat_12 = -D_s * Mhat_12
         Adj_0_Mhat_22 = -xi_bar[s] * Mhat_22
 
         ## Φhat_L constraint
-        lhs_L = Adj_L_Mhat_11+Adj_L_Mhat_12+Adj_L_Mhat_22 + Uhat2[s,:,1:num_arcs] - Uhat3[s,:,1:num_arcs]
+        lhs_L = Adj_L_Mhat_11+Adj_L_Mhat_12 + Uhat2[s,:,1:num_arcs] - Uhat3[s,:,1:num_arcs]
         -I_0*Zhat1_1[s,:,:] - Zhat1_3[s,:,:] + Zhat2[s,:,:] + Phat1_Φ[s,:,1:num_arcs] - Phat2_Φ[s,:,1:num_arcs]
-
-        # Original LDR constraints
-        # @constraint(model, Adj_L_Mhat_11+Adj_L_Mhat_12+Adj_L_Mhat_22 + Uhat2[s,:,1:num_arcs] - Uhat3[s,:,1:num_arcs]
-        # -I_0*Zhat1_1[s,:,:] - Zhat1_3[s,:,:] + Zhat2[s,:,:] + Phat1_Φ[s,:,1:num_arcs] - Phat2_Φ[s,:,1:num_arcs] .== 0)
 
         for i in 1:num_arcs, j in 1:num_arcs
             if network.arc_adjacency[i,j]
@@ -227,16 +222,15 @@ function build_dualized_outer_subproblem(network, S, ϕU, λU, γ, w, v, uncerta
         end
         ## Φhat_0 constraint
         @constraint(model, Adj_0_Mhat_12+Adj_0_Mhat_22 + Uhat2[s,:,end] - Uhat3[s,:,end] + I_0*βhat1_1[s,:] + βhat1_3[s,:] - βhat2[s,:] + Phat1_Φ[s,:,end] - Phat2_Φ[s,:,end] .== 0)
+        
         # --- From Ψhat
-        Adj_L_Mhat_11 = v*D_s*Mhat_11*D_s'
-        Adj_L_Mhat_12 = v*(D_s*Mhat_12*xi_bar[s]' + xi_bar[s]*Mhat_12'*D_s')
-        Adj_L_Mhat_22 = v*xi_bar[s] * Mhat_22 * xi_bar[s]'
+        Adj_L_Mhat_11 = v*D_s*Mhat_11 #if v=vector -> diagm(v)
+        Adj_L_Mhat_12 = v*Mhat_12*adjoint(xi_bar[s])
 
         Adj_0_Mhat_12 = v*D_s * Mhat_12
-        Adj_0_Mhat_22 = v*xi_bar[s] * Mhat_22
+        Adj_0_Mhat_22 = xi_bar[s] * Mhat_22 * v #if v=vector -> diagm(v)
         ## Ψhat_L constraint
-        lhs_L = Adj_L_Mhat_11+Adj_L_Mhat_12+Adj_L_Mhat_22 -Uhat1[s,:,1:num_arcs] - Uhat2[s,:,1:num_arcs] + Uhat3[s,:,1:num_arcs]
-        # @constraint(model, Adj_L_Mhat_11+Adj_L_Mhat_12+Adj_L_Mhat_22 -Uhat1[s,:,1:num_arcs] - Uhat2[s,:,1:num_arcs] + Uhat3[s,:,1:num_arcs] .<= 0.0)
+        lhs_L = Adj_L_Mhat_11+Adj_L_Mhat_12 -Uhat1[s,:,1:num_arcs] - Uhat2[s,:,1:num_arcs] + Uhat3[s,:,1:num_arcs]
         for i in 1:num_arcs, j in 1:num_arcs
             if network.arc_adjacency[i,j]
                 @constraint(model, lhs_L[i,j] <= 0)
@@ -244,18 +238,16 @@ function build_dualized_outer_subproblem(network, S, ϕU, λU, γ, w, v, uncerta
         end
         ## Ψhat_0 constraint
         @constraint(model, Adj_0_Mhat_12+Adj_0_Mhat_22 - Uhat1[s,:,end] - Uhat2[s,:,end] + Uhat3[s,:,end] .<= 0.0)
+        
         # --- From Φtilde ---
-        Adj_L_Mtilde_11 = -D_s*Mtilde_11*D_s'
-        Adj_L_Mtilde_12 = -(D_s*Mtilde_12*xi_bar[s]' + xi_bar[s]*Mtilde_12'*D_s')
-        Adj_L_Mtilde_22 = -xi_bar[s] * Mtilde_22 * xi_bar[s]'
+        Adj_L_Mtilde_11 = -D_s*Mtilde_11
+        Adj_L_Mtilde_12 = -Mtilde_12*adjoint(xi_bar[s])
 
         Adj_0_Mtilde_12 = -D_s * Mtilde_12
         Adj_0_Mtilde_22 = -xi_bar[s] * Mtilde_22
         # --- Φtilde_L constraint
-        lhs_L = Adj_L_Mtilde_11+Adj_L_Mtilde_12+Adj_L_Mtilde_22 + Utilde2[s,:,1:num_arcs] - Utilde3[s,:,1:num_arcs]
+        lhs_L = Adj_L_Mtilde_11+Adj_L_Mtilde_12 + Utilde2[s,:,1:num_arcs] - Utilde3[s,:,1:num_arcs]
         -I_0*Ztilde1_1[s,:,:] - Ztilde1_5[s,:,:] + Ztilde2[s,:,:] + Ptilde1_Φ[s,:,1:num_arcs] - Ptilde2_Φ[s,:,1:num_arcs]
-        # @constraint(model, Adj_L_Mtilde_11+Adj_L_Mtilde_12+Adj_L_Mtilde_22 + Utilde2[s,:,1:num_arcs] - Utilde3[s,:,1:num_arcs]
-        # -I_0*Ztilde1_1[s,:,:] - Ztilde1_5[s,:,:] + Ztilde2[s,:,:] + Ptilde1_Φ[s,:,1:num_arcs] - Ptilde2_Φ[s,:,1:num_arcs] .== 0)
         for i in 1:num_arcs, j in 1:num_arcs
             if network.arc_adjacency[i,j]
                 @constraint(model, lhs_L[i,j] == 0)
@@ -263,16 +255,15 @@ function build_dualized_outer_subproblem(network, S, ϕU, λU, γ, w, v, uncerta
         end
         # --- Φtilde_0 constraint
         @constraint(model, Adj_0_Mtilde_12+Adj_0_Mtilde_22 + Utilde2[s,:,end] - Utilde3[s,:,end] + I_0*βtilde1_1[s,:] + βtilde1_5[s,:] - βtilde2[s,:] + Ptilde1_Φ[s,:,end] - Ptilde2_Φ[s,:,end] .== 0)
+        
         # --- From Ψtilde ---
-        Adj_L_Mtilde_11 = v*D_s*Mtilde_11*D_s'
-        Adj_L_Mtilde_12 = v*(D_s*Mtilde_12*xi_bar[s]' + xi_bar[s]*Mtilde_12'*D_s')
-        Adj_L_Mtilde_22 = v*xi_bar[s] * Mtilde_22 * xi_bar[s]'
+        Adj_L_Mtilde_11 = v*D_s*Mtilde_11
+        Adj_L_Mtilde_12 = v*(Mtilde_12*adjoint(xi_bar[s]))
 
         Adj_0_Mtilde_12 = v*D_s * Mtilde_12
         Adj_0_Mtilde_22 = v*xi_bar[s] * Mtilde_22
         # --- Ψtilde_L constraint
-        lhs_L = Adj_L_Mtilde_11+Adj_L_Mtilde_12+Adj_L_Mtilde_22 - Utilde1[s,:,1:num_arcs] - Utilde2[s,:,1:num_arcs] + Utilde3[s,:,1:num_arcs]
-        # @constraint(model, Adj_L_Mtilde_11+Adj_L_Mtilde_12+Adj_L_Mtilde_22 - Utilde1[s,:,1:num_arcs] - Utilde2[s,:,1:num_arcs] + Utilde3[s,:,1:num_arcs] .<= 0.0)
+        lhs_L = Adj_L_Mtilde_11+Adj_L_Mtilde_12 - Utilde1[s,:,1:num_arcs] - Utilde2[s,:,1:num_arcs] + Utilde3[s,:,1:num_arcs]
         for i in 1:num_arcs, j in 1:num_arcs
             if network.arc_adjacency[i,j]
                 @constraint(model, lhs_L[i,j] <= 0.0)
@@ -281,11 +272,11 @@ function build_dualized_outer_subproblem(network, S, ϕU, λU, γ, w, v, uncerta
         # --- Ψtilde_0 constraint
         @constraint(model, Adj_0_Mtilde_12+Adj_0_Mtilde_22 - Utilde1[s,:,end] - Utilde2[s,:,end] + Utilde3[s,:,end] .<= 0.0)
         # --- From Ytilde_ts ---
-        Adj_L_Mtilde_12 = D_s*Mtilde_12
-        Adj_L_Mtilde_22 = xi_bar[s] * Mtilde_22
+        Adj_L_Mtilde_12 = Mtilde_12
+
         Adj_0_Mtilde_22 = Mtilde_22
         # --- Ytilde_ts_L constraint
-        @constraint(model, adjoint(Adj_L_Mtilde_12+Adj_L_Mtilde_22) + N_ts' * Ztilde1_2[s,:,:] + Ptilde1_Yts[s,1:num_arcs]' - Ptilde2_Yts[s,1:num_arcs]' .== 0)
+        @constraint(model, adjoint(Adj_L_Mtilde_12) + N_ts' * Ztilde1_2[s,:,:] + Ptilde1_Yts[s,1:num_arcs]' - Ptilde2_Yts[s,1:num_arcs]' .== 0)
         # --- Ytilde_ts_0 constraint
         @constraint(model, Adj_0_Mtilde_22 - N_ts' * βtilde1_2[s,:] + Ptilde1_Yts[s,end]' - Ptilde2_Yts[s,end]' .== 0)
     end
@@ -300,8 +291,7 @@ function build_dualized_outer_subproblem(network, S, ϕU, λU, γ, w, v, uncerta
             @constraint(model, [s=1:S], (-N*Zhat1_1[s,:,:])[i,j]-Zhat1_2[s,i,j] + Phat1_Π[s,i,j] - Phat2_Π[s,i,j] == 0.0)
         end
     end
-    # @constraint(model, [s=1:S], hcat(-N*Zhat1_1[s,:,:]-Zhat1_2[s,:,:], N*βhat1_1[s,:]+ βhat1_2[s,:])
-    # + Phat1_Π[s,:,:] - Phat2_Π[s,:,:] .== 0.0)
+
     # --- Πhat_0 constraint
     @constraint(model, [s=1:S], N*βhat1_1[s,:]+ βhat1_2[s,:] + Phat1_Π[s,:,end] - Phat2_Π[s,:,end] .== 0)
     # --- From Πtilde ---
@@ -311,8 +301,7 @@ function build_dualized_outer_subproblem(network, S, ϕU, λU, γ, w, v, uncerta
             @constraint(model, [s=1:S], (-N*Ztilde1_1[s,:,:])[i,j]-Ztilde1_4[s,i,j] + Ptilde1_Π[s,i,j] - Ptilde2_Π[s,i,j] == 0.0)
         end
     end
-    # @constraint(model, [s=1:S], hcat(-N*Ztilde1_1[s,:,:]-Ztilde1_4[s,:,:], N*βtilde1_1[s,:]+ βtilde1_4[s,:])
-    # + Ptilde1_Π[s,:,:] - Ptilde2_Π[s,:,:] .== 0.0)
+    
     # --- Πtilde_0 constraint
     @constraint(model, [s=1:S], N*βtilde1_1[s,:]+ βtilde1_4[s,:] + Ptilde1_Π[s,:,end] - Ptilde2_Π[s,:,end] .== 0)
     # --- From Ytilde ---
@@ -322,8 +311,7 @@ function build_dualized_outer_subproblem(network, S, ϕU, λU, γ, w, v, uncerta
             @constraint(model, [s=1:S], (N_y' * Ztilde1_2[s,:,:])[i,j]+Ztilde1_3[s,i,j]-Ztilde1_6[s,i,j] + Ptilde1_Y[s,i,j] - Ptilde2_Y[s,i,j] == 0.0)
         end
     end
-    # @constraint(model, [s=1:S], hcat(N_y' * Ztilde1_2[s,:,:]+Ztilde1_3[s,:,:]-Ztilde1_6[s,:,:], -N_y' * βtilde1_2[s,:]-βtilde1_3[s,:]+βtilde1_6[s,:])
-    # + Ptilde1_Y[s,:,:] - Ptilde2_Y[s,:,:] .== 0.0)
+    
     # --- Ytilde_0 constraint
     @constraint(model, [s=1:S], -N_y' * βtilde1_2[s,:]-βtilde1_3[s,:]+βtilde1_6[s,:]+ Ptilde1_Y[s,:,end] - Ptilde2_Y[s,:,end] .== 0)
     # --- From Λhat1 ---
