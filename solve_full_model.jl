@@ -31,7 +31,7 @@ function show_nonzero(var; tol=1e-8)
     end
 end
 # Model parameters
-S = 2# Number of scenarios
+S = 20# Number of scenarios
 ϕU = 10.0  # Upper bound on interdiction effectiveness
 λU = 10.0  # Upper bound on λ
 γ = 2.0  # Interdiction budget
@@ -49,7 +49,7 @@ print_network_summary(network)
 # ===== Use Factor Model =====
 # capacities, F = generate_capacity_scenarios(length(network.arcs), network.interdictable_arcs, S, seed=120)
 # ===== Use Uniform Model =====
-capacities, F = generate_capacity_scenarios_uniform_model(length(network.arcs), S, seed=401)
+capacities, F = generate_capacity_scenarios_uniform_model(length(network.arcs), S, seed=42)
 
 # S=1
 # capacities = capacities[:,2]

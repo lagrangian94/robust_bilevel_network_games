@@ -62,7 +62,7 @@ function isp_leader_optimize!(isp_leader_model::Model, isp_leader_vars::Dict; is
     ## optimize model
     optimize!(model)
     st = MOI.get(model, MOI.TerminationStatus())
-    if st == MOI.OPTIMAL
+    if (st == MOI.OPTIMAL) || (st == MOI.SLOW_PROGRESS)
         ## obtain cuts
         μhat = shadow_price.(coupling_cons) # subgradient
         ηhat = shadow_price.(vec(model[:cons_dual_constant]))
@@ -337,7 +337,7 @@ function nested_benders_optimize!(omp_model::Model, omp_vars::Dict, network, ϕU
                 cut_5 =  -1* [(h + diag_λ_ψ * xi_bar[s])'* outer_cut_info[:βtilde1_3][s,:] for s in 1:S]
                 cut_intercept = outer_cut_info[:intercept]
                 opt_cut = sum(cut_1)+ sum(cut_2)+ sum(cut_3)+ sum(cut_4)+ sum(cut_5)+ sum(cut_intercept)
-                
+                # 여기도 multi-cut 구현할 순 있음.
                 cut_added = @constraint(omp_model, t_0 >= opt_cut)
                 set_name(cut_added, "opt_cut_$iter")
                 result[:cuts]["opt_cut_$iter"] = cut_added
