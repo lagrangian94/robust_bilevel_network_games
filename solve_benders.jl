@@ -32,7 +32,7 @@ print_network_summary(network)
 # ===== Use Factor Model =====
 # capacities, F = generate_capacity_scenarios(length(network.arcs), network.interdictable_arcs, S, seed=120)
 # ===== Use Uniform Model =====
-capacities, F = generate_capacity_scenarios_uniform_model(length(network.arcs), S, seed=41)
+capacities, F = generate_capacity_scenarios_uniform_model(length(network.arcs), S, seed=401)
 
 # Build uncertainty set
 # ===== BUILD ROBUST COUNTERPART MATRICES R AND r =====

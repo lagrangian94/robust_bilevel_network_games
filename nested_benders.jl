@@ -109,7 +109,7 @@ function isp_follower_optimize!(isp_follower_model::Model, isp_follower_vars::Di
     ## optimize model
     optimize!(model)
     st = MOI.get(model, MOI.TerminationStatus())
-    if st == MOI.OPTIMAL
+    if (st == MOI.OPTIMAL) || (st == MOI.SLOW_PROGRESS)
         ## obtain cuts
         μtilde = shadow_price.(coupling_cons) # subgradient
         # ηtilde = shadow_price.(vec(model[:cons_dual_constant]))
@@ -257,7 +257,11 @@ function evaluate_master_opt_cut(isp_leader_instances::Dict, isp_follower_instan
 
         status = status && (st_l == MOI.OPTIMAL) && (st_f == MOI.OPTIMAL)
         if status == false
-            @infiltrate
+            if (st_l == MOI.SLOW_PROGRESS) || (st_f == MOI.SLOW_PROGRESS)
+                status = true
+            else
+                @infiltrate
+            end
         end
     end
     Uhat1 = cat([value.(isp_leader_instances[s][2][:Uhat1]) for s in 1:S]...; dims=1)
