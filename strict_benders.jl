@@ -96,7 +96,7 @@ function osp_optimize!(osp_model::Model, osp_vars::Dict, osp_data::Dict, λ_sol,
     st = MOI.get(osp_model, MOI.TerminationStatus())
     if st == MOI.OPTIMAL
         obj_val = objective_value(osp_model)
-        constant = value.(obj_term3) .+ value.(obj_term_ub_hat) .+ value.(obj_term_lb_hat) .+ value.(obj_term_ub_tilde) .+ value.(obj_term_lb_tilde)
+        intercept = value.(obj_term3) .+ value.(obj_term_ub_hat) .+ value.(obj_term_lb_hat) .+ value.(obj_term_ub_tilde) .+ value.(obj_term_lb_tilde)
         cut_coeff = Dict(
             :Uhat1 => value.(Uhat1),
             :Utilde1 => value.(Utilde1),
@@ -105,7 +105,7 @@ function osp_optimize!(osp_model::Model, osp_vars::Dict, osp_data::Dict, λ_sol,
             :βtilde1_1 => value.(βtilde1_1),
             :βtilde1_3 => value.(βtilde1_3),
             :Ztilde1_3 => value.(Ztilde1_3),
-            :constant => constant,
+            :intercept => intercept,
             :obj_val => obj_val
         )
         return (:OptimalityCut, cut_coeff)
@@ -116,7 +116,7 @@ function osp_optimize!(osp_model::Model, osp_vars::Dict, osp_data::Dict, λ_sol,
     end
 end
 
-function initialize_omp(omp_model::Model, omp_vars::Dict, network, ϕU, λU, γ, w, uncertainty_set; optimizer=nothing)
+function initialize_omp(omp_model::Model, omp_vars::Dict)
     optimize!(omp_model) # 여기서 최적화를 하는 이유는 초기해를 뽑아서 subproblem을 build하기 위함임.
     st = MOI.get(omp_model, MOI.TerminationStatus())    
     @info "Initial status $st" # restricted master has a solution or is unbounded
@@ -126,7 +126,7 @@ end
 
 function strict_benders_optimize!(omp_model::Model, omp_vars::Dict, network, ϕU, λU, γ, w, uncertainty_set; optimizer=nothing)
     ### --------Begin Initialization--------
-    st, λ_sol, x_sol, h_sol, ψ0_sol = initialize_omp(omp_model, omp_vars, network, ϕU, λU, γ, w, uncertainty_set; optimizer=optimizer)
+    st, λ_sol, x_sol, h_sol, ψ0_sol = initialize_omp(omp_model, omp_vars)
     x, h, λ, ψ0, t_0 = omp_vars[:x], omp_vars[:h], omp_vars[:λ], omp_vars[:ψ0], omp_vars[:t_0]
     num_arcs = length(network.arcs) - 1
     osp_model, osp_vars, osp_data = build_dualized_outer_subproblem(network, S, ϕU, λU, γ, w, v, uncertainty_set, MosekTools.Optimizer, λ_sol, x_sol, h_sol, ψ0_sol)
@@ -137,7 +137,7 @@ function strict_benders_optimize!(omp_model::Model, omp_vars::Dict, network, ϕU
     iter = 0
 
     past_obj = []
-    subprob_obj = []
+    past_subprob_obj = []
     result = Dict()
     result[:cuts] = Dict()
     ### --------End Initialization--------
@@ -155,9 +155,9 @@ function strict_benders_optimize!(omp_model::Model, omp_vars::Dict, network, ϕU
                 @info "Termination condition met"
                 println("t_0_sol: ", t_0_sol, ", cut_info[:obj_val]: ", cut_info[:obj_val])
                 push!(past_obj, t_0_sol)
-                push!(subprob_obj, cut_info[:obj_val])
+                push!(past_subprob_obj, cut_info[:obj_val])
                 result[:past_obj] = past_obj
-                result[:subprob_obj] = subprob_obj
+                result[:past_subprob_obj] = past_subprob_obj
                 """
                     Variable types: 36 continuous, 17 integer (17 binary)
                     Coefficient statistics:
@@ -192,14 +192,14 @@ function strict_benders_optimize!(omp_model::Model, omp_vars::Dict, network, ϕU
                 return result
             else
                 push!(past_obj, t_0_sol)
-                push!(subprob_obj, cut_info[:obj_val])
+                push!(past_subprob_obj, cut_info[:obj_val])
                 cut_1 =  -ϕU * [sum((cut_info[:Uhat1][s,:,:] + cut_info[:Utilde1][s,:,:]) .* diag_x_E) for s in 1:S]
                 cut_2 =  -ϕU * [sum((cut_info[:Uhat3][s,:,:] + cut_info[:Utilde3][s,:,:]) .* (osp_data[:E] - diag_x_E)) for s in 1:S]
                 cut_3 =  [sum(cut_info[:Ztilde1_3][s,:,:] .* (diag_λ_ψ * diagm(xi_bar[s]))) for s in 1:S]
                 cut_4 =  [(osp_data[:d0]'*cut_info[:βtilde1_1][s,:]) * λ for s in 1:S]
                 cut_5 =  -1* [(h + diag_λ_ψ * xi_bar[s])'* cut_info[:βtilde1_3][s,:] for s in 1:S]
-                cut_const = cut_info[:constant]
-                opt_cut = sum(cut_1)+ sum(cut_2)+ sum(cut_3)+ sum(cut_4)+ sum(cut_5)+ sum(cut_const)
+                cut_intercept = cut_info[:intercept]
+                opt_cut = sum(cut_1)+ sum(cut_2)+ sum(cut_3)+ sum(cut_4)+ sum(cut_5)+ sum(cut_intercept)
                 
                 cut_added = @constraint(omp_model, t_0 >= opt_cut)
                 set_name(cut_added, "opt_cut_$iter")
@@ -209,7 +209,10 @@ function strict_benders_optimize!(omp_model::Model, omp_vars::Dict, network, ϕU
                 
                 println("subproblem objective: ", cut_info[:obj_val])
                 @info "Optimality cut added"
-
+                
+                """
+                below evaluation is checking tightness of the cut
+                """
                 y = Dict(
                     [omp_vars[:x][k] => x_sol[k] for k in 1:num_arcs]...,
                     [omp_vars[:h][k] => h_sol[k] for k in 1:num_arcs]...,

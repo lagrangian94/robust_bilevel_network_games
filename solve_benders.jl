@@ -68,7 +68,7 @@ model, vars = build_omp(network, ϕU, λU, γ, w; optimizer=Gurobi.Optimizer)
 nested_benders = true
 
 if nested_benders
-    result = nested_benders_optimize!(model, vars, network, ϕU, λU, γ, w, uncertainty_set; optimizer=Gurobi.Optimizer)
+    result = nested_benders_optimize!(model, vars, network, ϕU, λU, γ, w, uncertainty_set; mip_optimizer=Gurobi.Optimizer, conic_optimizer=Mosek.Optimizer)
 else
     result = strict_benders_optimize!(model, vars, network, ϕU, λU, γ, w, uncertainty_set; optimizer=Gurobi.Optimizer)
 end
