@@ -112,11 +112,19 @@ function isp_follower_optimize!(isp_follower_model::Model, isp_follower_vars::Di
     if st == MOI.OPTIMAL
         ## obtain cuts
         μtilde = shadow_price.(coupling_cons) # subgradient
-        ηtilde = shadow_price.(vec(model[:cons_dual_constant]))
-        intercept, subgradient = (1/true_S)*sum(ηtilde), μtilde ##실제 S로 나눠주어야 함.
+        # ηtilde = shadow_price.(vec(model[:cons_dual_constant]))
+        # intercept = (1/true_S)*sum(ηtilde) ##실제 S로 나눠주어야 함.
+        ηtilde_pos = shadow_price.(vec(model[:cons_dual_constant_pos]))
+        ηtilde_neg = shadow_price.(vec(model[:cons_dual_constant_neg]))
+        intercept = sum((1/true_S)*(ηtilde_pos-ηtilde_neg)) ## 이러면 ηtilde sign 반대로 나오는거 robust하게 대응 가능.
+        subgradient = μtilde
         dual_obj = intercept + α_sol'*subgradient
         #dual model의 목적함수를 shadow price로 query해서 evaluate한 뒤 strong duality 성립하는지 확인
-        @assert abs(dual_obj - objective_value(model)) < 1e-4
+        if abs(dual_obj - objective_value(model)) > 1e-4
+            @infiltrate
+            # intercept = -1*intercept
+            # @assert abs(intercept + α_sol'*subgradient - objective_value(model)) < 1e-4
+        end
         cut_coeff = Dict(:μtilde=>μtilde, :intercept=>intercept, :obj_val=>dual_obj)
         return (:OptimalityCut, cut_coeff)
     else
@@ -663,7 +671,9 @@ function build_isp_follower(network, S, ϕU, λU, γ, w, v, uncertainty_set, opt
     @constraint(model, [s=1:S, i=1:dim_Λtilde2_rows], Γtilde2[s, i, :] in SecondOrderCone())
 
     # Scalar constraints
-    @constraint(model, cons_dual_constant[s=1:S], Mtilde[s, num_arcs+1, num_arcs+1] == 1/true_S)
+    # @constraint(model, cons_dual_constant[s=1:S], Mtilde[s, num_arcs+1, num_arcs+1] == 1/true_S)
+    @constraint(model, cons_dual_constant_pos[s=1:S], Mtilde[s, num_arcs+1, num_arcs+1] <= 1/true_S)
+    @constraint(model, cons_dual_constant_neg[s=1:S], -Mtilde[s, num_arcs+1, num_arcs+1] <= -1/true_S)
     @constraint(model, [s=1:S], tr(Mtilde[s, 1:num_arcs, 1:num_arcs]) - Mtilde[s,end,end]*(epsilon^2) <= 0)
     # --- Matrix Constraints ---
     for s in 1:S

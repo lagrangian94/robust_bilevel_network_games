@@ -32,7 +32,7 @@ print_network_summary(network)
 # ===== Use Factor Model =====
 # capacities, F = generate_capacity_scenarios(length(network.arcs), network.interdictable_arcs, S, seed=120)
 # ===== Use Uniform Model =====
-capacities, F = generate_capacity_scenarios_uniform_model(length(network.arcs), S, seed=42)
+capacities, F = generate_capacity_scenarios_uniform_model(length(network.arcs), S, seed=41)
 
 # Build uncertainty set
 # ===== BUILD ROBUST COUNTERPART MATRICES R AND r =====
@@ -68,7 +68,10 @@ model, vars = build_omp(network, ϕU, λU, γ, w; optimizer=Gurobi.Optimizer)
 nested_benders = true
 
 if nested_benders
+    time_start = time()
     result = nested_benders_optimize!(model, vars, network, ϕU, λU, γ, w, uncertainty_set; mip_optimizer=Gurobi.Optimizer, conic_optimizer=Mosek.Optimizer)
+    time_end = time()
+    println("Time taken: $(time_end - time_start) seconds")
 else
     result = strict_benders_optimize!(model, vars, network, ϕU, λU, γ, w, uncertainty_set; optimizer=Gurobi.Optimizer)
 end
