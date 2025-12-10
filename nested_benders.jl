@@ -220,15 +220,40 @@ function initialize_isp(network, S, ϕU, λU, γ, w, v, uncertainty_set; conic_o
     return leader_instances, follower_instances
 end
 
-function evaluate_master_opt_cut(isp_leader_instances::Dict, isp_follower_instances::Dict, isp_data::Dict, cut_info::Dict, λ_sol::Float64, x_sol::Float64, h_sol::Float64, ψ0_sol::Float64, α_sol::Float64)
+function evaluate_master_opt_cut(isp_leader_instances::Dict, isp_follower_instances::Dict, isp_data::Dict, cut_info::Dict)
     S = isp_data[:S]
     α_sol = cut_info[:α_sol]
     for s in 1:S
-        model_l, var_l = isp_leader_instances[s][1], isp_leader_instances[s][2]
+        model_l = isp_leader_instances[s][1]
+        model_f = isp_follower_instances[s][1]
         set_normalized_rhs.(vec(model_l[:coupling_cons]), α_sol[s])
         optimize!(model_l)
-        st = MOI.get(model_l, MOI.TerminationStatus())
-        
+        st_l = MOI.get(model_l, MOI.TerminationStatus())
+
+        set_normalized_rhs.(vec(model_f[:coupling_cons]), α_sol[s])
+        optimize!(model_f)
+        st_f = MOI.get(model_f, MOI.TerminationStatus())
+        # cut_coeff = Dict(
+        #     :Uhat1 => value.(Uhat1),
+        #     :Utilde1 => value.(Utilde1),
+        #     :Uhat3 => value.(Uhat3),
+        #     :Utilde3 => value.(Utilde3),
+        #     :βtilde1_1 => value.(βtilde1_1),
+        #     :βtilde1_3 => value.(βtilde1_3),
+        #     :Ztilde1_3 => value.(Ztilde1_3),
+        #     :intercept => intercept,
+        #     :obj_val => obj_val
+        # )
+    end
+    @infiltrate
+    Uhat1 = cat([value.(isp_leader_instances[s][2][:Uhat1]) for s in 1:S]...; dims=1)
+    Utilde1 = cat([value.(isp_follower_instances[s][2][:Utilde1]) for s in 1:S]...; dims=1)
+    Uhat3 = cat([value.(isp_leader_instances[s][2][:Uhat3]) for s in 1:S]...; dims=1)
+    Utilde3 = cat([value.(isp_follower_instances[s][2][:Utilde3]) for s in 1:S]...; dims=1)
+    Ztilde1_3 = cat([value.(isp_leader_instances[s][2][:Ztilde1_3]) for s in 1:S]...; dims=1)
+    βtilde1_1 = cat([value.(isp_leader_instances[s][2][:βtilde1_1]) for s in 1:S]...; dims=1)
+    βtilde1_3 = cat([value.(isp_leader_instances[s][2][:βtilde1_3]) for s in 1:S]...; dims=1)
+    
 end
 
 
@@ -245,7 +270,7 @@ function nested_benders_optimize!(omp_model::Model, omp_vars::Dict, network, ϕU
     xi_bar = uncertainty_set[:xi_bar]
     iter = 0
     past_obj = []
-    subprob_obj = []
+    past_subprob_obj = []
 
     result = Dict()
     result[:cuts] = Dict()
@@ -276,6 +301,7 @@ function nested_benders_optimize!(omp_model::Model, omp_vars::Dict, network, ϕU
             else
                 push!(past_obj, t_0_sol)
                 push!(past_subprob_obj, cut_info[:obj_val])
+                evaluate_master_opt_cut(leader_instances, follower_instances, isp_data, cut_info)
                 cut_1 =  -ϕU * [sum((cut_info[:Uhat1][s,:,:] + cut_info[:Utilde1][s,:,:]) .* diag_x_E) for s in 1:S]
                 cut_2 =  -ϕU * [sum((cut_info[:Uhat3][s,:,:] + cut_info[:Utilde3][s,:,:]) .* (osp_data[:E] - diag_x_E)) for s in 1:S]
                 cut_3 =  [sum(cut_info[:Ztilde1_3][s,:,:] .* (diag_λ_ψ * diagm(xi_bar[s]))) for s in 1:S]
