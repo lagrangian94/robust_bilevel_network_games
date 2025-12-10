@@ -41,6 +41,8 @@ function isp_leader_optimize!(isp_leader_model::Model, isp_leader_vars::Dict; is
     E, ϕU, d0 = isp_data[:E], isp_data[:ϕU], isp_data[:d0]
     R, r_dict, xi_bar, epsilon = uncertainty_set[:R], uncertainty_set[:r_dict], uncertainty_set[:xi_bar], uncertainty_set[:epsilon]
     diag_x_E = Diagonal(x_sol) * E  # diag(x)E
+    true_S = isp_data[:S]
+    
     S = 1
     ## update objective if necessary
     Uhat1, Uhat3, Phat1_Φ, Phat1_Π, Phat2_Φ, Phat2_Π = vars[:Uhat1], vars[:Uhat3], vars[:Phat1_Φ], vars[:Phat1_Π], vars[:Phat2_Φ], vars[:Phat2_Π]
@@ -64,7 +66,7 @@ function isp_leader_optimize!(isp_leader_model::Model, isp_leader_vars::Dict; is
         ## obtain cuts
         μhat = shadow_price.(coupling_cons) # subgradient
         ηhat = shadow_price.(vec(model[:cons_dual_constant]))
-        intercept, subgradient = (1/S)*sum(ηhat), μhat
+        intercept, subgradient = (1/true_S)*sum(ηhat), μhat ##실제 S로 나눠주어야 함.
         dual_obj = intercept + α_sol'*subgradient
         #dual model의 목적함수를 shadow price로 query해서 evaluate한 뒤 strong duality 성립하는지 확인
         @assert abs(dual_obj - objective_value(model)) < 1e-4
@@ -84,6 +86,7 @@ function isp_follower_optimize!(isp_follower_model::Model, isp_follower_vars::Di
     diag_x_E = Diagonal(x_sol) * E  # diag(x)E
     num_arcs = length(x_sol)
     diag_λ_ψ = Diagonal(λ_sol*ones(num_arcs)-v.*ψ0_sol)
+    true_S = isp_data[:S]
     S = 1
     ## update objective if necessary
     Utilde1, Utilde3, Ztilde1_3, Ptilde1_Φ, Ptilde1_Π, Ptilde2_Φ, Ptilde2_Π, Ptilde1_Y, Ptilde1_Yts, Ptilde2_Y, Ptilde2_Yts = vars[:Utilde1], vars[:Utilde3], vars[:Ztilde1_3], vars[:Ptilde1_Φ], vars[:Ptilde1_Π], vars[:Ptilde2_Φ], vars[:Ptilde2_Π], vars[:Ptilde1_Y], vars[:Ptilde1_Yts], vars[:Ptilde2_Y], vars[:Ptilde2_Yts]
@@ -110,7 +113,7 @@ function isp_follower_optimize!(isp_follower_model::Model, isp_follower_vars::Di
         ## obtain cuts
         μtilde = shadow_price.(coupling_cons) # subgradient
         ηtilde = shadow_price.(vec(model[:cons_dual_constant]))
-        intercept, subgradient = (1/S)*sum(ηtilde), μtilde
+        intercept, subgradient = (1/true_S)*sum(ηtilde), μtilde ##실제 S로 나눠주어야 함.
         dual_obj = intercept + α_sol'*subgradient
         #dual model의 목적함수를 shadow price로 query해서 evaluate한 뒤 strong duality 성립하는지 확인
         @assert abs(dual_obj - objective_value(model)) < 1e-4
@@ -146,7 +149,6 @@ function imp_optimize!(imp_model::Model, imp_vars::Dict, isp_leader_instances::D
         st = MOI.get(imp_model, MOI.TerminationStatus())
         α_sol = value.(imp_vars[:α])
         t_1_sol = value.(imp_vars[:t_1])
-        opt_cut = @expression(imp_model, 0)
         subprob_obj = 0
         dict_cut_info_l, dict_cut_info_f = Dict(), Dict()
         status = true
@@ -223,8 +225,8 @@ function initialize_isp(network, S, ϕU, λU, γ, w, v, uncertainty_set; conic_o
     follower_instances = Dict{Int, Tuple{Model, Dict}}()
     for s in 1:S
         U_s = Dict(:R => Dict(:1=>R[s]), :r_dict => Dict(:1=>r_dict[s]), :xi_bar => Dict(:1=>xi_bar[s]), :epsilon => epsilon)
-        leader_instances[s] = build_isp_leader(network, 1, ϕU, λU, γ, w, v, U_s, conic_optimizer, λ_sol, x_sol, h_sol, ψ0_sol, α_sol)
-        follower_instances[s] = build_isp_follower(network, 1, ϕU, λU, γ, w, v, U_s, conic_optimizer, λ_sol, x_sol, h_sol, ψ0_sol, α_sol)
+        leader_instances[s] = build_isp_leader(network, 1, ϕU, λU, γ, w, v, U_s, conic_optimizer, λ_sol, x_sol, h_sol, ψ0_sol, α_sol, S)
+        follower_instances[s] = build_isp_follower(network, 1, ϕU, λU, γ, w, v, U_s, conic_optimizer, λ_sol, x_sol, h_sol, ψ0_sol, α_sol, S)
         
     end
     return leader_instances, follower_instances
@@ -357,12 +359,14 @@ end
 
 
 
-function build_isp_leader(network, S, ϕU, λU, γ, w, v, uncertainty_set, optimizer, λ_sol, x_sol, h_sol, ψ0_sol, α_sol)
+function build_isp_leader(network, S, ϕU, λU, γ, w, v, uncertainty_set, optimizer, λ_sol, x_sol, h_sol, ψ0_sol, α_sol, true_S)
     # Extract network dimensions
     num_nodes = length(network.nodes)
     num_arcs = length(network.arcs)-1 #dummy arc 제외
     num_interdictable = sum(network.interdictable_arcs)
 
+
+    
     # Node-arc incidence matrix (excluding source row)
     N = network.N
     N_y = N[:, 1:num_arcs]  # Regular arcs: (|V|-1) × |A|
@@ -462,7 +466,7 @@ function build_isp_leader(network, S, ϕU, λU, γ, w, v, uncertainty_set, optim
     @constraint(model, [s=1:S, i=1:dim_Λhat2_rows], Γhat2[s, i, :] in SecondOrderCone())
 
     # Scalar constraints
-    @constraint(model, cons_dual_constant[s=1:S], Mhat[s, num_arcs+1, num_arcs+1] <= 1/S)
+    @constraint(model, cons_dual_constant[s=1:S], Mhat[s, num_arcs+1, num_arcs+1] <= 1/true_S)
     @constraint(model, [s=1:S], tr(Mhat[s, 1:num_arcs, 1:num_arcs]) - Mhat[s,end,end]*(epsilon^2) <= 0)
     # --- Matrix Constraints ---
     for s in 1:S
@@ -542,7 +546,7 @@ function build_isp_leader(network, S, ϕU, λU, γ, w, v, uncertainty_set, optim
     return model, vars
 end
 
-function build_isp_follower(network, S, ϕU, λU, γ, w, v, uncertainty_set, optimizer, λ_sol, x_sol, h_sol, ψ0_sol, α_sol)
+function build_isp_follower(network, S, ϕU, λU, γ, w, v, uncertainty_set, optimizer, λ_sol, x_sol, h_sol, ψ0_sol, α_sol, true_S)
     # Extract network dimensions
     num_nodes = length(network.nodes)
     num_arcs = length(network.arcs)-1 #dummy arc 제외
@@ -659,7 +663,7 @@ function build_isp_follower(network, S, ϕU, λU, γ, w, v, uncertainty_set, opt
     @constraint(model, [s=1:S, i=1:dim_Λtilde2_rows], Γtilde2[s, i, :] in SecondOrderCone())
 
     # Scalar constraints
-    @constraint(model, cons_dual_constant[s=1:S], Mtilde[s, num_arcs+1, num_arcs+1] == 1/S)
+    @constraint(model, cons_dual_constant[s=1:S], Mtilde[s, num_arcs+1, num_arcs+1] == 1/true_S)
     @constraint(model, [s=1:S], tr(Mtilde[s, 1:num_arcs, 1:num_arcs]) - Mtilde[s,end,end]*(epsilon^2) <= 0)
     # --- Matrix Constraints ---
     for s in 1:S

@@ -65,7 +65,7 @@ println("        ν (nu) is a decision variable in objective t + w*ν")
 # Build model (without optimizer for initial testing)
 model, vars = build_omp(network, ϕU, λU, γ, w; optimizer=Gurobi.Optimizer)
 
-nested_benders = false
+nested_benders = true
 
 if nested_benders
     result = nested_benders_optimize!(model, vars, network, ϕU, λU, γ, w, uncertainty_set; mip_optimizer=Gurobi.Optimizer, conic_optimizer=Mosek.Optimizer)
