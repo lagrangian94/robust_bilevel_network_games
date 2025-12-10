@@ -53,6 +53,7 @@ function isp_leader_optimize!(isp_leader_model::Model, isp_leader_vars::Dict; is
     obj_term_lb_hat = [-ϕU * sum(Phat2_Φ[s,:,:]) - ϕU * sum(Phat2_Π[s,:,:]) for s=1:S]
     @objective(model, Max, sum(obj_term1) + sum(obj_term2) + sum(obj_term3)
     + sum(obj_term_ub_hat) + sum(obj_term_lb_hat))
+
     ## update constraints
     coupling_cons = vec(model[:coupling_cons])
     set_normalized_rhs.(coupling_cons, α_sol)
@@ -97,6 +98,8 @@ function isp_follower_optimize!(isp_follower_model::Model, isp_follower_vars::Di
     obj_term_lb_tilde = [-ϕU * sum(Ptilde2_Φ[s,:,:]) - ϕU * sum(Ptilde2_Π[s,:,:]) - ϕU * sum(Ptilde2_Y[s,:,:]) - ϕU * sum(Ptilde2_Yts[s,:]) for s=1:S]
     @objective(model, Max, sum(obj_term1) + sum(obj_term2) + sum(obj_term4) + sum(obj_term5) + sum(obj_term6)
     + sum(obj_term_ub_tilde) + sum(obj_term_lb_tilde))
+
+
     ## update constraints
     coupling_cons = vec(model[:coupling_cons])
     set_normalized_rhs.(coupling_cons, α_sol)
@@ -220,40 +223,43 @@ function initialize_isp(network, S, ϕU, λU, γ, w, v, uncertainty_set; conic_o
     return leader_instances, follower_instances
 end
 
-function evaluate_master_opt_cut(isp_leader_instances::Dict, isp_follower_instances::Dict, isp_data::Dict, cut_info::Dict)
+function evaluate_master_opt_cut(isp_leader_instances::Dict, isp_follower_instances::Dict, isp_data::Dict, cut_info::Dict, iter::Int)
     S = isp_data[:S]
     α_sol = cut_info[:α_sol]
+    status = true
     for s in 1:S
         model_l = isp_leader_instances[s][1]
         model_f = isp_follower_instances[s][1]
-        set_normalized_rhs.(vec(model_l[:coupling_cons]), α_sol[s])
+        set_normalized_rhs.(vec(model_l[:coupling_cons]), α_sol)
         optimize!(model_l)
         st_l = MOI.get(model_l, MOI.TerminationStatus())
 
-        set_normalized_rhs.(vec(model_f[:coupling_cons]), α_sol[s])
+        set_normalized_rhs.(vec(model_f[:coupling_cons]), α_sol)
         optimize!(model_f)
         st_f = MOI.get(model_f, MOI.TerminationStatus())
-        # cut_coeff = Dict(
-        #     :Uhat1 => value.(Uhat1),
-        #     :Utilde1 => value.(Utilde1),
-        #     :Uhat3 => value.(Uhat3),
-        #     :Utilde3 => value.(Utilde3),
-        #     :βtilde1_1 => value.(βtilde1_1),
-        #     :βtilde1_3 => value.(βtilde1_3),
-        #     :Ztilde1_3 => value.(Ztilde1_3),
-        #     :intercept => intercept,
-        #     :obj_val => obj_val
-        # )
+
+        status = status && (st_l == MOI.OPTIMAL) && (st_f == MOI.OPTIMAL)
+        if status == false
+            @infiltrate
+        end
     end
-    @infiltrate
     Uhat1 = cat([value.(isp_leader_instances[s][2][:Uhat1]) for s in 1:S]...; dims=1)
     Utilde1 = cat([value.(isp_follower_instances[s][2][:Utilde1]) for s in 1:S]...; dims=1)
     Uhat3 = cat([value.(isp_leader_instances[s][2][:Uhat3]) for s in 1:S]...; dims=1)
     Utilde3 = cat([value.(isp_follower_instances[s][2][:Utilde3]) for s in 1:S]...; dims=1)
-    Ztilde1_3 = cat([value.(isp_leader_instances[s][2][:Ztilde1_3]) for s in 1:S]...; dims=1)
-    βtilde1_1 = cat([value.(isp_leader_instances[s][2][:βtilde1_1]) for s in 1:S]...; dims=1)
-    βtilde1_3 = cat([value.(isp_leader_instances[s][2][:βtilde1_3]) for s in 1:S]...; dims=1)
+    Ztilde1_3 = cat([value.(isp_follower_instances[s][2][:Ztilde1_3]) for s in 1:S]...; dims=1)
+    βtilde1_1 = cat([value.(isp_follower_instances[s][2][:βtilde1_1]) for s in 1:S]...; dims=1)
+    βtilde1_3 = cat([value.(isp_follower_instances[s][2][:βtilde1_3]) for s in 1:S]...; dims=1)
+
+    intercept = sum(value.(isp_leader_instances[s][2][:intercept]) for s in 1:S) + sum(value.(isp_follower_instances[s][2][:intercept]) for s in 1:S)
     
+    leader_obj = sum(objective_value(isp_leader_instances[s][1]) for s in 1:S)
+    follower_obj = sum(objective_value(isp_follower_instances[s][1]) for s in 1:S)
+    println("summation of leader and follower objective: ", leader_obj+follower_obj, ", cut_info[:obj_val]: ", cut_info[:obj_val])
+    println("Outer loop iteration: ", iter)
+    @assert abs(leader_obj + follower_obj - cut_info[:obj_val]) < 1e-4
+    return Dict(:Uhat1=>Uhat1, :Utilde1=>Utilde1, :Uhat3=>Uhat3, :Utilde3=>Utilde3, :Ztilde1_3=>Ztilde1_3
+    ,:βtilde1_1=>βtilde1_1, :βtilde1_3=>βtilde1_3, :intercept=>intercept)
 end
 
 
@@ -301,21 +307,40 @@ function nested_benders_optimize!(omp_model::Model, omp_vars::Dict, network, ϕU
             else
                 push!(past_obj, t_0_sol)
                 push!(past_subprob_obj, cut_info[:obj_val])
-                evaluate_master_opt_cut(leader_instances, follower_instances, isp_data, cut_info)
-                cut_1 =  -ϕU * [sum((cut_info[:Uhat1][s,:,:] + cut_info[:Utilde1][s,:,:]) .* diag_x_E) for s in 1:S]
-                cut_2 =  -ϕU * [sum((cut_info[:Uhat3][s,:,:] + cut_info[:Utilde3][s,:,:]) .* (osp_data[:E] - diag_x_E)) for s in 1:S]
-                cut_3 =  [sum(cut_info[:Ztilde1_3][s,:,:] .* (diag_λ_ψ * diagm(xi_bar[s]))) for s in 1:S]
-                cut_4 =  [(osp_data[:d0]'*cut_info[:βtilde1_1][s,:]) * λ for s in 1:S]
-                cut_5 =  -1* [(h + diag_λ_ψ * xi_bar[s])'* cut_info[:βtilde1_3][s,:] for s in 1:S]
-                cut_intercept = cut_info[:intercept]
+
+                outer_cut_info = evaluate_master_opt_cut(leader_instances, follower_instances, isp_data, cut_info, iter)
+                cut_1 =  -ϕU * [sum((outer_cut_info[:Uhat1][s,:,:] + outer_cut_info[:Utilde1][s,:,:]) .* diag_x_E) for s in 1:S]
+                cut_2 =  -ϕU * [sum((outer_cut_info[:Uhat3][s,:,:] + outer_cut_info[:Utilde3][s,:,:]) .* (isp_data[:E] - diag_x_E)) for s in 1:S]
+                cut_3 =  [sum(outer_cut_info[:Ztilde1_3][s,:,:] .* (diag_λ_ψ * diagm(xi_bar[s]))) for s in 1:S]
+                cut_4 =  [(isp_data[:d0]'*outer_cut_info[:βtilde1_1][s,:]) * λ for s in 1:S]
+                cut_5 =  -1* [(h + diag_λ_ψ * xi_bar[s])'* outer_cut_info[:βtilde1_3][s,:] for s in 1:S]
+                cut_intercept = outer_cut_info[:intercept]
                 opt_cut = sum(cut_1)+ sum(cut_2)+ sum(cut_3)+ sum(cut_4)+ sum(cut_5)+ sum(cut_intercept)
                 
                 cut_added = @constraint(omp_model, t_0 >= opt_cut)
                 set_name(cut_added, "opt_cut_$iter")
-                
-                
                 result[:cuts]["opt_cut_$iter"] = cut_added
-                
+                y = Dict(
+                    [omp_vars[:x][k] => x_sol[k] for k in 1:num_arcs]...,
+                    [omp_vars[:h][k] => h_sol[k] for k in 1:num_arcs]...,
+                    omp_vars[:λ] => λ_sol,
+                    [omp_vars[:ψ0][k] => ψ0_sol[k] for k in 1:num_arcs]...
+                )
+                function evaluate_expr(expr::AffExpr, var_values::Dict)
+                    eval_result = expr.constant
+                    for (var, coef) in expr.terms
+                        if haskey(var_values, var)
+                            eval_result += coef * var_values[var]
+                        else
+                            error("Variable $var not found in var_values")
+                        end
+                    end
+                    return eval_result
+                end
+                if abs(cut_info[:obj_val] - evaluate_expr(opt_cut, y)) > 1e-4
+                    println("something went wrong")
+                    @infiltrate
+                end
                 println("subproblem objective: ", cut_info[:obj_val])
                 @info "Optimality cut added"
             end
@@ -416,6 +441,9 @@ function build_isp_leader(network, S, ϕU, λU, γ, w, v, uncertainty_set, optim
     obj_term_lb_hat = [-ϕU * sum(Phat2_Φ[s,:,:]) - ϕU * sum(Phat2_Π[s,:,:]) for s=1:S]
     @objective(model, Max, sum(obj_term1) + sum(obj_term2) + sum(obj_term3) 
     + sum(obj_term_ub_hat) + sum(obj_term_lb_hat))
+
+    intercept = @expression(model, intercept, sum(obj_term3) + sum(obj_term_ub_hat) + sum(obj_term_lb_hat))
+
     # =========================================================================
     # CONSTRAINTS
     # =========================================================================
@@ -500,6 +528,7 @@ function build_isp_leader(network, S, ϕU, λU, γ, w, v, uncertainty_set, optim
         :Uhat1 => Uhat1,
         :Uhat3 => Uhat3,
         :βhat1_1 => βhat1_1,
+        :intercept => intercept,
     )
 
 
@@ -611,10 +640,11 @@ function build_isp_follower(network, S, ϕU, λU, γ, w, v, uncertainty_set, opt
     obj_term_lb_tilde = [-ϕU * sum(Ptilde2_Φ[s,:,:]) - ϕU * sum(Ptilde2_Π[s,:,:]) - ϕU * sum(Ptilde2_Y[s,:,:]) - ϕU * sum(Ptilde2_Yts[s,:]) for s=1:S]
     @objective(model, Max, sum(obj_term1) + sum(obj_term2) + sum(obj_term4) + sum(obj_term5) + sum(obj_term6)
     + sum(obj_term_ub_tilde) + sum(obj_term_lb_tilde))
+
+    intercept = @expression(model, intercept, sum(obj_term_ub_tilde) + sum(obj_term_lb_tilde))
     # =========================================================================
     # CONSTRAINTS
     # =========================================================================
-
     # --- Semi-definite cone constraints ---
     @constraint(model, [s=1:S], Mtilde[s,:,:] in PSDCone())
     # --- Second order cone constraints ---
@@ -717,6 +747,7 @@ function build_isp_follower(network, S, ϕU, λU, γ, w, v, uncertainty_set, opt
         :βtilde1_1 => βtilde1_1,
         :βtilde1_3 => βtilde1_3,
         :Ztilde1_3 => Ztilde1_3,
+        :intercept => intercept,
     )
 
     return model, vars
