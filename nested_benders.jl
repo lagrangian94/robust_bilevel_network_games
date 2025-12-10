@@ -123,7 +123,7 @@ function isp_follower_optimize!(isp_follower_model::Model, isp_follower_vars::Di
     end
 end
 
-function imp_optimize!(imp_model::Model, imp_vars::Dict, isp_leader_instances::Dict, isp_follower_instances::Dict; isp_data=nothing, λ_sol=nothing, x_sol=nothing, h_sol=nothing, ψ0_sol=nothing)
+function imp_optimize!(imp_model::Model, imp_vars::Dict, isp_leader_instances::Dict, isp_follower_instances::Dict; isp_data=nothing, λ_sol=nothing, x_sol=nothing, h_sol=nothing, ψ0_sol=nothing, outer_iter=nothing, imp_cuts=nothing)
     st = MOI.get(imp_model, MOI.TerminationStatus())
     iter = 0
     uncertainty_set = isp_data[:uncertainty_set]
@@ -131,7 +131,14 @@ function imp_optimize!(imp_model::Model, imp_vars::Dict, isp_leader_instances::D
     past_subprob_obj = []
     result = Dict()
     result[:cuts] = Dict()
-
+    ##
+    ## 여기서 imp 초기화해야함.
+    if outer_iter>1
+        for (cut_name, cut) in imp_cuts[:old_cuts]
+            delete(imp_model, cut)
+        end
+    end
+    ##
     while (st == MOI.DUAL_INFEASIBLE || st == MOI.OPTIMAL)
         iter += 1
         @info "Inner Benders Iteration $iter"
@@ -172,7 +179,7 @@ function imp_optimize!(imp_model::Model, imp_vars::Dict, isp_leader_instances::D
                 # 일단 single-cut으로 구현
                 
                 cut_added = @constraint(imp_model, [s=1:S], imp_vars[:t_1][s] <= intercept[s] + imp_vars[:α]'*subgradient[s])
-                set_name.(cut_added, ["opt_cut_$(iter)_s$(s)" for s in 1:S])          
+                set_name.(cut_added, ["opt_cut_$(iter)_s$(s)" for s in 1:S])
                 result[:cuts]["opt_cut_$iter"] = cut_added
                 println("subproblem objective: ", subprob_obj)
                 @info "Optimality cut added"
@@ -277,7 +284,7 @@ function nested_benders_optimize!(omp_model::Model, omp_vars::Dict, network, ϕU
     iter = 0
     past_obj = []
     past_subprob_obj = []
-
+    imp_cuts = Dict{Symbol, Any}()
     result = Dict()
     result[:cuts] = Dict()
     ### --------Begin Inner Master, Subproblem Initialization--------
@@ -293,8 +300,8 @@ function nested_benders_optimize!(omp_model::Model, omp_vars::Dict, network, ϕU
         st = MOI.get(omp_model, MOI.TerminationStatus())
         x_sol, h_sol, λ_sol, ψ0_sol = value.(omp_vars[:x]), value.(omp_vars[:h]), value(omp_vars[:λ]), value.(omp_vars[:ψ0])
         t_0_sol = value(omp_vars[:t_0])
-
-        status, cut_info =imp_optimize!(imp_model, imp_vars, leader_instances, follower_instances; isp_data=isp_data, λ_sol=λ_sol, x_sol=x_sol, h_sol=h_sol, ψ0_sol=ψ0_sol)
+        status, cut_info =imp_optimize!(imp_model, imp_vars, leader_instances, follower_instances; isp_data=isp_data, λ_sol=λ_sol, x_sol=x_sol, h_sol=h_sol, ψ0_sol=ψ0_sol, outer_iter=iter, imp_cuts=imp_cuts)
+        imp_cuts[:old_cuts] = cut_info[:cuts] ## 다음 iteration에서 지우기 위해 여기에 저장함
         if status == :OptimalityCut
             if t_0_sol >= objective_value(imp_model)-1e-4
                 @info "Termination condition met"
