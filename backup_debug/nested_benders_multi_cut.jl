@@ -11,13 +11,55 @@ using Hypatia, HiGHS
 includet("network_generator.jl")
 includet("build_dualized_outer_subprob.jl")
 includet("build_full_model.jl")
-includet("strict_benders.jl")
+# includet("strict_benders.jl")
 
 
 using .NetworkGenerator
 """
 Build the Inner Master and Inner Subproblem
 """
+
+
+function build_omp_multi_cut(network, ϕU, λU, γ, w; optimizer=nothing)
+    # Extract network dimensions
+    num_arcs = length(network.arcs)-1 #dummy arc 제외
+    # Create model
+    model = Model(optimizer_with_attributes(optimizer, MOI.Silent() => false))
+    @variable(model, t_0_l >= 0)  # Objective epigraph variable
+    @variable(model, t_0_f >= 0)  # Objective epigraph variable
+    @variable(model, λ >= 0)  # Budget allocation parameter
+    @variable(model, x[1:num_arcs], Bin)
+    @variable(model, h[1:num_arcs] >= 0)
+    @variable(model, ψ0[1:num_arcs] >= 0)
+    @constraint(model, resource_budget, sum(h) <= λ * w)
+    @constraint(model, sum(x) <= γ)
+    # x must be binary, and only interdictable arcs can be selected
+    for i in 1:num_arcs
+        if !network.interdictable_arcs[i]
+            @constraint(model, x[i] == 0)
+            println("Arc $i is not interdictable")
+        end
+    end
+
+    @constraint(model, λ>=0.01)
+    # mccormick envelope constraints for ψ0
+    for k in 1:num_arcs
+        @constraint(model, ψ0[k] <= λU * x[k])
+        @constraint(model, ψ0[k] <= λ)
+        @constraint(model, ψ0[k] >= λ - λU * (1 - x[k]))
+        @constraint(model, ψ0[k] >= 0)
+    end
+    @objective(model, Min, t_0_l + t_0_f)
+    vars = Dict(
+        :t_0_l => t_0_l,
+        :t_0_f => t_0_f,
+        :λ => λ,
+        :x => x,
+        :h => h,
+        :ψ0 => ψ0
+    )
+    return model, vars
+end
 function build_imp(network, S, ϕU, λU, γ, w, v, uncertainty_set; mip_optimizer=nothing)
     num_arcs = length(network.arcs) - 1
     R, r_dict, xi_bar, epsilon = uncertainty_set[:R], uncertainty_set[:r_dict], uncertainty_set[:xi_bar], uncertainty_set[:epsilon]
@@ -158,7 +200,8 @@ function imp_optimize!(imp_model::Model, imp_vars::Dict, isp_leader_instances::D
         optimize!(imp_model)
         st = MOI.get(imp_model, MOI.TerminationStatus())
         α_sol = value.(imp_vars[:α])
-        t_1_sol = sum(value.(imp_vars[:t_1_l])) + sum(value.(imp_vars[:t_1_f]))
+        t_1_l_sol = value.(imp_vars[:t_1_l])
+        t_1_f_sol = value.(imp_vars[:t_1_f])
         subprob_obj = 0
         dict_cut_info_l, dict_cut_info_f = Dict(), Dict()
         status = true
@@ -172,10 +215,10 @@ function imp_optimize!(imp_model::Model, imp_vars::Dict, isp_leader_instances::D
             subprob_obj += cut_info_l[:obj_val]+cut_info_f[:obj_val]
         end
         if status == true 
-            if t_1_sol <= subprob_obj+1e-4
+            if sum(t_1_l_sol) + sum(t_1_f_sol) <= subprob_obj+1e-4
                 @info "Termination condition met"
-                println("t_1_sol: ", t_1_sol, ", subprob_obj: ", subprob_obj)
-                push!(past_obj, t_1_sol)
+                println("t_1: ", sum(t_1_l_sol) + sum(t_1_f_sol), ", subprob_obj: ", subprob_obj)
+                push!(past_obj, t_1_l_sol + t_1_f_sol)
                 push!(past_subprob_obj, subprob_obj)
                 result[:past_obj] = past_obj
                 result[:past_subprob_obj] = past_subprob_obj
@@ -183,12 +226,15 @@ function imp_optimize!(imp_model::Model, imp_vars::Dict, isp_leader_instances::D
                 result[:obj_val] = objective_value(imp_model)
                 return (:OptimalityCut, result)
             else
-                push!(past_obj, t_1_sol)
+                push!(past_obj, sum(t_1_l_sol) + sum(t_1_f_sol))
                 push!(past_subprob_obj, subprob_obj)
+
                 subgradient_l = [dict_cut_info_l[s][:μhat] for s in 1:S]
                 subgradient_f = [dict_cut_info_f[s][:μtilde] for s in 1:S]
                 intercept_l = [dict_cut_info_l[s][:intercept] for s in 1:S]
                 intercept_f = [dict_cut_info_f[s][:intercept] for s in 1:S]
+                # multi-cut을 구현하려면 imp에 Z_l_s, Z_f_s 만들어서 각 Z_l_s 와 Z_f_s에 epigraph로 cut을 추가하면 됨.
+                # 일단 single-cut으로 구현
                 
                 cut_added_l = @constraint(imp_model, [s=1:S], imp_vars[:t_1_l][s] <= intercept_l[s] + imp_vars[:α]'*subgradient_l[s])
                 cut_added_f = @constraint(imp_model, [s=1:S], imp_vars[:t_1_f][s] <= intercept_f[s] + imp_vars[:α]'*subgradient_f[s])
@@ -216,8 +262,7 @@ function imp_optimize!(imp_model::Model, imp_vars::Dict, isp_leader_instances::D
                     end
                     return eval_result
                 end
-                opt_cut_val = sum(evaluate_expr(intercept_l[s] + imp_vars[:α]'*subgradient_l[s], y) for s in 1:S) + sum(evaluate_expr(intercept_f[s] + imp_vars[:α]'*subgradient_f[s], y) for s in 1:S)
-                if abs(subprob_obj - opt_cut_val) > 1e-4
+                if abs(subprob_obj - sum(evaluate_expr(intercept_l[s] + imp_vars[:α]'*subgradient_l[s], y) for s in 1:S) - sum(evaluate_expr(intercept_f[s] + imp_vars[:α]'*subgradient_f[s], y) for s in 1:S)) > 1e-4
                     println("something went wrong")
                     @infiltrate
                 end
@@ -246,7 +291,7 @@ function initialize_isp(network, S, ϕU, λU, γ, w, v, uncertainty_set; conic_o
     return leader_instances, follower_instances
 end
 
-function evaluate_master_opt_cut(isp_leader_instances::Dict, isp_follower_instances::Dict, isp_data::Dict, cut_info::Dict, iter::Int; multi_cut=false)
+function evaluate_master_opt_cut(isp_leader_instances::Dict, isp_follower_instances::Dict, isp_data::Dict, cut_info::Dict, iter::Int)
     S = isp_data[:S]
     α_sol = cut_info[:α_sol]
     status = true
@@ -278,35 +323,23 @@ function evaluate_master_opt_cut(isp_leader_instances::Dict, isp_follower_instan
     βtilde1_1 = cat([value.(isp_follower_instances[s][2][:βtilde1_1]) for s in 1:S]...; dims=1)
     βtilde1_3 = cat([value.(isp_follower_instances[s][2][:βtilde1_3]) for s in 1:S]...; dims=1)
 
-    if multi_cut
-        intercept_l = [value.(isp_leader_instances[s][2][:intercept]) for s in 1:S]
-        intercept_f = [value.(isp_follower_instances[s][2][:intercept]) for s in 1:S]
-        intercept = sum(intercept_l) + sum(intercept_f)
-    else
-        intercept = sum(value.(isp_leader_instances[s][2][:intercept]) for s in 1:S) + sum(value.(isp_follower_instances[s][2][:intercept]) for s in 1:S)
-        intercept_l, intercept_f = nothing, nothing
-    end
+    intercept_l = sum(value.(isp_leader_instances[s][2][:intercept]) for s in 1:S)
+    intercept_f = sum(value.(isp_follower_instances[s][2][:intercept]) for s in 1:S)
+    
     leader_obj = sum(objective_value(isp_leader_instances[s][1]) for s in 1:S)
     follower_obj = sum(objective_value(isp_follower_instances[s][1]) for s in 1:S)
     println("summation of leader and follower objective: ", leader_obj+follower_obj, ", cut_info[:obj_val]: ", cut_info[:obj_val])
     println("Outer loop iteration: ", iter)
-    @assert abs(leader_obj + follower_obj - cut_info[:obj_val]) < 1e-3
+    @assert abs(leader_obj + follower_obj - cut_info[:obj_val]) < 1e-4
     return Dict(:Uhat1=>Uhat1, :Utilde1=>Utilde1, :Uhat3=>Uhat3, :Utilde3=>Utilde3, :Ztilde1_3=>Ztilde1_3
-    ,:βtilde1_1=>βtilde1_1, :βtilde1_3=>βtilde1_3, :intercept=>intercept, :intercept_l=>intercept_l, :intercept_f=>intercept_f)
+    ,:βtilde1_1=>βtilde1_1, :βtilde1_3=>βtilde1_3, :intercept_l=>intercept_l, :intercept_f=>intercept_f)
 end
 
 
-function nested_benders_optimize!(omp_model::Model, omp_vars::Dict, network, ϕU, λU, γ, w, uncertainty_set; mip_optimizer=nothing, conic_optimizer=nothing, multi_cut=false)
+function nested_benders_optimize!(omp_model::Model, omp_vars::Dict, network, ϕU, λU, γ, w, uncertainty_set; mip_optimizer=nothing, conic_optimizer=nothing)
     ### --------Begin Outer Master problemInitialization--------
     st, λ_sol, x_sol, h_sol, ψ0_sol = initialize_omp(omp_model, omp_vars)
-    x, h, λ, ψ0 = omp_vars[:x], omp_vars[:h], omp_vars[:λ], omp_vars[:ψ0]
-    if multi_cut
-        t_0_l = omp_vars[:t_0_l]
-        t_0_f = omp_vars[:t_0_f]
-        t_0 = t_0_l + t_0_f
-    else
-        t_0 = omp_vars[:t_0]
-    end
+    x, h, λ, ψ0, t_0_l, t_0_f = omp_vars[:x], omp_vars[:h], omp_vars[:λ], omp_vars[:ψ0], omp_vars[:t_0_l], omp_vars[:t_0_f]
     num_arcs = length(network.arcs) - 1
     E = ones(num_arcs, num_arcs+1) # num_arcs × num_arcs+1 matrix of ones
     diag_x_E = Diagonal(x) * E  # diag(x)E
@@ -332,56 +365,43 @@ function nested_benders_optimize!(omp_model::Model, omp_vars::Dict, network, ϕU
         optimize!(omp_model)
         st = MOI.get(omp_model, MOI.TerminationStatus())
         x_sol, h_sol, λ_sol, ψ0_sol = value.(omp_vars[:x]), value.(omp_vars[:h]), value(omp_vars[:λ]), value.(omp_vars[:ψ0])
-        t_0_sol = value(t_0)
+        t_0_l_sol = value(omp_vars[:t_0_l])
+        t_0_f_sol = value(omp_vars[:t_0_f])
         status, cut_info =imp_optimize!(imp_model, imp_vars, leader_instances, follower_instances; isp_data=isp_data, λ_sol=λ_sol, x_sol=x_sol, h_sol=h_sol, ψ0_sol=ψ0_sol, outer_iter=iter, imp_cuts=imp_cuts)
         imp_cuts[:old_cuts] = cut_info[:cuts] ## 다음 iteration에서 지우기 위해 여기에 저장함
         if status == :OptimalityCut
-            if t_0_sol >= objective_value(imp_model)-1e-4
+            if t_0_l_sol + t_0_f_sol >= objective_value(imp_model)-1e-4
                 @info "Termination condition met"
-                println("t_0_sol: ", t_0_sol, ", cut_info[:obj_val]: ", cut_info[:obj_val])
-                push!(past_obj, t_0_sol)
+                println("t_0: ", t_0_l_sol + t_0_f_sol, ", cut_info[:obj_val]: ", cut_info[:obj_val])
+                push!(past_obj, t_0_l_sol + t_0_f_sol)
                 push!(past_subprob_obj, cut_info[:obj_val])
                 result[:past_obj] = past_obj
                 result[:past_subprob_obj] = past_subprob_obj
                 return result
             else
-                push!(past_obj, t_0_sol)
+                push!(past_obj, t_0_l_sol + t_0_f_sol)
                 push!(past_subprob_obj, cut_info[:obj_val])
 
-                outer_cut_info = evaluate_master_opt_cut(leader_instances, follower_instances, isp_data, cut_info, iter, multi_cut=multi_cut)
-                if multi_cut
-                    cut_1_l =  -ϕU * [sum(outer_cut_info[:Uhat1][s,:,:] .* diag_x_E) for s in 1:S]
-                    cut_1_f =  -ϕU * [sum(outer_cut_info[:Utilde1][s,:,:] .* diag_x_E) for s in 1:S]
-                    cut_2_l =  -ϕU * [sum(outer_cut_info[:Uhat3][s,:,:] .* (isp_data[:E] - diag_x_E)) for s in 1:S]
-                    cut_2_f =  -ϕU * [sum(outer_cut_info[:Utilde3][s,:,:] .* (isp_data[:E] - diag_x_E)) for s in 1:S]
-                    cut_3_f =  [sum(outer_cut_info[:Ztilde1_3][s,:,:] .* (diag_λ_ψ * diagm(xi_bar[s]))) for s in 1:S]
-                    cut_4_f =  [(isp_data[:d0]'*outer_cut_info[:βtilde1_1][s,:]) * λ for s in 1:S]
-                    cut_5_f =  -1* [(h + diag_λ_ψ * xi_bar[s])'* outer_cut_info[:βtilde1_3][s,:] for s in 1:S]
-                    cut_intercept_l = outer_cut_info[:intercept_l]
-                    cut_intercept_f = outer_cut_info[:intercept_f]
-                    opt_cut_l = sum(cut_1_l)+ sum(cut_2_l) + sum(cut_intercept_l)
-                    opt_cut_f = sum(cut_1_f)+ sum(cut_2_f)+ sum(cut_3_f)+ sum(cut_4_f)+ sum(cut_5_f) + sum(cut_intercept_f)
-                    # 여기도 multi-cut 구현할 순 있음.
-                    ## 심지어 scenario별로 더 epigrph variable을 만들어서할수도있음.
-                    cut_added_l = @constraint(omp_model, t_0_l >= opt_cut_l)
-                    cut_added_f = @constraint(omp_model, t_0_f >= opt_cut_f)
-                    set_name(cut_added_l, "opt_cut_$(iter)_l")
-                    set_name(cut_added_f, "opt_cut_$(iter)_f")
-                    result[:cuts]["opt_cut_$(iter)_l"] = cut_added_l
-                    result[:cuts]["opt_cut_$(iter)_f"] = cut_added_f
-                else
-                    cut_1 =  -ϕU * [sum((outer_cut_info[:Uhat1][s,:,:] + outer_cut_info[:Utilde1][s,:,:]) .* diag_x_E) for s in 1:S]
-                    cut_2 =  -ϕU * [sum((outer_cut_info[:Uhat3][s,:,:] + outer_cut_info[:Utilde3][s,:,:]) .* (isp_data[:E] - diag_x_E)) for s in 1:S]
-                    cut_3 =  [sum(outer_cut_info[:Ztilde1_3][s,:,:] .* (diag_λ_ψ * diagm(xi_bar[s]))) for s in 1:S]
-                    cut_4 =  [(isp_data[:d0]'*outer_cut_info[:βtilde1_1][s,:]) * λ for s in 1:S]
-                    cut_5 =  -1* [(h + diag_λ_ψ * xi_bar[s])'* outer_cut_info[:βtilde1_3][s,:] for s in 1:S]
-                    cut_intercept = outer_cut_info[:intercept]
-                    opt_cut = sum(cut_1)+ sum(cut_2)+ sum(cut_3)+ sum(cut_4)+ sum(cut_5)+ sum(cut_intercept)
-                    # 여기도 multi-cut 구현할 순 있음.
-                    cut_added = @constraint(omp_model, t_0 >= opt_cut)
-                    set_name(cut_added, "opt_cut_$iter")
-                    result[:cuts]["opt_cut_$iter"] = cut_added
-                end
+                outer_cut_info = evaluate_master_opt_cut(leader_instances, follower_instances, isp_data, cut_info, iter)
+                cut_1_l =  -ϕU * [sum(outer_cut_info[:Uhat1][s,:,:] .* diag_x_E) for s in 1:S]
+                cut_1_f =  -ϕU * [sum(outer_cut_info[:Utilde1][s,:,:] .* diag_x_E) for s in 1:S]
+                cut_2_l =  -ϕU * [sum(outer_cut_info[:Uhat3][s,:,:] .* (isp_data[:E] - diag_x_E)) for s in 1:S]
+                cut_2_f =  -ϕU * [sum(outer_cut_info[:Utilde3][s,:,:] .* (isp_data[:E] - diag_x_E)) for s in 1:S]
+                cut_3_f =  [sum(outer_cut_info[:Ztilde1_3][s,:,:] .* (diag_λ_ψ * diagm(xi_bar[s]))) for s in 1:S]
+                cut_4_f =  [(isp_data[:d0]'*outer_cut_info[:βtilde1_1][s,:]) * λ for s in 1:S]
+                cut_5_f =  -1* [(h + diag_λ_ψ * xi_bar[s])'* outer_cut_info[:βtilde1_3][s,:] for s in 1:S]
+                cut_intercept_l = outer_cut_info[:intercept_l]
+                cut_intercept_f = outer_cut_info[:intercept_f]
+                opt_cut_l = sum(cut_1_l)+ sum(cut_2_l) + sum(cut_intercept_l)
+                opt_cut_f = sum(cut_1_f)+ sum(cut_2_f)+ sum(cut_3_f)+ sum(cut_4_f)+ sum(cut_5_f) + sum(cut_intercept_f)
+                # 여기도 multi-cut 구현할 순 있음.
+                ## 심지어 scenario별로 더 epigrph variable을 만들어서할수도있음.
+                cut_added_l = @constraint(omp_model, t_0_l >= opt_cut_l)
+                cut_added_f = @constraint(omp_model, t_0_f >= opt_cut_f)
+                set_name(cut_added_l, "opt_cut_$(iter)_l")
+                set_name(cut_added_f, "opt_cut_$(iter)_f")
+                result[:cuts]["opt_cut_$(iter)_l"] = cut_added_l
+                result[:cuts]["opt_cut_$(iter)_f"] = cut_added_f
                 y = Dict(
                     [omp_vars[:x][k] => x_sol[k] for k in 1:num_arcs]...,
                     [omp_vars[:h][k] => h_sol[k] for k in 1:num_arcs]...,
@@ -399,10 +419,7 @@ function nested_benders_optimize!(omp_model::Model, omp_vars::Dict, network, ϕU
                     end
                     return eval_result
                 end
-                if multi_cut
-                    opt_cut = opt_cut_l + opt_cut_f
-                end
-                if abs(cut_info[:obj_val] - evaluate_expr(opt_cut, y)) > 1e-3
+                if abs(cut_info[:obj_val] - evaluate_expr(opt_cut_l, y) - evaluate_expr(opt_cut_f, y)) > 1e-4
                     println("something went wrong")
                     @infiltrate
                 end

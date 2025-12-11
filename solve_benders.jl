@@ -17,22 +17,22 @@ println("TESTING STRICT BENDERS MODEL CONSTRUCTION")
 println("="^80)
 
 # Model parameters
-S = 20  # Number of scenarios
+S = 50  # Number of scenarios
 ϕU = 10.0  # Upper bound on interdiction effectiveness
 λU = 10.0  # Upper bound on λ
 γ = 2.0  # Interdiction budget
 w = 1.0  # Budget weight
 v = 1.0  # Interdiction effectiveness parameter (NOT the decision variable ν!)
-
+seed = 42
 
 # Generate a small test network
 println("\n[1] Generating 3×3 grid network...")
-network = generate_grid_network(3, 3, seed=42)
+network = generate_grid_network(3, 3, seed=seed)
 print_network_summary(network)
 # ===== Use Factor Model =====
 # capacities, F = generate_capacity_scenarios(length(network.arcs), network.interdictable_arcs, S, seed=120)
 # ===== Use Uniform Model =====
-capacities, F = generate_capacity_scenarios_uniform_model(length(network.arcs), S, seed=42)
+capacities, F = generate_capacity_scenarios_uniform_model(length(network.arcs), S, seed=seed)
 
 # Build uncertainty set
 # ===== BUILD ROBUST COUNTERPART MATRICES R AND r =====
@@ -63,17 +63,21 @@ println("    v (interdiction effectiveness param) = $v")
 println("  Note: v is a parameter in COP matrix [Φ - v*W]")
 println("        ν (nu) is a decision variable in objective t + w*ν")
 # Build model (without optimizer for initial testing)
-model, vars = build_omp(network, ϕU, λU, γ, w; optimizer=Gurobi.Optimizer)
 
 nested_benders = true
+multi_cut = true
+model, vars = build_omp(network, ϕU, λU, γ, w; optimizer=Gurobi.Optimizer, multi_cut=multi_cut)
 
 if nested_benders
     time_start = time()
-    result = nested_benders_optimize!(model, vars, network, ϕU, λU, γ, w, uncertainty_set; mip_optimizer=Gurobi.Optimizer, conic_optimizer=Mosek.Optimizer)
+    result = nested_benders_optimize!(model, vars, network, ϕU, λU, γ, w, uncertainty_set; mip_optimizer=Gurobi.Optimizer, conic_optimizer=Mosek.Optimizer, multi_cut=multi_cut)
     time_end = time()
     println("Time taken: $(time_end - time_start) seconds")
 else
+    time_start = time()
     result = strict_benders_optimize!(model, vars, network, ϕU, λU, γ, w, uncertainty_set; optimizer=Gurobi.Optimizer)
+    time_end = time()
+    println("Time taken: $(time_end - time_start) seconds")
 end
 
 

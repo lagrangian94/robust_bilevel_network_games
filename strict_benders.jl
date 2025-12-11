@@ -14,12 +14,19 @@ includet("build_full_model.jl")
 using .NetworkGenerator
 
 
-function build_omp(network, ϕU, λU, γ, w; optimizer=nothing)
+function build_omp(network, ϕU, λU, γ, w; optimizer=nothing, multi_cut=false)
     # Extract network dimensions
     num_arcs = length(network.arcs)-1 #dummy arc 제외
     # Create model
     model = Model(optimizer_with_attributes(optimizer, MOI.Silent() => false))
-    @variable(model, t_0 >= 0)  # Objective epigraph variable
+    if multi_cut
+        @variable(model, t_0_l >= 0)  # Objective epigraph variable
+        @variable(model, t_0_f >= 0)  # Objective epigraph variable
+        @objective(model, Min, t_0_l + t_0_f)
+    else
+        @variable(model, t_0 >= 0)  # Objective epigraph variable
+        @objective(model, Min, t_0)
+    end
     @variable(model, λ >= 0)  # Budget allocation parameter
     @variable(model, x[1:num_arcs], Bin)
     @variable(model, h[1:num_arcs] >= 0)
@@ -42,14 +49,25 @@ function build_omp(network, ϕU, λU, γ, w; optimizer=nothing)
         @constraint(model, ψ0[k] >= λ - λU * (1 - x[k]))
         @constraint(model, ψ0[k] >= 0)
     end
-    @objective(model, Min, t_0)
-    vars = Dict(
-        :t_0 => t_0,
-        :λ => λ,
-        :x => x,
-        :h => h,
-        :ψ0 => ψ0
-    )
+    if multi_cut
+        vars = Dict(
+            :t_0_l => t_0_l,
+            :t_0_f => t_0_f,
+            :λ => λ,
+            :x => x,
+            :h => h,
+            :ψ0 => ψ0,
+            :t_0 => t_0_l + t_0_f
+        )
+    else
+        vars = Dict(
+            :t_0 => t_0,
+            :λ => λ,
+            :x => x,
+            :h => h,
+            :ψ0 => ψ0
+        )
+    end
     return model, vars
 end
 

@@ -31,25 +31,25 @@ function show_nonzero(var; tol=1e-8)
     end
 end
 # Model parameters
-S = 20# Number of scenarios
+S = 50# Number of scenarios
 ϕU = 10.0  # Upper bound on interdiction effectiveness
 λU = 10.0  # Upper bound on λ
 γ = 2.0  # Interdiction budget
 w = 1.0  # Budget weight
 v = 1.0  # Interdiction effectiveness parameter (NOT the decision variable ν!)
-
+seed = 42
 mip_solver = Gurobi.Optimizer
 conic_solver = Mosek.Optimizer
 
 # Generate a small test network
 println("\n[1] Generating 3×3 grid network...")
-network = generate_grid_network(3, 3, seed=42)
+network = generate_grid_network(3, 3, seed=seed)
 print_network_summary(network)
 
 # ===== Use Factor Model =====
 # capacities, F = generate_capacity_scenarios(length(network.arcs), network.interdictable_arcs, S, seed=120)
 # ===== Use Uniform Model =====
-capacities, F = generate_capacity_scenarios_uniform_model(length(network.arcs), S, seed=42)
+capacities, F = generate_capacity_scenarios_uniform_model(length(network.arcs), S, seed=seed)
 
 # S=1
 # capacities = capacities[:,2]
