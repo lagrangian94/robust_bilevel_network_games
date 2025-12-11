@@ -64,8 +64,12 @@ println("  Note: v is a parameter in COP matrix [Φ - v*W]")
 println("        ν (nu) is a decision variable in objective t + w*ν")
 # Build model (without optimizer for initial testing)
 
-nested_benders = true
 multi_cut = true
+nested_benders = false#true
+if !nested_benders
+    multi_cut = false
+end
+
 model, vars = build_omp(network, ϕU, λU, γ, w; optimizer=Gurobi.Optimizer, multi_cut=multi_cut)
 
 if nested_benders

@@ -112,7 +112,7 @@ function osp_optimize!(osp_model::Model, osp_vars::Dict, osp_data::Dict, λ_sol,
 
     optimize!(osp_model)
     st = MOI.get(osp_model, MOI.TerminationStatus())
-    if st == MOI.OPTIMAL
+    if (st == MOI.OPTIMAL) || (st == MOI.SLOW_PROGRESS)
         obj_val = objective_value(osp_model)
         intercept = value.(obj_term3) .+ value.(obj_term_ub_hat) .+ value.(obj_term_lb_hat) .+ value.(obj_term_ub_tilde) .+ value.(obj_term_lb_tilde)
         cut_coeff = Dict(

@@ -143,7 +143,10 @@ if solve_full_model
     println("\n" * "="^80)
     println("MODEL CONSTRUCTION TEST COMPLETE")
     println("="^80)
+    time_start = time()
     optimize!(model)
+    time_end = time()
+    println("Time taken: $(time_end - time_start) seconds")
     # Save objective value and optimal solution after solving
 
     # Check if the model has a feasible solution
