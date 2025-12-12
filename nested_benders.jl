@@ -142,8 +142,8 @@ function imp_optimize!(imp_model::Model, imp_vars::Dict, isp_leader_instances::D
     uncertainty_set = isp_data[:uncertainty_set]
     past_obj = []
     past_subprob_obj = []
-    past_upper_bound = []
-    upper_bound = -Inf
+    past_lower_bound = []
+    lower_bound = -Inf ## inner master problem은 Maximization이니까 feasible solution은 lower bound를 제공.
     result = Dict()
     result[:cuts] = Dict()
     ##
@@ -173,24 +173,24 @@ function imp_optimize!(imp_model::Model, imp_vars::Dict, isp_leader_instances::D
             dict_cut_info_f[s] = cut_info_f
             subprob_obj += cut_info_l[:obj_val]+cut_info_f[:obj_val]
         end
-        upper_bound = max(upper_bound, subprob_obj)
+        lower_bound = max(lower_bound, subprob_obj) ## inner master problem은 Maximization이니까 우린 항상 더 높은 값을 추구
         if status == true 
-            if t_1_sol <= upper_bound+1e-4
+            if t_1_sol <= lower_bound+1e-4
                 @info "Termination condition met"
                 println("t_1_sol: ", t_1_sol, ", subprob_obj: ", subprob_obj)
                 push!(past_obj, t_1_sol)
                 push!(past_subprob_obj, subprob_obj)
-                push!(past_upper_bound, upper_bound)
+                push!(past_lower_bound, lower_bound)
                 result[:past_obj] = past_obj
                 result[:past_subprob_obj] = past_subprob_obj
                 result[:α_sol] = value.(imp_vars[:α])
                 result[:obj_val] = objective_value(imp_model)
-                result[:past_upper_bound] = past_upper_bound
+                result[:past_lower_bound] = past_lower_bound
                 return (:OptimalityCut, result)
             else
                 push!(past_obj, t_1_sol)
                 push!(past_subprob_obj, subprob_obj)
-                push!(past_upper_bound, upper_bound)
+                push!(past_lower_bound, lower_bound)
                 subgradient_l = [dict_cut_info_l[s][:μhat] for s in 1:S]
                 subgradient_f = [dict_cut_info_f[s][:μtilde] for s in 1:S]
                 intercept_l = [dict_cut_info_l[s][:intercept] for s in 1:S]
