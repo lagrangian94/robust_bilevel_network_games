@@ -9,7 +9,7 @@ includet("network_generator.jl")
 includet("build_uncertainty_set.jl")
 includet("strict_benders.jl")
 includet("nested_benders.jl")
-
+includet("plot_benders.jl")
 using .NetworkGenerator: generate_grid_network, generate_capacity_scenarios_factor_model, generate_capacity_scenarios_uniform_model, print_network_summary
 
 println("="^80)
@@ -17,7 +17,7 @@ println("TESTING STRICT BENDERS MODEL CONSTRUCTION")
 println("="^80)
 
 # Model parameters
-S = 50  # Number of scenarios
+S = 2  # Number of scenarios
 ϕU = 10.0  # Upper bound on interdiction effectiveness
 λU = 10.0  # Upper bound on λ
 γ = 2.0  # Interdiction budget
@@ -65,7 +65,7 @@ println("        ν (nu) is a decision variable in objective t + w*ν")
 # Build model (without optimizer for initial testing)
 
 multi_cut = true
-nested_benders = false#true
+nested_benders = true
 if !nested_benders
     multi_cut = false
 end
@@ -77,11 +77,13 @@ if nested_benders
     result = nested_benders_optimize!(model, vars, network, ϕU, λU, γ, w, uncertainty_set; mip_optimizer=Gurobi.Optimizer, conic_optimizer=Mosek.Optimizer, multi_cut=multi_cut)
     time_end = time()
     println("Time taken: $(time_end - time_start) seconds")
+    plot_benders_convergence(result)
 else
     time_start = time()
     result = strict_benders_optimize!(model, vars, network, ϕU, λU, γ, w, uncertainty_set; optimizer=Gurobi.Optimizer)
     time_end = time()
     println("Time taken: $(time_end - time_start) seconds")
+    plot_benders_convergence(result)
 end
 
 

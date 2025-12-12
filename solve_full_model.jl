@@ -31,7 +31,7 @@ function show_nonzero(var; tol=1e-8)
     end
 end
 # Model parameters
-S = 50# Number of scenarios
+S = 1# Number of scenarios
 ϕU = 10.0  # Upper bound on interdiction effectiveness
 λU = 10.0  # Upper bound on λ
 γ = 2.0  # Interdiction budget
@@ -43,7 +43,7 @@ conic_solver = Mosek.Optimizer
 
 # Generate a small test network
 println("\n[1] Generating 3×3 grid network...")
-network = generate_grid_network(3, 3, seed=seed)
+network = generate_grid_network(5, 5, seed=seed)
 print_network_summary(network)
 
 # ===== Use Factor Model =====

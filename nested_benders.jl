@@ -142,6 +142,8 @@ function imp_optimize!(imp_model::Model, imp_vars::Dict, isp_leader_instances::D
     uncertainty_set = isp_data[:uncertainty_set]
     past_obj = []
     past_subprob_obj = []
+    past_upper_bound = []
+    upper_bound = -Inf
     result = Dict()
     result[:cuts] = Dict()
     ##
@@ -171,20 +173,24 @@ function imp_optimize!(imp_model::Model, imp_vars::Dict, isp_leader_instances::D
             dict_cut_info_f[s] = cut_info_f
             subprob_obj += cut_info_l[:obj_val]+cut_info_f[:obj_val]
         end
+        upper_bound = max(upper_bound, subprob_obj)
         if status == true 
-            if t_1_sol <= subprob_obj+1e-4
+            if t_1_sol <= upper_bound+1e-4
                 @info "Termination condition met"
                 println("t_1_sol: ", t_1_sol, ", subprob_obj: ", subprob_obj)
                 push!(past_obj, t_1_sol)
                 push!(past_subprob_obj, subprob_obj)
+                push!(past_upper_bound, upper_bound)
                 result[:past_obj] = past_obj
                 result[:past_subprob_obj] = past_subprob_obj
                 result[:α_sol] = value.(imp_vars[:α])
                 result[:obj_val] = objective_value(imp_model)
+                result[:past_upper_bound] = past_upper_bound
                 return (:OptimalityCut, result)
             else
                 push!(past_obj, t_1_sol)
                 push!(past_subprob_obj, subprob_obj)
+                push!(past_upper_bound, upper_bound)
                 subgradient_l = [dict_cut_info_l[s][:μhat] for s in 1:S]
                 subgradient_f = [dict_cut_info_f[s][:μtilde] for s in 1:S]
                 intercept_l = [dict_cut_info_l[s][:intercept] for s in 1:S]
@@ -317,9 +323,11 @@ function nested_benders_optimize!(omp_model::Model, omp_vars::Dict, network, ϕU
     iter = 0
     past_obj = []
     past_subprob_obj = []
+    past_upper_bound = []
     imp_cuts = Dict{Symbol, Any}()
     result = Dict()
     result[:cuts] = Dict()
+    upper_bound = Inf
     ### --------Begin Inner Master, Subproblem Initialization--------
     imp_model, imp_vars = build_imp(network, S, ϕU, λU, γ, w, v, uncertainty_set; mip_optimizer=mip_optimizer)
     st, α_sol = initialize_imp(imp_model, imp_vars)
@@ -335,19 +343,35 @@ function nested_benders_optimize!(omp_model::Model, omp_vars::Dict, network, ϕU
         t_0_sol = value(t_0)
         status, cut_info =imp_optimize!(imp_model, imp_vars, leader_instances, follower_instances; isp_data=isp_data, λ_sol=λ_sol, x_sol=x_sol, h_sol=h_sol, ψ0_sol=ψ0_sol, outer_iter=iter, imp_cuts=imp_cuts)
         imp_cuts[:old_cuts] = cut_info[:cuts] ## 다음 iteration에서 지우기 위해 여기에 저장함
+        upper_bound = min(upper_bound, cut_info[:obj_val])
         if status == :OptimalityCut
-            if t_0_sol >= objective_value(imp_model)-1e-4
+            if t_0_sol >= upper_bound-1e-4
                 @info "Termination condition met"
                 println("t_0_sol: ", t_0_sol, ", cut_info[:obj_val]: ", cut_info[:obj_val])
                 push!(past_obj, t_0_sol)
                 push!(past_subprob_obj, cut_info[:obj_val])
+                push!(past_upper_bound, upper_bound)
                 result[:past_obj] = past_obj
                 result[:past_subprob_obj] = past_subprob_obj
+                result[:past_upper_bound] = past_upper_bound
+                """
+                Optimize a model with 740 rows, 143 columns and 75687 nonzeros
+                Model fingerprint: 0x74f2eaf8
+                Variable types: 96 continuous, 47 integer (47 binary)
+                Coefficient statistics:
+                Matrix range     [3e-11, 1e+03]
+                Objective range  [1e+00, 1e+00]
+                Bounds range     [0e+00, 0e+00]
+                RHS range        [1e-02, 7e+02]
+                Warning: Model contains large matrix coefficient range
+                        Consider reformulating model or setting NumericFocus parameter
+                        to avoid numerical issues.
+                """
                 return result
             else
                 push!(past_obj, t_0_sol)
                 push!(past_subprob_obj, cut_info[:obj_val])
-
+                push!(past_upper_bound, upper_bound)
                 outer_cut_info = evaluate_master_opt_cut(leader_instances, follower_instances, isp_data, cut_info, iter, multi_cut=multi_cut)
                 if multi_cut
                     cut_1_l =  -ϕU * [sum(outer_cut_info[:Uhat1][s,:,:] .* diag_x_E) for s in 1:S]

@@ -156,6 +156,8 @@ function strict_benders_optimize!(omp_model::Model, omp_vars::Dict, network, ϕU
 
     past_obj = []
     past_subprob_obj = []
+    past_upper_bound = []
+    upper_bound = Inf
     result = Dict()
     result[:cuts] = Dict()
     ### --------End Initialization--------
@@ -168,14 +170,17 @@ function strict_benders_optimize!(omp_model::Model, omp_vars::Dict, network, ϕU
         t_0_sol = value(omp_vars[:t_0])
 
         (status, cut_info) =osp_optimize!(osp_model, osp_vars, osp_data, λ_sol, x_sol, h_sol, ψ0_sol)
+        upper_bound = min(upper_bound, cut_info[:obj_val])
         if status == :OptimalityCut
-            if t_0_sol >= cut_info[:obj_val]-1e-4
+            if t_0_sol >= upper_bound-1e-4
                 @info "Termination condition met"
                 println("t_0_sol: ", t_0_sol, ", cut_info[:obj_val]: ", cut_info[:obj_val])
                 push!(past_obj, t_0_sol)
                 push!(past_subprob_obj, cut_info[:obj_val])
+                push!(past_upper_bound, upper_bound)
                 result[:past_obj] = past_obj
                 result[:past_subprob_obj] = past_subprob_obj
+                result[:past_upper_bound] = past_upper_bound
                 """
                     Variable types: 36 continuous, 17 integer (17 binary)
                     Coefficient statistics:
@@ -211,6 +216,7 @@ function strict_benders_optimize!(omp_model::Model, omp_vars::Dict, network, ϕU
             else
                 push!(past_obj, t_0_sol)
                 push!(past_subprob_obj, cut_info[:obj_val])
+                push!(past_upper_bound, upper_bound)
                 cut_1 =  -ϕU * [sum((cut_info[:Uhat1][s,:,:] + cut_info[:Utilde1][s,:,:]) .* diag_x_E) for s in 1:S]
                 cut_2 =  -ϕU * [sum((cut_info[:Uhat3][s,:,:] + cut_info[:Utilde3][s,:,:]) .* (osp_data[:E] - diag_x_E)) for s in 1:S]
                 cut_3 =  [sum(cut_info[:Ztilde1_3][s,:,:] .* (diag_λ_ψ * diagm(xi_bar[s]))) for s in 1:S]
