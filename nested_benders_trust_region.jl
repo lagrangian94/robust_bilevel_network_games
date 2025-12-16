@@ -76,6 +76,21 @@ function update_trust_region_constraints!(
     return new_cons
 end
 
+function add_reverse_region_constraint!(model, x, xhat, B_old, network)
+    interdictable_arc_indices = findall(network.interdictable_arcs)
+    
+    reverse_expr = @expression(model,
+        sum((1 - x[k]) for k in interdictable_arc_indices if abs(xhat[k] - 1.0) < 1e-6) +
+        sum(x[k] for k in interdictable_arc_indices if abs(xhat[k]) < 1e-6)
+    )
+    
+    reverse_con = @constraint(model, reverse_expr >= B_old + 1)
+    set_name(reverse_con, "reverse_region")
+    
+    @info "  Added reverse region constraint: ||x - x̂_old||₁ ≥ $(B_old + 1)"
+    
+    return reverse_con
+end
 
 function build_imp(network, S, ϕU, λU, γ, w, v, uncertainty_set; mip_optimizer=nothing)
     num_arcs = length(network.arcs) - 1
@@ -467,22 +482,21 @@ function nested_benders_optimize!(omp_model::Model, omp_vars::Dict, network, ϕU
             if B_bin_stage < length(B_bin_sequence)-1
                 # Trust region 확장
                 B_bin_stage +=1
+                B_bin_old = B_bin
                 B_bin = B_bin_sequence[B_bin_stage] * sum(network.interdictable_arcs)
                 push!(bin_B_steps, (iter, B_bin))
                 @info "  ✓ Local optimal reached! Expanding B_bin to $B_bin"
-                # Reverse region constraint 추가 (선택사항)
-                # add_reverse_region_constraint!(omp_model, x, x̂, B_z_old)
-                
                 # TR constraint needs update (B_bin changed)
                 tr_needs_update = true
                 @info "Updating Trust Region"
                 ## trust region radius를 확장
                 tr_constraints = update_trust_region_constraints!(
                     omp_model, omp_vars, centers, B_bin, B_con, tr_constraints, network)
-                """
-                reverse region 넣기
-                """
-                # # Optional: Add reverse region constraint
+                # Reverse region constraint 추가 (선택사항)
+                reverse_constraints = add_reverse_region_constraint!(omp_model, omp_vars[:x], centers[:x], B_bin_old, network)
+                
+
+                    # # Optional: Add reverse region constraint
                 # if use_reverse_constraints
                 #     reverse_con = add_reverse_region_constraint!(
                 #         omp_model, x, centers[:x], B_z_old, network
