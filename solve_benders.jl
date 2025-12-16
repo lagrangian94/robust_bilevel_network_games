@@ -8,7 +8,8 @@ using Revise
 includet("network_generator.jl")
 includet("build_uncertainty_set.jl")
 includet("strict_benders.jl")
-includet("nested_benders.jl")
+# includet("nested_benders.jl")
+includet("nested_benders_trust_region.jl")
 includet("plot_benders.jl")
 using .NetworkGenerator: generate_grid_network, generate_capacity_scenarios_factor_model, generate_capacity_scenarios_uniform_model, print_network_summary
 
@@ -71,7 +72,6 @@ if !nested_benders
 end
 
 model, vars = build_omp(network, ϕU, λU, γ, w; optimizer=Gurobi.Optimizer, multi_cut=multi_cut)
-
 if nested_benders
     time_start = time()
     result = nested_benders_optimize!(model, vars, network, ϕU, λU, γ, w, uncertainty_set; mip_optimizer=Gurobi.Optimizer, conic_optimizer=Mosek.Optimizer, multi_cut=multi_cut)
