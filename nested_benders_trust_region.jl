@@ -390,9 +390,9 @@ function nested_benders_optimize!(omp_model::Model, omp_vars::Dict, network, ϕU
         :λ => nothing,
         :ψ0 => nothing # 근데 이건 굳이 해야하나? x*lambda인데
     )
-    v_upper = Inf # Will be updated after first subproblem solve
+    upper_bound = Inf # Will be updated after first subproblem solve
     ## Serious Step Parameters
-    β_relative = 1e-2 # cycling 방지
+    β_relative = 1e-4 # serious improvement threshold
     tr_constraints = Dict{Symbol, Any}(
         :binary => nothing,
         :continuous => nothing
@@ -422,10 +422,14 @@ function nested_benders_optimize!(omp_model::Model, omp_vars::Dict, network, ϕU
     xi_bar = uncertainty_set[:xi_bar]
     iter = 0
     past_obj = []
-    past_subprob_obj = []
+    past_major_subprob_obj = [] # major (serious) step에서 변화한 subproblem objective들만 모음
+    past_minor_subprob_obj = [] # minor (null) step에서 구한 subproblem objective들 다 모음
+    past_model_estimate = [] # 매 cutting plane omp의 objective 저장
+    past_local_lower_bound = [] # reverse region에서 구한 local lower bound 저장
     past_upper_bound = []
-    past_gaps = []
-    serious_steps = []
+    past_lower_bound = []
+    past_local_optimizer = []
+    major_iter = []
     bin_B_steps = [] # B_bin이 몇번째 outer loop에서 바꼈는지 체크
     # null_steps = []
     imp_cuts = Dict{Symbol, Any}()
@@ -433,6 +437,7 @@ function nested_benders_optimize!(omp_model::Model, omp_vars::Dict, network, ϕU
     result[:cuts] = Dict()
     result[:tr_info] = Dict()
     upper_bound = Inf
+    lower_bound = -Inf
     ### --------Begin Inner Master, Subproblem Initialization--------
     imp_model, imp_vars = build_imp(network, S, ϕU, λU, γ, w, v, uncertainty_set; mip_optimizer=mip_optimizer)
     st, α_sol = initialize_imp(imp_model, imp_vars)
@@ -446,45 +451,55 @@ function nested_benders_optimize!(omp_model::Model, omp_vars::Dict, network, ϕU
         optimize!(omp_model)
         st = MOI.get(omp_model, MOI.TerminationStatus())
         x_sol, h_sol, λ_sol, ψ0_sol = value.(omp_vars[:x]), value.(omp_vars[:h]), value(omp_vars[:λ]), value.(omp_vars[:ψ0])
-        t_0_sol = value(t_0)
+        model_estimate = value(t_0)
+        lower_bound = max(lower_bound, model_estimate)
         # Outer Subproblem 풀기
         status, cut_info =imp_optimize!(imp_model, imp_vars, leader_instances, follower_instances; isp_data=isp_data, λ_sol=λ_sol, x_sol=x_sol, h_sol=h_sol, ψ0_sol=ψ0_sol, outer_iter=iter, imp_cuts=imp_cuts)
-        imp_cuts[:old_cuts] = cut_info[:cuts] ## 다음 iteration에서 지우기 위해 여기에 저장함
-        upper_bound = min(upper_bound, cut_info[:obj_val])
-        
-        # Measure of progress
-        gap = upper_bound - t_0_sol
         if status != :OptimalityCut
             @warn "Outer Subproblem not optimal"
             @infiltrate
         end
-        # Serious Step Decision (status 확인 후)
-        β_relative_param = β_relative  # Use parameter from function signature
-        β_dynamic = max(1e-8, β_relative_param * abs(gap))  # 최소값 보장
-        # For minimization: improvement = v̂ - subprob_obj
-        # (positive improvement means we found better solution)
-        improvement = v_upper - cut_info[:obj_val] # best upper bound의 개선량
-        is_serious_step = (improvement >= β_dynamic) # best upper bound의 개선량이 ub-lb의 일정 비율 이상이면 change
+        imp_cuts[:old_cuts] = cut_info[:cuts] ## 다음 iteration에서 지우기 위해 여기에 저장함
+        subprob_obj = cut_info[:obj_val]
+        upper_bound = min(upper_bound, subprob_obj)
+        
+        # Measure of progress
+        if iter==1
+            push!(past_major_subprob_obj, subprob_obj)
+        end
+        gap = upper_bound - lower_bound # gap between upper bound and lower bound
+        # Serious Test
         tr_needs_update = false  # Flag for TR constraint update
+        predicted_decrease = past_major_subprob_obj[end] - model_estimate # serious(major) step 가장 최근 subprob obj와 지금 구한 obj의 차이
+        β_dynamic = max(1e-8, β_relative * predicted_decrease)  # 최소값 보장
+        improvement = past_major_subprob_obj[end] - subprob_obj # decrease in the actual objective
+        is_serious_step = (improvement >= β_dynamic) # decrease in the actual objective is at least some fraction of the decrease predicted by the model
         if is_serious_step
             # Serious Step: Move stability center
             centers[:x] = value.(x_sol)
             centers[:h] = value.(h_sol)
             centers[:λ] = value.(λ_sol)
             centers[:ψ0] = value.(ψ0_sol)
-            v_upper = cut_info[:obj_val]
-            push!(serious_steps, iter)
+            push!(major_iter, iter)
+            push!(past_major_subprob_obj, subprob_obj)
             # TR constraint needs an update with new center
             tr_needs_update = true
         end
+        # 배열에 history 저장
+        push!(past_lower_bound, lower_bound)
+        push!(past_model_estimate, model_estimate)
+        push!(past_minor_subprob_obj, subprob_obj)
+        push!(past_upper_bound, upper_bound)
         if gap <= 1e-4
             # Local optimality 달성
-            if B_bin_stage < length(B_bin_sequence)-1
+            if B_bin_stage <= length(B_bin_sequence)-1
                 # Trust region 확장
                 B_bin_stage +=1
                 B_bin_old = B_bin
                 B_bin = B_bin_sequence[B_bin_stage] * sum(network.interdictable_arcs)
-                push!(bin_B_steps, (iter, B_bin))
+                push!(bin_B_steps, iter)
+                push!(past_local_lower_bound, lower_bound)
+                push!(past_local_optimizer, Dict(:x=>value.(x_sol), :h=>value.(h_sol), :λ=>value.(λ_sol), :ψ0=>value.(ψ0_sol)))
                 @info "  ✓ Local optimal reached! Expanding B_bin to $B_bin"
                 # TR constraint needs update (B_bin changed)
                 tr_needs_update = true
@@ -492,7 +507,8 @@ function nested_benders_optimize!(omp_model::Model, omp_vars::Dict, network, ϕU
                 ## trust region radius를 확장
                 tr_constraints = update_trust_region_constraints!(
                     omp_model, omp_vars, centers, B_bin, B_con, tr_constraints, network)
-                # Reverse region constraint 추가 (선택사항)
+                lower_bound = -Inf # master problem 영역 확장했으니까 다시 초기화
+                    # Reverse region constraint 추가 (선택사항)
                 reverse_constraints = add_reverse_region_constraint!(omp_model, omp_vars[:x], centers[:x], B_bin_old, network)
                 
 
@@ -506,19 +522,26 @@ function nested_benders_optimize!(omp_model::Model, omp_vars::Dict, network, ϕU
             else
                 # Global Optimality 달성
                 @info "  ✓✓ GLOBAL OPTIMAL! (B_bin = full region)"
-                println("t_0_sol: ", t_0_sol, ", cut_info[:obj_val]: ", cut_info[:obj_val])
-                push!(past_obj, t_0_sol)
-                push!(past_subprob_obj, cut_info[:obj_val])
-                push!(past_upper_bound, upper_bound)
-                result[:past_obj] = past_obj
-                result[:past_subprob_obj] = past_subprob_obj
+                # past_local_lower_bound 배열에서 최소값의 인덱스를 찾음
+                min_idx = argmin(past_local_lower_bound)
+                global_lower_bound = past_local_lower_bound[min_idx]
+                iter_when_global_optimal = bin_B_steps[min_idx]
+                global_upper_bound = past_upper_bound[iter_when_global_optimal]
+                println("lower_bound: ", global_lower_bound, ", upper_bound: ", global_upper_bound)
+
+                result[:past_lower_bound] = past_lower_bound
+                result[:past_local_lower_bound] = past_local_lower_bound
+                result[:past_minor_subprob_obj] = past_minor_subprob_obj
+                result[:past_major_subprob_obj] = past_major_subprob_obj
                 result[:past_upper_bound] = past_upper_bound
                 result[:tr_info][:final_B_bin_stage] = B_bin_stage
                 result[:tr_info][:final_B_bin] = B_bin
                 # result[:tr_info][:final_B_con] = B_con
-                result[:tr_info][:serious_steps] = serious_steps
+                result[:tr_info][:major_iter] = major_iter
                 result[:tr_info][:bin_B_steps] = bin_B_steps
                 # result[:tr_info][:null_steps] = null_steps
+                result[:opt_sol] = past_local_optimizer[min_idx]
+                result[:iter_when_global_optimal] = iter_when_global_optimal
                 """
                 Optimize a model with 740 rows, 143 columns and 75687 nonzeros
                 Model fingerprint: 0x74f2eaf8
@@ -536,9 +559,6 @@ function nested_benders_optimize!(omp_model::Model, omp_vars::Dict, network, ϕU
             end
         else
             # Gap still large → Add cut and continue
-            push!(past_obj, t_0_sol)
-            push!(past_subprob_obj, cut_info[:obj_val])
-            push!(past_upper_bound, upper_bound)
             outer_cut_info = evaluate_master_opt_cut(leader_instances, follower_instances, isp_data, cut_info, iter, multi_cut=multi_cut)
             if multi_cut
                 cut_1_l =  -ϕU * [sum(outer_cut_info[:Uhat1][s,:,:] .* diag_x_E) for s in 1:S]
@@ -593,11 +613,11 @@ function nested_benders_optimize!(omp_model::Model, omp_vars::Dict, network, ϕU
             if multi_cut
                 opt_cut = opt_cut_l + opt_cut_f
             end
-            if abs(cut_info[:obj_val] - evaluate_expr(opt_cut, y)) > 1e-3
+            if abs(subprob_obj - evaluate_expr(opt_cut, y)) > 1e-3
                 println("something went wrong")
                 @infiltrate
             end
-            println("subproblem objective: ", cut_info[:obj_val])
+            println("subproblem objective: ", subprob_obj)
             @info "Optimality cut added"
 
             # Update TR constraints if needed
