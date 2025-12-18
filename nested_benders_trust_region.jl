@@ -115,8 +115,8 @@ function update_inner_trust_region_constraints!(
     )
     new_tr_conti_left = @constraint(model, -B_conti .<= tr_conti_expr)
     new_tr_conti_right = @constraint(model, tr_conti_expr .<= B_conti)
-    set_name(new_tr_conti_left, "TR_conti_left")
-    set_name(new_tr_conti_right, "TR_conti_right")
+    set_name.(new_tr_conti_left, "TR_conti_left")
+    set_name.(new_tr_conti_right, "TR_conti_right")
 
     new_cons = Dict(
         :continuous => (new_tr_conti_left, new_tr_conti_right)
@@ -270,7 +270,11 @@ function imp_optimize!(imp_model::Model, imp_vars::Dict, isp_leader_instances::D
         for (cut_name, cut) in imp_cuts[:old_cuts]
             delete(imp_model, cut)
         end
-        ## TODO:: old TR constraints 지우기
+        if imp_cuts[:old_tr_constraints] !== nothing
+            for tr_cons in imp_cuts[:old_tr_constraints]
+                delete.(imp_model, tr_cons)
+            end
+        end
     end
     ##
     while (st == MOI.DUAL_INFEASIBLE || st == MOI.OPTIMAL)
@@ -294,75 +298,85 @@ function imp_optimize!(imp_model::Model, imp_vars::Dict, isp_leader_instances::D
         end
         lower_bound = max(lower_bound, subprob_obj) ## inner master problem은 Maximization이니까 우린 항상 더 높은 값을 추구
         gap = model_estimate - lower_bound
-        # Serious Test
-        if iter==1
-            push!(past_major_subprob_obj, subprob_obj)
-        end
-        tr_needs_update = false # Flag for TR constraint update
-        predicted_increase = model_estimate - past_major_subprob_obj[end]
-        β_dynamic = max(1e-8, β_relative * predicted_increase)
-        improvement = subprob_obj - past_major_subprob_obj[end]
-        is_serious_step = (improvement >= β_dynamic)
-        if is_serious_step
-            tr_needs_update = true
-            distance = norm(α_sol - centers[:α], Inf)  # l_infinity norm
-            centers[:α] = α_sol
-            push!(major_iter, iter)
-            push!(past_major_subprob_obj, subprob_obj)
-            if (improvement >= 0.5*β_dynamic) && (distance >= B_conti - 1e-6)
-                ## 매우 좋은 성능이고 trust region의 boundary에 닿았음
-                @info "Very good improvement: Expanding B_conti"
-                B_conti = min(B_conti_max, B_conti * 2.0)
-            else
-                ## 적당히 좋은 성능 - trust region radius는 유지
-                @info "Moderate improvement: Keeping B_conti"
-                B_conti = B_conti
-            end
-            tr_constraints = update_inner_trust_region_constraints!(imp_model, imp_vars, centers, B_conti, tr_constraints, network)
-        else
-            @info "Poor improvement: Reducing B_conti"
-            ρ = min(1, B_conti) * improvement / β_dynamic
-            if ρ > 3.0
-                #즉시 감소 (매우 나쁜 model)
-                B_conti = B_conti / min(ρ,4)
-                counter = 0
-                tr_needs_update = true
-            elseif (1.0 < ρ) && (counter>=3)
-                #3번 누적 후 감소
-                B_conti = B_conti / min(ρ,4)
-                counter = 0
-                tr_needs_update = true
-            elseif (1.0 < ρ) && (counter<3)
-                #유지하지만 카운트 증가
-                counter += 1
-            elseif (0.0 < ρ) && (ρ <= 1.0)
-                #objective 감소했지만 예측보다 적게 
-                counter += 1
-            else
-                #objective 증가했지만 불충분
-                B_conti = B_conti
-                counter = counter
-            end
-            if tr_needs_update
-                tr_constraints = update_inner_trust_region_constraints!(imp_model, imp_vars, centers, B_conti, tr_constraints, network)
-            end
-        end
-        push!(past_obj, model_estimate)
-        push!(past_subprob_obj, subprob_obj)
-        push!(past_lower_bound, lower_bound)
-        if status == false
-            @warn "Subproblem is not optimal"
-        end
         if gap <= 1e-4
             @info "Termination condition met"
             println("model_estimate: ", model_estimate, ", subprob_obj: ", subprob_obj)
             result[:past_obj] = past_obj
             result[:past_subprob_obj] = past_subprob_obj
-            result[:α_sol] = value.(imp_vars[:α])
+            result[:α_sol] = α_sol
             result[:obj_val] = objective_value(imp_model)
             result[:past_lower_bound] = past_lower_bound
+            result[:iter] = iter
+            if tr_constraints[:continuous] !== nothing
+                result[:tr_constraints] = tr_constraints[:continuous]
+            else
+                result[:tr_constraints] = nothing
+            end
+            # if round(result[:obj_val], digits=4) == 5.2495
+            #     @infiltrate
+            # end
             return (:OptimalityCut, result)
         else
+            # Serious Test
+            if iter==1
+                push!(past_major_subprob_obj, subprob_obj)
+            end
+            tr_needs_update = false # Flag for TR constraint update
+            predicted_increase = model_estimate - past_major_subprob_obj[end]
+            β_dynamic = max(1e-8, β_relative * predicted_increase)
+            improvement = subprob_obj - past_major_subprob_obj[end]
+            is_serious_step = (improvement >= β_dynamic)
+            if is_serious_step
+                tr_needs_update = true
+                distance = norm(α_sol - centers[:α], Inf)  # l_infinity norm
+                centers[:α] = α_sol
+                push!(major_iter, iter)
+                push!(past_major_subprob_obj, subprob_obj)
+                if (improvement >= 0.5*β_dynamic) && (distance >= B_conti - 1e-6)
+                    ## 매우 좋은 성능이고 trust region의 boundary에 닿았음
+                    @info "Very good improvement: Expanding B_conti"
+                    B_conti = min(B_conti_max, B_conti * 2.0)
+                else
+                    ## 적당히 좋은 성능 - trust region radius는 유지
+                    @info "Moderate improvement: Keeping B_conti"
+                    B_conti = B_conti
+                end
+                tr_constraints = update_inner_trust_region_constraints!(imp_model, imp_vars, centers, B_conti, tr_constraints, network)
+            else
+                @info "Poor improvement: Reducing B_conti"
+                ρ = min(1, B_conti) * improvement / β_dynamic
+                if ρ > 3.0
+                    #즉시 감소 (매우 나쁜 model)
+                    B_conti = B_conti / min(ρ,4)
+                    counter = 0
+                    tr_needs_update = true
+                elseif (1.0 < ρ) && (counter>=3)
+                    #3번 누적 후 감소
+                    B_conti = B_conti / min(ρ,4)
+                    counter = 0
+                    tr_needs_update = true
+                elseif (1.0 < ρ) && (counter<3)
+                    #유지하지만 카운트 증가
+                    counter += 1
+                elseif (0.0 < ρ) && (ρ <= 1.0)
+                    #objective 감소했지만 예측보다 적게 
+                    counter += 1
+                else
+                    #objective 증가했지만 불충분
+                    B_conti = B_conti
+                    counter = counter
+                end
+                if tr_needs_update
+                    tr_constraints = update_inner_trust_region_constraints!(imp_model, imp_vars, centers, B_conti, tr_constraints, network)
+                end
+            end
+            push!(past_obj, model_estimate)
+            push!(past_subprob_obj, subprob_obj)
+            push!(past_lower_bound, lower_bound)
+            if status == false
+                @warn "Subproblem is not optimal"
+            end
+        
             subgradient_l = [dict_cut_info_l[s][:μhat] for s in 1:S]
             subgradient_f = [dict_cut_info_f[s][:μtilde] for s in 1:S]
             intercept_l = [dict_cut_info_l[s][:intercept] for s in 1:S]
@@ -533,6 +547,7 @@ function nested_benders_optimize!(omp_model::Model, omp_vars::Dict, network, ϕU
     result = Dict()
     result[:cuts] = Dict()
     result[:tr_info] = Dict()
+    result[:inner_iter] = []
     upper_bound = Inf
     lower_bound = -Inf
     ### --------Begin Inner Master, Subproblem Initialization--------
@@ -543,7 +558,7 @@ function nested_benders_optimize!(omp_model::Model, omp_vars::Dict, network, ϕU
     ### --------End Initialization--------    
     while (st == MOI.DUAL_INFEASIBLE || st == MOI.OPTIMAL)
         iter += 1
-        @info "Outer Iteration $iter (B_z=$B_z, Stage=$(B_z_stage+1)/$(length(B_z_sequence)))"
+        @info "Outer Iteration $iter (B_bin=$B_bin, Stage=$(B_bin_stage+1)/$(length(B_bin_sequence)))"
         # Outer Master Problem 풀기
         optimize!(omp_model)
         st = MOI.get(omp_model, MOI.TerminationStatus())
@@ -556,7 +571,11 @@ function nested_benders_optimize!(omp_model::Model, omp_vars::Dict, network, ϕU
             @warn "Outer Subproblem not optimal"
             @infiltrate
         end
+        push!(result[:inner_iter], cut_info[:iter])
         imp_cuts[:old_cuts] = cut_info[:cuts] ## 다음 iteration에서 지우기 위해 여기에 저장함
+        if cut_info[:tr_constraints] !== nothing
+            imp_cuts[:old_tr_constraints] = cut_info[:tr_constraints]
+        end
         subprob_obj = cut_info[:obj_val]
         upper_bound = min(upper_bound, subprob_obj)
         
