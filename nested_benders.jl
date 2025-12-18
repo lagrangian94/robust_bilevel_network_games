@@ -186,6 +186,7 @@ function imp_optimize!(imp_model::Model, imp_vars::Dict, isp_leader_instances::D
                 result[:α_sol] = value.(imp_vars[:α])
                 result[:obj_val] = objective_value(imp_model)
                 result[:past_lower_bound] = past_lower_bound
+                result[:iter] = iter
                 return (:OptimalityCut, result)
             else
                 push!(past_obj, t_1_sol)
@@ -327,6 +328,7 @@ function nested_benders_optimize!(omp_model::Model, omp_vars::Dict, network, ϕU
     imp_cuts = Dict{Symbol, Any}()
     result = Dict()
     result[:cuts] = Dict()
+    result[:inner_iter] = []
     upper_bound = Inf
     ### --------Begin Inner Master, Subproblem Initialization--------
     imp_model, imp_vars = build_imp(network, S, ϕU, λU, γ, w, v, uncertainty_set; mip_optimizer=mip_optimizer)
@@ -334,6 +336,7 @@ function nested_benders_optimize!(omp_model::Model, omp_vars::Dict, network, ϕU
     leader_instances, follower_instances = initialize_isp(network, S, ϕU, λU, γ, w, v, uncertainty_set; conic_optimizer=conic_optimizer, λ_sol=λ_sol, x_sol=x_sol, h_sol=h_sol, ψ0_sol=ψ0_sol, α_sol=α_sol)
     isp_data = Dict(:E => E, :network => network, :ϕU => ϕU, :λU => λU, :γ => γ, :w => w, :v => v, :uncertainty_set => uncertainty_set, :d0 => d0, :S=>S)
     ### --------End Initialization--------
+    time_start = time()
     while (st == MOI.DUAL_INFEASIBLE || st == MOI.OPTIMAL)
         iter += 1
         @info "Iteration $iter"
@@ -342,10 +345,13 @@ function nested_benders_optimize!(omp_model::Model, omp_vars::Dict, network, ϕU
         x_sol, h_sol, λ_sol, ψ0_sol = value.(omp_vars[:x]), value.(omp_vars[:h]), value(omp_vars[:λ]), value.(omp_vars[:ψ0])
         t_0_sol = value(t_0)
         status, cut_info =imp_optimize!(imp_model, imp_vars, leader_instances, follower_instances; isp_data=isp_data, λ_sol=λ_sol, x_sol=x_sol, h_sol=h_sol, ψ0_sol=ψ0_sol, outer_iter=iter, imp_cuts=imp_cuts)
+        push!(result[:inner_iter], cut_info[:iter])
         imp_cuts[:old_cuts] = cut_info[:cuts] ## 다음 iteration에서 지우기 위해 여기에 저장함
         upper_bound = min(upper_bound, cut_info[:obj_val])
         if status == :OptimalityCut
             if t_0_sol >= upper_bound-1e-4
+                time_end = time()
+                result[:solution_time] = time_end - time_start
                 @info "Termination condition met"
                 println("t_0_sol: ", t_0_sol, ", cut_info[:obj_val]: ", cut_info[:obj_val])
                 push!(past_obj, t_0_sol)
@@ -457,7 +463,7 @@ function build_isp_leader(network, S, ϕU, λU, γ, w, v, uncertainty_set, optim
     E = ones(num_arcs, num_arcs+1) # num_arcs × num_arcs+1 matrix of ones
     I_0 = [Matrix{Float64}(I, num_arcs, num_arcs) zeros(num_arcs)]
     # Create model
-    model = Model(optimizer)
+    model = Model(optimizer_with_attributes(optimizer, MOI.Silent() => true))
     d0 = zeros(num_arcs + 1)
     d0[end] = 1.0
     println("Building dualized outer subproblem...")
@@ -642,7 +648,7 @@ function build_isp_follower(network, S, ϕU, λU, γ, w, v, uncertainty_set, opt
     E = ones(num_arcs, num_arcs+1) # num_arcs × num_arcs+1 matrix of ones
     I_0 = [Matrix{Float64}(I, num_arcs, num_arcs) zeros(num_arcs)]
     # Create model
-    model = Model(optimizer)
+    model = Model(optimizer_with_attributes(optimizer, MOI.Silent() => true))
     d0 = zeros(num_arcs + 1)
     d0[end] = 1.0
     println("Building dualized outer subproblem...")

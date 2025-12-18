@@ -487,7 +487,7 @@ function evaluate_master_opt_cut(isp_leader_instances::Dict, isp_follower_instan
 end
 
 
-function nested_benders_optimize!(omp_model::Model, omp_vars::Dict, network, ϕU, λU, γ, w, uncertainty_set; mip_optimizer=nothing, conic_optimizer=nothing, multi_cut=false)
+function tr_nested_benders_optimize!(omp_model::Model, omp_vars::Dict, network, ϕU, λU, γ, w, uncertainty_set; mip_optimizer=nothing, conic_optimizer=nothing, multi_cut=false)
     ### -------- Trust Region 초기화 --------
     B_bin_sequence = [0.05, 0.5, 1.0]
     B_bin_stage = 1
@@ -555,57 +555,65 @@ function nested_benders_optimize!(omp_model::Model, omp_vars::Dict, network, ϕU
     st, α_sol = initialize_imp(imp_model, imp_vars)
     leader_instances, follower_instances = initialize_isp(network, S, ϕU, λU, γ, w, v, uncertainty_set; conic_optimizer=conic_optimizer, λ_sol=λ_sol, x_sol=x_sol, h_sol=h_sol, ψ0_sol=ψ0_sol, α_sol=α_sol)
     isp_data = Dict(:E => E, :network => network, :ϕU => ϕU, :λU => λU, :γ => γ, :w => w, :v => v, :uncertainty_set => uncertainty_set, :d0 => d0, :S=>S)
-    ### --------End Initialization--------    
+    gap = Inf
+    ### --------End Initialization--------
+    time_start = time()    
     while (st == MOI.DUAL_INFEASIBLE || st == MOI.OPTIMAL)
         iter += 1
         @info "Outer Iteration $iter (B_bin=$B_bin, Stage=$(B_bin_stage+1)/$(length(B_bin_sequence)))"
         # Outer Master Problem 풀기
         optimize!(omp_model)
         st = MOI.get(omp_model, MOI.TerminationStatus())
-        x_sol, h_sol, λ_sol, ψ0_sol = value.(omp_vars[:x]), value.(omp_vars[:h]), value(omp_vars[:λ]), value.(omp_vars[:ψ0])
-        model_estimate = value(t_0)
-        lower_bound = max(lower_bound, model_estimate)
-        # Outer Subproblem 풀기
-        status, cut_info =imp_optimize!(imp_model, imp_vars, leader_instances, follower_instances; isp_data=isp_data, λ_sol=λ_sol, x_sol=x_sol, h_sol=h_sol, ψ0_sol=ψ0_sol, outer_iter=iter, imp_cuts=imp_cuts)
-        if status != :OptimalityCut
-            @warn "Outer Subproblem not optimal"
-            @infiltrate
+        if st == MOI.INFEASIBLE
+            ## Reverse Region들 때문에 infeasible 난걸수도. 그러면 이건 에러가 아니라, 더이상 탐색할 영역이 없음을 의미.
+            @info " Outer Master Problem infeasible (Converged): Due to Reverse Regions --- No search space left"
+            gap = 0.0
+        else
+            x_sol, h_sol, λ_sol, ψ0_sol = value.(omp_vars[:x]), value.(omp_vars[:h]), value(omp_vars[:λ]), value.(omp_vars[:ψ0])
+            model_estimate = value(t_0)
+            lower_bound = max(lower_bound, model_estimate)
+            # Outer Subproblem 풀기
+            status, cut_info =imp_optimize!(imp_model, imp_vars, leader_instances, follower_instances; isp_data=isp_data, λ_sol=λ_sol, x_sol=x_sol, h_sol=h_sol, ψ0_sol=ψ0_sol, outer_iter=iter, imp_cuts=imp_cuts)
+            if status != :OptimalityCut
+                @warn "Outer Subproblem not optimal"
+                @infiltrate
+            end
+            push!(result[:inner_iter], cut_info[:iter])
+            imp_cuts[:old_cuts] = cut_info[:cuts] ## 다음 iteration에서 지우기 위해 여기에 저장함
+            if cut_info[:tr_constraints] !== nothing
+                imp_cuts[:old_tr_constraints] = cut_info[:tr_constraints]
+            end
+            subprob_obj = cut_info[:obj_val]
+            upper_bound = min(upper_bound, subprob_obj)
+            
+            # Measure of progress
+            if iter==1
+                push!(past_major_subprob_obj, subprob_obj)
+            end
+            gap = upper_bound - lower_bound # gap between upper bound and lower bound
+            # Serious Test
+            tr_needs_update = false  # Flag for TR constraint update
+            predicted_decrease = past_major_subprob_obj[end] - model_estimate # serious(major) step 가장 최근 subprob obj와 지금 구한 obj의 차이
+            β_dynamic = max(1e-8, β_relative * predicted_decrease)  # 최소값 보장
+            improvement = past_major_subprob_obj[end] - subprob_obj # decrease in the actual objective
+            is_serious_step = (improvement >= β_dynamic) # decrease in the actual objective is at least some fraction of the decrease predicted by the model
+            if is_serious_step
+                # Serious Step: Move stability center
+                centers[:x] = value.(x_sol)
+                centers[:h] = value.(h_sol)
+                centers[:λ] = value.(λ_sol)
+                centers[:ψ0] = value.(ψ0_sol)
+                push!(major_iter, iter)
+                push!(past_major_subprob_obj, subprob_obj)
+                # TR constraint needs an update with new center
+                tr_needs_update = true
+            end
+            # 배열에 history 저장
+            push!(past_lower_bound, lower_bound)
+            push!(past_model_estimate, model_estimate)
+            push!(past_minor_subprob_obj, subprob_obj)
+            push!(past_upper_bound, upper_bound)
         end
-        push!(result[:inner_iter], cut_info[:iter])
-        imp_cuts[:old_cuts] = cut_info[:cuts] ## 다음 iteration에서 지우기 위해 여기에 저장함
-        if cut_info[:tr_constraints] !== nothing
-            imp_cuts[:old_tr_constraints] = cut_info[:tr_constraints]
-        end
-        subprob_obj = cut_info[:obj_val]
-        upper_bound = min(upper_bound, subprob_obj)
-        
-        # Measure of progress
-        if iter==1
-            push!(past_major_subprob_obj, subprob_obj)
-        end
-        gap = upper_bound - lower_bound # gap between upper bound and lower bound
-        # Serious Test
-        tr_needs_update = false  # Flag for TR constraint update
-        predicted_decrease = past_major_subprob_obj[end] - model_estimate # serious(major) step 가장 최근 subprob obj와 지금 구한 obj의 차이
-        β_dynamic = max(1e-8, β_relative * predicted_decrease)  # 최소값 보장
-        improvement = past_major_subprob_obj[end] - subprob_obj # decrease in the actual objective
-        is_serious_step = (improvement >= β_dynamic) # decrease in the actual objective is at least some fraction of the decrease predicted by the model
-        if is_serious_step
-            # Serious Step: Move stability center
-            centers[:x] = value.(x_sol)
-            centers[:h] = value.(h_sol)
-            centers[:λ] = value.(λ_sol)
-            centers[:ψ0] = value.(ψ0_sol)
-            push!(major_iter, iter)
-            push!(past_major_subprob_obj, subprob_obj)
-            # TR constraint needs an update with new center
-            tr_needs_update = true
-        end
-        # 배열에 history 저장
-        push!(past_lower_bound, lower_bound)
-        push!(past_model_estimate, model_estimate)
-        push!(past_minor_subprob_obj, subprob_obj)
-        push!(past_upper_bound, upper_bound)
         if gap <= 1e-4
             # Local optimality 달성
             if B_bin_stage <= length(B_bin_sequence)-1
@@ -641,6 +649,8 @@ function nested_benders_optimize!(omp_model::Model, omp_vars::Dict, network, ϕU
                 # end
             else
                 # Global Optimality 달성
+                time_end = time()
+                result[:solution_time] = time_end - time_start
                 @info "  ✓✓ GLOBAL OPTIMAL! (B_bin = full region)"
                 # past_local_lower_bound 배열에서 최소값의 인덱스를 찾음
                 min_idx = argmin(past_local_lower_bound)
