@@ -18,7 +18,7 @@ println("TESTING STRICT BENDERS MODEL CONSTRUCTION")
 println("="^80)
 
 # Model parameters
-S = 5  # Number of scenarios
+S = 20  # Number of scenarios
 ϕU = 10.0  # Upper bound on interdiction effectiveness
 λU = 10.0  # Upper bound on λ
 γ = 2.0  # Interdiction budget
@@ -28,7 +28,7 @@ seed = 42
 
 # Generate a small test network
 println("\n[1] Generating 3×3 grid network...")
-network = generate_grid_network(3, 3, seed=seed)
+network = generate_grid_network(5, 5, seed=seed)
 print_network_summary(network)
 # ===== Use Factor Model =====
 # capacities, F = generate_capacity_scenarios(length(network.arcs), network.interdictable_arcs, S, seed=120)
