@@ -438,6 +438,9 @@ function initialize_isp(network, S, ϕU, λU, γ, w, v, uncertainty_set; conic_o
 end
 
 function evaluate_master_opt_cut(isp_leader_instances::Dict, isp_follower_instances::Dict, isp_data::Dict, cut_info::Dict, iter::Int; multi_cut=false)
+    """
+    α를 fix 시키고 outer subproblem의 값을 다시 정확하게 구하는 코드
+    """
     S = isp_data[:S]
     α_sol = cut_info[:α_sol]
     status = true
@@ -637,7 +640,7 @@ function tr_nested_benders_optimize!(omp_model::Model, omp_vars::Dict, network, 
                 Reverse region을 넣으면 B radius를 확장해도 기존 local optimal 주변은 탐색하지 않음.
                 그러면 B radius를 끝까지 확장한 이후에, 과거에 찾은 local optimal 중 가장 좋은 (작은) 값을 선택하면 그게 global optimal을 보장함.
                 """
-                _ = add_reverse_region_constraint!(omp_model, omp_vars[:x], centers[:x], B_bin_old, network)
+                # _ = add_reverse_region_constraint!(omp_model, omp_vars[:x], centers[:x], B_bin_old, network)
                 
 
                     # # Optional: Add reverse region constraint
