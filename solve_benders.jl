@@ -18,7 +18,7 @@ println("TESTING STRICT BENDERS MODEL CONSTRUCTION")
 println("="^80)
 
 # Model parameters
-S = 5  # Number of scenarios
+S = 2  # Number of scenarios
 ϕU = 10.0  # Upper bound on interdiction effectiveness
 λU = 10.0  # Upper bound on λ
 γ = 2.0  # Interdiction budget
@@ -28,7 +28,7 @@ seed = 42
 
 # Generate a small test network
 println("\n[1] Generating 3×3 grid network...")
-network = generate_grid_network(5, 5, seed=seed)
+network = generate_grid_network(4, 4, seed=seed)
 print_network_summary(network)
 # ===== Use Factor Model =====
 # capacities, F = generate_capacity_scenarios(length(network.arcs), network.interdictable_arcs, S, seed=120)
@@ -75,17 +75,17 @@ end
 model, vars = build_omp(network, ϕU, λU, γ, w; optimizer=Gurobi.Optimizer, multi_cut=multi_cut)
 if nested_benders
     # ## trust region nested benders
-    # includet("nested_benders_trust_region.jl")
-    # result = tr_nested_benders_optimize!(model, vars, network, ϕU, λU, γ, w, uncertainty_set; mip_optimizer=Gurobi.Optimizer, conic_optimizer=Mosek.Optimizer, multi_cut=multi_cut)
-    # plot_tr_nested_benders_convergence(result)
-    # serialize("tr_nested_benders_result.jls", result)
-    # println("Time taken: $(result[:solution_time]) seconds")
-    ## basic nested benders 
-    includet("nested_benders.jl")
-    result = nested_benders_optimize!(model, vars, network, ϕU, λU, γ, w, uncertainty_set; mip_optimizer=Gurobi.Optimizer, conic_optimizer=Mosek.Optimizer, multi_cut=multi_cut)
-    plot_nested_benders_convergence(result)
-    serialize("nested_benders_result.jls", result)
+    includet("nested_benders_trust_region.jl")
+    result = tr_nested_benders_optimize!(model, vars, network, ϕU, λU, γ, w, uncertainty_set; mip_optimizer=Gurobi.Optimizer, conic_optimizer=Mosek.Optimizer, multi_cut=multi_cut)
+    plot_tr_nested_benders_convergence(result)
+    serialize("tr_nested_benders_result.jls", result)
     println("Time taken: $(result[:solution_time]) seconds")
+    ## basic nested benders 
+    # includet("nested_benders.jl")
+    # result = nested_benders_optimize!(model, vars, network, ϕU, λU, γ, w, uncertainty_set; mip_optimizer=Gurobi.Optimizer, conic_optimizer=Mosek.Optimizer, multi_cut=multi_cut)
+    # plot_nested_benders_convergence(result)
+    # serialize("nested_benders_result.jls", result)
+    # println("Time taken: $(result[:solution_time]) seconds")
 else
     time_start = time()
     result = strict_benders_optimize!(model, vars, network, ϕU, λU, γ, w, uncertainty_set; optimizer=Gurobi.Optimizer)

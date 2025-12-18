@@ -43,7 +43,7 @@ conic_solver = Mosek.Optimizer
 
 # Generate a small test network
 println("\n[1] Generating 3×3 grid network...")
-network = generate_grid_network(3, 3, seed=seed)
+network = generate_grid_network(4, 4, seed=seed)
 print_network_summary(network)
 
 # ===== Use Factor Model =====
@@ -71,7 +71,7 @@ println("Robustness parameter ε: $epsilon")
 
 R, r_dict, xi_bar = build_robust_counterpart_matrices(capacity_scenarios_regular, epsilon)
 uncertainty_set = Dict(:R => R, :r_dict => r_dict, :xi_bar => xi_bar, :epsilon => epsilon)
-solve_full_model = false
+solve_full_model = true
 # model, vars = build_full_2SP_model(network, S, ϕU, λU, γ, w, v,uncertainty_set)
 # optimize!(model)
 # @infiltrate
