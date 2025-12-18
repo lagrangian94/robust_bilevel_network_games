@@ -640,7 +640,7 @@ function tr_nested_benders_optimize!(omp_model::Model, omp_vars::Dict, network, 
                 Reverse region을 넣으면 B radius를 확장해도 기존 local optimal 주변은 탐색하지 않음.
                 그러면 B radius를 끝까지 확장한 이후에, 과거에 찾은 local optimal 중 가장 좋은 (작은) 값을 선택하면 그게 global optimal을 보장함.
                 """
-                # _ = add_reverse_region_constraint!(omp_model, omp_vars[:x], centers[:x], B_bin_old, network)
+                _ = add_reverse_region_constraint!(omp_model, omp_vars[:x], centers[:x], B_bin_old, network)
                 
 
                     # # Optional: Add reverse region constraint

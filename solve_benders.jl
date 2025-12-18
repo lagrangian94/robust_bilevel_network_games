@@ -67,7 +67,7 @@ println("        ν (nu) is a decision variable in objective t + w*ν")
 
 
 multi_cut = true
-nested_benders = true
+nested_benders = false
 if !nested_benders
     multi_cut = false
 end
