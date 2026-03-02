@@ -23,7 +23,7 @@ function build_imp(network, S, ϕU, λU, γ, w, v, uncertainty_set; mip_optimize
     R, r_dict, xi_bar, epsilon = uncertainty_set[:R], uncertainty_set[:r_dict], uncertainty_set[:xi_bar], uncertainty_set[:epsilon]
     S = length(xi_bar)
     flow_upper = sum(sum(xi_bar[s] for s in 1:S))
-    model = Model(optimizer_with_attributes(mip_optimizer, MOI.Silent() => false))
+    model = Model(optimizer_with_attributes(mip_optimizer, MOI.Silent() => true))
     @variable(model, t_1_l[s=1:S], upper_bound= flow_upper)
     @variable(model, t_1_f[s=1:S], upper_bound= flow_upper)
     @variable(model, α[k=1:num_arcs] >= 0)
@@ -184,7 +184,7 @@ function imp_optimize!(imp_model::Model, imp_vars::Dict, isp_leader_instances::D
                 result[:past_obj] = past_obj
                 result[:past_subprob_obj] = past_subprob_obj
                 result[:α_sol] = value.(imp_vars[:α])
-                result[:obj_val] = objective_value(imp_model)
+                result[:obj_val] = subprob_obj  # subproblem의 정확한 값 (IMP objective는 upper bound이므로 gap만큼 차이남)
                 result[:past_lower_bound] = past_lower_bound
                 result[:iter] = iter
                 return (:OptimalityCut, result)

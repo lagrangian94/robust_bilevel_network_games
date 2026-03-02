@@ -18,7 +18,7 @@ function build_omp(network, ϕU, λU, γ, w; optimizer=nothing, multi_cut=false)
     # Extract network dimensions
     num_arcs = length(network.arcs)-1 #dummy arc 제외
     # Create model
-    model = Model(optimizer_with_attributes(optimizer, MOI.Silent() => false))
+    model = Model(optimizer_with_attributes(optimizer, MOI.Silent() => true))
     if multi_cut
         @variable(model, t_0_l >= 0)  # Objective epigraph variable
         @variable(model, t_0_f >= 0)  # Objective epigraph variable
