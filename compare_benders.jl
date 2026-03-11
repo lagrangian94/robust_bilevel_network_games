@@ -3,6 +3,15 @@ Compare Benders decomposition algorithms:
 1. Strict Benders
 2. Nested Benders (plain)
 3. TR Nested Benders — 4 combinations: (outer_tr, inner_tr) = {(F,F), (T,F), (F,T), (T,T)}
+4. TR Nested Benders — ISP mode variants (isp_mode):
+   - :dual (default) — dual ISP for both inner loop and outer cuts
+   - :hybrid — primal ISP for inner loop (value(μhat) → cut coeff),
+               dual ISP for outer cuts (converged α로 재solve → value(Uhat1) etc.)
+   - :full_primal — primal ISP for both inner loop and outer cuts
+               (outer cuts from constraint shadow prices: -dual(<=), dual(>=), dual(==))
+               Dual ISP 완전히 불필요. 단, (x,h,λ,ψ0)가 constraint에 있어서 매 outer iter마다
+               primal ISP 재생성 필요 (initialize_primal_isp). Dual degeneracy로 인해
+               outer cut quality가 달라질 수 있음.
 """
 
 using JuMP
@@ -21,6 +30,7 @@ includet("build_uncertainty_set.jl")
 includet("strict_benders.jl")
 includet("nested_benders.jl")
 includet("nested_benders_trust_region.jl")
+includet("build_primal_isp.jl")
 includet("plot_benders.jl")
 
 using .NetworkGenerator: generate_grid_network, generate_capacity_scenarios_uniform_model, print_network_summary,
@@ -80,7 +90,7 @@ using .NetworkGenerator: generate_grid_network, generate_capacity_scenarios_unif
 
 # ===== Common Parameters =====
 S = 1
-ϕU = 10.0
+ϕU = 10.0 ## TODO:: 이거 1로 낮춰도 되지않나?
 λU = 10.0
 γ = 2.0
 w = 1.0
@@ -290,6 +300,38 @@ if haskey(result3d, :solution_time)
 end
 println("\n>> Both TR time: $(results["tr_both"]) seconds")
 
+# ===== 4. TR Nested Benders — Hybrid (primal ISP inner + dual ISP outer cuts) =====
+println("\n" * "="^80)
+println("4. TR NESTED BENDERS — HYBRID (primal ISP inner + dual ISP outer)")
+println("="^80)
+
+GC.gc()
+model4, vars4 = build_omp(network, ϕU, λU, γ, w; optimizer=Gurobi.Optimizer, multi_cut=true)
+t4_start = time()
+result4 = tr_nested_benders_optimize!(model4, vars4, network, ϕU, λU, γ, w, uncertainty_set; mip_optimizer=Gurobi.Optimizer, conic_optimizer=Mosek.Optimizer, multi_cut=true, outer_tr=true, inner_tr=true, isp_mode=:hybrid)
+t4_end = time()
+results["tr_hybrid"] = t4_end - t4_start
+if haskey(result4, :solution_time)
+    results["tr_hybrid_internal"] = result4[:solution_time]
+end
+println("\n>> Hybrid time: $(results["tr_hybrid"]) seconds")
+
+# ===== 5. TR Nested Benders — Full Primal (primal ISP only, no dual ISP) =====
+println("\n" * "="^80)
+println("5. TR NESTED BENDERS — FULL PRIMAL (primal ISP only)")
+println("="^80)
+
+GC.gc()
+model5, vars5 = build_omp(network, ϕU, λU, γ, w; optimizer=Gurobi.Optimizer, multi_cut=true)
+t5_start = time()
+result5 = tr_nested_benders_optimize!(model5, vars5, network, ϕU, λU, γ, w, uncertainty_set; mip_optimizer=Gurobi.Optimizer, conic_optimizer=Mosek.Optimizer, multi_cut=true, outer_tr=true, inner_tr=true, isp_mode=:full_primal)
+t5_end = time()
+results["tr_full_primal"] = t5_end - t5_start
+if haskey(result5, :solution_time)
+    results["tr_full_primal_internal"] = result5[:solution_time]
+end
+println("\n>> Full Primal time: $(results["tr_full_primal"]) seconds")
+
 # ===== Summary =====
 println("\n" * "="^80)
 println("COMPARISON SUMMARY")
@@ -300,6 +342,8 @@ println("  TR None (F,F):               $(round(results["tr_none"], digits=2)) s
 println("  TR Outer only (T,F):         $(round(results["tr_outer_only"], digits=2)) sec")
 println("  TR Inner only (F,T):         $(round(results["tr_inner_only"], digits=2)) sec")
 println("  TR Both (T,T):               $(round(results["tr_both"], digits=2)) sec")
+println("  TR Hybrid (primal inner):    $(round(results["tr_hybrid"], digits=2)) sec")
+println("  TR Full Primal:              $(round(results["tr_full_primal"], digits=2)) sec")
 println("="^80)
 
 # ==============================================================================

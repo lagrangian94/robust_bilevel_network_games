@@ -527,7 +527,7 @@ function evaluate_master_opt_cut(isp_leader_instances::Dict, isp_follower_instan
 end
 
 
-function tr_nested_benders_optimize!(omp_model::Model, omp_vars::Dict, network, ϕU, λU, γ, w, uncertainty_set; mip_optimizer=nothing, conic_optimizer=nothing, multi_cut=false, outer_tr=true, inner_tr=true, max_outer_iter=1000)
+function tr_nested_benders_optimize!(omp_model::Model, omp_vars::Dict, network, ϕU, λU, γ, w, uncertainty_set; mip_optimizer=nothing, conic_optimizer=nothing, multi_cut=false, outer_tr=true, inner_tr=true, max_outer_iter=1000, isp_mode=:dual)
     ### -------- Trust Region 초기화 --------
     if outer_tr
         B_bin_sequence = [0.05, 0.5, 1.0]
@@ -597,7 +597,16 @@ function tr_nested_benders_optimize!(omp_model::Model, omp_vars::Dict, network, 
     ### --------Begin Inner Master, Subproblem Initialization--------
     imp_model, imp_vars = build_imp(network, S, ϕU, λU, γ, w, v, uncertainty_set; mip_optimizer=mip_optimizer)
     st, α_sol = initialize_imp(imp_model, imp_vars)
-    leader_instances, follower_instances = initialize_isp(network, S, ϕU, λU, γ, w, v, uncertainty_set; conic_optimizer=conic_optimizer, λ_sol=λ_sol, x_sol=x_sol, h_sol=h_sol, ψ0_sol=ψ0_sol, α_sol=α_sol)
+    # Dual ISP instances (used for :dual and :hybrid modes)
+    leader_instances, follower_instances = nothing, nothing
+    if isp_mode != :full_primal
+        leader_instances, follower_instances = initialize_isp(network, S, ϕU, λU, γ, w, v, uncertainty_set; conic_optimizer=conic_optimizer, λ_sol=λ_sol, x_sol=x_sol, h_sol=h_sol, ψ0_sol=ψ0_sol, α_sol=α_sol)
+    end
+    # Primal ISP instances (used for :hybrid and :full_primal modes)
+    primal_leader_instances, primal_follower_instances = nothing, nothing
+    if isp_mode != :dual
+        primal_leader_instances, primal_follower_instances = initialize_primal_isp(network, S, ϕU, λU, γ, w, v, uncertainty_set; conic_optimizer=conic_optimizer, x_sol=x_sol, λ_sol=λ_sol, h_sol=h_sol, ψ0_sol=ψ0_sol)
+    end
     isp_data = Dict(:E => E, :network => network, :ϕU => ϕU, :λU => λU, :γ => γ, :w => w, :v => v, :uncertainty_set => uncertainty_set, :d0 => d0, :S=>S)
     gap = Inf
     ### --------End Initialization--------
@@ -609,9 +618,9 @@ function tr_nested_benders_optimize!(omp_model::Model, omp_vars::Dict, network, 
             break
         end
         if outer_tr
-            @info "[Outer] Iteration $iter (B_bin=$B_bin, Stage=$(B_bin_stage+1)/$(length(B_bin_sequence)))"
+            @info "[Outer-$isp_mode] Iteration $iter (B_bin=$B_bin, Stage=$(B_bin_stage+1)/$(length(B_bin_sequence)))"
         else
-            @info "[Outer] Iteration $iter"
+            @info "[Outer-$isp_mode] Iteration $iter"
         end
         # Outer Master Problem 풀기
         optimize!(omp_model)
@@ -624,8 +633,18 @@ function tr_nested_benders_optimize!(omp_model::Model, omp_vars::Dict, network, 
             x_sol, h_sol, λ_sol, ψ0_sol = value.(omp_vars[:x]), value.(omp_vars[:h]), value(omp_vars[:λ]), value.(omp_vars[:ψ0])
             model_estimate = value(t_0)
             lower_bound = max(lower_bound, model_estimate)
+            # Rebuild primal ISP if needed (x,h,λ,ψ0 are in constraints → need rebuild each outer iter)
+            if isp_mode != :dual
+                primal_leader_instances, primal_follower_instances = initialize_primal_isp(
+                    network, S, ϕU, λU, γ, w, v, uncertainty_set;
+                    conic_optimizer=conic_optimizer, x_sol=x_sol, λ_sol=λ_sol, h_sol=h_sol, ψ0_sol=ψ0_sol)
+            end
             # Outer Subproblem 풀기
-            status, cut_info =tr_imp_optimize!(imp_model, imp_vars, leader_instances, follower_instances; isp_data=isp_data, λ_sol=λ_sol, x_sol=x_sol, h_sol=h_sol, ψ0_sol=ψ0_sol, outer_iter=iter, imp_cuts=imp_cuts, inner_tr=inner_tr)
+            if isp_mode == :dual
+                status, cut_info = tr_imp_optimize!(imp_model, imp_vars, leader_instances, follower_instances; isp_data=isp_data, λ_sol=λ_sol, x_sol=x_sol, h_sol=h_sol, ψ0_sol=ψ0_sol, outer_iter=iter, imp_cuts=imp_cuts, inner_tr=inner_tr)
+            else
+                status, cut_info = tr_imp_optimize_hybrid!(imp_model, imp_vars, primal_leader_instances, primal_follower_instances; isp_data=isp_data, λ_sol=λ_sol, x_sol=x_sol, h_sol=h_sol, ψ0_sol=ψ0_sol, outer_iter=iter, imp_cuts=imp_cuts, inner_tr=inner_tr)
+            end
             if status != :OptimalityCut
                 @warn "Outer Subproblem not optimal"
                 @infiltrate
@@ -662,7 +681,7 @@ function tr_nested_benders_optimize!(omp_model::Model, omp_vars::Dict, network, 
                     tr_needs_update = true
                 end
             end
-            @info "[Outer] Iter $iter: LB=$(round(lower_bound, digits=4))  UB=$(round(upper_bound, digits=4))  gap=$(round(gap, digits=6))"
+            @info "[Outer-$isp_mode] Iter $iter: LB=$(round(lower_bound, digits=4))  UB=$(round(upper_bound, digits=4))  gap=$(round(gap, digits=6))"
             # 배열에 history 저장
             push!(past_lower_bound, lower_bound)
             push!(past_model_estimate, model_estimate)
@@ -755,7 +774,19 @@ function tr_nested_benders_optimize!(omp_model::Model, omp_vars::Dict, network, 
             end
         else
             # Gap still large → Add cut and continue
-            outer_cut_info = evaluate_master_opt_cut(leader_instances, follower_instances, isp_data, cut_info, iter, multi_cut=multi_cut)
+            if isp_mode == :full_primal
+                outer_cut_info = evaluate_master_opt_cut_from_primal(
+                    primal_leader_instances, primal_follower_instances,
+                    isp_data, cut_info, iter;
+                    λ_sol=λ_sol, x_sol=x_sol, h_sol=h_sol, ψ0_sol=ψ0_sol, multi_cut=multi_cut)
+            elseif isp_mode == :hybrid
+                outer_cut_info = primal_evaluate_master_opt_cut(
+                    leader_instances, follower_instances,
+                    isp_data, cut_info, iter;
+                    λ_sol=λ_sol, x_sol=x_sol, h_sol=h_sol, ψ0_sol=ψ0_sol, multi_cut=multi_cut)
+            else
+                outer_cut_info = evaluate_master_opt_cut(leader_instances, follower_instances, isp_data, cut_info, iter, multi_cut=multi_cut)
+            end
             if multi_cut
                 cut_1_l =  -ϕU * [sum(outer_cut_info[:Uhat1][s,:,:] .* diag_x_E) for s in 1:S]
                 cut_1_f =  -ϕU * [sum(outer_cut_info[:Utilde1][s,:,:] .* diag_x_E) for s in 1:S]
