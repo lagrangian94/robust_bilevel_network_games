@@ -670,3 +670,132 @@ end
 | 1 | | | | | | |
 | 2 | | | | | | |
 | 5 | | | | | | |
+
+---
+
+## 12. 3차 시도 계획: Primal ISP (Dual of Current ISP) 접근법
+
+### 12.1 핵심 아이디어
+
+현재 ISP (Inner SubProblem)는 dualized outer subproblem을 직접 풀고 있다 (manuscript eq 46/47). 이것의 **dual** (manuscript eq 48/49)은 원래 primal outer subproblem의 구조를 복원한다:
+
+- **현재 (Dual ISP, eq 46/47)**: Mhat, Uhat, βhat, Zhat, Phat, Γhat 등이 **decision variable**
+- **제안 (Primal ISP, eq 48/49)**: Φ̂, Ψ̂, Π̂, Λ̂, M̂, η̂, μ̂ 등이 **decision variable** (원래 LDR 변수들)
+
+### 12.2 동기: 왜 Primal ISP를 풀고 싶은가
+
+1. **LDR sparsity 직접 적용 가능**: Primal ISP에서 Φ̂_L[k,l], Ψ̂_L[k,l]은 decision variable이므로, non-adjacent pair에 대해 zero-fix 또는 변수 미생성 가능. 현재 dual ISP에서는 constraint를 선택적으로 생성하는 간접적 방식.
+
+2. **Inner Benders cut이 직접 나옴**: Primal ISP (eq 48)의 objective는:
+   ```
+   min  (1/S)·η̂_s + Σ_k α_k · μ̂_sk
+   ```
+   Envelope theorem에 의해 ∂Z1L,s/∂α_k = μ̂*_sk. 따라서 inner cut은:
+   ```
+   t_1_l[s] ≤ (1/S)·η̂*_s + Σ_k α_k · μ̂*_sk
+   ```
+   intercept = (1/S)·η̂*_s, subgradient_k = μ̂*_sk — 둘 다 **primal 변수 값**으로 바로 읽음. Shadow price 불필요.
+
+3. **SDP에서 zero-fixed 변수가 solver presolve에 유리할 수 있음**: Constraint 부분 생성(dual)보다 변수 zero-fix(primal)가 solver에게 sparsity를 더 명시적으로 전달.
+
+### 12.3 파라미터 위치 역전
+
+| | Dual ISP (현재) | Primal ISP (제안) |
+|---|---|---|
+| **(x, h, λ, ψ0)** | **Objective**에 등장 | **Constraint**에 등장 |
+| **α** | **Constraint RHS**에 등장 | **Objective**에 등장 |
+
+- Inner loop (α 변화): Primal ISP에서는 objective 계수만 업데이트 → `set_objective_coefficient`
+- Outer loop (x, h, λ, ψ0 변화): Primal ISP에서는 constraint 업데이트 필요 → 모델 재생성이 안전
+
+### 12.4 Benders Cut 추출 방식
+
+**Inner cut (IMP용, α에 대한 cut):**
+
+| | Dual ISP (현재) | Primal ISP (제안) |
+|---|---|---|
+| intercept | shadow_price(cons_dual_constant) | **(1/S)·value(η̂_s)** — 변수 값 |
+| subgradient | shadow_price(coupling_cons) | **value.(μ̂_s)** — 변수 값 |
+
+→ Primal ISP에서 더 직접적이고 수치적으로 안정적.
+
+**Outer cut (OMP용, x/h/λ/ψ0에 대한 cut):**
+
+Outer cut 계수 (Uhat, βhat, Ztilde 등)는 primal ISP constraint의 **shadow_price**로 추출:
+
+| Primal ISP constraint | Shadow price |
+|---|---|
+| −Ψ̂ ≥ −ϕU·diag(x)·E | Û1 |
+| −Ψ̂ + Φ̂ ≥ 0 | Û2 |
+| −Φ̂ + Ψ̂ ≥ −ϕU·diag(1−x)·E | Û3 |
+| Λ̂1·r̄ ≥ d0 − ... | β̂1 |
+| Λ̂2·r̄ ≥ −μ̂ + ϕ̂0 | β̂2 |
+| Λ̂1·R = Q̂ (equality) | Ẑ1 |
+| Λ̂2·R + Φ̂_L = 0 (equality) | Ẑ2 |
+
+→ 각 constraint에 이름을 붙여 shadow_price()로 추출. Mosek은 SDP 문제 내 linear constraint의 dual을 반환 가능 (현재 코드에서 이미 사용 중).
+
+### 12.5 SDP 차원과 LDR Sparsity
+
+Primal ISP에서 LDR 변수를 zero-fix하면 SDP 행렬 M̂에 structural zero 발생:
+
+```
+M̂_11[i,j] = ϑ·δ_{ij} − ξ̄_i·(Φ̂_L[i,j] − v·Ψ̂_L[i,j])
+```
+
+비인접 (i,j)에서 Φ̂_L[i,j] = Ψ̂_L[i,j] = 0 → M̂_11[i,j] = 0 (i≠j).
+
+이 structural zero 패턴은 chordal decomposition의 전제 조건을 제공:
+- M̂의 sparsity graph = arc adjacency + universal vertex (|A|+1)
+- 각 maximal clique C_k에 대해 M̂[C_k∪{|A|+1}, C_k∪{|A|+1}] ∈ PSD로 분해 가능
+- Grid network에서 clique 크기 << |A| → 큰 SDP 하나 대신 작은 SDP 여러 개
+
+이 SDP 분해는 Phase 4 이후에 별도 검토.
+
+### 12.6 구현 전략
+
+**Phase 1: 새 파일, 독립 검증**
+
+`build_primal_isp.jl` 생성:
+- `build_primal_isp_leader(network, ϕU, λU, v, uncertainty_set, optimizer, x_sol, h_sol, λ_sol, ψ0_sol, true_S)`
+- `build_primal_isp_follower(...)`
+- 변수: η̂, Φ̂_L, ϕ̂_0, Ψ̂_L, ψ̂_0, Π̂_L, π̂_0, Λ̂1, Λ̂2, M̂, ϑ̂, μ̂
+- Objective: `min (1/S)·η̂ + Σ α_k · μ̂_k`
+- Constraints: (16e) SDP, (16g) Big-M, (16j)(16k) robust counterpart
+- 검증: 동일 (x, h, λ, ψ0, α)에서 dual ISP objective == primal ISP objective (strong duality)
+
+**Phase 2: Inner cut 검증**
+
+Primal ISP의 (η̂*, μ̂*)로 구성한 inner cut과 dual ISP의 shadow_price로 구성한 inner cut 비교:
+- intercept 차이 < 1e-6
+- subgradient 차이 (norm) < 1e-6
+
+**Phase 3: Nested Benders 통합**
+
+- Outer iter마다 primal ISP 모델 재생성 (constraint에 x, h, λ, ψ0 포함되므로)
+- Inner iter에서는 α만 objective 업데이트
+- Outer cut: shadow_price로 Uhat, βhat 등 추출
+- 전체 알고리즘 결과가 기존과 동일한지 확인
+
+**Phase 4: LDR sparsity**
+
+Phase 1-3 검증 후:
+- fix(0.0) → dictionary-indexed 변수 전환 (변수 미생성)
+- SDP 블록을 sparse 구성으로 재작성
+- Solve time 비교
+
+### 12.7 리스크
+
+| 리스크 | 심각도 | 대응 |
+|---|---|---|
+| Strong duality 미성립 (Slater 위반) | 높음 | Phase 1에서 obj 비교로 즉시 발견 |
+| Shadow price 수치 오차 (outer cut) | 중간 | Dual ISP variable value와 비교, tolerance 조정 |
+| 모델 재생성 비용 | 낮음 | Build time << solve time (SDP), 필요시 점진 업데이트 전환 |
+| Mosek dual recovery 실패 | 낮음 | 현재 코드에서 이미 SDP + shadow_price 사용 중 → 실증됨 |
+
+### 12.8 기대 효과
+
+1. **Inner cut 수치 안정성 향상**: shadow_price → 변수 값 직접 사용
+2. **LDR sparsity 자연스러운 적용**: primal 변수를 zero-fix하면 solver가 직접 활용
+3. **SDP chordal decomposition 기반 마련**: structural zero가 명시적으로 존재
+4. **코드 가독성**: cut 계수가 변수 값에서 바로 나오므로 derivation 추적이 쉬움

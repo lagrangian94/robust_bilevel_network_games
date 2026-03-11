@@ -219,7 +219,7 @@ function build_full_2DRNDP_model(network, S, ϕU, λU, γ, w, v, uncertainty_set
         Mhat_21 = Mhat[s, end, 1:num_arcs]
         Mhat_22 = Mhat[s, end, end]
         @constraint(model, Mhat_11.== ϑhat[s]*Matrix{Float64}(I, num_arcs, num_arcs) - adjoint(D_s)*(Φhat_L[s,:,:] - v*Ψhat_L[s,:,:]))
-        @constraint(model, Mhat_12.== -(1/2)*((Φhat_L[s,:,:]-v*Ψhat_L[s,:,:]-v*Ψhat_L[s,:,:])*xi_bar[s] + adjoint(D_s)*(Φhat_0[s,:]-v*Ψhat_0[s,:])))
+        @constraint(model, Mhat_12.== -(1/2)*((Φhat_L[s,:,:]-v*Ψhat_L[s,:,:])*xi_bar[s] + adjoint(D_s)*(Φhat_0[s,:]-v*Ψhat_0[s,:])))
         @constraint(model, Mhat_22.== ηhat[s] - (Φhat_0[s,:]-v*Ψhat_0[s,:])'*xi_bar[s] - ϑhat[s]*(epsilon^2))
         Mtilde_11 = Mtilde[s, 1:num_arcs, 1:num_arcs]
         Mtilde_12 = Mtilde[s, 1:num_arcs, end]

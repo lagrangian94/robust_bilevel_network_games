@@ -139,53 +139,53 @@ println("="^80)
 
 
 
-realworld_generators = [
-    # ("ABILENE",     generate_abilene_network),
-    # ("POLSKA",      generate_polska_network),
-    ("NOBEL-US",    generate_nobel_us_network),
-    # ("Sioux-Falls", generate_sioux_falls_network),
-]
+# realworld_generators = [
+#     # ("ABILENE",     generate_abilene_network),
+#     # ("POLSKA",      generate_polska_network),
+#     ("NOBEL-US",    generate_nobel_us_network),
+#     # ("Sioux-Falls", generate_sioux_falls_network),
+# ]
 
-realworld_S = S  # 위에서 설정한 S 사용 (또는 별도로 지정)
+# realworld_S = S  # 위에서 설정한 S 사용 (또는 별도로 지정)
 
-realworld_results = Dict{String, Dict{String, Float64}}()
+# realworld_results = Dict{String, Dict{String, Float64}}()
 
-for (net_name, gen_func) in realworld_generators
-    println("\n" * "="^80)
-    println("REAL-WORLD NETWORK: $net_name (S=$realworld_S)")
-    println("="^80)
+# for (net_name, gen_func) in realworld_generators
+#     println("\n" * "="^80)
+#     println("REAL-WORLD NETWORK: $net_name (S=$realworld_S)")
+#     println("="^80)
 
-    rw_network = gen_func()
-    print_realworld_network_summary(rw_network)
+#     rw_network = gen_func()
+#     print_realworld_network_summary(rw_network)
 
-    # Generate capacity scenarios
-    rw_cap, _ = generate_capacity_scenarios_uniform_model(length(rw_network.arcs), realworld_S, seed=seed)
-    rw_cap_regular = rw_cap[1:end-1, :]
-    rw_R, rw_r_dict, rw_xi_bar = build_robust_counterpart_matrices(rw_cap_regular, epsilon)
-    rw_uset = Dict(:R => rw_R, :r_dict => rw_r_dict, :xi_bar => rw_xi_bar, :epsilon => epsilon)
+#     # Generate capacity scenarios
+#     rw_cap, _ = generate_capacity_scenarios_uniform_model(length(rw_network.arcs), realworld_S, seed=seed)
+#     rw_cap_regular = rw_cap[1:end-1, :]
+#     rw_R, rw_r_dict, rw_xi_bar = build_robust_counterpart_matrices(rw_cap_regular, epsilon)
+#     rw_uset = Dict(:R => rw_R, :r_dict => rw_r_dict, :xi_bar => rw_xi_bar, :epsilon => epsilon)
 
-    net_results = Dict{String, Float64}()
+#     net_results = Dict{String, Float64}()
 
-    # # --- Strict Benders ---
-    # println("\n  [Strict Benders]")
-    # GC.gc()
-    # m1, v1 = build_omp(rw_network, ϕU, λU, γ, w; optimizer=Gurobi.Optimizer, multi_cut=false)
-    # t_start = time()
-    # strict_benders_optimize!(m1, v1, rw_network, ϕU, λU, γ, w, rw_uset; optimizer=Gurobi.Optimizer, outer_tr=true)
-    # net_results["strict_benders"] = time() - t_start
-    # println("    Time: $(round(net_results["strict_benders"], digits=2)) sec")
+#     # # --- Strict Benders ---
+#     # println("\n  [Strict Benders]")
+#     # GC.gc()
+#     # m1, v1 = build_omp(rw_network, ϕU, λU, γ, w; optimizer=Gurobi.Optimizer, multi_cut=false)
+#     # t_start = time()
+#     # strict_benders_optimize!(m1, v1, rw_network, ϕU, λU, γ, w, rw_uset; optimizer=Gurobi.Optimizer, outer_tr=true)
+#     # net_results["strict_benders"] = time() - t_start
+#     # println("    Time: $(round(net_results["strict_benders"], digits=2)) sec")
 
-    # --- Nested Benders ---
-    println("\n  [Nested Benders]")
-    GC.gc()
-    m2, v2 = build_omp(rw_network, ϕU, λU, γ, w; optimizer=Gurobi.Optimizer, multi_cut=true)
-    t_start = time()
-    nested_benders_optimize!(m2, v2, rw_network, ϕU, λU, γ, w, rw_uset; mip_optimizer=Gurobi.Optimizer, conic_optimizer=Mosek.Optimizer, multi_cut=true)
-    net_results["nested_benders"] = time() - t_start
-    println("    Time: $(round(net_results["nested_benders"], digits=2)) sec")
-end
-@infiltrate
-network = generate_grid_network(3, 4, seed=seed)
+#     # --- Nested Benders ---
+#     println("\n  [Nested Benders]")
+#     GC.gc()
+#     m2, v2 = build_omp(rw_network, ϕU, λU, γ, w; optimizer=Gurobi.Optimizer, multi_cut=true)
+#     t_start = time()
+#     nested_benders_optimize!(m2, v2, rw_network, ϕU, λU, γ, w, rw_uset; mip_optimizer=Gurobi.Optimizer, conic_optimizer=Mosek.Optimizer, multi_cut=true)
+#     net_results["nested_benders"] = time() - t_start
+#     println("    Time: $(round(net_results["nested_benders"], digits=2)) sec")
+# end
+# @infiltrate
+network = generate_grid_network(4, 4, seed=seed)
 print_network_summary(network)
 capacities, F = generate_capacity_scenarios_uniform_model(length(network.arcs), S, seed=seed)
 capacity_scenarios_regular = capacities[1:end-1, :]
