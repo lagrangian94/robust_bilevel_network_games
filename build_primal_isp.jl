@@ -484,6 +484,74 @@ end
 
 
 """
+Update (x, h, λ, ψ0) parameters in existing primal ISP instances via set_normalized_rhs.
+Avoids rebuilding models each outer iteration, preserving solver warm-start.
+
+Parameter locations in constraints:
+  Leader:  Big-M1/3 → x
+  Follower: Big-M1/3 → x, SOC eq block3 → λ,ψ0, SOC ineq block1 → λ, SOC ineq block3 → h,λ,ψ0
+"""
+function update_primal_isp_parameters!(
+    primal_leader_instances::Dict, primal_follower_instances::Dict;
+    x_sol, h_sol, λ_sol, ψ0_sol, isp_data)
+
+    S = isp_data[:S]
+    ϕU = isp_data[:ϕU]
+    v = isp_data[:v]
+    d0 = isp_data[:d0]
+    xi_bar = isp_data[:uncertainty_set][:xi_bar]
+
+    for s in 1:S
+        # === Leader: update Big-M constraints (x only) ===
+        vars_l = primal_leader_instances[s][2]
+        num_arcs = size(vars_l[:con_bigM1_hat], 1)
+
+        for i in 1:num_arcs, j in 1:(num_arcs+1)
+            set_normalized_rhs(vars_l[:con_bigM1_hat][i,j], ϕU * x_sol[i])
+            set_normalized_rhs(vars_l[:con_bigM3_hat][i,j], ϕU * (1 - x_sol[i]))
+        end
+
+        # === Follower: update Big-M + SOC constraints ===
+        vars_f = primal_follower_instances[s][2]
+
+        # Big-M (x)
+        for i in 1:num_arcs, j in 1:(num_arcs+1)
+            set_normalized_rhs(vars_f[:con_bigM1_tilde][i,j], ϕU * x_sol[i])
+            set_normalized_rhs(vars_f[:con_bigM3_tilde][i,j], ϕU * (1 - x_sol[i]))
+        end
+
+        # SOC equality block3: (λ-v*ψ0[i]) * xi_bar[s][i] * δ(i,j)
+        b3s = vars_f[:block3_start_idx]
+        b3e = vars_f[:block3_end_idx]
+        b1sz = vars_f[:block1_size]
+        eq_cons = vars_f[:con_soc_eq_tilde]
+        n_eq_cols = size(eq_cons, 2)
+
+        for i in 1:num_arcs
+            row = b3s + i - 1
+            param_diag = (λ_sol - v * ψ0_sol[i]) * xi_bar[s][i]
+            for j in 1:n_eq_cols
+                set_normalized_rhs(eq_cons[row, j], i == j ? param_diag : 0.0)
+            end
+        end
+
+        # SOC inequality block1: λ * d0[row]
+        ineq_cons = vars_f[:con_soc_ineq_tilde]
+        for row in 1:b1sz
+            set_normalized_rhs(ineq_cons[row], λ_sol * d0[row])
+        end
+
+        # SOC inequality block3: -h[i] - (λ-v*ψ0[i]) * xi_bar[s][i]
+        for i in 1:num_arcs
+            row = b3s + i - 1
+            new_rhs = -h_sol[i] - (λ_sol - v * ψ0_sol[i]) * xi_bar[s][i]
+            set_normalized_rhs(ineq_cons[row], new_rhs)
+        end
+    end
+end
+
+
+"""
 Hybrid inner loop: uses primal ISP for inner α optimization,
 then dual ISP for outer cut generation.
 

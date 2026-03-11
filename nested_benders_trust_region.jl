@@ -633,11 +633,10 @@ function tr_nested_benders_optimize!(omp_model::Model, omp_vars::Dict, network, 
             x_sol, h_sol, λ_sol, ψ0_sol = value.(omp_vars[:x]), value.(omp_vars[:h]), value(omp_vars[:λ]), value.(omp_vars[:ψ0])
             model_estimate = value(t_0)
             lower_bound = max(lower_bound, model_estimate)
-            # Rebuild primal ISP if needed (x,h,λ,ψ0 are in constraints → need rebuild each outer iter)
+            # Update primal ISP parameters (x,h,λ,ψ0 are in constraint RHS → set_normalized_rhs)
             if isp_mode != :dual
-                primal_leader_instances, primal_follower_instances = initialize_primal_isp(
-                    network, S, ϕU, λU, γ, w, v, uncertainty_set;
-                    conic_optimizer=conic_optimizer, x_sol=x_sol, λ_sol=λ_sol, h_sol=h_sol, ψ0_sol=ψ0_sol)
+                update_primal_isp_parameters!(primal_leader_instances, primal_follower_instances;
+                    x_sol=x_sol, h_sol=h_sol, λ_sol=λ_sol, ψ0_sol=ψ0_sol, isp_data=isp_data)
             end
             # Outer Subproblem 풀기
             if isp_mode == :dual

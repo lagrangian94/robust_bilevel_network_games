@@ -194,10 +194,9 @@ function tr_nested_benders_optimize_hybrid!(omp_model::Model, omp_vars::Dict, ne
             model_estimate = value(t_0)
             lower_bound = max(lower_bound, model_estimate)
 
-            # Rebuild primal ISP instances (x,h,λ,ψ0 are in constraints → need rebuild)
-            primal_leader_instances, primal_follower_instances = initialize_primal_isp(
-                network, S, ϕU, λU, γ, w, v, uncertainty_set;
-                conic_optimizer=conic_optimizer, x_sol=x_sol, λ_sol=λ_sol, h_sol=h_sol, ψ0_sol=ψ0_sol)
+            # Update primal ISP parameters (x,h,λ,ψ0 in constraint RHS → set_normalized_rhs)
+            update_primal_isp_parameters!(primal_leader_instances, primal_follower_instances;
+                x_sol=x_sol, h_sol=h_sol, λ_sol=λ_sol, ψ0_sol=ψ0_sol, isp_data=isp_data)
 
             # Hybrid inner loop (primal ISP)
             status, cut_info = tr_imp_optimize_hybrid!(imp_model, imp_vars,
