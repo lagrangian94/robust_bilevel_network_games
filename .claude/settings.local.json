@@ -2,7 +2,13 @@
   "permissions": {
     "allow": [
       "Bash(ls -lh /c/Users/user/robust_bilevel_network_games/*.jl)",
-      "Bash(julia:*)"
+      "Bash(julia:*)",
+      "Bash(sed:*)",
+      "Bash(cp:*)",
+      "Bash(ls:*)",
+      "Bash(tasklist:*)",
+      "Bash(taskkill:*)",
+      "Bash(echo:*)"
     ]
   }
 }

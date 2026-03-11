@@ -46,6 +46,9 @@ network_generator.jl → build_uncertainty_set.jl → [algorithm choice] → plo
 | `nested_benders.jl` | Three-level decomposition (Outer → Inner Master → Inner Sub): `build_imp()`, `isp_leader_optimize!()`, `isp_follower_optimize!()`, `nested_benders_optimize!()` |
 | `nested_benders_trust_region.jl` | Trust-region stabilized nested Benders with binary L∞-norm trust regions at both outer and inner levels: `tr_nested_benders_optimize!()` |
 | `plot_benders.jl` | Convergence plotting (bounds, center changes, region expansions) |
+| `compact_ldr_utils.jl` | Dictionary-indexed LDR index set generators (`arc_adj_pairs`, `arc_full_pairs`, etc.) and compact-to-dense converters |
+| `build_isp_compact.jl` | Compact ISP builders using dict-indexed variables: `build_isp_leader_compact()`, `initialize_isp_compact()`, optimize and cut functions |
+| `compare_compact.jl` | Benchmark script comparing original vs compact ISP on 3×3 grid, S=1,2,5 |
 
 ### Algorithm hierarchy
 1. **Strict Benders** — basic two-level decomposition with optimality cuts

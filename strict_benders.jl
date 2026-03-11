@@ -142,13 +142,13 @@ function initialize_omp(omp_model::Model, omp_vars::Dict)
     return st, value(omp_vars[:λ]), value.(omp_vars[:x]), value.(omp_vars[:h]), value.(omp_vars[:ψ0])
 end
 
-function strict_benders_optimize!(omp_model::Model, omp_vars::Dict, network, ϕU, λU, γ, w, uncertainty_set; optimizer=nothing)
+function strict_benders_optimize!(omp_model::Model, omp_vars::Dict, network, ϕU, λU, γ, w, uncertainty_set; optimizer=nothing, outer_tr=false, max_iter=1000)
     ### --------Begin Initialization--------
     st, λ_sol, x_sol, h_sol, ψ0_sol = initialize_omp(omp_model, omp_vars)
     x, h, λ, ψ0, t_0 = omp_vars[:x], omp_vars[:h], omp_vars[:λ], omp_vars[:ψ0], omp_vars[:t_0]
     num_arcs = length(network.arcs) - 1
     osp_model, osp_vars, osp_data = build_dualized_outer_subproblem(network, S, ϕU, λU, γ, w, v, uncertainty_set, MosekTools.Optimizer, λ_sol, x_sol, h_sol, ψ0_sol)
-    
+
     diag_x_E = Diagonal(x) * osp_data[:E]  # diag(x)E
     diag_λ_ψ = Diagonal(λ*ones(num_arcs)-v.*ψ0)
     xi_bar = uncertainty_set[:xi_bar]
@@ -160,105 +160,212 @@ function strict_benders_optimize!(omp_model::Model, omp_vars::Dict, network, ϕU
     upper_bound = Inf
     result = Dict()
     result[:cuts] = Dict()
+
+    ### --------Trust Region Initialization--------
+    if outer_tr
+        B_bin_sequence = [0.05, 0.5, 1.0]
+        B_bin_stage = 1
+        B_bin = B_bin_sequence[B_bin_stage] * sum(network.interdictable_arcs)
+        B_con = nothing
+        centers = Dict{Symbol, Any}(
+            :x => copy(x_sol),
+            :h => copy(h_sol),
+            :λ => λ_sol,
+            :ψ0 => copy(ψ0_sol)
+        )
+        β_relative = 1e-4
+        tr_constraints = Dict{Symbol, Any}(
+            :binary => nothing,
+            :continuous => nothing
+        )
+        past_major_subprob_obj = []
+        major_iter = []
+        bin_B_steps = []
+        past_local_lower_bound = []
+        past_local_optimizer = []
+        lower_bound = -Inf
+        past_lower_bound = []
+        result[:tr_info] = Dict()
+    end
     ### --------End Initialization--------
+    time_start = time()
     while (st == MOI.DUAL_INFEASIBLE || st == MOI.OPTIMAL)
         iter += 1
-        @info "Iteration $iter"
+        if iter > max_iter
+            @warn "Maximum iterations ($max_iter) reached."
+            break
+        end
+        if outer_tr
+            @info "Iteration $iter (B_bin=$B_bin, Stage=$(B_bin_stage)/$(length(B_bin_sequence)))"
+        else
+            @info "Iteration $iter"
+        end
         optimize!(omp_model)
         st = MOI.get(omp_model, MOI.TerminationStatus())
-        x_sol, h_sol, λ_sol, ψ0_sol = value.(omp_vars[:x]), value.(omp_vars[:h]), value(omp_vars[:λ]), value.(omp_vars[:ψ0])
-        t_0_sol = value(omp_vars[:t_0])
 
-        (status, cut_info) =osp_optimize!(osp_model, osp_vars, osp_data, λ_sol, x_sol, h_sol, ψ0_sol)
-        upper_bound = min(upper_bound, cut_info[:obj_val])
-        if status == :OptimalityCut
-            if t_0_sol >= upper_bound-1e-4
+        if outer_tr && st == MOI.INFEASIBLE
+            @info "OMP infeasible (Converged): No search space left due to reverse regions"
+            gap = 0.0
+            # Fall through to gap check below
+        else
+            x_sol, h_sol, λ_sol, ψ0_sol = value.(omp_vars[:x]), value.(omp_vars[:h]), value(omp_vars[:λ]), value.(omp_vars[:ψ0])
+            t_0_sol = value(omp_vars[:t_0])
+
+            (status, cut_info) = osp_optimize!(osp_model, osp_vars, osp_data, λ_sol, x_sol, h_sol, ψ0_sol)
+            subprob_obj = cut_info[:obj_val]
+            upper_bound = min(upper_bound, subprob_obj)
+
+            if status != :OptimalityCut
+                error("Subproblem returned unexpected status: $status")
+            end
+
+            if outer_tr
+                lower_bound = max(lower_bound, t_0_sol)
+                gap = upper_bound - lower_bound
+
+                # Serious step test
+                if iter == 1
+                    push!(past_major_subprob_obj, subprob_obj)
+                end
+                tr_needs_update = false
+                predicted_decrease = past_major_subprob_obj[end] - t_0_sol
+                β_dynamic = max(1e-8, β_relative * predicted_decrease)
+                improvement = past_major_subprob_obj[end] - subprob_obj
+                is_serious_step = (improvement >= β_dynamic)
+                if is_serious_step
+                    centers[:x] = copy(x_sol)
+                    centers[:h] = copy(h_sol)
+                    centers[:λ] = λ_sol
+                    centers[:ψ0] = copy(ψ0_sol)
+                    push!(major_iter, iter)
+                    push!(past_major_subprob_obj, subprob_obj)
+                    tr_needs_update = true
+                end
+            else
+                gap = upper_bound - t_0_sol
+            end
+
+            # Store history
+            push!(past_obj, t_0_sol)
+            push!(past_subprob_obj, subprob_obj)
+            push!(past_upper_bound, upper_bound)
+            if outer_tr
+                push!(past_lower_bound, lower_bound)
+            end
+        end
+
+        # Convergence check
+        if gap <= 1e-4
+            if !outer_tr
+                # No outer TR: simple convergence
+                time_end = time()
                 @info "Termination condition met"
-                println("t_0_sol: ", t_0_sol, ", cut_info[:obj_val]: ", cut_info[:obj_val])
-                push!(past_obj, t_0_sol)
-                push!(past_subprob_obj, cut_info[:obj_val])
-                push!(past_upper_bound, upper_bound)
+                println("t_0_sol: ", t_0_sol, ", subprob_obj: ", subprob_obj)
                 result[:past_obj] = past_obj
                 result[:past_subprob_obj] = past_subprob_obj
                 result[:past_upper_bound] = past_upper_bound
-                """
-                    Variable types: 36 continuous, 17 integer (17 binary)
-                    Coefficient statistics:
-                    Matrix range     [3e-10, 4e+03]
-                    Objective range  [1e+00, 1e+00]
-                    Bounds range     [0e+00, 0e+00]
-                    RHS range        [2e+00, 6e+02]
-                    Warning: Model contains large matrix coefficient range
-                            Consider reformulating model or setting NumericFocus parameter
-                            to avoid numerical issues.
-
-                    MIP start from previous solve produced solution with objective 13.3585 (0.00s)
-                    Loaded MIP start from previous solve with objective 13.3585
-
-                    Presolve removed 69 rows and 37 columns
-                    Presolve time: 0.00s
-                    Presolved: 17 rows, 16 columns, 80 nonzeros
-                    Variable types: 12 continuous, 4 integer (4 binary)
-
-                    Root relaxation: interrupted, 0 iterations, 0.00 seconds (0.00 work units)
-
-                    Explored 1 nodes (0 simplex iterations) in 0.00 seconds (0.00 work units)
-                    Thread count was 24 (of 24 available processors)
-
-                    Solution count 1: 13.3585
-
-                    Optimal solution found (tolerance 1.00e-04)
-                    Best objective 1.335846384616e+01, best bound 1.335824729951e+01, gap 0.0016%
-
-                    User-callback calls 300, time in user-callback 0.00 sec
-                """
+                result[:solution_time] = time_end - time_start
+                result[:opt_sol] = Dict(:x=>x_sol, :h=>h_sol, :λ=>λ_sol, :ψ0=>ψ0_sol)
                 return result
+            end
+
+            # Outer TR: local optimality reached
+            if B_bin_stage <= length(B_bin_sequence) - 1
+                # Expand trust region
+                B_bin_stage += 1
+                B_bin_old = B_bin
+                B_bin = B_bin_sequence[B_bin_stage] * sum(network.interdictable_arcs)
+                push!(bin_B_steps, iter)
+                push!(past_local_lower_bound, lower_bound)
+                push!(past_local_optimizer, Dict(:x=>copy(x_sol), :h=>copy(h_sol), :λ=>λ_sol, :ψ0=>copy(ψ0_sol)))
+                @info "  ✓ Local optimal reached! Expanding B_bin to $B_bin"
+                tr_constraints = update_outer_trust_region_constraints!(
+                    omp_model, omp_vars, centers, B_bin, B_con, tr_constraints, network)
+                lower_bound = -Inf
+                _ = add_reverse_region_constraint!(omp_model, omp_vars[:x], centers[:x], B_bin_old, network)
             else
-                push!(past_obj, t_0_sol)
-                push!(past_subprob_obj, cut_info[:obj_val])
-                push!(past_upper_bound, upper_bound)
-                cut_1 =  -ϕU * [sum((cut_info[:Uhat1][s,:,:] + cut_info[:Utilde1][s,:,:]) .* diag_x_E) for s in 1:S]
-                cut_2 =  -ϕU * [sum((cut_info[:Uhat3][s,:,:] + cut_info[:Utilde3][s,:,:]) .* (osp_data[:E] - diag_x_E)) for s in 1:S]
-                cut_3 =  [sum(cut_info[:Ztilde1_3][s,:,:] .* (diag_λ_ψ * diagm(xi_bar[s]))) for s in 1:S]
-                cut_4 =  [(osp_data[:d0]'*cut_info[:βtilde1_1][s,:]) * λ for s in 1:S]
-                cut_5 =  -1* [(h + diag_λ_ψ * xi_bar[s])'* cut_info[:βtilde1_3][s,:] for s in 1:S]
-                cut_intercept = cut_info[:intercept]
-                opt_cut = sum(cut_1)+ sum(cut_2)+ sum(cut_3)+ sum(cut_4)+ sum(cut_5)+ sum(cut_intercept)
-                
-                cut_added = @constraint(omp_model, t_0 >= opt_cut)
-                set_name(cut_added, "opt_cut_$iter")
-                
-                
-                result[:cuts]["opt_cut_$iter"] = cut_added
-                
-                println("subproblem objective: ", cut_info[:obj_val])
-                @info "Optimality cut added"
-                
-                """
-                below evaluation is checking tightness of the cut
-                """
-                y = Dict(
-                    [omp_vars[:x][k] => x_sol[k] for k in 1:num_arcs]...,
-                    [omp_vars[:h][k] => h_sol[k] for k in 1:num_arcs]...,
-                    omp_vars[:λ] => λ_sol,
-                    [omp_vars[:ψ0][k] => ψ0_sol[k] for k in 1:num_arcs]...
-                )
-                function evaluate_expr(expr::AffExpr, var_values::Dict)
-                    eval_result = expr.constant
-                    for (var, coef) in expr.terms
-                        if haskey(var_values, var)
-                            eval_result += coef * var_values[var]
-                        else
-                            error("Variable $var not found in var_values")
-                        end
+                # Global optimality
+                time_end = time()
+                @info "  ✓✓ GLOBAL OPTIMAL! (B_bin = full region)"
+                min_idx = argmin(past_local_lower_bound)
+                global_lower_bound = past_local_lower_bound[min_idx]
+                iter_when_global_optimal = bin_B_steps[min_idx]
+                global_upper_bound = past_upper_bound[iter_when_global_optimal]
+                println("lower_bound: ", global_lower_bound, ", upper_bound: ", global_upper_bound)
+
+                result[:past_obj] = past_obj
+                result[:past_subprob_obj] = past_subprob_obj
+                result[:past_upper_bound] = past_upper_bound
+                result[:past_lower_bound] = past_lower_bound
+                result[:past_local_lower_bound] = past_local_lower_bound
+                result[:past_major_subprob_obj] = past_major_subprob_obj
+                result[:solution_time] = time_end - time_start
+                result[:tr_info][:final_B_bin_stage] = B_bin_stage
+                result[:tr_info][:final_B_bin] = B_bin
+                result[:tr_info][:major_iter] = major_iter
+                result[:tr_info][:bin_B_steps] = bin_B_steps
+                result[:opt_sol] = past_local_optimizer[min_idx]
+                result[:iter_when_global_optimal] = iter_when_global_optimal
+                return result
+            end
+        else
+            # Gap still large → Add cut and continue
+            @info "Iter $iter: LB=$(outer_tr ? round(lower_bound, digits=4) : round(t_0_sol, digits=4))  UB=$(round(upper_bound, digits=4))  gap=$(round(gap, digits=6))"
+            cut_1 =  -ϕU * [sum((cut_info[:Uhat1][s,:,:] + cut_info[:Utilde1][s,:,:]) .* diag_x_E) for s in 1:S]
+            cut_2 =  -ϕU * [sum((cut_info[:Uhat3][s,:,:] + cut_info[:Utilde3][s,:,:]) .* (osp_data[:E] - diag_x_E)) for s in 1:S]
+            cut_3 =  [sum(cut_info[:Ztilde1_3][s,:,:] .* (diag_λ_ψ * diagm(xi_bar[s]))) for s in 1:S]
+            cut_4 =  [(osp_data[:d0]'*cut_info[:βtilde1_1][s,:]) * λ for s in 1:S]
+            cut_5 =  -1* [(h + diag_λ_ψ * xi_bar[s])'* cut_info[:βtilde1_3][s,:] for s in 1:S]
+            cut_intercept = cut_info[:intercept]
+            opt_cut = sum(cut_1)+ sum(cut_2)+ sum(cut_3)+ sum(cut_4)+ sum(cut_5)+ sum(cut_intercept)
+
+            cut_added = @constraint(omp_model, t_0 >= opt_cut)
+            set_name(cut_added, "opt_cut_$iter")
+            result[:cuts]["opt_cut_$iter"] = cut_added
+
+            println("subproblem objective: ", subprob_obj)
+            @info "Optimality cut added"
+
+            # Check tightness of the cut
+            y = Dict(
+                [omp_vars[:x][k] => x_sol[k] for k in 1:num_arcs]...,
+                [omp_vars[:h][k] => h_sol[k] for k in 1:num_arcs]...,
+                omp_vars[:λ] => λ_sol,
+                [omp_vars[:ψ0][k] => ψ0_sol[k] for k in 1:num_arcs]...
+            )
+            function evaluate_expr(expr::AffExpr, var_values::Dict)
+                eval_result = expr.constant
+                for (var, coef) in expr.terms
+                    if haskey(var_values, var)
+                        eval_result += coef * var_values[var]
+                    else
+                        error("Variable $var not found in var_values")
                     end
-                    return eval_result
                 end
-                if abs(cut_info[:obj_val] - evaluate_expr(opt_cut, y)) > 1e-4
-                    println("something went wrong")
-                    @infiltrate
-                end
+                return eval_result
+            end
+            if abs(subprob_obj - evaluate_expr(opt_cut, y)) > 1e-4
+                println("something went wrong")
+                @infiltrate
+            end
+
+            # Update TR constraints if needed
+            if outer_tr && tr_needs_update
+                @info "Updating Trust Region"
+                tr_constraints = update_outer_trust_region_constraints!(
+                    omp_model, omp_vars, centers, B_bin, B_con, tr_constraints, network)
             end
         end
     end
+    # max_iter reached or while condition false
+    time_end = time()
+    result[:past_obj] = past_obj
+    result[:past_subprob_obj] = past_subprob_obj
+    result[:past_upper_bound] = past_upper_bound
+    result[:solution_time] = time_end - time_start
+    if outer_tr
+        result[:past_lower_bound] = past_lower_bound
+        result[:opt_sol] = Dict(:x=>x_sol, :h=>h_sol, :λ=>λ_sol, :ψ0=>ψ0_sol)
+    end
+    return result
 end

@@ -1,3 +1,17 @@
+# ==============================================================================
+# Network Size Comparison (dummy arc 제외)
+# ------------------------------------------------------------------------------
+#  Network          |  Nodes  |  Arcs   |  Note
+# ------------------------------------------------------------------------------
+#  Grid 3×3         |    11   |    17   |  seed=42
+#  Grid 4×4         |    18   |    31   |  seed=42
+#  Grid 5×5         |    27   |    47   |  seed=42
+#  Sioux-Falls      |    24   |    76   |  LeBlanc et al. (1975)
+#  NOBEL-US         |    14   |    38   |  SNDlib, Orlowski et al. (2010)
+#  ABILENE          |    12   |    30   |  SNDlib, Internet2 backbone
+#  POLSKA           |    12   |    36   |  SNDlib, Polish telecom
+# ==============================================================================
+
 module NetworkGenerator
 
 using Random
@@ -6,6 +20,7 @@ using LinearAlgebra
 using Statistics
 using Revise
 export GridNetworkData, generate_grid_network, generate_capacity_scenarios_factor_model, generate_capacity_scenarios_uniform_model, print_network_summary
+export RealWorldNetworkData, generate_sioux_falls_network, generate_nobel_us_network, generate_abilene_network, generate_polska_network, print_realworld_network_summary
 using Infiltrator
 """
     GridNetworkData
@@ -385,6 +400,302 @@ function print_network_summary(network::GridNetworkData)
     println("\nNodes: $(network.nodes)")
     println("\nFirst 10 arcs:")
     for i in 1:min(10, length(network.arcs))
+        interdictable_str = network.interdictable_arcs[i] ? "✓" : "✗"
+        println("  Arc $i: $(network.arcs[i]) [Interdictable: $interdictable_str]")
+    end
+    println("=" ^ 60)
+end
+
+# ==============================================================================
+# Real-World Network Generators
+# ==============================================================================
+
+"""
+    RealWorldNetworkData
+
+Stores the complete data structure for a real-world network instance.
+Source/sink are remapped to "s"/"t" for solver compatibility with GridNetworkData.
+
+# Fields
+- `name::String`: network name
+- `original_node_names::Dict{String,String}`: mapping from "s"/"t" back to original names
+- `nodes::Vector{String}`: list of all node names (source="s", sink="t")
+- `arcs::Vector{Tuple{String,String}}`: list of all arcs as (from, to) tuples
+- `N::Matrix{Float64}`: node-incidence matrix (|V|-1 × |A|), source row removed
+- `interdictable_arcs::Vector{Bool}`: all regular arcs are interdictable
+- `arc_adjacency::Matrix{Bool}`: (|A| × |A|) arc adjacency matrix
+- `node_arc_incidence::Matrix{Bool}`: ((|V|-1) × |A|) node-arc incidence matrix
+"""
+struct RealWorldNetworkData
+    name::String
+    original_node_names::Dict{String,String}
+    nodes::Vector{String}
+    arcs::Vector{Tuple{String,String}}
+    N::Matrix{Float64}
+    interdictable_arcs::Vector{Bool}
+    arc_adjacency::Matrix{Bool}
+    node_arc_incidence::Matrix{Bool}
+end
+
+"""
+    _build_realworld_network(name, nodes, arcs, source, sink)
+
+Internal helper to build RealWorldNetworkData from node/arc lists.
+Remaps source→"s", sink→"t" for solver compatibility (dummy arc becomes ("t","s")).
+All regular arcs are marked as interdictable.
+"""
+function _build_realworld_network(name::String, nodes::Vector{String},
+                                   arcs::Vector{Tuple{String,String}},
+                                   source::String, sink::String)
+    # Store original names for display
+    original_node_names = Dict("s" => source, "t" => sink)
+
+    # Remap source→"s", sink→"t" in nodes
+    nodes = [n == source ? "s" : (n == sink ? "t" : n) for n in nodes]
+
+    # Remap source→"s", sink→"t" in arcs
+    function remap(n)
+        n == source ? "s" : (n == sink ? "t" : n)
+    end
+    arcs = [(remap(a), remap(b)) for (a, b) in arcs]
+
+    # Add dummy arc (t, s) for flow conservation
+    push!(arcs, ("t", "s"))
+
+    # Sort arcs
+    sort!(arcs, by = arc -> (arc[1], arc[2]))
+
+    num_nodes = length(nodes)
+    num_arcs = length(arcs)
+    num_regular_arcs = num_arcs - 1
+
+    # All regular arcs interdictable, dummy arc not
+    interdictable = vcat(fill(true, num_regular_arcs), [false])
+
+    # Build node-incidence matrix (source="s" is first node after remap)
+    # Ensure "s" is the first node
+    s_idx = findfirst(==("s"), nodes)
+    if s_idx != 1
+        deleteat!(nodes, s_idx)
+        pushfirst!(nodes, "s")
+    end
+
+    N_full = zeros(Float64, num_nodes, num_arcs)
+    node_to_idx = Dict(node => idx for (idx, node) in enumerate(nodes))
+
+    for (arc_idx, (from_node, to_node)) in enumerate(arcs)
+        from_idx = node_to_idx[from_node]
+        to_idx = node_to_idx[to_node]
+        N_full[from_idx, arc_idx] = 1.0
+        N_full[to_idx, arc_idx] = -1.0
+    end
+
+    # Remove source row (index 1, since "s" is first)
+    N = N_full[2:end, :]
+
+    # Generate adjacency structures
+    arc_adjacency = generate_arc_adjacency(arcs, num_regular_arcs)
+    node_arc_incidence_mat = falses(num_nodes - 1, num_regular_arcs)
+    for j in 1:num_regular_arcs
+        arc = arcs[j]
+        for i in 1:(num_nodes - 1)
+            node_name = nodes[i + 1]  # skip source
+            if arc[1] == node_name || arc[2] == node_name
+                node_arc_incidence_mat[i, j] = true
+            end
+        end
+    end
+
+    return RealWorldNetworkData(name, original_node_names, nodes, arcs, N,
+                                 interdictable, arc_adjacency, node_arc_incidence_mat)
+end
+
+"""
+    generate_sioux_falls_network()
+
+Generate the Sioux-Falls road network (LeBlanc et al., 1975).
+24 nodes, 76 directed arcs. Source: node 1, Sink: node 24.
+"""
+function generate_sioux_falls_network()
+    nodes = ["$i" for i in 1:24]
+    source = "1"
+    sink = "24"
+
+    arcs = [
+        ("1","2"), ("1","3"),
+        ("2","1"), ("2","6"),
+        ("3","1"), ("3","4"), ("3","12"),
+        ("4","3"), ("4","5"), ("4","11"),
+        ("5","4"), ("5","6"), ("5","9"),
+        ("6","2"), ("6","5"), ("6","8"),
+        ("7","8"), ("7","18"),
+        ("8","6"), ("8","7"), ("8","9"), ("8","16"),
+        ("9","5"), ("9","8"), ("9","10"),
+        ("10","9"), ("10","11"), ("10","15"), ("10","16"), ("10","17"),
+        ("11","4"), ("11","10"), ("11","12"), ("11","14"),
+        ("12","3"), ("12","11"), ("12","13"),
+        ("13","12"), ("13","24"),
+        ("14","11"), ("14","15"), ("14","23"),
+        ("15","10"), ("15","14"), ("15","19"), ("15","22"),
+        ("16","8"), ("16","10"), ("16","17"), ("16","18"),
+        ("17","10"), ("17","16"), ("17","19"),
+        ("18","7"), ("18","16"), ("18","20"),
+        ("19","15"), ("19","17"), ("19","20"),
+        ("20","18"), ("20","19"), ("20","21"), ("20","22"),
+        ("21","20"), ("21","22"), ("21","24"),
+        ("22","15"), ("22","20"), ("22","21"), ("22","23"),
+        ("23","14"), ("23","22"), ("23","24"),
+        ("24","13"), ("24","21"), ("24","23")
+    ]
+
+    return _build_realworld_network("Sioux-Falls", nodes, arcs, source, sink)
+end
+
+"""
+    generate_nobel_us_network()
+
+Generate the NOBEL-US network from SNDlib (Orlowski et al., 2010).
+14 nodes (major US cities), 42 directed arcs. Source: Seattle, Sink: Princeton.
+"""
+function generate_nobel_us_network()
+    nodes = [
+        "Seattle", "Palo_Alto", "San_Diego", "Salt_Lake_City", "Boulder",
+        "Lincoln", "Urbana_Champaign", "Ann_Arbor", "Ithaca",
+        "Princeton", "Atlanta", "Houston", "Washington", "New_York"
+    ]
+    source = "Seattle"
+    sink = "Princeton"
+
+    arcs = [
+        ("Seattle","Palo_Alto"), ("Seattle","Salt_Lake_City"),
+        ("Palo_Alto","Seattle"), ("Palo_Alto","San_Diego"), ("Palo_Alto","Salt_Lake_City"),
+        ("San_Diego","Palo_Alto"), ("San_Diego","Houston"),
+        ("Salt_Lake_City","Seattle"), ("Salt_Lake_City","Palo_Alto"), ("Salt_Lake_City","Boulder"),
+        ("Boulder","Salt_Lake_City"), ("Boulder","Lincoln"),
+        ("Lincoln","Boulder"), ("Lincoln","Urbana_Champaign"),
+        ("Urbana_Champaign","Lincoln"), ("Urbana_Champaign","Ann_Arbor"), ("Urbana_Champaign","Atlanta"),
+        ("Ann_Arbor","Urbana_Champaign"), ("Ann_Arbor","Ithaca"), ("Ann_Arbor","Princeton"),
+        ("Ithaca","Ann_Arbor"), ("Ithaca","Princeton"), ("Ithaca","New_York"),
+        ("Princeton","Ann_Arbor"), ("Princeton","Ithaca"), ("Princeton","Washington"), ("Princeton","New_York"),
+        ("Atlanta","Urbana_Champaign"), ("Atlanta","Houston"), ("Atlanta","Washington"),
+        ("Houston","San_Diego"), ("Houston","Atlanta"),
+        ("Washington","Princeton"), ("Washington","Atlanta"), ("Washington","New_York"),
+        ("New_York","Ithaca"), ("New_York","Princeton"), ("New_York","Washington")
+    ]
+
+    return _build_realworld_network("NOBEL-US", nodes, arcs, source, sink)
+end
+
+"""
+    generate_abilene_network()
+
+Generate the ABILENE network from SNDlib (Orlowski et al., 2010).
+12 nodes, 30 directed arcs (15 bidirectional links). Source: STTLng, Sink: NYCMng.
+"""
+function generate_abilene_network()
+    nodes = [
+        "ATLAng", "ATLAM5", "CHINng", "DNVRng", "HSTNng", "IPLSng",
+        "KSCYng", "LOSAng", "NYCMng", "SNVAng", "STTLng", "WASHng"
+    ]
+    source = "STTLng"
+    sink = "NYCMng"
+
+    arcs = [
+        ("ATLAng","ATLAM5"), ("ATLAM5","ATLAng"),
+        ("ATLAng","HSTNng"), ("HSTNng","ATLAng"),
+        ("ATLAng","IPLSng"), ("IPLSng","ATLAng"),
+        ("ATLAng","WASHng"), ("WASHng","ATLAng"),
+        ("CHINng","IPLSng"), ("IPLSng","CHINng"),
+        ("CHINng","NYCMng"), ("NYCMng","CHINng"),
+        ("DNVRng","KSCYng"), ("KSCYng","DNVRng"),
+        ("DNVRng","SNVAng"), ("SNVAng","DNVRng"),
+        ("DNVRng","STTLng"), ("STTLng","DNVRng"),
+        ("HSTNng","KSCYng"), ("KSCYng","HSTNng"),
+        ("HSTNng","LOSAng"), ("LOSAng","HSTNng"),
+        ("IPLSng","KSCYng"), ("KSCYng","IPLSng"),
+        ("LOSAng","SNVAng"), ("SNVAng","LOSAng"),
+        ("NYCMng","WASHng"), ("WASHng","NYCMng"),
+        ("SNVAng","STTLng"), ("STTLng","SNVAng")
+    ]
+
+    return _build_realworld_network("ABILENE", nodes, arcs, source, sink)
+end
+
+"""
+    generate_polska_network()
+
+Generate the POLSKA network from SNDlib (Orlowski et al., 2010).
+12 nodes (Polish cities), 36 directed arcs (18 bidirectional links). Source: Szczecin, Sink: Rzeszow.
+"""
+function generate_polska_network()
+    nodes = [
+        "Bialystok", "Bydgoszcz", "Gdansk", "Katowice", "Kolobrzeg",
+        "Krakow", "Lodz", "Poznan", "Rzeszow", "Szczecin", "Warsaw", "Wroclaw"
+    ]
+    source = "Szczecin"
+    sink = "Rzeszow"
+
+    arcs = [
+        ("Gdansk","Warsaw"), ("Warsaw","Gdansk"),
+        ("Gdansk","Kolobrzeg"), ("Kolobrzeg","Gdansk"),
+        ("Bydgoszcz","Kolobrzeg"), ("Kolobrzeg","Bydgoszcz"),
+        ("Bydgoszcz","Poznan"), ("Poznan","Bydgoszcz"),
+        ("Bydgoszcz","Warsaw"), ("Warsaw","Bydgoszcz"),
+        ("Kolobrzeg","Szczecin"), ("Szczecin","Kolobrzeg"),
+        ("Katowice","Krakow"), ("Krakow","Katowice"),
+        ("Katowice","Lodz"), ("Lodz","Katowice"),
+        ("Katowice","Wroclaw"), ("Wroclaw","Katowice"),
+        ("Krakow","Rzeszow"), ("Rzeszow","Krakow"),
+        ("Krakow","Warsaw"), ("Warsaw","Krakow"),
+        ("Bialystok","Rzeszow"), ("Rzeszow","Bialystok"),
+        ("Bialystok","Warsaw"), ("Warsaw","Bialystok"),
+        ("Lodz","Warsaw"), ("Warsaw","Lodz"),
+        ("Lodz","Wroclaw"), ("Wroclaw","Lodz"),
+        ("Poznan","Szczecin"), ("Szczecin","Poznan"),
+        ("Poznan","Wroclaw"), ("Wroclaw","Poznan"),
+        ("Gdansk","Bialystok"), ("Bialystok","Gdansk")
+    ]
+
+    return _build_realworld_network("POLSKA", nodes, arcs, source, sink)
+end
+
+"""
+    print_realworld_network_summary(network::RealWorldNetworkData)
+
+Print a summary of the real-world network structure.
+"""
+function print_realworld_network_summary(network::RealWorldNetworkData)
+    num_regular_arcs = length(network.arcs) - 1
+    num_nodes_excl_source = length(network.nodes) - 1
+
+    println("=" ^ 60)
+    println("$(network.name) Network Summary")
+    println("=" ^ 60)
+    println("Number of nodes: $(length(network.nodes))")
+    println("Number of arcs (incl. dummy): $(length(network.arcs))")
+    println("Number of regular arcs: $num_regular_arcs")
+    println("Number of interdictable arcs: $(sum(network.interdictable_arcs))")
+    println("Source node: s ($(network.original_node_names["s"]))")
+    println("Sink node: t ($(network.original_node_names["t"]))")
+    println("Node-incidence matrix N dimensions: $(size(network.N))")
+
+    # Sparsity statistics
+    num_arc_pairs = num_regular_arcs * num_regular_arcs
+    num_adjacent_pairs = sum(network.arc_adjacency)
+    sparsity_arc = 100 * (1 - num_adjacent_pairs / num_arc_pairs)
+
+    num_node_arc_pairs = num_nodes_excl_source * num_regular_arcs
+    num_incident_pairs = sum(network.node_arc_incidence)
+    sparsity_node = 100 * (1 - num_incident_pairs / num_node_arc_pairs)
+
+    println("\nSparsity Information:")
+    println("  Arc-arc adjacency: $num_adjacent_pairs / $num_arc_pairs pairs " *
+            "($(round(sparsity_arc, digits=1))% sparse)")
+    println("  Node-arc incidence: $num_incident_pairs / $num_node_arc_pairs pairs " *
+            "($(round(sparsity_node, digits=1))% sparse)")
+
+    println("\nFirst 15 arcs:")
+    for i in 1:min(15, length(network.arcs))
         interdictable_str = network.interdictable_arcs[i] ? "✓" : "✗"
         println("  Arc $i: $(network.arcs[i]) [Interdictable: $interdictable_str]")
     end

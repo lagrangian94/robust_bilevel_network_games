@@ -1,0 +1,1179 @@
+\documentclass{article}
+\usepackage{graphicx} % Required for inserting images
+\usepackage[margin=1in]{geometry}
+\usepackage{amsmath}
+\usepackage{interval}
+\usepackage{amssymb}
+\usepackage{amsfonts}
+\usepackage{amsthm}
+\usepackage{version}
+\usepackage{amssymb}
+\usepackage{graphicx}
+\usepackage{graphics}
+\usepackage{hyperref}
+\usepackage{courier}
+\usepackage[backend=biber]{biblatex}
+\addbibresource{reference.bib}
+\usepackage{listings}
+\usepackage{setspace}
+\usepackage{enumerate}
+\usepackage{accents}
+\usepackage{caption}
+\usepackage{subcaption}
+\usepackage{multicol}
+\usepackage{booktabs}
+\usepackage{kotex}
+\usepackage{xcolor}
+% \usepackage{natbib}
+\usepackage{mathtools}
+\usepackage{algorithm}
+\usepackage{algpseudocode}
+\newtheorem{proposition}{Proposition}
+\newtheorem{lemma}{Lemma}
+\newtheorem{theorem}{Theorem}
+\newtheorem{remark}{Remark}
+\newtheorem{question}{Question}
+\newtheorem{assumption}{Assumption}
+\newtheorem{observation}[theorem]{\textbf{Observation}}
+\newtheorem{example}[theorem]{Example}
+\newtheorem{corollary}{Corollary}
+\newtheorem{definition}{Definition}
+\newcommand{\norm}[1]{\left\lVert#1\right\rVert}
+\newcommand{\bs}[1]{\boldsymbol{#1}}
+\newcommand{\distP}{\mathbb{P}}
+\DeclareMathOperator*{\argmax}{arg\,max}
+\DeclareMathOperator*{\argmin}{arg\,min}
+\title{Network Interdiction Game with Private Uncertainty Model}
+\author{seokwookim }
+\date{July 2024}
+
+\begin{document}
+
+\maketitle
+
+
+\section{Problem Description}
+\begin{itemize}
+    \item Maximum flow interdiction in a directed network $\mathcal{G}=(\mathcal{V},\mathcal{A})$ 
+    \item Leader decision: interdiction $\mathbf{x}_{ij},\;\forall (i,j) \in \mathcal{A}$
+    \begin{enumerate}
+        \item $\mathbf{x}_{ij}=1$ if leader destroys arc $(i,j)$ and $0$ otherwise
+        \item[] interdiction budget: $x\in \left\{x\in \{0,1\}^{|\mathcal{A}|}: \mathbf{1}^\intercal x \leq \gamma  \right\}$
+    \end{enumerate}
+        \item Follower solves a \textit{2-stage} stochastic maximum flow problem
+        \begin{enumerate}
+        \item Here-and-now $\mathbf{h}$: arc capacity recovery
+        \item[] recovery budget: $h \in \left\{h \in  \mathbb{R}_{+}^{|\mathcal{A}|}: \mathbf{1}^\intercal h \leq w,\;\textcolor{red}{h\leq w(1-x)} \right\}$
+        \item Wait-and-see $\mathbf{y}$: flow on network
+                \item Uncertain parameter $u(\xi)$: arc capacity, $v(\xi)$: interdiction effect
+        \end{enumerate}
+        \item Interdiction constraint (coupling):
+        \begin{align*}
+            y_{ij} \leq u_{ij}(\xi)(1-v_{ij}(\xi)x_{ij}) + h_{ij}\;\forall (i,j) \in \mathcal{A}
+        \end{align*}
+\end{itemize}
+            leader $x \curvearrowright$ follower $h=h(x)\curvearrowright$ uncertainty $\xi \curvearrowright$ follower $y=y(x,h,\xi)$  
+
+\subsection{Robust Counterpart}
+Robust Counterpart를 유도하는 건 두 가지 방법이 있음. nominal distribution에서 시작해서 value function reformulation을 만든 뒤 그 formulation에 robust counterpart를 만드는 것과, 처음부터 minimax formulation으로 시작하는 것. \textbf{둘이 같은 지 검토 필요하지만 그건 나중에.}
+
+먼저, leader가 자신의 distribution과 follower의 distribution을 알고 있다고 가정하면 아래와 같은 stochastic bilevel program이 나옴.
+\begin{assumption}[Fixed Recourse]
+We assume the uncertainty is in the right-hand-side of the follower's second stage constraints
+\begin{align*}
+    d(\xi)=d,\;A(\xi)=A,b_{x}(\xi)=T(\xi)x+b(\xi)
+\end{align*}
+\end{assumption}
+\begin{subequations}
+\begin{align}
+    \min_{x\in \mathcal{X}}\sup_{h,\hat{y}\in \mathcal{L}_{n}^{2}}\;&\mathbb{E}^{\xi\sim \hat{\distP}}\left[ d_{0}^\intercal \hat{y}(\xi) \right]\\
+    s.t.\;&h\in \arg\max_{\bar{h}\in \mathcal{H}}\left\{ c^\intercal \bar{h} + \mathbb{E}^{\xi \sim \tilde{\distP}}\left[Q(\bar{h},x)\right] \right\} \label{eq:best_response}\\
+    &\hat{y}(\xi)\in \arg \max_{\bar{y}\in \mathbb{R}^{n}} \left\{ d_{1}^\intercal \bar{y}:A\bar{y}\leq b_{x}(\xi)-Bh \right\}\;\hat{\distP}-a.s.\\
+    &\hat{y}(\xi) \geq 0\quad \hat{\distP}-a.s.,\\
+    \text{where }&Q(\bar{h},x)=\max_{y\in \mathbb{R}^{n}}\left\{d_{1}^\intercal y:Ay\leq b_{x}(\xi)-Bh\right\}
+\end{align}
+\end{subequations}
+\begin{remark}
+여기서 decision chrognology는
+$$\text{leader }x \curvearrowright \text{follower }h(x) \curvearrowright \text{uncertainty }\xi \curvearrowright \text{follower }\hat{y}=\hat{y}(x,h,\xi)$$
+여기서 follower는 distribution $\tilde{\distP} (\neq \hat{\distP})$일 수 있으므로, $h$를 결정할 때 follower가 계산한 optimal recourse는 $\hat{y}(\xi)$가 아닐 수 있음.
+\end{remark}
+\begin{remark}
+    network interdiction같은 zero-sum에선 자연스럽게 $\sup_{\hat{y}}$를 하게 됨. 그런데 $h$에 관해선 optimistic인지 pessimistic인지, 그 사이인지 바로 정해지지 않음. 여기선 zero-sum의 목적을 고려하여 $h$까지 pessimistic으로 모델링해서 목적함수에 $\sup_{h,\hat{y}}$를 넣어줌.
+\end{remark}
+ 여기서 두 가지의 연관된 문제점일 발생: (i) $\arg \max$ operator가 제약식에 존재함, (ii) $Q(\cdot,\cdot)$라는 value function $\arg \max$ 제약식에 존재함. 따라서 이 둘을 차례대로 삭제하고 일반적인 최적화 모델로 유도해야 함.
+ 
+ follower가 uncertainty를 observe하기 전 계산한 recourse를 explicit하게 model에 꺼낼 수 있음. 
+또한 \cite{yanikoglu2018decision}의 Proposition 2.1.을 이용하면 $\arg\max$ operator를 삭제하고 아래와 같은 equivalent reformulation을 유도할 수 있음.
+\begin{subequations}
+\begin{align}
+    \min_{x\in \mathcal{X}}\sup_{\substack{h \\\hat{y},\tilde{y}\in \mathcal{L}_{n}^{2}, }}\;&\mathbb{E}^{\xi\sim \hat{\distP}}\left[ d_{0}^\intercal \hat{y}(\xi) \right]\\
+    s.t.\;&c^\intercal \tilde{h} + \mathbb{E}^{\xi \sim \tilde{\distP}}\left[ d_{1}^\intercal \tilde{y}(\xi)\right] \geq z^{*}(x):=\max_{\bar{h}\in \mathcal{H}}\left\{ c^\intercal \bar{h} + \mathbb{E}^{\xi \sim \tilde{\distP}}\left[Q(\bar{h},x)\right] \right\} \quad (\cdots \lambda )\\
+    &A\tilde{y}(\xi)+B\tilde{h} \leq b_{x}(\xi) \quad \tilde{\distP}-a.s.\quad \left(\cdots \tilde{\pi}(\xi) \right)\\
+    &\mathbb{E}^{\xi \sim \hat{\distP}}\left[d_{1}^\intercal \hat{y}(\xi)\right] \geq \mathfrak{Q}(\tilde{h},x):=\mathbb{E}^{\xi \sim \hat{\distP}}\left[Q(\tilde{h},x)\right] \label{eq:2nd_value_fcn}\\
+    &A\hat{y}(\xi) +B\tilde{h} \leq b_{x}(\xi)\quad \hat{\distP}-a.s.\quad (\cdots \hat{\pi}(\xi))\\
+    &\tilde{h}\in \mathcal{H}:=\left\{\tilde{h}:W\tilde{h} \leq w \right\}\quad (\cdots \nu)\\
+    &\tilde{y}(\xi),\hat{y}(\xi),\tilde{h}\geq 0
+\end{align}
+\end{subequations}
+\begin{proof}
+\cite{yanikoglu2018decision}의 proposition 2.1을 그대로 쓰지 못하는 이유는 follower가 here-and-now decision $h$를 가지고 있기 때문. 내 생각엔 이걸 rockafellar의 SVI논문에서처럼 $h$ 역시도 $\mathcal{L}_{m}^{2}$ space에 있는 square integrable function이되 non-anticipativity space에 있게 formulate 한뒤 \cite{yanikoglu2018decision}의 증명을 사용하면 유도가 될 수도 있을듯?
+\end{proof}
+\begin{remark}
+    \textcolor{red}{문제는 $\mathfrak{Q}$가 x뿐만 아니라 h에도 parameterized 되어 있어서 $z^{*}$와 같이 바로 LP duality formula를 사용할 수 없음. 따라서 다른 방법을 간구해야 함. 그런데 우리 본래 문제는 network interdiction이라서, 사실 $c=0,\;d_{1}=d_{0}$이고 \eqref{eq:2nd_value_fcn} 제약식이 애초에 필요가 없음. 그래서 일반적인 2stage LP에 대한 유도는 나중에 작업하기로 하고 일단 이 점을 이용해서 dualize를 아래부터 진행함.}
+\end{remark}
+\cite{yanikoglu2018decision}의 approach를 따라서, inner pessimistic supremum 문제를 dualize하면
+\begin{subequations}
+\begin{align}
+     \min_{x\in \mathcal{X}}\inf_{\substack{\tilde{\pi},\hat{\pi}\in\mathcal{L}_{n}^{2} \\\lambda,\nu}}\;&\mathbb{E}^{\xi\sim \hat{\distP}}\left[ b_{x}(\xi)^\intercal \hat{\pi}(\xi) \right] + \mathbb{E}^{\xi \sim \tilde{\distP}}\left[ b_{x}(\xi)^\intercal \tilde{\pi}(\xi)\right] -\lambda z^{*}(x) + w\nu \\
+    s.t.\;&A^\intercal \tilde{\pi}(\xi)-d_{0}\lambda \geq 0 \quad \tilde{\distP}-a.s.,\\
+    &A^\intercal \hat{\pi}(\xi) \geq d_{0}\quad \hat{\distP}-a.s.,\\
+    &\mathbb{E}^{\tilde{\distP}}[B^\intercal \tilde{\pi}(\xi)] + \mathbb{E}^{\hat{\distP}}\left[B^\intercal \hat{\pi}(\xi)\right]  +W^\intercal \nu \geq 0\\
+    &\tilde{\pi}(\xi) \geq 0 \quad \tilde{\distP}-a.s.,\\
+    &\hat{\pi}(\xi) \geq 0 \quad \hat{\distP}-a.s.,\\
+    &\lambda,\nu \geq 0
+\end{align}
+\end{subequations}
+\begin{remark}
+    위 formulation에 대한 insight
+    \begin{itemize}
+        \item \eqref{eq:best_response}가 없다면, 원래 문제는 nominal dist에 대한 일반적인 zero-sum network interdiction 모형임
+        \item 그런데 \eqref{eq:best_response}가 있음으로써, inner maximization의 feasible region이 축소되는 효과가 존재 (바꿔말해, follower의 상이한 belief를 무시한다면 overly conservative한 의사결정을 내린다는 말)
+        \item[-] 만약 \eqref{eq:best_response}가 없다면, 문제는
+        \begin{align*}
+            \min_{x}\inf_{\hat{\pi}}\;&\mathbb{E}[b_{x}(\xi)^\intercal \hat{\pi}(\xi)]\\
+            s.t.\;&A^\intercal \hat{\pi}(\xi) \geq d_{0}\;\hat{\distP}-a.s.\\
+            &\mathbb{E}^{\hat{\distP}}[B^\intercal \hat{\pi}(\xi)]+W^\intercal \nu \geq 0\\
+            &\hat{\pi}(\xi)\geq 0\;\hat{\distP}-a.s.
+        \end{align*}
+        \item 따라서 원래 제약식의 $\mathbb{E}^{\tilde{\distP}}[B^\intercal \tilde{\pi}] -c\lambda$는 $\geq 0$ 제약식을 완화시켜주는 slack variable의 역할을 하고, 목적함수의 $ \mathbb{E}^{\xi \sim \tilde{\distP}}\left[ b_{x}(\xi)^\intercal \tilde{\pi}(\xi)\right] -\lambda z^{*}(x) $는 그에 대한 trade-off로서 증가하는 비용으로 해석될 수 있음.
+        \item[-] $\lambda \to \infty$로 가면 $A^\intercal \tilde{\pi}(\xi) \to \infty$로 가고, coupling 제약식에도 $-c\lambda \to -\infty$로 가서 slack의 역할을 반대로 (제약식을 더 tight하게 만들어서 비용을 증가시키고 infeasible로 만듬)
+    \end{itemize}
+\end{remark}
+이제 각 value function $z^{*}, \mathfrak{Q}$를 explicit하게 쓰면
+\begin{subequations}
+    \begin{align}
+     \min_{x\in \mathcal{X}}\inf_{\substack{\tilde{\pi},\hat{\pi}\in\mathcal{L}_{n}^{2} \\\lambda,\nu}}\;&\mathbb{E}^{\xi\sim \hat{\distP}}\left[ b_{x}(\xi)^\intercal \hat{\pi}(\xi)\right] + \mathbb{E}^{\xi \sim \tilde{\distP}}\left[ b_{x}(\xi)^\intercal \tilde{\pi}(\xi) -\lambda d_{0}^\intercal \tilde{y}(\xi) \right]+w\nu \\
+    s.t.\;&A^\intercal \tilde{\pi}(\xi)-d_{0}\lambda \geq 0 \quad \tilde{\distP}-a.s.,\\
+    &A^\intercal \hat{\pi}(\xi) \geq d_{0}\quad \hat{\distP}-a.s.,\\
+    &\mathbb{E}^{\tilde{\distP}}[B^\intercal \tilde{\pi}(\xi)] + \mathbb{E}^{\hat{\distP}}\left[B^\intercal \hat{\pi}(\xi)\right] +W^\intercal \nu \geq 0\\
+    &A\tilde{y}(\xi)+Bh \leq b_{x}(\xi)\quad \tilde{\mathbb{P}}-a.s.,\\
+    &Wh\leq w,\\
+    % &\textcolor{red}{h \leq w(1-x)},\\
+    &\tilde{\pi}(\xi) \geq 0 \quad \tilde{\distP}-a.s.,\\
+    &\hat{\pi}(\xi) \geq 0 \quad \hat{\distP}-a.s.,\\
+    &\lambda,\nu \geq 0, h \geq 0
+\end{align}
+\end{subequations}
+by variable transform $\tilde{y}\leftarrow \lambda \tilde{y},  h\leftarrow \lambda h$,
+\begin{subequations}
+\begin{align}
+     \min_{x\in \mathcal{X}}\inf_{\substack{\tilde{\pi},\hat{\pi}\in\mathcal{L}_{n}^{2} \\\lambda,\nu}}\;&\mathbb{E}^{\xi\sim \hat{\distP}}\left[ b_{x}(\xi)^\intercal \hat{\pi}(\xi)\right] + \mathbb{E}^{\xi \sim \tilde{\distP}}\left[ b_{x}(\xi)^\intercal \tilde{\pi}(\xi)- d_{0}^\intercal \tilde{y}(\xi) \right]+w\nu \\
+    s.t.\;&A^\intercal \tilde{\pi}(\xi)-d_{0}\lambda \geq 0 \quad \tilde{\distP}-a.s.,\\
+    &A^\intercal \hat{\pi}(\xi) \geq d_{0}\quad \hat{\distP}-a.s.,\\
+    &\mathbb{E}^{\tilde{\distP}}[B^\intercal \tilde{\pi}(\xi)] + \mathbb{E}^{\hat{\distP}}\left[B^\intercal \hat{\pi}(\xi)\right]  +W^\intercal \nu \geq 0\\
+    &A\tilde{y}(\xi)+Bh \leq \lambda b_{x}(\xi)\quad \tilde{\mathbb{P}}-a.s.,\\
+    &Wh\leq \lambda w,\\
+    &\tilde{\pi}(\xi) \geq 0 \quad \tilde{\distP}-a.s.,\\
+    &\hat{\pi}(\xi) \geq 0 \quad \hat{\distP}-a.s.,\\
+    &\lambda,\nu \geq 0, h \geq 0
+\end{align}
+\end{subequations}
+여기서 network interdiction 구조를 가지고 위의 vector와 matrix를 정의하면 이렇게 나옴. 먼저, directed graph $\mathcal{G}=(\mathcal{V},\mathcal{A})$를 정의하고 edge $(i,j),i\in \mathcal{V}, j\in \mathcal{V}$들의 집합 $\mathcal{A}$의 edge들에 적절한 indexing을 붙인다면
+\begin{align*}
+    &\mathcal{V}=\{s,1,2,\cdots,t\},\text{ where }s,t\text{ denotes source, sink node respectively} ,\\
+    &\mathcal{A}=\text{set of directed arcs in graph }\mathcal{G},\\
+    &y:=\begin{bmatrix}
+        \{y_{k}\}_{k=1}^{|\mathcal{A}|} \\ y_{ts}
+    \end{bmatrix}, \; h:=
+        \{h_{k}\}_{k=1}^{|\mathcal{A}|}
+    \\
+    &N:=\begin{bmatrix}
+        N_{y} | N_{ts}\in \mathbb{R}^{m}
+    \end{bmatrix},\text{ where }m\text{ denotes \# of flow conservation constraints}, \\
+    &A:=\begin{bmatrix}
+        N \\ I_{0}
+    \end{bmatrix},\;B:=\begin{bmatrix}
+        0 \\ -I
+    \end{bmatrix},\;b_{x}(\xi):=\begin{bmatrix}
+        0 \\ b_{x}(\xi)
+    \end{bmatrix}\\
+    &I_{0}:=\begin{bmatrix}
+        I | 0\in \mathbb{R}^{|\mathcal{A}|}
+    \end{bmatrix}\\
+    &b_{x}(\xi):= \begin{bmatrix} 
+    \left\{\xi_{k}(1-v_{k}x_{k})\right\}_{k=1}^{|\mathcal{A}|}\end{bmatrix}\in \mathbb{R}^{|\mathcal{A}|}\\
+    &\pi:=\begin{bmatrix}
+        \pi \\ \phi
+    \end{bmatrix}\\
+    &c=0\\
+    &d_{0}=\begin{bmatrix}
+        0 \in \mathbb{R}^{|\mathcal{A}|}\\ 1
+    \end{bmatrix}\\
+    &W=e^\intercal \in \mathbb{R}^{1\times |\mathcal{A}|} \\
+    &V:=\begin{bmatrix}
+        v_{1} &0\cdots \\
+        0&v_{2}&0\cdots \\
+        \cdots &\cdots &\cdots \\
+        0\cdots & & v_{|\mathcal{A}|}
+    \end{bmatrix}\text{ (zero for off diagonal, and $v$ for diagonal entries)}
+    \text{ (vector of ones)}
+\end{align*}
+그러면 network interdiction 문제에 DRO approach, taking worstcase expectation 를 취한 구체적인 formulation은 아래와 같다:
+\begin{subequations}
+\begin{align}
+     \min_{x\in \mathcal{X}}\inf_{\substack{\tilde{\pi},\hat{\pi}\in\mathcal{L}_{n}^{2} \\\lambda,\nu}}\;&t+w\nu \\
+    s.t.\;&\sup_{\hat{\distP} \in \mathbb{B}}\mathbb{E}^{\xi\sim \hat{\distP}}\left[ \sum_{k=1}^{\mathcal{A}}\xi_{k}(1-v_{k}x_{k})\hat{\phi}_{k}(\xi)\right] + \sup_{\tilde{\distP} \in \mathbb{B}}\mathbb{E}^{\xi \sim \tilde{\distP}}\left[ \sum_{k=1}^{\mathcal{A}}\xi_{k}(1-v_{k}x_{k})\tilde{\phi}_{k}(\xi)- \tilde{y}_{ts}(\xi) \right]\leq t
+    \\&N_{y}^\intercal \tilde{\pi}(\xi) + \tilde{\phi}(\xi) \geq 0 \quad \tilde{\distP}-a.s.,\\
+    &N_{ts}^\intercal \tilde{\pi}(\xi) -\lambda \geq 0 \quad \tilde{\distP}-a.s.,\\
+    &N_{y}^\intercal \hat{\pi}(\xi) + \hat{\phi}(\xi) \geq 0\quad \hat{\distP}-a.s.,\\
+        &N_{ts}^\intercal \hat{\pi}(\xi) \geq 1\quad \hat{\distP}-a.s.,\\
+    &\sup_{\tilde{\distP}\in \mathbb{B}}\mathbb{E}^{\tilde{\distP}}[\tilde{\phi}_{k}(\xi)] + \sup_{\hat{\distP}\in \mathbb{B}}\mathbb{E}^{\hat{\distP}}\left[ \hat{\phi}_{k}(\xi)\right] -\nu \leq 0\;\forall k=1,\cdots,|\mathcal{A}| \\
+    &N_{y}\tilde{y}(\xi) + N_{ts}\tilde{y}_{ts}(\xi) \leq 0 \quad \tilde{\mathbb{P}}-a.s.,\\
+    &\tilde{y}_{k}(\xi)-h_{k} \leq \lambda \xi_{k}(1-v_{k}x_{k})\quad \tilde{\mathbb{P}}-a.s.\;\forall k=1,\cdots,|\mathcal{A}|,\\
+    &e^\intercal h\leq \lambda w,\\
+    &\tilde{\pi}(\xi), \tilde{\phi}(\xi) \geq 0 \quad \tilde{\distP}-a.s.,\\
+    &\hat{\pi}(\xi),\hat{\phi}(\xi) \geq 0 \quad \hat{\distP}-a.s.,\\
+    &\lambda,\nu \geq 0
+\end{align}
+
+\end{subequations}
+where $\mathbb{B}=\mathbb{B}_{\varepsilon}$ is an ambiguity set (a ball equipped with wasserstein metric with radius $\varepsilon$)
+\subsection{Node-arc incidence matrix}
+그리고 noce-arc incidence matrix $N$은 다음과 같다. 예를 들어 node가 $\{s,1,2,t\}$만 존재하고 임의로 연결되어있다고 가정하면
+\begin{equation}
+N=\left[\begin{array}{ccccc|c}
+\multicolumn{5}{c|}{\text{Regular arcs}} & \text{Dummy} \\
+(s,1) & (s,2) & (1,2) & (1,t) & (2,t) & (t,s) \\
+\hline
++1 & +1 & 0 & 0 & 0 & -1 \\
+-1 & 0 & +1 & +1 & 0 & 0 \\
+0 & -1 & -1 & 0 & +1 & 0 \\
+0 & 0 & 0 & -1 & -1 & +1
+\end{array}\right]
+\begin{matrix}
+\phantom{x} \\
+\phantom{x} \\
+\leftarrow s \\
+\leftarrow 1 \\
+\leftarrow 2 \\
+\leftarrow t
+\end{matrix}
+\end{equation}
+그런데 잘 알려져있다싶이 N의 가장 첫번째 row는 나머지 row들의 linear combination으로 구성된다. 즉 $-Ny=-N\begin{bmatrix}
+    \{y_{k}\}_{k=1}^{|\mathcal{A}|} \\ y_{ts} 
+\end{bmatrix} \leq 0$ 제약식에서 첫번째 row의 제약식은 항상 drop해도 된다. 이제 앞으로 $N$을 지칭할 땐 가장 첫번째 row는 생략한 matrix로 $N \in \mathbb{R}^{(|\mathcal{V}|-1)\times (|\mathcal{A}|+1)}$을 지칭할 것임. 그렇다면 다시 N을 
+\begin{equation}
+N=\left[\begin{array}{ccccc|c}
+\multicolumn{5}{c|}{\text{Regular arcs}} & \text{Dummy} \\
+(s,1) & (s,2) & (1,2) & (1,t) & (2,t) & (t,s) \\
+\hline
+-1 & 0 & +1 & +1 & 0 & 0 \\
+0 & -1 & -1 & 0 & +1 & 0 \\
+0 & 0 & 0 & -1 & -1 & +1
+\end{array}\right]
+\begin{matrix}
+\phantom{x} \\
+\phantom{x} \\
+\leftarrow 1 \\
+\leftarrow 2 \\
+\leftarrow t
+\end{matrix}
+\end{equation}
+\begin{align}
+    &N:= \begin{bmatrix}
+    N_{y} |  N_{ts}:=\begin{pmatrix}
+        0 \\
+        \cdots \\
+        1
+    \end{pmatrix} 
+\end{bmatrix}, \\
+&N^\intercal = \begin{bmatrix}
+    N_{y}^\intercal \in \mathbb{R}^{|\mathcal{A}|\times (|\mathcal{V}|-1)} \\ N_{ts}^\intercal:=(0\cdots 1)
+\end{bmatrix}
+\end{align}
+\subsection{Affine decision rules}
+먼저 uncertainty $\xi \in \mathbb{R}^{|\mathcal{A}|}$를 한 차원 더 높여서 $\xi \leftarrow (\xi | 1)^\intercal$로 만들자. 그리고 Uncertainty set $\mathcal{U}$를 아래와 같이 정의:
+\begin{align*}
+    \mathcal{U}&:=\left\{
+    \xi \in \mathbb{R}^{|\mathcal{A}|+1}: \xi \in \Xi,\; e_{|\mathcal{A}|+1}^\intercal \xi = 1
+    \right\}\\
+    \Xi&:=\left\{(\zeta,\tau)\in \mathbb{R}^{|\mathcal{A}|}\times \mathbb{R}_{+}:D\zeta \geq r\tau \right\}
+\end{align*}
+이렇게 한 차원을 높여서 만드는 이유는 (i) affine decision rule의 intercept term을 compact하게 처리하면서 동시에 (ii) affine function을 quadratic term으로 표현하기 위해.
+\begin{align*}
+    &\hat{\pi}(\xi)\left( \in \mathbb{R}^{|\mathcal{V}|-1}\right)=\begin{bmatrix}
+        \hat{\pi}_{1}(\xi) \\ \cdots \\ \hat{\pi}_{t}(\xi)
+    \end{bmatrix} = \begin{bmatrix}
+        \sum_{l=1}^{|\mathcal{A}|}\hat{\pi}^{1}_{l}\xi_{l}+\hat{\pi}_{0}^{1} \\ \cdots \\  \sum_{l=1}^{|\mathcal{A}|}\hat{\pi}^{t}_{l}\xi_{l}+\hat{\pi}_{0}^{t}
+    \end{bmatrix} = :\hat{\Pi}\xi = \begin{bmatrix}
+        \hat{\pi}_{1}^{1} & \cdots & \hat{\pi}_{|\mathcal{A}|}^{1}&\hat{\pi}_{0}^{1} \\
+        \vdots & \ddots & \vdots & \vdots \\
+     \hat{\pi}_{1}^{t} & \cdots & \hat{\pi}_{|\mathcal{A}|}^{t}&\hat{\pi}_{0}^{t}
+    \end{bmatrix}\begin{pmatrix}
+         \xi_{1} \\\vdots \\\xi_{|\mathcal{A}|} \\ 1
+     \end{pmatrix}\\
+     &\hat{\phi}(\xi) = \begin{bmatrix}
+         \hat{\phi}_{1}(\xi) \\ \vdots \\ \hat{\phi}_{|\mathcal{A}|}(\xi)
+     \end{bmatrix} = 
+     \begin{bmatrix}
+\sum_{l=1}^{|\mathcal{A}|}\hat{\phi}^{1}_{l}\xi_{l}+\hat{\phi}_{0}^{1} \\ \vdots \\  \sum_{l=1}^{|\mathcal{A}|}\hat{\phi}^{|\mathcal{A}|}_{l}\xi_{l}+\hat{\phi}_{0}^{|\mathcal{A}|} 
+    \end{bmatrix}=: \hat{\Phi}\xi  =  \begin{bmatrix}
+        \hat{\phi}_{1}^{1} & \cdots & \hat{\phi}_{|\mathcal{A}|}^{1}&\hat{\phi}_{0}^{1} \\
+        \vdots & \ddots & \vdots & \vdots \\
+     \hat{\phi}_{1}^{|\mathcal{A}|} & \cdots & \hat{\phi}_{|\mathcal{A}|}^{|\mathcal{A}|}&\hat{\phi}_{0}^{|\mathcal{A}|}
+    \end{bmatrix}\begin{pmatrix}
+         \xi_{1} \\\vdots \\\xi_{|\mathcal{A}|} \\ 1
+     \end{pmatrix}\\
+     &\hat{y}(\xi) = \begin{bmatrix}
+         \hat{y}_{1}(\xi) \\ \vdots \\ \hat{y}_{|\mathcal{A}|}(\xi)
+     \end{bmatrix} = \begin{bmatrix}
+         \sum_{l=1}^{|\mathcal{A}|}\hat{y}^{1}_{l}\xi_{l}+\hat{y}_{0}^{1} \\ \vdots \\  \sum_{l=1}^{|\mathcal{A}|}\hat{y}^{|\mathcal{A}|}_{l}\xi_{l}+\hat{y}_{0}^{|\mathcal{A}|}
+     \end{bmatrix} =: \hat{Y}\xi = \begin{bmatrix}
+        \hat{y}_{1}^{1} & \cdots & \hat{y}_{|\mathcal{A}|}^{1}&\hat{y}_{0}^{1} \\
+        \vdots & \ddots & \vdots & \vdots \\
+     \hat{y}_{1}^{|\mathcal{A}|} & \cdots & \hat{y}_{|\mathcal{A}|}^{|\mathcal{A}|}&\hat{y}_{0}^{|\mathcal{A}|}
+    \end{bmatrix}\begin{pmatrix}
+         \xi_{1} \\\vdots \\\xi_{|\mathcal{A}|} \\ 1
+     \end{pmatrix}\\
+     &\hat{y}_{ts}(\xi) = \begin{bmatrix}
+         \hat{y}_{ts}(\xi)
+     \end{bmatrix} = \begin{bmatrix}
+         \sum_{l=1}^{|\mathcal{A}|}\hat{y}^{ts}_{l}\xi_{l}+\hat{y}_{0}^{ts}
+     \end{bmatrix} =: \hat{Y}_{ts}\xi = \begin{bmatrix}
+        \hat{y}_{1}^{ts} & \cdots & \hat{y}_{|\mathcal{A}|}^{ts}&\hat{y}_{0}^{ts}
+    \end{bmatrix}\begin{pmatrix}
+         \xi_{1} \\\vdots \\\xi_{|\mathcal{A}|} \\ 1
+     \end{pmatrix}\\
+     &\hat{Y}_{ts}^\intercal= \begin{bmatrix}
+         \hat{y}^{ts} \\ \hat{y}_{0}^{ts} 
+     \end{bmatrix}=\begin{bmatrix}
+        \hat{y}_{1}^{ts} \\ \cdots \\\hat{y}_{|\mathcal{A}|}^{ts} \\ \hat{y}_{0}^{ts}
+    \end{bmatrix},\\
+     &\xi^{s} = (\xi^{s}| 1)^\intercal\\
+     &\hat{\Pi}= \begin{bmatrix}
+         \hat{\Pi}_{L}&\hat{\pi}_{0}
+     \end{bmatrix}, \hat{\Phi}=\begin{bmatrix}
+         \hat{\Phi}_{L}&\hat{\phi}_{0}
+     \end{bmatrix}, \hat{Y}=\begin{bmatrix}
+         \hat{Y}_{L}&\hat{y}_{0}
+     \end{bmatrix}
+\end{align*}
+
+
+\subsection{Robust Counterparts of Linear Uncertainty}
+worst-case objective를 제외한 나머지 제약식 함수는 전부 uncertainty에 linear 하므로, kuhn의 표기법을 가져와서 reformulate하면,
+먼저 notation을 위해 uncertainty set을 다시 정리하면,
+\begin{subequations}
+\begin{align*}
+       \mathcal{U}&:=\left\{
+    \xi \in \mathbb{R}^{|\mathcal{A}|}: \xi=\bar{\xi}+D\zeta,\;\zeta  \in \Xi
+    \right\}\\
+    \Xi&:=\left\{\zeta \in \mathbb{R}^{|\mathcal{A}|}:\norm{\zeta} \leq \varepsilon\right\}
+\end{align*}
+그러면 여기서는 notation을 좀 abuse해서 아래와 같은 alternative form로 represent하자
+
+$\xi = \bar{\xi}(1+\zeta),\;\norm{\zeta}_{2}\leq \varepsilon$
+\\
+\begin{align*}
+    \Xi_{s}&=\left\{
+    \zeta \in \mathbb{R}^{|\mathcal{A}|}:
+    \norm{\zeta}_{2} \leq \varepsilon
+    \right\},\;D_{s}=diag(\bar{\xi}^{s})\\
+    &=\left\{
+    \zeta  \in \mathbb{R}^{|\mathcal{A}|}: R\zeta \succeq_{\mathcal{K}_{SOC}} \bar{r}^{s}
+    \right\}
+    \\
+    \text{where }&R=\begin{bmatrix}
+        0\in \mathbb{R}^{1\times |\mathcal{A}|} \\ I\in \mathbb{R}^{|\mathcal{A}|\times |\mathcal{A}|}
+    \end{bmatrix},\;\bar{r}^{s}=\begin{pmatrix}-\varepsilon \\ 0\end{pmatrix}, 
+\end{align*}
+
+여기서 $\hat{\zeta}^{s}$는 scenario s의 값; $\varepsilon$은 value of robustness (hyperparameter)
+그리고 linear constraints들을 다시 matrix form으로 compact하게 formulate하자:
+\begin{align*}
+    &N_{y}^\intercal (\tilde{\pi}_{0}^{s}+\tilde{\Pi}_{L}^{s}\zeta) + \tilde{\phi}_{0}^{s} + \tilde{\Phi}_{L}^{s}\zeta \geq 0\;\forall \zeta \in \Xi_{s}\;\forall s\in[S]\\
+    &N_{ts}^\intercal (\tilde{\pi}_{0}^{s}+ \tilde{\Pi}_{L}^{s}\zeta)  \geq \lambda \;\forall \zeta \in \Xi_{s},\forall s\in [S],\\
+    &N_{y}^\intercal (\hat{\pi}_{0}^{s}+\hat{\Pi}_{L}^{s}\zeta) + \hat{\phi}_{0}^{s}+\hat{\Phi}^{s}_{L}\zeta \geq 0\;\forall \xi \in \Xi_{s}\;\forall s\in[S],\\
+        &N_{ts}^\intercal (\hat{\pi}_{0}^{s}+\hat{\Pi}^{s}\zeta)  \geq 1\;\forall \xi \in \Xi_{s}\;\forall s\in[S],\\
+    &-N_{y}(\tilde{y}_{0}^{s}+\tilde{Y}^{s}\zeta) - N_{ts}(\tilde{y}_{0}^{ts,s}+\tilde{Y}_{L}^{ts,s}\zeta) \geq 0\;\forall \xi \in \mathcal{U}_{s}\;\forall s\in[S],\\
+    &-\tilde{y}_{0}^{s}-\tilde{Y}_{L}^{s}\zeta +\lambda diag(1-v\odot x)(\bar{\xi}+D\zeta) 
+         \geq -h \;\forall \xi \in \Xi_{s}\;\forall s\in[S],\\
+    &\tilde{\pi}_{0}^{s}+\tilde{\Pi}_{L}^{s}\zeta \geq 0,\;\tilde{\phi}_{0}^{s}+\tilde{\Phi}_{L}^{s}\zeta\geq0,\;\hat{\pi}_{0}^{s}+\hat{\Pi}^{s}\zeta \geq0,\;\hat{\phi}_{0}^{s}+\hat{\Phi}^{s}\zeta\geq 0, \;\forall \xi \in \Xi_{s}\;\forall s\in[S],\\
+    &e^\intercal h\leq \lambda w, \lambda,\nu \geq 0
+\end{align*}
+그리고 worst-case expectation coupling constraint들은
+\begin{align*}
+    &\sum_{s=1}^{S}\tilde{\mu}_{k}^{s} + \hat{\mu}_{k}^{s} \leq S\nu\;\forall k\in \mathcal{A},\\
+    &\begin{rcases}
+    &\tilde{\phi}_{0,k}^{s}+(\tilde{\Phi}^{s}_{L,k})^\intercal \xi \leq \tilde{\mu}_{k}^{s} \;\forall \xi \in \Xi_{s}\;\forall s\in [S],\forall k\in \mathcal{A},\\
+    &\hat{\phi}_{0,k}^{s}+(\hat{\Phi}_{L,k}^{s})^\intercal \zeta \leq \hat{\mu}_{k}^{s}\;\forall \xi \in \Xi_{s}\;\forall s\in [S],\forall k\in \mathcal{A},
+    \end{rcases}\Leftrightarrow \begin{matrix}
+        -\tilde{\Phi}_{L}^{s}\zeta \geq \tilde{\phi}_{0}^{s}-\tilde{\mu}^{s}=(\tilde{\mu}_{1}^{s}\cdots \tilde{\mu}_{|\mathcal{A}|}^{s})^\intercal \\
+        -\hat{\Phi}_{L}^{s}\zeta \geq \hat{\phi}_{0}^{s}-\hat{\mu}^{s}=(\hat{\mu}_{1}^{s}\cdots \hat{\mu}_{|\mathcal{A}|}^{s})^\intercal
+    \end{matrix}
+\end{align*}
+여기서 시나리오 간 coupling이 발생. 
+
+이걸 이제 leader와 follower의 decision rule space로 separate해서 보면,
+Leader의 space에선
+\begin{align*}
+    &\begin{bmatrix}
+        N^\intercal \hat{\Pi}^{s}+I_{0}^\intercal \hat{\Phi}^{s}
+    \end{bmatrix}\zeta \geq \begin{bmatrix}
+        d_{0}
+    \end{bmatrix}-N^\intercal \hat{\pi}_{0}^{s}-I_{0}^\intercal \hat{\phi}_{0}^{s}\;\forall \xi \in \Xi_{s},\;\forall s\in [S] \\
+    &\begin{bmatrix}
+    \hat{\Pi}^{s} \\ \hat{\Phi}^{s}
+    \end{bmatrix}\xi \geq -\begin{bmatrix}
+        \hat{\pi}_{0}^{s} \\ \hat{\phi}_{0}^{s}
+    \end{bmatrix}\;\forall \xi \in \Xi_{s},\forall s\in [S],\\
+    &-\hat{\Phi}^{s}\xi \geq \tilde{\phi}_{0}^{s}-\hat{\mu}^{s}\;\forall \xi \in \mathcal{U}_{s},\forall s \in [S]
+\end{align*}
+그럼 이제
+\begin{align*}
+    &\hat{\mathcal{Q}}:=\begin{bmatrix}
+        N^\intercal \hat{\Pi}^{s}_{L}+I_{0}^\intercal \hat{\Phi}^{s}_{L} 
+    \end{bmatrix}, \\
+    &\hat{\mathcal{Q}}\zeta \geq d_{0}- N^\intercal \hat{\pi}^{s}_{0}-I_{0}^\intercal \hat{\phi}_{0} \;\forall \xi \in \Xi_{s},s\in [S]
+\end{align*}
+그럼 이제 robust counterpart를
+\begin{align}
+    &\hat{\Lambda}_{1}^{s}R=\begin{bmatrix}
+        \hat{\mathcal{Q}} \\   \hat{\Pi}^{s}_{L} \\ \hat{\Phi}^{s}_{L}
+    \end{bmatrix},\;\hat{\Lambda}_{1}^{s}\bar{r}^{s} \geq \begin{bmatrix}
+       d_{0} - N^\intercal \hat{\pi}^{s}_{0}-I_{0}^\intercal \hat{\phi}_{0} \\ -\hat{\pi}_{0}^{s} \\ -\hat{\phi}_{0}^{s}
+    \end{bmatrix}, [\hat{\Lambda}_{1}^{s}]_{m} \in \mathcal{K}_{SOC}\;\forall m,\\
+    &\hat{\Lambda}_{2}^{s}R=-\hat{\Phi}^{s}_{L},\;\hat{\Lambda}_{2}^{s}\bar{r}^{s} \geq -\hat{\mu}^{s}+\hat{\phi}^{s}_{0},\;[\hat{\Lambda}_{2}^{s}]_{m} \in \mathcal{K}_{SOC}\;\forall m
+\end{align}
+(왜 이렇게 나오냐면)
+\begin{align*}
+    \inf_{\xi}A\xi \geq b &\Leftrightarrow \inf_{R\xi \succeq r}a_{m}^\intercal \xi \geq b_{m}\;\forall m\\
+    &\Leftrightarrow \sup_{\lambda_{m}} \lambda_{ㅡ}^\intercal r \geq b_{m},\;\lambda_{m}^\intercal R=a_{m},\lambda_{m} \in \mathcal{K} \\
+    &\Leftrightarrow\Lambda r \geq b,\;\Lambda R=A, [\Lambda]_{m}\in \mathcal{K}
+\end{align*}
+Follower의 space에선
+\begin{align*}
+    &\begin{bmatrix}
+        N^\intercal \tilde{\Pi}^{s}+I_{0}^\intercal \tilde{\Phi}^{s} \\
+        -N_{y}\tilde{Y}_{L}^{s} - N_{ts}\tilde{Y}^{ts,s}_{L} \\
+        -\tilde{Y}_{L}^{s}+diag(\lambda-v\odot \psi^{0})D
+    \end{bmatrix} \zeta \geq \begin{bmatrix}
+        \lambda d_{0} - N^\intercal \tilde{\pi}_{0}^{s}-I_{0}^\intercal \tilde{\phi}_{0}^{s} \\
+        N_{y}\tilde{y}_{0}^{s} + N_{ts}\tilde{y}_{0}^{ts,s}\\
+        -h+\tilde{y}_{0}^{s}-diag(\lambda - v\odot \psi^{0})\bar{\xi}^{s}
+    \end{bmatrix} \;\forall \zeta \in \Xi_{s}\;s\in [S]\\
+    &\begin{bmatrix}
+    \tilde{\Pi}^{s}_{L} \\ \tilde{\Phi}^{s}_{L} \\ \tilde{Y}^{s}_{L}
+    \end{bmatrix}\zeta \geq \begin{bmatrix}
+        -\tilde{\pi}^{s}_{0} \\ -\tilde{\phi}_{0}^{s} \\ -\tilde{y}_{0}^{s}
+    \end{bmatrix}\;\forall \zeta \in \Xi_{s},\\
+    &-\tilde{\Phi}_{L}^{s}\zeta \geq -\tilde{\mu}^{s}+\tilde{\phi}_{0}^{s} \;\forall \zeta \in \Xi_{s}, s\in [S]
+\end{align*}
+*여기서 $\tilde{Y}_{ts}^{s}\xi \geq0$은 굳이 안넣어도 될듯함. 이걸 maximize하는 거잖아.\\
+그럼 이제
+\begin{align*}
+    &\tilde{\mathcal{Q}}:=\begin{bmatrix}
+        N^\intercal \tilde{\Pi}^{s}+I_{0}^\intercal \tilde{\Phi}^{s} \\
+        -N_{y}\tilde{Y}_{L}^{s} - N_{ts}\tilde{Y}^{ts,s}_{L} \\
+        -\tilde{Y}_{L}^{s}+diag(\lambda-v\odot \psi^{0})D
+    \end{bmatrix}
+\end{align*}
+그럼 이제 robust counterpat를
+\begin{align}
+    &\tilde{\Lambda}_{1}^{s}R = \begin{bmatrix}
+        \tilde{\mathcal{Q}}^{s}\\ \tilde{\Pi}^{s}_{L} \\ \tilde{\Phi}^{s}_{L} \\ \tilde{Y}^{s}_{L}
+    \end{bmatrix}, \;\tilde{\Lambda}_{1}^{s}\bar{r}^{s}\geq \begin{bmatrix}
+       \begin{bmatrix}
+        \lambda d_{0} \\
+        0\\
+        -h+\tilde{y}_{0}^{s}-diag(\lambda - v\odot \psi^{0})\bar{\xi}^{s}
+    \end{bmatrix}\\ -\tilde{\pi}_{0}^{s} \\ -\tilde{\phi}_{0}^{s} \\ -\tilde{y}_{0}^{s}
+    \end{bmatrix}, [\tilde{\Lambda}_{1}^{s}]_{m} \in \mathcal{K}_{SOC},\\
+    &\tilde{\Lambda}_{2}^{s}R = -\tilde{\Phi}^{s}_{L},\;\tilde{\Lambda}^{s}_{2}\geq -\tilde{\mu}^{s}+\tilde{\phi}_{0}^{s},\;[\tilde{\Lambda}_{2}^{s}]_{m} \in \mathcal{K}_{SOC}
+\end{align}
+
+
+the below inequalities represents following mccormick reformulation
+\begin{align*}
+    &\psi^{0}_{k}\leq \lambda^{U}x_{k},\;\psi^{0}_{k} - \lambda \leq 0, \; \lambda - \psi^{0}_{k} \leq \lambda^{U}(1-x_{k})\;\forall k\in \mathcal{A}
+\end{align*}
+\end{subequations}
+
+\section{Finite Semidefinite reformulation}
+\subsection{Uncertainty Quantification}
+\begin{align*}
+     \sup_{\hat{\distP} \in \mathbb{B}}\mathbb{E}^{\xi\sim \hat{\distP}}\left[ \sum_{k=1}^{\mathcal{A}}\xi_{k}(1-v_{k}x_{k})\hat{\phi}_{k}(\zeta)\right]&=(1/S)\sum_{s=1}^{S}\sup_{\xi\in \mathcal{U}_{s}}\left[ \sum_{k=1}^{\mathcal{A}}\xi_{k}(1-v_{k}x_{k})\hat{\phi}_{k}(\zeta)\right] \\
+     \sup_{\tilde{\distP} \in \mathbb{B}}\mathbb{E}^{\xi \sim \tilde{\distP}}\left[ \sum_{k=1}^{\mathcal{A}}\xi_{k}(1-v_{k}x_{k})\tilde{\phi}_{k}(\zeta)- \tilde{y}_{ts}(\zeta) \right]&= (1/S)\sum_{s=1}^{S}\sup_{\xi \in \mathcal{U}_{s}}\left[ \sum_{k=1}^{\mathcal{A}}\xi_{k}(1-v_{k}x_{k})\tilde{\phi}_{k}(\zeta)- \tilde{y}_{ts}(\zeta) \right]
+     \\
+     \text{where }\mathcal{U}_{s}:=\left\{\xi \in \mathbb{R}^{|\mathcal{A}|}:\xi =\bar{\zeta}+ D\zeta, \zeta \in \Xi_{s}\right\}, \;&\Xi_{s}:=\left\{\zeta\in \mathbb{R}^{|\mathcal{A}|}:\norm{\zeta}\leq \varepsilon \right\}
+\end{align*}
+첫 번째 epigraph 제약식은 아래와 같이 서술:
+\begin{align*}
+    &\sum_{s=1}^{S}\hat{\eta}^{s}+\tilde{\eta}^{s} \leq St \\
+    &\sup_{\xi\in \mathcal{U}_{s}}\left[ \sum_{k=1}^{\mathcal{A}}\xi_{k}(1-v_{k}x_{k})\hat{\phi}_{k}(\zeta)\right]\leq \hat{\eta}^{s}\;\forall s\in [S],\\
+    &\sup_{\xi \in \mathcal{U}_{s}}\left[ \sum_{k=1}^{\mathcal{A}}\xi_{k}(1-v_{k}x_{k})\tilde{\phi}_{k}(\zeta)- \tilde{y}_{ts}(\zeta) \right] \leq \tilde{\eta}^{s}\;\forall s\in [S]
+\end{align*}
+여기서 \cite{bertsimas2022two}나 \cite{chen2020robust} 처럼 event-wise adaptation 혹은 multipolicy approximation을 사용하면,
+\begin{align*}
+    &\hat{\Phi}, \tilde{\Phi} \leftarrow \left\{\hat{\Phi}^{s}, \tilde{\Phi}^{s}\right\}_{s\in [S]},\\
+    &\hat{Y}, \tilde{Y} \leftarrow \left\{\hat{Y}^{s},\tilde{Y}^{s} \right\}_{s\in [S]},\\
+    &\hat{\Pi}, \tilde{\Pi} \leftarrow \left\{\hat{\Pi}^{s},\tilde{\Pi}^{s} \right\}_{s\in [S]}
+\end{align*}
+위의 식은 이제
+\begin{align*}
+    &\sup_{\xi\in \mathcal{U}_{s}}\left[ \sum_{k=1}^{\mathcal{A}}(\bar{\xi}_{k}+(D\zeta)_{k})(1-v_{k}x_{k})\left(\sum_{l=1}^{|\mathcal{A}|}\hat{\phi}^{k,s}_{l}\zeta_{l}+\hat{\phi}_{0}^{k,s}\right)\right]\leq \hat{\eta}^{s}\;\forall s\in [S],\\
+    &\sup_{\xi \in \mathcal{U}_{s}}\left[ \sum_{k=1}^{\mathcal{A}}(\bar{\xi}_{k}+(D\zeta)_{k})(1-v_{k}x_{k})\left(\sum_{l=1}^{|\mathcal{A}|}\tilde{\phi}^{k,s}_{l}\zeta_{l}+\tilde{\phi}_{0}^{k,s}\right)-\left(\sum_{l=1}^{|\mathcal{A}|}\tilde{y}^{ts,s}_{l}\zeta_{l}+\tilde{y}_{0}^{ts,s}\right) \right] \leq \tilde{\eta}^{s}\;\forall s\in [S]
+\end{align*}
+Let \begin{align*}
+    \hat{\Phi}_{L}:=\begin{bmatrix}
+        \hat{\phi}_{1}^{1}&\cdots &\hat{\phi}_{|\mathcal{A}|}^{1}\\
+        \vdots & \ddots & \vdots \\
+        \hat{\phi}_{1}^{|\mathcal{A}|} & \cdots  & \hat{\phi}_{|\mathcal{A}|}^{|\mathcal{A}|}
+    \end{bmatrix},\; \tilde{\Phi}_{L}:=\begin{bmatrix}
+        \tilde{\phi}_{1}^{1}&\cdots &\tilde{\phi}_{|\mathcal{A}|}^{1}\\
+        \vdots & \ddots & \vdots \\
+        \tilde{\phi}_{1}^{|\mathcal{A}|} & \cdots  & \tilde{\phi}_{|\mathcal{A}|}^{|\mathcal{A}|}
+    \end{bmatrix},\;\hat{\phi}_{0}:=\begin{pmatrix}
+        \hat{\phi}_{0}^{1} \\ \vdots \\ \hat{\phi}_{0}^{|\mathcal{A}|}
+    \end{pmatrix},\;\tilde{\phi}_{0}:=\begin{pmatrix}
+        \tilde{\phi}_{0}^{1} \\ \vdots \\ \tilde{\phi}_{0}^{|\mathcal{A}|}
+    \end{pmatrix}
+\end{align*}
+혹은 매트릭스 형태로:
+\begin{align}
+    &\sup_{\zeta\in \Xi_{s}}\left\{\zeta^\intercal D^\intercal 
+        (\hat{\Phi}_{L}^{s}-diag(v)\hat{\Psi}_{L}^{s})\zeta
+        + \left( (      \hat{\Phi}_{L}^{s}-diag(v)\hat{\Psi}_{L}^{s})\bar{\xi}^{s}+D^\intercal (\hat{\phi}_{0}^{s}-v\odot \hat{\psi}_{0}^{s}) \right)^\intercal \zeta  + (\hat{\phi}_{0}^{s}-v\odot \hat{\psi}_{0}^{s})^\intercal \bar{\xi}^{s}
+        \right\}  \leq \hat{\eta}^{s}, \quad \forall s \in [S]\\
+    &\sup_{\zeta\in \Xi_{s}}\left\{\zeta^\intercal D^\intercal  
+        (
+      \tilde{\Phi}_{L}^{s}-diag(v)\tilde{\Psi}_{L}^{s})\zeta + \left( (      \tilde{\Phi}_{L}^{s}-diag(v)\tilde{\Psi}_{L}^{s})\bar{\xi}^{s}+D^\intercal (\tilde{\phi}_{0}^{s}-v\odot \tilde{\psi}_{0}^{s}) -\tilde{y}_{L}^{ts,s}\right)^\intercal \zeta +(\tilde{\phi}_{0}^{s}-v\odot \tilde{\psi}_{0}^{s})^\intercal \bar{\xi}^{s}- \tilde{y}_{0}^{ts,s}\right\} \leq \tilde{\eta}^{s}, \quad \forall s \in [S]
+\end{align}
+여기서 $v \odot x$는 element-wise product (Hadamard product)를 의미.
+
+\subsubsection{Leader's constraints}
+
+\begin{align*}
+    &\sup_{\zeta }\left[ 
+    \zeta^\intercal D^\intercal 
+        (\hat{\Phi}_{L}^{s}-diag(v)\hat{\Psi}_{L}^{s})\zeta
+        + \left( (      \hat{\Phi}_{L}^{s}-diag(v)\hat{\Psi}_{L}^{s})\bar{\xi}^{s}+D^\intercal (\hat{\phi}_{0}^{s}-v\odot \hat{\psi}_{0}^{s}) \right)^\intercal \zeta  + (\hat{\phi}_{0}^{s}-v\odot \hat{\psi}_{0}^{s})^\intercal \bar{\xi}^{s}
+    \right] \leq \hat{\eta}^{s}\\
+        &s.t.\;\zeta^\intercal \zeta \leq \varepsilon^{2}
+\end{align*}
+Then,
+\begin{proposition}[Inhomogenious S-Lemma]
+    Assuming the uncertainty set has non-empty relative interior,
+    \begin{align*}
+        0\leq \inf_{\zeta} \left\{  -\zeta^\intercal D^\intercal 
+        (\hat{\Phi}_{L}^{s}-diag(v)\hat{\Psi}_{L}^{s})\zeta
+        - \left( (      \hat{\Phi}_{L}^{s}-diag(v)\hat{\Psi}_{L}^{s})\bar{\xi}^{s}+D^\intercal (\hat{\phi}_{0}^{s}-v\odot \hat{\psi}_{0}^{s}) \right)^\intercal \zeta  - (\hat{\phi}_{0}^{s}-v\odot \hat{\psi}_{0}^{s})^\intercal \bar{\xi}^{s} +\hat{\eta}^{s}: -\zeta^\intercal \zeta +\varepsilon^{2}\geq 0 \right\}
+    \end{align*}
+    is valid, if and only if
+        \begin{align*}
+        \exists \hat{\vartheta}^{s} \geq 0\;s.t.\;
+        \begin{bmatrix}
+        \hat{\vartheta}^{s}I-D^\intercal (\hat{\Phi}_{L}^{s}-diag(v)\hat{\Psi}_{L}^{s}) & -\frac{1}{2} \left( (      \hat{\Phi}_{L}^{s}-diag(v)\hat{\Psi}_{L}^{s})\bar{\xi}^{s}+D^\intercal (\hat{\phi}_{0}^{s}-v\odot \hat{\psi}_{0}^{s}) \right) \\
+        -\frac{1}{2} \left( (      \hat{\Phi}_{L}^{s}-diag(v)\hat{\Psi}_{L}^{s})\bar{\xi}^{s}+D^\intercal (\hat{\phi}_{0}^{s}-v\odot \hat{\psi}_{0}^{s}) \right)^\intercal & \hat{\eta}^{s}-(\hat{\phi}_{0}^{s}-v\odot \hat{\psi}_{0}^{s})^\intercal \bar{\xi}^{s}-\hat{\vartheta}^{s}\varepsilon^{2}
+        \end{bmatrix}\succeq 0
+    \end{align*}
+\end{proposition}
+그러면 constraint는 아래로 표현
+\begin{subequations}
+    \begin{align}
+    &\begin{bmatrix}
+        \hat{\vartheta}^{s}I-D^\intercal (\hat{\Phi}_{L}^{s}-diag(v)\hat{\Psi}_{L}^{s}) & -\frac{1}{2} \left( (      \hat{\Phi}_{L}^{s}-diag(v)\hat{\Psi}_{L}^{s})\bar{\xi}^{s}+D^\intercal (\hat{\phi}_{0}^{s}-v\odot \hat{\psi}_{0}^{s}) \right) \\
+        -\frac{1}{2} \left( (      \hat{\Phi}_{L}^{s}-diag(v)\hat{\Psi}_{L}^{s})\bar{\xi}^{s}+D^\intercal (\hat{\phi}_{0}^{s}-v\odot \hat{\psi}_{0}^{s}) \right)^\intercal & \hat{\eta}^{s}-(\hat{\phi}_{0}^{s}-v\odot \hat{\psi}_{0}^{s})^\intercal \bar{\xi}^{s}-\hat{\vartheta}^{s}\varepsilon^{2}
+        \end{bmatrix}\succeq_{ \mathcal{K}_{PSD}},\;\hat{\vartheta}^{s}\geq 0 \\
+        \\
+          &\hat{\psi}_{l}^{k,s} \leq \phi^{U}x_{k},\;\hat{\psi}_{l}^{k,s}\leq \hat{\phi}_{l}^{k,s},\;\hat{\phi}_{l}^{k,s}\leq \hat{\psi}_{l}^{k,s}+\phi^{U}(1-x_{k})\;\forall l\in [1:|\mathcal{A}|+1],k\in [1:|\mathcal{A}|], \\
+        &\hat{\Psi}=\begin{bmatrix}
+        \hat{\psi}_{1}^{1} & \cdots & \hat{\psi}_{|\mathcal{A}|}^{1}&\hat{\psi}_{0}^{1} \\
+        \vdots & \ddots & \vdots & \vdots \\
+     \hat{\psi}_{1}^{|\mathcal{A}|} & \cdots & \hat{\psi}_{|\mathcal{A}|}^{|\mathcal{A}|}&\hat{\psi}_{0}^{|\mathcal{A}|}
+    \end{bmatrix} = \begin{bmatrix}
+        \hat{\Psi}_{L} & \hat{\psi}_{0}
+    \end{bmatrix}
+    \end{align}
+\end{subequations}
+
+\subsubsection{Follower's constraints}
+\begin{subequations}
+    \begin{align}
+         &\sup_{\zeta\in \Xi_{s}}\left[\zeta^\intercal D^\intercal  
+        (
+      \tilde{\Phi}_{L}^{s}-diag(v)\tilde{\Psi}_{L}^{s})\zeta + \left( (      \tilde{\Phi}_{L}^{s}-diag(v)\tilde{\Psi}_{L}^{s})\bar{\xi}^{s}+D^\intercal (\tilde{\phi}_{0}^{s}-v\odot \tilde{\psi}_{0}^{s}) -\tilde{y}_{L}^{ts,s}\right)^\intercal \zeta +(\tilde{\phi}_{0}^{s}-v\odot \tilde{\psi}_{0}^{s})^\intercal \bar{\xi}^{s}- \tilde{y}_{0}^{ts,s}
+    \right]\leq \tilde{\eta}^{s},\\
+        &s.t.\;\zeta^\intercal \zeta\leq \varepsilon^{2}
+    \end{align}
+    \begin{proposition}
+        \begin{align*}
+            &0\leq \\
+            &\inf_{\zeta} \{
+-\zeta^\intercal D^\intercal  
+        (
+      \tilde{\Phi}_{L}^{s}-diag(v)\tilde{\Psi}_{L}^{s})\zeta - \left( (      \tilde{\Phi}_{L}^{s}-diag(v)\tilde{\Psi}_{L}^{s})\bar{\xi}^{s}+D^\intercal (\tilde{\phi}_{0}^{s}-v\odot \tilde{\psi}_{0}^{s}) -\tilde{y}_{L}^{ts,s}\right)^\intercal \zeta -(\tilde{\phi}_{0}^{s}-v\odot \tilde{\psi}_{0}^{s})^\intercal \bar{\xi}^{s}+ \tilde{y}_{0}^{ts,s}+\tilde{\eta}^{s}\\
+      &:
+        -\zeta^\intercal \zeta  +\varepsilon^{2}\geq 0
+            \}
+        \end{align*}
+        is valid, if and only if
+        \begin{align*}
+            \exists \tilde{\vartheta}^{s}\geq0 \;s.t.\;\begin{bmatrix}
+                \tilde{\vartheta}^{s}I - 
+                    D^\intercal  
+        (
+      \tilde{\Phi}_{L}^{s}-diag(v)\tilde{\Psi}_{L}^{s}) & -\frac{1}{2}\left( (      \tilde{\Phi}_{L}^{s}-diag(v)\tilde{\Psi}_{L}^{s})\bar{\xi}^{s}+D^\intercal (\tilde{\phi}_{0}^{s}-v\odot \tilde{\psi}_{0}^{s}) -\tilde{y}_{L}^{ts,s}\right)\\
+                -\frac{1}{2}\left( (      \tilde{\Phi}_{L}^{s}-diag(v)\tilde{\Psi}_{L}^{s})\bar{\xi}^{s}+D^\intercal (\tilde{\phi}_{0}^{s}-v\odot \tilde{\psi}_{0}^{s}) -\tilde{y}_{L}^{ts,s}\right)^\intercal &  \tilde{\eta}^{s}-(\tilde{\phi}_{0}^{s}-v\odot \tilde{\psi}_{0}^{s})^\intercal \bar{\xi}^{s}+ \tilde{y}_{0}^{ts,s}-\tilde{\vartheta}^{s}\varepsilon^{2})
+            \end{bmatrix}\succeq 0
+        \end{align*}
+    \end{proposition}
+    그러면 constriant는 아래로 표현
+    \begin{align}
+      &  \begin{bmatrix}
+                \tilde{\vartheta}^{s}I - 
+                    D^\intercal  
+        (
+      \tilde{\Phi}_{L}^{s}-diag(v)\tilde{\Psi}_{L}^{s}) & -\frac{1}{2}\left( (      \tilde{\Phi}_{L}^{s}-diag(v)\tilde{\Psi}_{L}^{s})\bar{\xi}^{s}+D^\intercal (\tilde{\phi}_{0}^{s}-v\odot \tilde{\psi}_{0}^{s}) -\tilde{y}_{L}^{ts,s}\right)\\
+                -\frac{1}{2}\left( (      \tilde{\Phi}_{L}^{s}-diag(v)\tilde{\Psi}_{L}^{s})\bar{\xi}^{s}+D^\intercal (\tilde{\phi}_{0}^{s}-v\odot \tilde{\psi}_{0}^{s}) -\tilde{y}_{L}^{ts,s}\right)^\intercal & \tilde{\eta}^{s} -(\tilde{\phi}_{0}^{s}-v\odot \tilde{\psi}_{0}^{s})^\intercal \bar{\xi}^{s}+ \tilde{y}_{0}^{ts,s}-\tilde{\vartheta}^{s}\varepsilon^{2}
+            \end{bmatrix}\succeq_{\mathcal{K}_{PSD}} 0, \\
+            &\tilde{\vartheta}^{s}\geq 0\\
+    &\tilde{\psi}_{l}^{k,s} \leq \phi^{U}x_{k},\;\tilde{\psi}_{l}^{k,s}\leq \tilde{\phi}_{l}^{k,s},\;\tilde{\phi}_{l}^{k,s}\leq \tilde{\psi}_{l}^{k,s}+\phi^{U}(1-x_{k})\;\forall l\in [1:|\mathcal{A}|+1],k\in [1:|\mathcal{A}|]\\
+    &\;\tilde{\Psi}=\begin{bmatrix}
+        \tilde{\psi}_{1}^{1} & \cdots & \tilde{\psi}_{|\mathcal{A}|}^{1}&\tilde{\psi}_{0}^{1} \\
+        \vdots & \ddots & \vdots & \vdots \\
+     \tilde{\psi}_{1}^{|\mathcal{A}|} & \cdots & \tilde{\psi}_{|\mathcal{A}|}^{|\mathcal{A}|}&\tilde{\psi}_{0}^{|\mathcal{A}|}
+    \end{bmatrix}
+    \end{align}
+\end{subequations}
+
+\subsection{Full Model}
+이제 전체 모델을 다시 쓰면
+\begin{subequations}
+    \begin{align}
+    &2DRNDP\\
+    &=\min\;t+w\nu \\
+    &s.t.\;e^\intercal h \leq \lambda w, x\in \mathcal{X},h \geq 0,\\
+    &\sum_{s=1}^{S}\hat{\eta}^{s} + \tilde{\eta}^{s} \leq St,\\
+    &\begin{bmatrix}
+        \hat{\vartheta}^{s}I-D^\intercal (\hat{\Phi}_{L}^{s}-diag(v)\hat{\Psi}_{L}^{s}) & -\frac{1}{2} \left( (      \hat{\Phi}_{L}^{s}-diag(v)\hat{\Psi}_{L}^{s})\bar{\xi}^{s}+D^\intercal (\hat{\phi}_{0}^{s}-v\odot \hat{\psi}_{0}^{s}) \right) \\
+        -\frac{1}{2} \left( (      \hat{\Phi}_{L}^{s}-diag(v)\hat{\Psi}_{L}^{s})\bar{\xi}^{s}+D^\intercal (\hat{\phi}_{0}^{s}-v\odot \hat{\psi}_{0}^{s}) \right)^\intercal & \hat{\eta}^{s}-(\hat{\phi}_{0}^{s}-v\odot \hat{\psi}_{0}^{s})^\intercal \bar{\xi}^{s}-\hat{\vartheta}^{s}\varepsilon^{2}
+        \end{bmatrix}\succeq_{ \mathcal{K}_{PSD}},\;\hat{\vartheta}^{s}\geq 0 \label{eq:primal_psd_hat}\\
+    &\begin{bmatrix}
+                \tilde{\vartheta}^{s}I - 
+                    D^\intercal  
+        (
+      \tilde{\Phi}_{L}^{s}-diag(v)\tilde{\Psi}_{L}^{s}) & -\frac{1}{2}\left( (      \tilde{\Phi}_{L}^{s}-diag(v)\tilde{\Psi}_{L}^{s})\bar{\xi}^{s}+D^\intercal (\tilde{\phi}_{0}^{s}-v\odot \tilde{\psi}_{0}^{s}) -\tilde{y}_{L}^{ts,s}\right)\\
+                -\frac{1}{2}\left( (      \tilde{\Phi}_{L}^{s}-diag(v)\tilde{\Psi}_{L}^{s})\bar{\xi}^{s}+D^\intercal (\tilde{\phi}_{0}^{s}-v\odot \tilde{\psi}_{0}^{s}) -\tilde{y}_{L}^{ts,s}\right)^\intercal &  \tilde{\eta}^{s}-(\tilde{\phi}_{0}^{s}-v\odot \tilde{\psi}_{0}^{s})^\intercal \bar{\xi}^{s}+ \tilde{y}_{0}^{ts,s}-\tilde{\vartheta}^{s}\varepsilon^{2}
+            \end{bmatrix}\succeq_{\mathcal{K}_{PSD}} 0, \tilde{\vartheta}^{s}\geq 0 \label{eq:primal_psd_tilde}\\
+        &\hat{\psi}_{l}^{k,s} \leq \phi^{U}x_{k},\;\hat{\psi}_{l}^{k,s}\leq \hat{\phi}_{l}^{k,s},\;\hat{\phi}_{l}^{k,s}\leq \hat{\psi}_{l}^{k,s}+\phi^{U}(1-x_{k})\;\forall l\in [1:|\mathcal{A}|+1],k\in [1:|\mathcal{A}|] \label{eq:primal_mccormick_hat}, \\
+    &\tilde{\psi}_{l}^{k,s} \leq \phi^{U}x_{k},\;\tilde{\psi}_{l}^{k,s}\leq \tilde{\phi}_{l}^{k,s},\;\tilde{\phi}_{l}^{k,s}\leq \tilde{\psi}_{l}^{k,s}+\phi^{U}(1-x_{k})\;\forall l\in [1:|\mathcal{A}|+1],k\in [1:|\mathcal{A}|] \label{eq:primal_mccormick_tilde},\\
+    &\sum_{s=1}^{S}\tilde{\mu}^{s}_{k}+\hat{\mu}^{s}_{k} \leq S\nu \;\forall k\in \mathcal{A}\label{eq:primal_nu},\\
+    &\hat{\Lambda}_{1}^{s}R=\begin{bmatrix}
+        \begin{bmatrix}
+        N^\intercal \hat{\Pi}^{s}_{L}+I_{0}^\intercal \hat{\Phi}^{s}_{L} 
+    \end{bmatrix} \\   \hat{\Pi}^{s}_{L} \\ \hat{\Phi}^{s}_{L}
+    \end{bmatrix},\;\hat{\Lambda}_{1}^{s}\bar{r}^{s} \geq \begin{bmatrix}
+       d_{0} - N^\intercal \hat{\pi}^{s}_{0}-I_{0}^\intercal \hat{\phi}_{0} \\ -\hat{\pi}_{0}^{s} \\ -\hat{\phi}_{0}^{s}
+    \end{bmatrix}, [\hat{\Lambda}_{1}^{s}]_{m} \in \mathcal{K}_{SOC}\;\forall m,\label{eq:primal_Lambda1_hat}\\
+    &\hat{\Lambda}_{2}^{s}R=-\hat{\Phi}^{s}_{L},\;\hat{\Lambda}_{2}^{s}\bar{r}^{s} \geq -\hat{\mu}^{s}+\hat{\phi}^{s}_{0},\;[\hat{\Lambda}_{2}^{s}]_{m} \in \mathcal{K}_{SOC}\;\forall m,\label{eq:primal_Lambda2_hat}\\
+         &\tilde{\Lambda}_{1}^{s}R = \begin{bmatrix}
+        \begin{bmatrix}
+        N^\intercal \tilde{\Pi}^{s}+I_{0}^\intercal \tilde{\Phi}^{s} \\
+        -N_{y}\tilde{Y}_{L}^{s} - N_{ts}\tilde{Y}^{ts,s}_{L} \\
+        -\tilde{Y}_{L}^{s}+diag(\lambda-v\odot \psi^{0})D
+    \end{bmatrix}\\ \tilde{\Pi}^{s}_{L} \\ \tilde{\Phi}^{s}_{L} \\ \tilde{Y}^{s}_{L}
+    \end{bmatrix}, \;\tilde{\Lambda}_{1}^{s}\bar{r}^{s}\geq \begin{bmatrix}
+      \begin{bmatrix}
+        \lambda d_{0} - N^\intercal \tilde{\pi}_{0}^{s}-I_{0}^\intercal \tilde{\phi}_{0}^{s} \\
+        N_{y}\tilde{y}_{0}^{s} + N_{ts}\tilde{y}_{0}^{ts,s}\\
+        -h+\tilde{y}_{0}^{s}-diag(\lambda - v\odot \psi^{0})\bar{\xi}^{s}
+    \end{bmatrix}\\ -\tilde{\pi}_{0}^{s} \\ -\tilde{\phi}_{0}^{s} \\ -\tilde{y}_{0}^{s}
+    \end{bmatrix}, [\tilde{\Lambda}_{1}^{s}]_{m} \in \mathcal{K}_{SOC}\label{eq:primal_Lambda1_tilde},\\
+    &\tilde{\Lambda}_{2}^{s}R = -\tilde{\Phi}^{s}_{L},\;\tilde{\Lambda}^{s}_{2}\geq -\tilde{\mu}^{s}+\tilde{\phi}_{0}^{s},\;[\tilde{\Lambda}_{2}^{s}]_{m} \in \mathcal{K}_{SOC}\label{eq:primal_Lambda2_tilde}\\
+    &\psi^{0} \leq \lambda^{U}x,\;\psi^{0} - \lambda (e) \leq 0, \; \lambda(e)- \psi^{0} \leq \lambda^{U}(e-x)\;\forall k\in \mathcal{A} \label{eq:primal_mccormick_psi0}\\
+    &\hat{\Psi}^{s}=\begin{bmatrix}
+        \hat{\Psi}_{L}^{s} & \hat{\psi}_{0}^{s}
+    \end{bmatrix}\;\tilde{\Psi}=\begin{bmatrix}
+       \tilde{\Psi}^{s}_{L} & \tilde{\psi}^{s}_{0}
+    \end{bmatrix}
+\end{align}
+\end{subequations}
+Issue들
+\begin{enumerate}
+    \item $h=0, \lambda >0$ infeasible나는 이유:
+    \item[-] $y(\xi) -h \leq \lambda \xi(1-vx) \forall \xi $에서 worst-case uncertainty가 negative가 나올 수 있음 (epsilon의 크기에 따라)
+    \item[-] epsilon을 너무 작게잡으면 $\epsilon^2$이 너무 작아져서 numerically instable, slow progress 에러가 남
+    \item[-] 해당 RC에 한해 intersection with $\{\xi \geq 0\}$을 고려할 수 있음
+    \item[-] SDP part의 경우, worst-case가 negative가 나오지 않음을 lemma로 보이면 해결됨 (근데 맞을지는 해봐야 암)
+    \item $\lambda =100$ 같이 크게 잡으면 infeasible이 나는 이유:
+    \item[-] $\lambda \leq \tilde{\pi}_{ts}(\xi) \leq \cdots + \tilde{\phi}(\xi)$를 worst-case로 잡으려다보니 LDR coefficient $\Phi, \Pi$의 upper bound를 넘는듯?
+    \item Uncertainty set에 scaling이 필요? epsilon의 magnitude가 너무 예민
+    \item[-] Uncertainty를 이렇게 모델링?
+    \begin{align*}
+        \xi&=\bar{\xi}^{s}(1+\zeta),\;\zeta\in \{\zeta:\norm{\zeta}_{2}\leq \varepsilon\}\\
+        \Rightarrow \Xi_{s}&=\left\{\xi: \norm{D^{-1}(\xi-\bar{\xi}^{s})}_{2}\leq \varepsilon \right\}
+        \\&=\left\{\xi:(\xi-\bar{\xi}^{s})^\intercal D^{-2}(\xi-\bar{\xi}^{s}) \leq \varepsilon^{2} \right\}
+        \\
+        \text{where }&D=diag(\bar{\xi}^{s}),\;D^{-2}=diag(1/(\bar{\xi}^{s})^{2})
+    \end{align*}
+    이러면 $\varepsilon \leq 1$ 까지는 negative worst-case가 나오지 않음. $\zeta$의 의미: nominal scenario 대비 몇 퍼센트까지 변화할지 ($\varepsilon=0.1$이면 worst-case가 최대 하나의 arc capacity의 10\% 변함)
+    \item $\lambda, \psi^{0}$을 그냥 subproblem으로 내리면 안되나? 그러면 걔네는 다시 follower 문제로 옮겨가게 되고.. 대신 그러면 inner master problem에서 걔네의 constraint들의 dual variable들을 master로 넣어야 됨.
+    \item[-] 만약 1.이 해결되면 feasibility cut은 순전히 2번 이슈로 인해 발생할 것임.
+    \item[-] 1을 해결못하고 전부 다 feasibility cut으로 뭉개도 여전히 worst-case가 negative인 이슈는 못피함.
+\end{enumerate}
+\subsection{Outer Master Problem}
+\begin{subequations}
+    \begin{align}
+    \min\;& t_{0} \\
+    s.t.\;&\mathbf{1}^\intercal h \leq w, x\in \mathcal{X},\\
+    &t_{0}\geq Z_{0}(x,h,\lambda,\psi^{0}),\\
+    &\psi^{0} \leq \lambda^{U}x,\;\psi^{0} - \lambda (e) \leq 0, \; \lambda(e)- \psi^{0} \leq \lambda^{U}(e-x), \psi^{0}\geq 0\;\forall k\in \mathcal{A}
+    \end{align}
+\end{subequations}
+\subsection{Outer Subproblem}
+\begin{subequations}
+    \begin{align}
+        &Z_{0}(x,h,\lambda, w^{0})=\\
+        &\min\;(1/S)\sum_{s=1}^{S}\hat{\eta}^{s}+\tilde{\eta}^{s} + (1/S)w\nu \label{eq:primal_obj}\\
+        &s.t.\;\eqref{eq:primal_psd_hat}\\
+    &\eqref{eq:primal_psd_tilde}\\
+        &\eqref{eq:primal_mccormick_hat}\\
+    &\eqref{eq:primal_mccormick_tilde}\\
+        &\eqref{eq:primal_nu}\\
+        &\eqref{eq:primal_Lambda1_hat}\\
+        &\eqref{eq:primal_Lambda2_hat}\\
+        &\eqref{eq:primal_Lambda1_tilde}\\
+    &\eqref{eq:primal_Lambda2_tilde}
+    \end{align}
+\end{subequations}
+decision variables: $$
+\hat{\eta}^{s},\tilde{\eta}^{s},\nu, \hat{\Phi}_{L}^{s}, \hat{\phi}_{0}^{s},  \hat{\Psi}_{L}^{s}, \hat{\psi}_{0}^{s},  \tilde{\Phi}_{L}^{s}, \tilde{\phi}_{0}^{s}, \tilde{\Psi}^{s}_{L}, \tilde{\psi}_{0}^{s}, \tilde{y}_{L}^{ts,s}, \tilde{y}_{0}^{ts,s} \tilde{\mu}_{k}^{s}, \hat{\mu}_{k}^{s}, \hat{\Lambda}_{1}^{s}, \hat{\Lambda}_{2}^{s}, \tilde{\Lambda}_{1}, \tilde{\Lambda}_{2}
+$$
+And below are necessary condition (무시해도 되지만 알고리즘 안정성 위해 넣어줌. 그러면 Dual도 equality가 아니라 inequality가 됨)
+$$
+\hat{\eta}^{s},\nu, \hat{\mu},\tilde{\mu} \geq 0
+$$
+*$\tilde{\eta}$는 항상 non-negative하지 않음.
+\subsection{Dualized Outer Subproblem}
+
+
+참고: 
+SDP 변수 $x$에 대해 Linear Operator $\mathcal{A}:\mathbb{R}^{n} \to \mathbb{S}^{n}$ 로 정의:
+\begin{align*}
+    \mathcal{A}(x) = \text{x가 있는 term}
+\end{align*}
+Adjoint operator $\mathcal{A}^{*}:\mathbb{S}^{n}\to \mathbb{R}^{n}$ 구하기 위해 inner product 사용: dual이 M이라면
+\begin{align*}
+    \langle \mathcal{A}(x), M\rangle = \langle x, \mathcal{A}^{*}(M) \rangle 
+\end{align*}
+그러면 trace 성질을 이용해서 $\langle x, ? \rangle$이 되게 유도하고, ?를 $M$에 대한 linear operator (trace, inner product)로 나타내면 듀얼을 구할 수 있음.
+\subsubsection{Dual Variables and Their Origin}
+First, for semidefinite constraints,
+\begin{align*}
+    &(\hat{M}^s \in \mathcal{K}_{SDP}(\mathbb{R}^{(|\mathcal{A}|+1)\times (|\mathcal{A}|+1)})\cdots) \\&\begin{bmatrix}
+        \hat{\vartheta}^{s}I-D^\intercal (\hat{\Phi}_{L}^{s}-diag(v)\hat{\Psi}_{L}^{s}) & -\frac{1}{2} \left( (      \hat{\Phi}_{L}^{s}-diag(v)\hat{\Psi}_{L}^{s})\bar{\xi}^{s}+D^\intercal (\hat{\phi}_{0}^{s}-v\odot \hat{\psi}_{0}^{s}) \right) \\
+        -\frac{1}{2} \left( (      \hat{\Phi}_{L}^{s}-diag(v)\hat{\Psi}_{L}^{s})\bar{\xi}^{s}+D^\intercal (\hat{\phi}_{0}^{s}-v\odot \hat{\psi}_{0}^{s}) \right)^\intercal & \hat{\eta}^{s}-(\hat{\phi}_{0}^{s}-v\odot \hat{\psi}_{0}^{s})^\intercal \bar{\xi}^{s}-\hat{\vartheta}^{s}\varepsilon^{2}
+        \end{bmatrix}\succeq_{ \mathcal{K}_{PSD}} 0\\
+        &\left( \tilde{M}^s \in \mathcal{K}_{SDP}(\mathbb{R}^{(|\mathcal{A}|+1)\times (|\mathcal{A}|+1)}) \cdots \right)\\
+        &\begin{bmatrix}
+                \tilde{\vartheta}^{s}I - 
+                    D^\intercal  
+        (
+      \tilde{\Phi}_{L}^{s}-diag(v)\tilde{\Psi}_{L}^{s}) & -\frac{1}{2}\left( (      \tilde{\Phi}_{L}^{s}-diag(v)\tilde{\Psi}_{L}^{s})\bar{\xi}^{s}+D^\intercal (\tilde{\phi}_{0}^{s}-v\odot \tilde{\psi}_{0}^{s}) -\tilde{y}_{L}^{ts,s}\right)\\
+                -\frac{1}{2}\left( (      \tilde{\Phi}_{L}^{s}-diag(v)\tilde{\Psi}_{L}^{s})\bar{\xi}^{s}+D^\intercal (\tilde{\phi}_{0}^{s}-v\odot \tilde{\psi}_{0}^{s}) -\tilde{y}_{L}^{ts,s}\right)^\intercal &  \tilde{\eta}^{s}-(\tilde{\phi}_{0}^{s}-v\odot \tilde{\psi}_{0}^{s})^\intercal \bar{\xi}^{s}+ \tilde{y}_{0}^{ts,s}-\tilde{\vartheta}^{s}\varepsilon^{2}
+            \end{bmatrix}\succeq_{\mathcal{K}_{PSD}} 0
+\end{align*}
+나머진 테이블로 정리.
+\begin{table}[H]
+\centering
+\begin{tabular}{ll}
+\toprule
+Dual Variable & Primal Constraint \\
+\midrule
+$\hat{U}_1^s \geq 0$ & $[-\hat{\Psi}^s_{L}\;-\hat{\psi}_{0}^{s}] \geq -\phi^U diag(x) E $ \\[0.1cm]
+$\hat{U}_2^s \geq 0$ & $[-\hat{\Psi}^s_{L}\;-\hat{\psi}_{0}^{s}] + [\hat{\Phi}^s_{L}\;\hat{\phi}_{0}^{s}] \geq 0$ \\[0.1cm]
+$\hat{U}_3^s \geq 0$ & $[-\hat{\Phi}^s_{L}\;-\hat{\phi}_{0}^{s}] + [\hat{\Psi}^s_{L}\;\hat{\psi}_{0}^{s}]  \geq -\phi^U diag(1-x)E$ \\[0.1cm]
+$\tilde{U}_1^s \geq 0$ & $[-\tilde{\Psi}^s_{L}\;-\tilde{\psi}_{0}^{s}] \geq -\phi^U diag(x) E $ \\[0.1cm]
+$\tilde{U}_2^s \geq 0$ & $[-\tilde{\Psi}^s_{L}\;-\tilde{\psi}^{s}_{0}] + [\tilde{\Phi}^s_{L}\;\tilde{\Phi}^{s}_{0}] \geq 0$ \\[0.1cm]
+$\tilde{U}_3^s \geq 0$ & $[-\tilde{\Phi}_{L}^{s}\;-\tilde{\phi}_{0}^{s}] + [\tilde{\Psi}^s_{L}\;\tilde{\psi}^{s}_{0}] \geq -\phi^U diag(1-x)E$ \\[0.1cm]
+$\alpha_k \geq 0, k \in \mathcal{A}$ & $\nu - \sum_{s=1}^S (\tilde{\mu}_k^s + \hat{\mu}_k^s)\geq 0$ \\[0.1cm]
+$\hat{Z}_1^s$ (free) & $\hat{\Lambda}_{1}^{s}R-\begin{bmatrix}
+       \begin{bmatrix}
+        N^\intercal \hat{\Pi}^{s}_{L}+I_{0}^\intercal \hat{\Phi}^{s}_{L} 
+    \end{bmatrix} \\   \hat{\Pi}^{s}_{L} \\ \hat{\Phi}^{s}_{L}
+    \end{bmatrix}=0$ \\[0.3cm]
+$\hat{Z}_2^s$ (free) & $\hat{\Lambda}_{2}^{s}R+\hat{\Phi}^{s}_{L}=0$ \\[0.1cm]
+$\tilde{Z}_1^s \in \mathbb{R}^{(.)\times (|\mathcal{A}|)}$(free) & $\tilde{\Lambda}_{1}^{s}R -\begin{bmatrix}
+            \begin{bmatrix}
+        N^\intercal \tilde{\Pi}^{s}_{L}+I_{0}^\intercal \tilde{\Phi}^{s}_{L} \\
+        -N_{y}\tilde{Y}^{s}_{L}-N_{ts}\tilde{Y}_{L}^{ts,s}\\
+        -\tilde{Y}^{s}_{L}
+    \end{bmatrix} \\ \tilde{\Pi}^{s}_{L} \\ \tilde{\Phi}^{s}_{L} \\ \tilde{Y}^{s}_{L}
+        \end{bmatrix}= \begin{bmatrix}
+        \begin{bmatrix}
+        0 \\
+        0\\
+        diag(\lambda -v\psi^{0})\textcolor{red}{D}^{s}
+    \end{bmatrix} \\ 0\\ 0 \\ 0
+    \end{bmatrix}$ \\[0.5cm]
+$\tilde{Z}_2^s$ (free) & $\tilde{\Lambda}_{2}^{s}R +\tilde{\Phi}^{s}_{L}=0$ \\[0.1cm]
+$\hat{\beta}_1^s \geq 0$ & $\hat{\Lambda}_{1}^{s}\bar{r}^{s} +\begin{bmatrix}
+        N^\intercal \hat{\pi}_{0}^{s} + I_{0}^\intercal \hat{\phi}_{0}^{s}\\
+        \hat{\pi}^{s}_{0} \\ 
+        \hat{\phi}^{s}_{0}
+    \end{bmatrix}\geq \begin{bmatrix}
+       d_{0}  \\ 0 \\ 0
+    \end{bmatrix}$ \\[0.3cm]
+$\hat{\beta}_2^s \geq 0$ & $\hat{\Lambda}_{2}^{s}\bar{r}^{s} -\hat{\phi}_{0}^{s} + \hat{\mu}^{s} \geq 0$ \\[0.1cm]
+$\tilde{\beta}_1^s \geq 0$ & $\tilde{\Lambda}_1^s \bar{r}^{s}+\begin{bmatrix}
+        N^\intercal \tilde{\pi}_{0}^{s}+I_{0}^\intercal \tilde{\phi}_{0}^{s} \\ 
+        -N_{y}\tilde{y}_{0}^{s} - N_{ts}\tilde{y}_{0}^{ts,s} \\ -\tilde{y}_{0}^{s}  \\ \tilde{\pi}_{0}^{s} \\ \tilde{\phi}^{s}_{0} \\ \tilde{y}^{s}_{0}
+    \end{bmatrix} \geq \begin{bmatrix} \lambda d_0 \\ 0 \\ -h\textcolor{red}{-diag(\lambda- v\odot \psi^{0})\bar{\xi}^{s}} \\ 0 \\ 0 \\ 0 \end{bmatrix}$ \\[0.4cm]
+$\tilde{\beta}_2^s \geq 0$ & $\tilde{\Lambda}^{s}_{2}\bar{r}^{s}-\tilde{\phi}_{0}^{s} + \tilde{\mu}^{s}\geq 0$ \\[0.1cm]
+$\hat{\Gamma}_1^s\in \mathcal{K}_{SOC}^{m(\hat{\Lambda}_{1})}, \;(\Leftrightarrow [\hat{\Gamma}_{1}^{s}]_{m}\succeq_{\mathcal{K}_{SOC}}0)$ & $\hat{\Lambda}_{1}^{s}\in \mathcal{K}_{SOC}^{m(\hat{\Lambda}^{s}_{1})}\;(\Leftrightarrow [\hat{\Lambda}_1^s]_{m} \succeq_{\mathcal{K}_{SOC}} 0,\;m \in [1,m(\hat{\Lambda_{1}^{s}})])$, where $m(\hat{\Lambda}_{1}^{s})$ is row dimension of $\hat{\Lambda}_{1}^{s}$ \\[0.1cm]
+$\hat{\Gamma}_2^s \in \mathcal{K}_{SOC}^{m(\hat{\Lambda}_{2})}$ & $\hat{\Lambda}_2^s \in \mathcal{K}_{SOC}^{m(\hat{\Lambda}_{2})}$ \\[0.1cm]
+$\tilde{\Gamma}_1^s \in \mathcal{K}_{SOC}^{m(\tilde{\Lambda}_{1})}$ & $\tilde{\Lambda}_1^s \in \mathcal{K}_{SOC}^{m(\tilde{\Lambda}_{1})}$ \\[0.1cm]
+$\tilde{\Gamma}_2^s \in \mathcal{K}_{SOC}^{m(\tilde{\Lambda}_{2})} $ & $\tilde{\Lambda}_2^s \in \mathcal{K}_{SOC}^{m(\tilde{\Lambda}_{2})}$ \\[0.1cm]
+\midrule
+$\hat{P}_{1}^{s,\phi} \geq 0, \hat{P}_{1}^{s,\pi}\geq0, $& $[\hat{\Phi}^{s}_{L}\;\hat{\phi}_{0}^{s}] \geq -\phi^{U}E$, $[\hat{\Pi}^{s}_{L}\;\hat{\pi}_{0}^{s}]\geq -\pi^{U}E$ \\ [0.1cm]
+$\hat{P}_{2}^{s,\phi} \geq 0,\hat{P}_{2}^{s,\pi}\geq0, $& $-[\hat{\Phi}^{s}_{L}\;\hat{\phi}_{0}^{s}] \geq -\phi^{U}E$, $-[\hat{\Pi}^{s}_{L}\;\hat{\pi}_{0}^{s}]\geq -\pi^{U}E$ \\ [0.1cm]
+$\tilde{P}_{1}^{s,\phi} \geq 0, \tilde{P}_{1}^{s,\pi}\geq 0,\tilde{P}_{1}^{s,y}\geq0, \tilde{P}_{1}^{s,y_{ts}}\geq 0$ & $[\tilde{\Phi}_{L}^{s}\;\tilde{\phi}_{0}^{s}]\geq -\phi^{U}E, [\tilde{\Pi}_{L}^{s}\;\tilde{\pi}_{0}^{s}]\geq -\pi^{U}E, [\tilde{Y}_{L}^{s}\;\tilde{y}_{0}^{s}]\geq -y^{0}E,\;[\tilde{Y}_{L}^{ts,s}\;\tilde{y}_{0}^{ts,s}]\geq -\tilde{y}_{ts}^{0}E$ \\ [0.1cm]
+$\tilde{P}_{2}^{s,\phi} \geq 0, \tilde{P}_{2}^{s,\pi}\geq 0,\tilde{P}_{2}^{s,y}\geq0, \tilde{P}_{2}^{s,y_{ts}}\geq 0$ & $-[\tilde{\Phi}_{L}^{s}\;\tilde{\phi}_{0}^{s}]\geq -\phi^{U}E, -[\tilde{\Pi}_{L}^{s}\;\tilde{\pi}_{0}^{s}]\geq -\pi^{U}E, -[\tilde{Y}_{L}^{s}\;\tilde{y}_{0}^{s}]\geq -y^{0}E,\;-[\tilde{Y}_{L}^{ts,s}\;\tilde{y}_{0}^{ts,s}]\geq -\tilde{y}_{ts}^{0}E$ \\
+\midrule
+$\hat{R}$ & $\mathcal{K}\hat{Y}=0$\\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\subsubsection{Dual Problem Formulation}
+
+\begin{align}
+\max \quad & \sum_{s=1}^S \Big[ -\phi^U \langle \hat{U}_1^s + \tilde{U}_1^s, diag(x) E \rangle - \phi^U \langle \hat{U}_3^s + \tilde{U}_3^s, diag(1-x)E \rangle \notag \\
+& \qquad\qquad + d_0^\intercal \hat{\beta}_1^{s,1} + \langle \tilde{Z}_1^{s,3}, diag(\lambda-v\psi^{0})\textcolor{red}{D^{s}} \rangle + \lambda d_0^\intercal \tilde{\beta}_1^{s,1} -( h\textcolor{red}{+diag(\lambda- v\odot \psi^{0})\bar{\xi}^{s}})^\intercal \tilde{\beta}_1^{s,3} \notag \\
+& \qquad \qquad -\phi^{U}\left(\norm{\hat{P}_{1}^{s,\phi}}_{F}+\norm{\hat{P}_{2}^{s,\phi}}_{F}\right) -\pi^{U}\left(\norm{\hat{P}_{1}^{s,\pi}}_{F} + \norm{\hat{P}_{2}^{s,\pi}} \right) \notag \\ 
+&\qquad \qquad -\phi^{U}\left(\norm{\tilde{P}_{1}^{s,\phi}}_{F}+\norm{\tilde{P}_{2}^{s,\phi}}_{F}\right) -\pi^{U}\left(\norm{\tilde{P}_{1}^{s,\pi}}_{F} + \norm{\tilde{P}_{2}^{s,\pi}}_{F} \right) \notag \\
+&\qquad \qquad -y^{U}\left(\norm{\tilde{P}_{1}^{s,y}}_{F}+\norm{\tilde{P}_{2}^{s,y}}_{F}\right) -y_{ts}^{U}\left(\norm{\tilde{P}_{1}^{s,y_{ts}}}_{F} + \norm{\tilde{P}_{2}^{s,y_{ts}}}_{F} \right)\Big]
+\end{align}
+
+\textbf{Subject to:}
+\subsubsection{Cone Constraints:}
+\begin{align}
+& \hat{M}^s, \tilde{M}_2^s \in \mathcal{K}_{SDP}, \quad s = 1, \ldots, S \\
+& \hat{U}_1^s, \hat{U}_2^s, \hat{U}_3^s, \tilde{U}_4^s, \tilde{U}_5^s, \tilde{U}_6^s \geq 0 \quad \text{(element-wise)}, \quad s = 1, \ldots, S \\
+& \hat{P}^{s}, \tilde{P}^{s} \geq 0, \quad s=1,\cdots, S \\
+& \alpha_k \geq 0, \quad \forall k \in \mathcal{A} \\
+& \hat{\beta}_1^s, \hat{\beta}_2^s, \tilde{\beta}_1^s, \tilde{\beta}_2^s \geq 0, \quad s = 1, \ldots, S \\
+& \hat{\Gamma}_1^s, \hat{\Gamma}_2^s, \tilde{\Gamma}_1^s, \tilde{\Gamma}_2^s \in \mathcal{K}_{SOC}^{m(\cdots)}, \quad s = 1, \ldots, S
+\end{align}
+
+\subsubsection{Scalar Constraints:}
+\noindent From $\hat{\eta}^s (\geq 0)$:
+\begin{equation}
+\hat{M}^{s,22} \leq  1/S, \quad s = 1, \ldots, S \quad (\text{primal: } \hat{\eta}^s)
+\label{eq:dual_eta_hat}
+\end{equation}
+\noindent From $\tilde{\eta}^s\text{ (free!)}$:
+\begin{equation}
+\tilde{M}^{s,22} = 1/S, \quad s = 1, \ldots, S \quad (\text{primal: } \tilde{\eta}^s) 
+\label{eq:dual_eta_tilde}
+\end{equation}
+\noindent From $\nu (\geq 0)$:
+\begin{equation}
+\sum_{k \in \mathcal{A}} \alpha_k \leq w(1/S) \quad (\text{primal: } \nu)
+\label{eq:dual_nu}
+\end{equation}
+\noindent From $\hat{\vartheta}^s (\geq 0)$:
+\begin{equation}
+    tr(\hat{M}^{s,11})-\hat{M}^{s,22}\varepsilon^{2} \leq 0
+\label{eq:dual_vartheta_hat}
+\end{equation}
+\noindent From $\tilde{\vartheta}^s (\geq 0)$:
+\begin{equation}
+    tr(\tilde{M}^{s,11})-\tilde{M}^{s,22}\varepsilon^{2}\leq  0
+\label{eq:dual_vartheta_tilde}
+\end{equation}
+\subsubsection{Matrix Equality Constraints:}
+\noindent From $\hat{\Phi}^s$:
+\begin{equation}
+[
+\mathcal{A}_{\hat{\Phi}_{L}^{s}}^{*}(\hat{M}^{s})\quad \mathcal{A}^{*}_{\hat{\phi}_{0}^{s}}(\hat{M}^{s,12})+\mathcal{A}^{*}_{\hat{\phi_{0}^{s}}}(\hat{M}^{s,22}) ] + \hat{U}_2^s - \hat{U}_3^s+ [ -(I_0 \hat{Z}_1^{s,1} + \hat{Z}_1^{s,3}) + \hat{Z}_2^s \quad  I_{0}\hat{\beta}_{1}^{s,1} + \hat{\beta}_{1}^{s,3} - \hat{\beta}_{2}^{s} ]+\hat{P}_{1}^{s,\phi}-\hat{P}_{2}^{s,\phi}= 0 \quad
+\label{eq:dual_phi_hat}
+\end{equation}
+\begin{equation*}
+    \mathcal{A}_{L}^{*}(\hat{M}^{s})=\mathcal{A}^{*}_{L}(\hat{M}^{s,11}) + \mathcal{A}_{L}^{*}(\hat{M}^{s,12})
+\end{equation*}
+\begin{equation*}
+    \mathcal{A}_{L}^{*}(\hat{M}^{s,11})=-D_{s}\hat{M}^{s,11}, \;\mathcal{A}_{L}^{*}(\hat{M}^{s,12})= -\hat{M}^{s,12}(\bar{\xi}^{s})^\intercal
+\end{equation*}
+\begin{equation*}
+    \mathcal{A}_{\hat{\phi}_{0}^{s}}^{*}(\hat{M}^{s,12})=-D_{s}\hat{M}^{s,12},\;\mathcal{A}_{.}^{*}(\hat{M}^{s,22})= -\bar{\zeta}^{s}\hat{M}^{s,22}
+\end{equation*}
+\noindent From $\hat{\Psi}^s= \begin{bmatrix}
+    \hat{\Psi}_{L}^{s} & \hat{\psi}_{0}^{s}
+\end{bmatrix} (\geq 0)$:
+\begin{equation}
+\begin{bmatrix} \mathcal{A}_{L}^{*}(\hat{M}^{s,11})+\mathcal{A}_{L}^{*}(\hat{M}^{s,12}) & \mathcal{A}_{0}^{*}(\hat{M}^{s,12})+\mathcal{A}_{0}^{*}(\hat{M}^{s,22})
+\end{bmatrix}
+- \hat{U}_1^s - \hat{U}_2^s + \hat{U}_3^s \leq 0 \quad (\text{primal: } \hat{\Psi}^s)
+\label{eq:dual_psi_hat}
+\end{equation}
+\begin{equation*}
+    \mathcal{A}_{L}^{*}(\hat{M}^{s,11})=diag(v)D_{s}\hat{M}^{s,11},\;\mathcal{A}_{L}^{*}(\hat{M}^{s,12})=diag(v)\hat{M}_{12}\bar{\zeta}^\intercal
+\end{equation*}
+\begin{equation*}
+    \mathcal{A}_{0}^{*}(\hat{M}^{s,12})=diag(v)D_{s}\hat{M}^{s,12},\;\mathcal{A}_{0}^{*}(\hat{M}^{s,22})= \bar{\zeta}^{s}\hat{M}^{s,22}diag(v)
+\end{equation*}
+\noindent From $\tilde{\Phi}^s = \begin{bmatrix}
+    \tilde{\Phi}^{s}_{L} & \tilde{\phi}_{0}^{s}
+\end{bmatrix}$:
+\begin{equation}
+[\mathcal{A}_{L}^{*}(\tilde{M}) \quad \mathcal{A}_{0}^{*}(\tilde{M}^{s,12})+\mathcal{A}_{0}^{*}(\tilde{M}^{s,22})]
+ + \tilde{U}_2^s - \tilde{U}_3^s +
+[
+-I_0 \tilde{Z}_1^{s,1} - \tilde{Z}_1^{s,5} + \tilde{Z}_2^s \quad I_{0}\tilde{\beta}_{1}^{s,1} +\tilde{\beta}_{1}^{s,5} - \tilde{\beta}_{2}^{s}
+]+\tilde{P}_{1}^{s,\phi}-\tilde{P}_{2}^{s,\phi}= 0
+\label{eq:dual_phi_tilde}
+\end{equation}
+\begin{equation*}
+   \mathcal{A}_{L}^{*}(\tilde{M})= \mathcal{A}_{L}^{*}(\tilde{M}^{s,11})+\mathcal{A}_{L}^{*}(\tilde{M}^{s,12})\
+\end{equation*}
+\begin{equation*}
+    \mathcal{A}_{L}^{*}(\tilde{M}^{s,11})=-D_{s}\tilde{M}^{s,11},
+    \; \mathcal{A}_{L}^{*}(\tilde{M}^{s,12})=-\tilde{M}_{12}\bar{\zeta}^\intercal 
+\end{equation*}
+\begin{equation*}
+    \mathcal{A}_{0}^{*}(\tilde{M}^{s,12})=-D_{s}\tilde{M}^{s,12},\;\mathcal{A}_{0}^{*}(\tilde{M}^{s,22})= -\bar{\zeta}^{s}\tilde{M}^{s,22}
+\end{equation*}
+\noindent From $\tilde{\Psi}^s = \begin{bmatrix}
+    \tilde{\Psi}_{L}^{s} & \tilde{\psi}_{0}^{s}
+\end{bmatrix} (\geq 0)$:
+\begin{equation}
+\begin{bmatrix} 
+\mathcal{A}^{*}_{L}(\tilde{M}^{s,11}) + 
+\mathcal{A}^{*}_{L}(\tilde{M}^{s,12}) & \mathcal{A}^{*}_{0}(\tilde{M}^{s,12}) + \mathcal{A}_{0}^{*}(\tilde{M}^{s,22})
+\end{bmatrix}
+- \tilde{U}_1^s - \tilde{U}_2^s + \tilde{U}_3^s \leq  0 \quad (\text{primal: } \tilde{\Psi}^s)
+\label{eq:dual_psi_tilde}
+\end{equation}
+\begin{equation*}
+    \mathcal{A}_{L}^{*}(\tilde{M}^{s,11})=diag(v)D_{s}\tilde{M}^{s,11},\;
+    \mathcal{A}_{L}^{*}(\tilde{M}^{s,12})=diag(v)\tilde{M}_{12}\bar{\zeta}^\intercal 
+\end{equation*}
+\begin{equation*}
+    \mathcal{A}_{0}^{*}(\tilde{M}^{s,12})=diag(v)D_{s}\tilde{M}^{s,12},\;\mathcal{A}_{0}^{*}(\tilde{M}^{s,22})= \bar{\zeta}^{s}\tilde{M}^{s,22}diag(v)
+\end{equation*}
+\noindent From $\tilde{Y}_{ts}^s = \begin{pmatrix}
+    \tilde{Y}_{L}^{ts,s}(=(\tilde{y}^{ts,s})^\intercal) & \tilde{y}_{0}^{ts,s}
+\end{pmatrix}^\intercal $:
+\begin{equation}
+\begin{bmatrix} 
+\mathcal{A}_{L}^{*}(\tilde{M}^{s,21}) & \mathcal{A}_{0}^{*}(\tilde{M}^{s,22})
+\end{bmatrix}
++\begin{bmatrix}
+N_{ts}^\intercal \tilde{Z}_{1}^{s,2} & -N_{ts}^\intercal \tilde{\beta}_{1}^{s,2}
+\end{bmatrix}
++\tilde{P}_{1}^{s,y_{ts}}-\tilde{P}_{2}^{s,y_{ts}}= 0 \quad (\text{primal: } \tilde{Y}_{ts}^s)
+\label{eq:dual_y_ts}
+\end{equation}
+\begin{equation*}
+    \mathcal{A}_{L}^{*}(\tilde{M}^{s,12})=\tilde{M}^{s,12}
+\end{equation*}
+\begin{equation*}
+    \mathcal{A}_{0}^{*}(\tilde{M}^{s,22})= \tilde{M}^{s,22}
+\end{equation*}
+\noindent From $\hat{\mu}^s$:
+\begin{equation}
+\hat{\beta}_2^{s,k} = \alpha_k, \quad \forall k \in \mathcal{A}, s = 1, \ldots, S \quad (\text{primal: } \hat{\mu}_k^s)
+\label{eq:dual_mu_hat}
+\end{equation}
+\noindent From $\tilde{\mu}^s$:
+\begin{equation}
+\tilde{\beta}_2^{s,k} = \alpha_k, \quad \forall k \in \mathcal{A}, s = 1, \ldots, S \quad (\text{primal: } \tilde{\mu}_k^s)
+\label{eq:dual_mu_tilde}
+\end{equation}
+\noindent From $\hat{\Pi}^s=\begin{bmatrix}
+    \hat{\Pi}_{L}^{s} & \hat{\pi}_{0}^{s}
+\end{bmatrix}$:
+\begin{equation}
+\begin{bmatrix}-N \hat{Z}_1^{s,1}  -\hat{Z}_1^{s,2} & N\hat{\beta}_{1}^{s,1}+\hat{\beta}_{1}^{s,2}
+\end{bmatrix} + \hat{P}_{1}^{s,\pi}-\hat{P}_{2}^{s,\pi} = 0 \quad (\text{primal: } \hat{\Pi}^s)
+\label{eq:dual_pi_hat}
+\end{equation}
+\noindent From $\tilde{\Pi}^s=\begin{bmatrix}
+    \tilde{\Pi}_{L}^{s} & \tilde{\pi}_{0}^{s}
+\end{bmatrix}$:
+\begin{equation}
+\begin{bmatrix}-N \tilde{Z}_1^{s,1}  -\tilde{Z}_1^{s,4} &N\tilde{\beta}_{1}^{s,1}+\tilde{\beta}_{1}^{s,4}
+\end{bmatrix} +\tilde{P}_{1}^{s,\pi}-\tilde{P}_{2}^{s,\pi} = 0 \quad (\text{primal: } \tilde{\Pi}^s)
+\label{eq:dual_pi_tilde}
+\end{equation}
+\noindent From $\tilde{Y}^s=\begin{bmatrix}
+    \tilde{Y}^{s}_{L} & \tilde{y}_{0}^{s}
+\end{bmatrix}$:
+\begin{equation}
+\begin{bmatrix}
+N_{y}^\intercal \tilde{Z}_1^{s,2} + \tilde{Z}_1^{s,3} - \tilde{Z}_1^{s,6} & -N_{y}^\intercal \tilde{\beta}_{1}^{s,2}-\tilde{\beta}_{1}^{s,3} + \tilde{\beta}_{1}^{s,6}
+\end{bmatrix} + \tilde{P}_{1}^{s,y}-\tilde{P}_{2}^{s,y}
+= 0 \quad (\text{primal: } \tilde{Y}^s)
+\label{eq:dual_y_tilde}
+\end{equation}
+\noindent From $\hat{\Lambda}_1^s$:
+\begin{equation}
+\hat{Z}_1^s R^\intercal  +  \hat{\beta}_1^{s}(\bar{r}^{s})^\intercal  + \hat{\Gamma}_1^s = 0 \quad (\text{primal: } \hat{\Lambda}_1^s)
+\label{eq:dual_lambda1_hat}
+\end{equation}
+\noindent From $\hat{\Lambda}_2^s$:
+\begin{equation}
+\hat{Z}_2^s R^\intercal +  \hat{\beta}_2^{s}(\bar{r}^{s})^\intercal  + \hat{\Gamma}_2^s = 0 \quad (\text{primal: } \hat{\Lambda}_2^s)
+\label{eq:dual_lambda2_hat}
+\end{equation}
+\noindent From $\tilde{\Lambda}_1^s$:
+\begin{equation}
+\tilde{Z}_1^s  R^\intercal +  \tilde{\beta}_1^{s}(\bar{r}^{s})^\intercal  + \tilde{\Gamma}_1^s = 0 \quad (\text{primal: } \tilde{\Lambda}_1^s)
+\label{eq:dual_lambda1_tilde}
+\end{equation}
+\noindent From $\tilde{\Lambda}_2^s$:
+\begin{equation}
+\tilde{Z}_2^s R^\intercal +  \tilde{\beta}_2^{s}(\bar{r}^{s})^\intercal  + \tilde{\Gamma}_2^s = 0 \quad (\text{primal: } \tilde{\Lambda}_2^s)
+\label{eq:dual_lambda2_tilde}
+\end{equation}
+
+\subsubsection{Notation}
+
+\begin{itemize}
+\item $M= \begin{bmatrix}
+    M^{11} \in \mathbb{R}^{|\mathcal{A}|\times (\mathcal{A}|} & M^{12}\in \mathbb{R}^{|\mathcal{A}|+1} \\ M^{12} & M^{22}\in \mathbb{R}
+\end{bmatrix}$
+\item $Z_i^s = \begin{bmatrix} Z_i^{s,1} \\ Z_i^{s,2} \\ \vdots \end{bmatrix}$ where each block has appropriate dimensions
+\item $\beta_i^{s,j}$ denotes the $j$-th block of $\beta_i^s$
+\item $\tilde{y}_{ts}^{s}$의 contribution 중 변수 $\tilde{Z}_{1}^{s,2}$ 계산하기:
+\begin{align*}
+    \langle \tilde{Z}_{1}^{s,2}, -N_{ts}(\tilde{y}_{ts}^{s})^\intercal \rangle &= -tr((\tilde{Z}_{1}^{s,2})^\intercal N_{ts}(\tilde{y}_{ts})^\intercal ) \\
+    &\text{tr(ABC)=tr(CAB)=tr(BCA)}\\
+    &=tr(\tilde{y}_{ts}^\intercal (\tilde{Z}_{1}^{s,2})^\intercal (-N_{ts})) \\
+    &=-\tilde{y}_{ts}^\intercal (\tilde{Z}_{1}^{s,2})^\intercal N_{ts}\\
+    &=-(N_{ts}^\intercal \tilde{Z}_{1}^{s,2})^\intercal \tilde{y}_{ts} 
+\end{align*}
+\end{itemize}
+
+\subsection{Inner Master Problem}
+With the dual outer subproblem, we can benders decompose again as follows:
+\begin{subequations}
+    \begin{align}
+        \max\;&\sum_{s=1}^{S}t_{1}^{s}\\
+        s.t.\;&\sum_{k\in \mathcal{A}}\alpha_{k}=w(1/S),\\
+        &t_{1}^{s}\leq Z_{1}^{s}(\alpha_{k})
+    \end{align}
+\end{subequations}
+\subsection{Inner Subproblem}
+\begin{subequations}
+    \begin{align}
+        Z_{1}^{s}(\alpha_{k})&=Z_{1}^{L,s}(\alpha_{k})+Z_{1}^{F,s}(\alpha_{k})\\
+        \text{where }&\\
+        Z_{1}^{L,s}(\alpha_{k})= \max\;&\phi^U \langle \hat{U}_1^s, diag(x) E \rangle + \phi^U \langle \hat{U}_3^s ,  diag(1-x)E \rangle \notag + d_0^\intercal \hat{\beta}_1^{s,1} \notag \\
+        & \qquad \qquad -\phi^{U}\left(\norm{\hat{P}_{1}^{s,\phi}}_{F}+\norm{\hat{P}_{2}^{s,\phi}}_{F}\right) -\pi^{U}\left(\norm{\hat{P}_{1}^{s,\pi}}_{F} + \norm{\hat{P}_{2}^{s,\pi}} \right) \notag \\
+        s.t.\;&\hat{M}^{s} \in \mathcal{K}_{SDP},\\
+        &\hat{U}_{1}^{s},\hat{U}_{2}^{s},\hat{U}_{3}^{s} ,\hat{P}_{1}^{s,\phi},\hat{P}_{2}^{s,\phi},\hat{P}_{1}^{s,\pi},\hat{P}_{2}^{s,\pi}\geq 0 \text{ (element-wise)},\\
+        &\hat{\beta}_{1}^{s},\hat{\beta}_{2}^{s} \geq 0\\
+        &\hat{\Gamma}_{1}^{s} \in \mathcal{K}_{SOC}^{m(\hat{\Gamma}_{1}^{s})}, \hat{\Gamma}_{2}^{s} \in \mathcal{K}_{SOC}^{m(.)},\\
+        &\eqref{eq:dual_eta_hat} \quad (\text{primal: }\hat{\eta}^{s}),\\
+        &    \eqref{eq:dual_vartheta_hat}\quad (\text{primal: }\hat{\vartheta}^{s}\geq 0)\\
+        &
+\eqref{eq:dual_phi_hat} \quad (\text{primal: } \hat{\Phi}^s),\\
+&\eqref{eq:dual_psi_hat} \quad (\text{primal: } \hat{\Psi}^s),\\
+&\eqref{eq:dual_mu_hat}\quad (\text{primal: } \hat{\mu}_k^s),\\
+&\eqref{eq:dual_pi_hat}\quad (\text{primal: } \hat{\Pi}^s),\\
+&\eqref{eq:dual_lambda1_hat} \quad (\text{primal: } \hat{\Lambda}_1^s),\\
+&\eqref{eq:dual_lambda2_hat} \quad (\text{primal: } \hat{\Lambda}_2^s)
+    \end{align}
+\end{subequations}
+\begin{subequations}
+    \begin{align}
+        Z_{1}^{F,s}(\alpha_{k})=\max\;& \phi^U \langle \tilde{U}_1^s, diag(x) E \rangle + \phi^U \langle \tilde{U}_3^s, diag(1-x)E \rangle \notag \\
+& \qquad\qquad +  \langle \tilde{Z}_1^{s,3}, diag(\lambda-v \psi^{0})D^{s} \rangle + \lambda d_0^\intercal \tilde{\beta}_1^{s,1} - (h+diag(\lambda -v\odot \psi^{0})\bar{\xi}^{s})^\intercal \tilde{\beta}_1^{s,3}\notag \\
+&\qquad \qquad -\phi^{U}\left(\norm{\tilde{P}_{1}^{s,\phi}}_{F}+\norm{\tilde{P}_{2}^{s,\phi}}_{F}\right) -\pi^{U}\left(\norm{\tilde{P}_{1}^{s,\pi}}_{F} + \norm{\tilde{P}_{2}^{s,\pi}}_{F} \right) \notag \\
+&\qquad \qquad -y^{U}\left(\norm{\tilde{P}_{1}^{s,y}}_{F}+\norm{\tilde{P}_{2}^{s,y}}_{F}\right) -y_{ts}^{U}\left(\norm{\tilde{P}_{1}^{s,y_{ts}}}_{F} + \norm{\tilde{P}_{2}^{s,y_{ts}}}_{F} \right)
+        \\
+        s.t.\;&\tilde{M}^{s} \in \mathcal{K}_{SDP},\\
+        &\tilde{U}_{1}^{s}, \tilde{U}_{2}^{s}, \tilde{U}_{3}^{s} \geq 0 \text{ (element-wise)},\\
+        &\tilde{P}_{1}^{s,\phi},\tilde{P}_{2}^{s,\phi},\tilde{P}_{1}^{s,\pi},\tilde{P}_{2}^{s,\pi},\tilde{P}_{1}^{s,y},\tilde{P}_{2}^{s,y},\tilde{P}_{1}^{s,y_{ts}},\tilde{P}_{2}^{s,y_{ts}}\geq 0 ,\\
+        &\tilde{\beta}_{1}^{s}, \tilde{\beta}_{2}^{s} \geq 0, \\
+        &\tilde{\Gamma}_{1}^{s} \in \mathcal{K}_{SOC}, \tilde{\Gamma}_{2}^{s} \in \mathcal{K}_{SOC}, \\
+        &\eqref{eq:dual_eta_tilde}\quad (\text{primal: }\tilde{\eta}^{s}),
+        \\
+        &    \eqref{eq:dual_vartheta_tilde}\quad (\text{primal: }\tilde{\vartheta}^{s}\geq 0),\\
+        \\&\eqref{eq:dual_phi_tilde} \quad (\text{primal: } \tilde{\Phi}^s),\\
+        &\eqref{eq:dual_psi_tilde} \quad (\text{primal: } \tilde{\Psi}^s),\\
+      & \eqref{eq:dual_y_ts} \quad (\text{primal: } \tilde{y}_{ts}^s),\\
+        &\eqref{eq:dual_mu_tilde}\quad (\text{primal: } \tilde{\mu}_k^s),\\
+        &\eqref{eq:dual_pi_tilde}\quad (\text{primal: } \tilde{\Pi}^s),\\
+        &\eqref{eq:dual_y_tilde} \quad (\text{primal: } \tilde{Y}^s),\\
+        &\eqref{eq:dual_lambda1_tilde} \quad (\text{primal: } \tilde{\Lambda}_1^s),\\
+        &\eqref{eq:dual_lambda2_tilde} \quad (\text{primal: } \tilde{\Lambda}_2^s)
+    \end{align}
+\end{subequations}
+
+
+The inner subproblems $Z_1^{L,s}(\alpha_k)$ and $Z_1^{F,s}(\alpha_k)$ are SDP. Their duals are SDP, which resemble the original primal problem but with $\alpha_k$ as a given parameter instead of a decision variable.
+
+\subsection{Dual of $Z_1^{L,s}(\alpha_k)$ (SDP)}
+
+\subsubsection{Decision Variables}
+$$\hat{\eta}^s, \hat{\Phi}^s, \hat{W}^s, \hat{\mu}^s, \hat{\Pi}^s, \hat{\Lambda}_1^s, \hat{\Lambda}_2^s$$
+
+\subsubsection{Dual Problem}
+\begin{subequations}
+\begin{align}
+\min \quad & \frac{1}{S}\hat{\eta}^s + \sum_{k \in \mathcal{A}} \alpha_k \hat{\mu}_k^s \\
+\text{s.t.} \quad &\eqref{eq:primal_psd_hat},\hat{\vartheta}^{s}\geq0\;\forall s\in [S]\\
+& \eqref{eq:primal_mccormick_hat} \\
+& \eqref{eq:primal_Lambda1_hat} \\
+& \eqref{eq:primal_Lambda2_hat}
+\end{align}
+\end{subequations}
+
+\subsubsection{Key Difference from Original Primal}
+\begin{itemize}
+\item \textbf{Objective}: The term $\sum_{k \in \mathcal{A}} \alpha_k \hat{\mu}_k^s$ is added, where $\alpha_k$ is a \textbf{given parameter} (not a decision variable)
+\item \textbf{Missing constraint}: The constraint $\nu \geq \sum_s (\hat{\mu}_k^s + \tilde{\mu}_k^s)$ is now in the master problem
+\end{itemize}
+
+\subsection{Dual of $Z_1^{F,s}(\alpha_k)$ (SDP)}
+
+\subsubsection{Decision Variables}
+$$\tilde{\eta}^s, \tilde{\Phi}^s, \tilde{W}^s, \tilde{Y}_{ts}^s, \tilde{\mu}^s, \tilde{\Pi}^s, \tilde{Y}^s, \tilde{\Lambda}_1^s, \tilde{\Lambda}_2^s$$
+
+\subsubsection{Dual Problem}
+\begin{subequations}
+\begin{align}
+\min \quad & \frac{1}{S}\tilde{\eta}^s + \sum_{k \in \mathcal{A}} \alpha_k \tilde{\mu}_k^s \\
+\text{s.t.} \quad &  \eqref{eq:primal_psd_tilde},\tilde{\vartheta}^{s}\geq 0\;\forall s\in [S]\\
+& \eqref{eq:primal_mccormick_tilde}\\
+& \eqref{eq:primal_Lambda1_tilde}\\
+& \eqref{eq:primal_Lambda2_tilde}
+\end{align}
+\end{subequations}
+
+\subsubsection{Key Difference from Original Primal}
+\begin{itemize}
+\item \textbf{Objective}: The term $\sum_{k \in \mathcal{A}} \alpha_k \tilde{\mu}_k^s$ is added, where $\alpha_k$ is a \textbf{given parameter} (not a decision variable)
+\item \textbf{Missing constraint}: The constraint $\nu \geq \sum_s (\hat{\mu}_k^s + \tilde{\mu}_k^s)$ is now in the master problem
+\end{itemize}
+
+Both dual inner subproblems are Copositive Programs that:
+\begin{enumerate}
+\item Have the same structure as the original primal COP
+\item Include $\sum_{k \in \mathcal{A}} \alpha_k \mu_k^s$ in the objective (with $\alpha_k$ as parameters)
+\item Are parameterized by $\alpha_k$ from the master problem
+\item Can be solved independently for each scenario $s$
+\end{enumerate}
+
+The master problem coordinates the $\alpha_k$ values subject to $\sum_{k \in \mathcal{A}} \alpha_k = w$, and uses Benders cuts from these subproblems.
+
+
+\section{Reference}
+% \bibliographystyle{plain}
+% \bibliography{reference.bib}
+\end{document}

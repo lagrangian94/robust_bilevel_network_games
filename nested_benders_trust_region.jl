@@ -306,7 +306,8 @@ function tr_imp_optimize!(imp_model::Model, imp_vars::Dict, isp_leader_instances
         end
         if inner_tr && imp_cuts[:old_tr_constraints] !== nothing
             for tr_cons in imp_cuts[:old_tr_constraints]
-                delete.(imp_model, tr_cons)
+                valid_cons = filter(c -> is_valid(imp_model, c), tr_cons)
+                delete.(imp_model, valid_cons)
             end
         end
     end
@@ -526,7 +527,7 @@ function evaluate_master_opt_cut(isp_leader_instances::Dict, isp_follower_instan
 end
 
 
-function tr_nested_benders_optimize!(omp_model::Model, omp_vars::Dict, network, ϕU, λU, γ, w, uncertainty_set; mip_optimizer=nothing, conic_optimizer=nothing, multi_cut=false, outer_tr=true, inner_tr=true)
+function tr_nested_benders_optimize!(omp_model::Model, omp_vars::Dict, network, ϕU, λU, γ, w, uncertainty_set; mip_optimizer=nothing, conic_optimizer=nothing, multi_cut=false, outer_tr=true, inner_tr=true, max_outer_iter=1000)
     ### -------- Trust Region 초기화 --------
     if outer_tr
         B_bin_sequence = [0.05, 0.5, 1.0]
@@ -586,7 +587,7 @@ function tr_nested_benders_optimize!(omp_model::Model, omp_vars::Dict, network, 
     major_iter = []
     bin_B_steps = [] # B_bin이 몇번째 outer loop에서 바꼈는지 체크
     # null_steps = []
-    imp_cuts = Dict{Symbol, Any}()
+    imp_cuts = Dict{Symbol, Any}(:old_tr_constraints => nothing)
     result = Dict()
     result[:cuts] = Dict()
     result[:tr_info] = Dict()
@@ -603,6 +604,10 @@ function tr_nested_benders_optimize!(omp_model::Model, omp_vars::Dict, network, 
     time_start = time()    
     while (st == MOI.DUAL_INFEASIBLE || st == MOI.OPTIMAL)
         iter += 1
+        if iter > max_outer_iter
+            @warn "Maximum outer iterations ($max_outer_iter) reached. Gap = $gap"
+            break
+        end
         if outer_tr
             @info "Outer Iteration $iter (B_bin=$B_bin, Stage=$(B_bin_stage+1)/$(length(B_bin_sequence)))"
         else
@@ -818,6 +823,11 @@ function tr_nested_benders_optimize!(omp_model::Model, omp_vars::Dict, network, 
             end
         end
     end
+    # max_outer_iter에 도달했거나 while 조건이 false가 된 경우
+    result[:past_upper_bound] = past_upper_bound
+    result[:past_lower_bound] = past_lower_bound
+    result[:opt_sol] = Dict(:x=>x_sol, :h=>h_sol, :λ=>λ_sol, :ψ0=>ψ0_sol)
+    return result
 end
 
 
