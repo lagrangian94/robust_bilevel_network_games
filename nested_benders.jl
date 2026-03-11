@@ -140,6 +140,8 @@ function imp_optimize!(imp_model::Model, imp_vars::Dict, isp_leader_instances::D
     st = MOI.get(imp_model, MOI.TerminationStatus())
     iter = 0
     uncertainty_set = isp_data[:uncertainty_set]
+    R, r_dict, xi_bar, epsilon = uncertainty_set[:R], uncertainty_set[:r_dict], uncertainty_set[:xi_bar], uncertainty_set[:epsilon]
+    S = isp_data[:S]
     past_obj = []
     past_subprob_obj = []
     past_lower_bound = []
@@ -156,7 +158,7 @@ function imp_optimize!(imp_model::Model, imp_vars::Dict, isp_leader_instances::D
     ##
     while (st == MOI.DUAL_INFEASIBLE || st == MOI.OPTIMAL)
         iter += 1
-        @info "Inner Benders Iteration $iter"
+        @info "    [Inner] Iteration $iter"
         optimize!(imp_model)
         st = MOI.get(imp_model, MOI.TerminationStatus())
         α_sol = value.(imp_vars[:α])
@@ -339,7 +341,7 @@ function nested_benders_optimize!(omp_model::Model, omp_vars::Dict, network, ϕU
     time_start = time()
     while (st == MOI.DUAL_INFEASIBLE || st == MOI.OPTIMAL)
         iter += 1
-        @info "Iteration $iter"
+        @info "[Outer] Iteration $iter"
         optimize!(omp_model)
         st = MOI.get(omp_model, MOI.TerminationStatus())
         x_sol, h_sol, λ_sol, ψ0_sol = value.(omp_vars[:x]), value.(omp_vars[:h]), value(omp_vars[:λ]), value.(omp_vars[:ψ0])
@@ -378,6 +380,7 @@ function nested_benders_optimize!(omp_model::Model, omp_vars::Dict, network, ϕU
                 push!(past_obj, t_0_sol)
                 push!(past_subprob_obj, cut_info[:obj_val])
                 push!(past_upper_bound, upper_bound)
+                @info "[Outer] Iter $iter: LB=$(round(t_0_sol, digits=4))  UB=$(round(upper_bound, digits=4))  gap=$(round(abs(upper_bound - t_0_sol), digits=6))"
                 outer_cut_info = evaluate_master_opt_cut(leader_instances, follower_instances, isp_data, cut_info, iter, multi_cut=multi_cut)
                 if multi_cut
                     cut_1_l =  -ϕU * [sum(outer_cut_info[:Uhat1][s,:,:] .* diag_x_E) for s in 1:S]

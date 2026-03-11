@@ -166,14 +166,23 @@ for (net_name, gen_func) in realworld_generators
 
     net_results = Dict{String, Float64}()
 
-    # --- Strict Benders ---
-    println("\n  [Strict Benders]")
+    # # --- Strict Benders ---
+    # println("\n  [Strict Benders]")
+    # GC.gc()
+    # m1, v1 = build_omp(rw_network, ϕU, λU, γ, w; optimizer=Gurobi.Optimizer, multi_cut=false)
+    # t_start = time()
+    # strict_benders_optimize!(m1, v1, rw_network, ϕU, λU, γ, w, rw_uset; optimizer=Gurobi.Optimizer, outer_tr=true)
+    # net_results["strict_benders"] = time() - t_start
+    # println("    Time: $(round(net_results["strict_benders"], digits=2)) sec")
+
+    # --- Nested Benders ---
+    println("\n  [Nested Benders]")
     GC.gc()
-    m1, v1 = build_omp(rw_network, ϕU, λU, γ, w; optimizer=Gurobi.Optimizer, multi_cut=false)
+    m2, v2 = build_omp(rw_network, ϕU, λU, γ, w; optimizer=Gurobi.Optimizer, multi_cut=true)
     t_start = time()
-    strict_benders_optimize!(m1, v1, rw_network, ϕU, λU, γ, w, rw_uset; optimizer=Gurobi.Optimizer, outer_tr=true)
-    net_results["strict_benders"] = time() - t_start
-    println("    Time: $(round(net_results["strict_benders"], digits=2)) sec")
+    nested_benders_optimize!(m2, v2, rw_network, ϕU, λU, γ, w, rw_uset; mip_optimizer=Gurobi.Optimizer, conic_optimizer=Mosek.Optimizer, multi_cut=true)
+    net_results["nested_benders"] = time() - t_start
+    println("    Time: $(round(net_results["nested_benders"], digits=2)) sec")
 end
 @infiltrate
 network = generate_grid_network(3, 4, seed=seed)

@@ -314,7 +314,7 @@ function tr_imp_optimize!(imp_model::Model, imp_vars::Dict, isp_leader_instances
     ##
     while (st == MOI.DUAL_INFEASIBLE || st == MOI.OPTIMAL)
         iter += 1
-        @info "Inner Benders Iteration $iter"
+        @info "    [Inner] Iteration $iter"
         optimize!(imp_model)
         st = MOI.get(imp_model, MOI.TerminationStatus())
         α_sol = value.(imp_vars[:α])
@@ -609,9 +609,9 @@ function tr_nested_benders_optimize!(omp_model::Model, omp_vars::Dict, network, 
             break
         end
         if outer_tr
-            @info "Outer Iteration $iter (B_bin=$B_bin, Stage=$(B_bin_stage+1)/$(length(B_bin_sequence)))"
+            @info "[Outer] Iteration $iter (B_bin=$B_bin, Stage=$(B_bin_stage+1)/$(length(B_bin_sequence)))"
         else
-            @info "Outer Iteration $iter (no outer TR)"
+            @info "[Outer] Iteration $iter"
         end
         # Outer Master Problem 풀기
         optimize!(omp_model)
@@ -662,6 +662,7 @@ function tr_nested_benders_optimize!(omp_model::Model, omp_vars::Dict, network, 
                     tr_needs_update = true
                 end
             end
+            @info "[Outer] Iter $iter: LB=$(round(lower_bound, digits=4))  UB=$(round(upper_bound, digits=4))  gap=$(round(gap, digits=6))"
             # 배열에 history 저장
             push!(past_lower_bound, lower_bound)
             push!(past_model_estimate, model_estimate)
