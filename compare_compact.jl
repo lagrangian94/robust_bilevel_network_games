@@ -44,13 +44,13 @@ include("compact_ldr_utils.jl")
 include("build_isp_compact.jl")
 
 # ===== Parameters =====
-ϕU = 10.0
 λU = 10.0
 γ = 2.0
 w = 1.0
 v = 1.0
 seed = 42
 epsilon = 0.5
+ϕU = 1/epsilon # valid upper bound?
 multi_cut = true
 
 # ===== JIT Warm-up (원본만) =====

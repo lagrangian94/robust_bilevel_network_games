@@ -90,14 +90,13 @@ using .NetworkGenerator: generate_grid_network, generate_capacity_scenarios_unif
 
 # ===== Common Parameters =====
 S = 1
-ϕU = 10.0 ## TODO:: 이거 1로 낮춰도 되지않나?
 λU = 10.0
 γ = 2.0
 w = 1.0
 v = 1.0
 seed = 42
 epsilon = 0.5
-
+ϕU = 1/epsilon # valid upper bound?
 # ===== JIT Warm-up =====
 #
 # Julia는 JIT(Just-In-Time) 컴파일러를 사용한다. 함수가 처음 호출될 때 Julia는

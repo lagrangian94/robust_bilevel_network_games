@@ -19,7 +19,6 @@ println("="^80)
 
 # Model parameters
 S = 2  # Number of scenarios
-ϕU = 10.0  # Upper bound on interdiction effectiveness
 λU = 10.0  # Upper bound on λ
 γ = 2.0  # Interdiction budget
 w = 1.0  # Budget weight
@@ -27,7 +26,7 @@ v = 1.0  # Interdiction effectiveness parameter (NOT the decision variable ν!)
 seed = 42
 
 epsilon = 0.5  # Robustness parameter
-
+ϕU = 1/epsilon # Upper bound on interdiction effectiveness, valid upper bound?
 # ===== JIT Warm-up =====
 #
 # Julia는 JIT(Just-In-Time) 컴파일러를 사용한다. 함수가 처음 호출될 때 Julia는

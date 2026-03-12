@@ -32,17 +32,16 @@ println("="^80)
 
 # ===== Parameters =====
 S = 1
-ϕU = 1.0 # valid upper bound?
 λU = 10.0
 γ = 2.0
 w = 1.0
 v = 1.0
 seed = 42
 epsilon = 0.5
-
+ϕU = 1/epsilon # valid upper bound?
 # ===== Generate Network & Uncertainty Set =====
 println("\n[1] Generating 3×3 grid network...")
-network = generate_grid_network(4, 4, seed=seed)
+network = generate_grid_network(5, 5, seed=seed)
 print_network_summary(network)
 
 capacities, F = generate_capacity_scenarios_uniform_model(length(network.arcs), S, seed=seed)

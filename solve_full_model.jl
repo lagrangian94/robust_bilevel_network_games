@@ -32,7 +32,6 @@ function show_nonzero(var; tol=1e-8)
 end
 # Model parameters
 S = 2# Number of scenarios
-ϕU = 10.0  # Upper bound on interdiction effectiveness
 λU = 10.0  # Upper bound on λ
 γ = 2.0  # Interdiction budget
 w = 1.0  # Budget weight
@@ -40,7 +39,8 @@ v = 1.0  # Interdiction effectiveness parameter (NOT the decision variable ν!)
 seed = 42
 mip_solver = Gurobi.Optimizer
 conic_solver = Mosek.Optimizer
-
+epsilon = 0.5  # Robustness parameter
+ϕU = 1/epsilon # Upper bound on interdiction effectiveness, valid upper bound?
 # Generate a small test network
 println("\n[1] Generating 3×3 grid network...")
 network = generate_grid_network(4, 4, seed=seed)
@@ -62,7 +62,6 @@ println("="^80)
 
 # Remove dummy arc from capacity scenarios (|A| = regular arcs only)
 capacity_scenarios_regular = capacities[1:end-1, :]  # Remove last row (dummy arc)
-epsilon = 0.5  # Robustness parameter
 # @infiltrate
 println("\n[3] Building R and r matrices...")
 println("Number of regular arcs |A|: $(size(capacity_scenarios_regular, 1))")
