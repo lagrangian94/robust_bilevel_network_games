@@ -18,11 +18,11 @@ using LinearAlgebra
 using Infiltrator
 using Revise
 
-includet("network_generator.jl")
-includet("build_uncertainty_set.jl")
-includet("strict_benders.jl")
-includet("nested_benders_trust_region.jl")
-includet("build_primal_isp.jl")
+includet("../network_generator.jl")
+includet("../build_uncertainty_set.jl")
+includet("../strict_benders.jl")
+includet("../nested_benders_trust_region.jl")
+includet("../build_primal_isp.jl")
 
 using .NetworkGenerator: generate_grid_network, generate_capacity_scenarios_uniform_model, print_network_summary
 
@@ -42,7 +42,7 @@ epsilon = 0.5
 
 # ===== Generate Network & Uncertainty Set =====
 println("\n[1] Generating 3×3 grid network...")
-network = generate_grid_network(3, 3, seed=seed)
+network = generate_grid_network(4, 4, seed=seed)
 print_network_summary(network)
 
 capacities, F = generate_capacity_scenarios_uniform_model(length(network.arcs), S, seed=seed)

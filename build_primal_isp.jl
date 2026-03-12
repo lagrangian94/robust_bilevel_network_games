@@ -406,6 +406,14 @@ function primal_isp_leader_optimize!(model::Model, vars::Dict;
             "Primal ISP leader strong duality failed: " *
             "obj_val=$obj_val, model_obj=$(objective_value(model))")
 
+        # IPM artifact correction: Mosek (IPM) returns analytic center, inflating μ
+        # with +ε offset on zero-cost components. Subtract ε and clamp to 0.
+        # See memory/ipm_mu_offset.md for detailed explanation.
+        ε = isp_data[:uncertainty_set][:epsilon]
+        subgradient = max.(subgradient .- ε, 0.0)
+        # Recompute intercept so cut remains tight: intercept = obj_val - α'·μ_corrected
+        intercept = obj_val - α_sol' * subgradient
+
         cut_coeff = Dict(:μhat => subgradient, :intercept => intercept, :obj_val => obj_val)
         return (:OptimalityCut, cut_coeff)
     else
@@ -445,6 +453,12 @@ function primal_isp_follower_optimize!(model::Model, vars::Dict;
             @warn "Primal ISP follower strong duality gap: obj_val=$obj_val, model_obj=$(objective_value(model))"
             @infiltrate
         end
+
+        # IPM artifact correction: subtract ε offset and clamp to 0
+        # See memory/ipm_mu_offset.md for detailed explanation.
+        ε = isp_data[:uncertainty_set][:epsilon]
+        subgradient = max.(subgradient .- ε, 0.0)
+        intercept = obj_val - α_sol' * subgradient
 
         cut_coeff = Dict(:μtilde => subgradient, :intercept => intercept, :obj_val => obj_val)
         return (:OptimalityCut, cut_coeff)
