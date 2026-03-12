@@ -100,41 +100,76 @@ IMP에서 다른 α를 시도할 때:
 - IPM cut: `t ≤ intercept + Σ α_k · (μ_k^true + ε)` → 모든 방향에 +ε bias
   → cut RHS가 `ε · Σα_k`만큼 높아짐 → **looser upper bound** → IMP가 덜 constrained
 
+## Offset 정밀 분석 (test_offset_by_alpha.jl)
+
+α density별 offset 측정 결과 (5×5 grid, S=1, ε=0.5):
+
+| α_k 값 | μ offset (primal - dual) | 비고 |
+|---------|-------------------------|------|
+| α_k = 0 | **정확히 +ε (+0.5)** | zero-cost → IPM analytic center |
+| α_k > 0 | **≈ 0 (1e-5)** | nonzero cost → IPM이 정확한 값 반환 |
+
+이 패턴은 α의 density(1/47 ~ 47/47)에 관계없이 일관적.
+
 ## 보정 방법
 
+### V1 (blanket subtraction) — 부분적으로만 작동
 ```julia
-# 1. Primal ISP를 평소대로 풀고, objective_value(model)에서 obj_val 추출
-obj_val = intercept_raw + α' · μ_raw
-
-# 2. μ에서 ε offset 제거
 μ_corrected = max.(μ_raw .- ε, 0.0)
-
-# 3. Intercept를 재계산하여 cut tightness 유지
-#    핵심: obj_val은 변경하지 않음 (ISP의 진짜 최적값)
-#    intercept_new + α' · μ_corrected = obj_val 이 되도록
-intercept_corrected = obj_val - α' · μ_corrected
 ```
+문제: α_k > 0인 component에서 offset이 0인데도 ε를 빼버림 → μ가 과도하게 작아짐.
+첫 inner loop (α 전부 0)에서는 완벽하지만, 이후 dense α에서 성능 저하.
+
+### V2 (conditional subtraction) — 올바른 보정 ✓
+```julia
+ε = uncertainty_set[:epsilon]
+for k in eachindex(subgradient)
+    if α_sol[k] < 1e-8  # zero-cost component만 보정
+        subgradient[k] = max(subgradient[k] - ε, 0.0)
+    end
+end
+# Intercept 재계산: cut tightness 유지
+intercept = obj_val - α_sol' * subgradient
+```
+
+**핵심**: `obj_val = objective_value(model)` (ISP의 진짜 최적값)은 변경하지 않음.
 
 **왜 이게 valid한가:**
 - V(α*)에서의 subgradient는 optimal dual variable의 하나
-- α_k = 0인 component에서 μ_k는 free (어떤 optimal 값이든 valid subgradient)
-- `max(0, μ - ε)`는 feasible한 다른 optimal point → valid subgradient
-- α_k > 0인 component에서: μ_k - ε도 여전히 올바른 값
-  (IPM이 이 component에도 +ε offset을 추가했으므로)
+- α_k = 0인 component에서: μ_k는 free (어떤 optimal 값이든 valid subgradient).
+  `max(0, μ - ε)`는 feasible한 다른 optimal point → valid subgradient
+- α_k > 0인 component에서: offset ≈ 0이므로 보정 불필요, 그대로 사용
 
 ## 보정 후 결과 (5×5 grid, S=1)
 
-| 항목 | Dual ISP | Primal ISP (보정 전) | Primal ISP (보정 후) |
-|------|---------|-------------------|-------------------|
-| Inner iterations | 2 | 23 | 2 |
-| 수렴 값 | 17.7072 | 17.7072 | 17.7072 |
-| μ nonzeros | 11 | 46 | 9 |
-| μ diff vs dual | - | ~0.5 uniform | ~1e-5 |
+### 단일 inner loop (test_inner_cut_quality.jl)
+| 항목 | Dual ISP | Primal (보정 전) | Primal (V1) | Primal (V2) |
+|------|---------|----------------|-------------|-------------|
+| Inner iterations | 2 | 23 | 2 | 2 |
+| 수렴 값 | 17.7072 | 17.7072 | 17.7072 | 17.7072 |
+
+### Full Benders (test_hybrid_benders.jl)
+| 항목 | Original (dual) | Hybrid (V1 blanket) | Hybrid (V2 conditional) |
+|------|----------------|--------------------|-----------------------|
+| Outer iters | 60 | 58 | 62 |
+| Inner iters | 242 | 371 | **273** |
+| Time | 61.9s | 78.6s | **64.2s** |
+
+V2가 original과 거의 동등한 성능 (inner 273 vs 242, time 64s vs 62s).
+
+### Full Primal
+| 항목 | V1 blanket | V2 conditional |
+|------|-----------|---------------|
+| Outer | 93 | 93 |
+| Inner | 563 | **432** |
+| Time | 100.7s | **79.6s** |
+
+Full Primal의 outer iteration이 많은 것은 outer cut quality 차이 (별도 이슈).
 
 ## 의의
 
 1. **Conic Benders에서 IPM solver의 subgradient bias**: LP Benders에서는 simplex가 vertex solution을
    주므로 이 문제가 없음. Conic (SDP/SOCP) Benders에서만 발생.
 2. **문제 구조에 의존하는 bias**: offset이 ε (uncertainty set radius)에 정확히 비례.
-   다른 conic Benders 문제에서도 유사한 bias가 있을 수 있음.
-3. **간단한 보정**: `max(0, μ - ε)` + intercept 재계산. 구현 1줄.
+   α_k = 0인 component에서만 발생 (zero-cost variable → analytic center).
+3. **Conditional 보정**: α_k ≈ 0인 component에서만 `max(0, μ - ε)`. 간단하고 정확.

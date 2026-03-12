@@ -407,10 +407,15 @@ function primal_isp_leader_optimize!(model::Model, vars::Dict;
             "obj_val=$obj_val, model_obj=$(objective_value(model))")
 
         # IPM artifact correction: Mosek (IPM) returns analytic center, inflating μ
-        # with +ε offset on zero-cost components. Subtract ε and clamp to 0.
+        # with +ε offset on ZERO-COST components only (where α_k ≈ 0).
+        # When α_k > 0, μ_k has nonzero objective coefficient → no offset.
         # See memory/ipm_mu_offset.md for detailed explanation.
         ε = isp_data[:uncertainty_set][:epsilon]
-        subgradient = max.(subgradient .- ε, 0.0)
+        for k in eachindex(subgradient)
+            if α_sol[k] < 1e-8
+                subgradient[k] = max(subgradient[k] - ε, 0.0)
+            end
+        end
         # Recompute intercept so cut remains tight: intercept = obj_val - α'·μ_corrected
         intercept = obj_val - α_sol' * subgradient
 
@@ -454,10 +459,14 @@ function primal_isp_follower_optimize!(model::Model, vars::Dict;
             @infiltrate
         end
 
-        # IPM artifact correction: subtract ε offset and clamp to 0
+        # IPM artifact correction: subtract ε offset only on zero-cost components (α_k ≈ 0).
         # See memory/ipm_mu_offset.md for detailed explanation.
         ε = isp_data[:uncertainty_set][:epsilon]
-        subgradient = max.(subgradient .- ε, 0.0)
+        for k in eachindex(subgradient)
+            if α_sol[k] < 1e-8
+                subgradient[k] = max(subgradient[k] - ε, 0.0)
+            end
+        end
         intercept = obj_val - α_sol' * subgradient
 
         cut_coeff = Dict(:μtilde => subgradient, :intercept => intercept, :obj_val => obj_val)

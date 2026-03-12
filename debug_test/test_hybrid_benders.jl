@@ -32,7 +32,7 @@ println("="^80)
 
 # ===== Parameters =====
 S = 1
-ϕU = 10.0
+ϕU = 1.0 # valid upper bound?
 λU = 10.0
 γ = 2.0
 w = 1.0

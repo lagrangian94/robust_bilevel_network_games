@@ -30,24 +30,27 @@ Residual intercept approach: `intercept = subprob_obj - eval(cut_terms at x*,h*,
 ## IPM Artifact: μ offset = ε (CRITICAL)
 Mosek (IPM) returns analytic center for zero-cost variables. When α_k = 0, μhat_k has
 zero objective coefficient → IPM inflates μhat_k by +ε (epsilon from uncertainty set).
+Offset is ONLY on α_k = 0 components; α_k > 0 components have offset ≈ 0.
 
-**Fix** (in `primal_isp_leader/follower_optimize!`):
+**Fix** (conditional, in `primal_isp_leader/follower_optimize!`):
 ```julia
-subgradient = max.(subgradient .- ε, 0.0)   # remove IPM offset
+ε = uncertainty_set[:epsilon]
+for k in eachindex(subgradient)
+    if α_sol[k] < 1e-8  # only correct zero-cost components
+        subgradient[k] = max(subgradient[k] - ε, 0.0)
+    end
+end
 intercept = obj_val - α_sol' * subgradient   # preserve cut tightness
 ```
 - `obj_val` stays as `objective_value(model)` (unchanged)
-- `intercept` is recomputed so cut is tight at current α
+- Blanket `max.(μ .- ε, 0)` over-corrects α_k > 0 components → degrades later iters
 
-Verified: offset scales with ε (ε=0.5→offset=0.5, ε=0.3→offset=0.3).
-Without fix: 23 inner iters. With fix: 2 inner iters (matches dual ISP).
-
-## Performance (3×3 grid, S=1, before IPM fix)
+## Performance (5×5 grid, S=1, with conditional IPM fix)
 | Method | Outer iter | Inner iter | Time |
 |--------|-----------|-----------|------|
-| Original (dual) | 12 | 48 | 10.2s |
-| Hybrid | 11 | 228 | 12.2s |
-| Full Primal | 15 | 376 | 17.6s |
+| Original (dual) | 60 | 242 | 61.9s |
+| Hybrid (conditional fix) | 62 | 273 | 64.2s |
+| Full Primal (conditional fix) | 93 | 432 | 79.6s |
 
 All converge to same solution (obj gap < 1e-5).
 
