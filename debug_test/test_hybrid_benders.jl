@@ -48,7 +48,7 @@ epsilon = 0.5
 ϕU = 1/epsilon # valid upper bound?
 # ===== Generate Network & Uncertainty Set =====
 println("\n[1] Generating 5×5 grid network...")
-network = generate_grid_network(5, 5, seed=seed)
+network = generate_grid_network(4, 4, seed=seed)
 print_network_summary(network)
 
 # Compute γ from network size
