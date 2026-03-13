@@ -31,25 +31,47 @@ println("HYBRID NESTED BENDERS TEST")
 println("="^80)
 
 # ===== Parameters =====
+# 옛날 파라미터.
+# γ = 2.0
+# w = 1.0
+# v = 1.0
+
 S = 1
 λU = 10.0
-γ = 2.0
-w = 1.0
+γ_ratio = 0.10  # Interdiction budget as fraction of interdictable arcs: γ = ceil(γ_ratio * |A_I|)
+                 # Sensitivity: γ_ratio ∈ {0.03, 0.05, 0.10}
+ρ = 0.2  # Recovery power ratio: w = ρ·γ·c̄, follower's max recovery = ρ × expected interdiction damage
+         # Sensitivity: ρ ∈ {0.05, 0.1, 0.2, 0.3}
 v = 1.0
 seed = 42
 epsilon = 0.5
 ϕU = 1/epsilon # valid upper bound?
 # ===== Generate Network & Uncertainty Set =====
-println("\n[1] Generating 3×3 grid network...")
+println("\n[1] Generating 5×5 grid network...")
 network = generate_grid_network(5, 5, seed=seed)
 print_network_summary(network)
 
+# Compute γ from network size
+num_arcs = length(network.arcs) - 1
+num_interdictable = sum(network.interdictable_arcs[1:num_arcs])
+γ = ceil(Int, γ_ratio * num_interdictable)
+println("  Interdiction budget: γ = ceil($γ_ratio × $num_interdictable) = $γ")
+
 capacities, F = generate_capacity_scenarios_uniform_model(length(network.arcs), S, seed=seed)
+
+# Compute w = ρ · γ · c̄ (mean capacity of interdictable arcs)
+interdictable_idx = findall(network.interdictable_arcs[1:num_arcs])
+c_bar = sum(capacities[interdictable_idx, :]) / (length(interdictable_idx) * S)
+w = ρ * γ * c_bar
+println("  Recovery budget: w = ρ·γ·c̄ = $ρ × $γ × $(round(c_bar, digits=2)) = $(round(w, digits=4))")
+
+
+# γ = 2.0
+# w = 1.0
+
 capacity_scenarios_regular = capacities[1:end-1, :]
 R, r_dict, xi_bar = build_robust_counterpart_matrices(capacity_scenarios_regular, epsilon)
 uncertainty_set = Dict(:R => R, :r_dict => r_dict, :xi_bar => xi_bar, :epsilon => epsilon)
-
-num_arcs = length(network.arcs) - 1
 
 # =====================================================================
 # TEST 1: Run original tr_nested_benders_optimize!
@@ -72,6 +94,7 @@ println("  Inner iterations per outer: $(result_orig[:inner_iter])")
 if haskey(result_orig, :opt_sol)
     println("  x* = $(result_orig[:opt_sol][:x])")
     println("  λ* = $(result_orig[:opt_sol][:λ])")
+    println("  h* = $(result_orig[:opt_sol][:h]/result_orig[:opt_sol][:λ]) (recovered)")
 end
 
 # =====================================================================
@@ -90,6 +113,22 @@ omp_model_hyb, omp_vars_hyb = build_omp(network, ϕU, λU, γ, w;
 
 function tr_nested_benders_optimize_hybrid!(omp_model::Model, omp_vars::Dict, network, ϕU, λU, γ, w, uncertainty_set;
     mip_optimizer=nothing, conic_optimizer=nothing, multi_cut=false, outer_tr=true, inner_tr=true, max_outer_iter=1000, full_primal=false)
+
+    # full_primal=true is NOT recommended.
+    # Outer cut extraction via Mosek IPM shadow prices (evaluate_master_opt_cut_from_primal)
+    # produces inaccurate cut coefficients due to conic dual degeneracy.
+    # Unlike the inner cut μ offset (uniform +ε, correctable), outer cut shadow prices
+    # differ non-uniformly (30-40%) from dual ISP variable values, making simple correction impossible.
+    # This leads to invalid outer cuts → OMP selects extreme (x,h,λ,ψ0) → primal ISP infeasible.
+    # Use full_primal=false (hybrid mode: primal ISP inner + dual ISP outer) instead.
+    # See memory/ipm_mu_offset.md and debug_test/test_outer_cut_compare.jl for details.
+    if full_primal
+        error(
+            "full_primal=true is disabled: outer cut extraction from primal ISP shadow prices " *
+            "is unreliable due to IPM conic dual degeneracy (non-uniform 30-40% coefficient errors). " *
+            "Use full_primal=false (hybrid mode: primal ISP inner loop + dual ISP outer cuts) instead."
+        )
+    end
 
     ### -------- Trust Region 초기화 --------
     if outer_tr
@@ -391,6 +430,7 @@ println("  Inner iterations per outer: $(result_hyb[:inner_iter])")
 if haskey(result_hyb, :opt_sol)
     println("  x* = $(result_hyb[:opt_sol][:x])")
     println("  λ* = $(result_hyb[:opt_sol][:λ])")
+    println("  h* = $(result_hyb[:opt_sol][:h]/result_hyb[:opt_sol][:λ]) (recovered)")
 end
 
 # =====================================================================
@@ -427,44 +467,21 @@ println("  Time (orig): $(result_orig[:solution_time]) s")
 println("  Time (hybrid): $(result_hyb[:solution_time]) s")
 
 # =====================================================================
-# TEST 3: Run full primal nested Benders (no dual ISP at all)
+# COMPARISON: Original vs Hybrid
 # =====================================================================
 println("\n" * "="^80)
-println("TEST 3: Full Primal nested Benders (primal ISP only, no dual ISP)")
-println("="^80)
-
-omp_model_fp, omp_vars_fp = build_omp(network, ϕU, λU, γ, w;
-    optimizer=Gurobi.Optimizer, multi_cut=true)
-
-result_fp = tr_nested_benders_optimize_hybrid!(omp_model_fp, omp_vars_fp, network,
-    ϕU, λU, γ, w, uncertainty_set;
-    mip_optimizer=Gurobi.Optimizer, conic_optimizer=Mosek.Optimizer,
-    multi_cut=true, outer_tr=true, inner_tr=true, full_primal=true)
-
-println("\nFull Primal result:")
-println("  Solution time: $(result_fp[:solution_time]) s")
-println("  Inner iterations per outer: $(result_fp[:inner_iter])")
-if haskey(result_fp, :opt_sol)
-    println("  x* = $(result_fp[:opt_sol][:x])")
-    println("  λ* = $(result_fp[:opt_sol][:λ])")
-end
-
-# =====================================================================
-# COMPARISON: All three methods
-# =====================================================================
-println("\n" * "="^80)
-println("COMPARISON: Original vs Hybrid vs Full Primal")
+println("COMPARISON: Original vs Hybrid")
 println("="^80)
 
 # Compare optimal solutions
-for (name, res) in [("Original", result_orig), ("Hybrid", result_hyb), ("Full Primal", result_fp)]
+for (name, res) in [("Original", result_orig), ("Hybrid", result_hyb)]
     if haskey(res, :opt_sol)
         println("  $name: x*=$(res[:opt_sol][:x]), λ*=$(res[:opt_sol][:λ])")
     end
 end
 
 # Compare objectives
-for (name, res) in [("Original", result_orig), ("Hybrid", result_hyb), ("Full Primal", result_fp)]
+for (name, res) in [("Original", result_orig), ("Hybrid", result_hyb)]
     if haskey(res, :past_local_lower_bound)
         obj = minimum(res[:past_local_lower_bound])
         println("  $name objective: $obj")
@@ -472,17 +489,24 @@ for (name, res) in [("Original", result_orig), ("Hybrid", result_hyb), ("Full Pr
 end
 
 # Compare iteration counts and times
-for (name, res) in [("Original", result_orig), ("Hybrid", result_hyb), ("Full Primal", result_fp)]
+for (name, res) in [("Original", result_orig), ("Hybrid", result_hyb)]
     println("  $name: outer=$(length(res[:inner_iter])), inner=$(sum(res[:inner_iter])), time=$(res[:solution_time])s")
 end
 
-# Pairwise gaps
-if haskey(result_orig, :past_local_lower_bound) && haskey(result_fp, :past_local_lower_bound)
+# Objective gap
+if haskey(result_orig, :past_local_lower_bound) && haskey(result_hyb, :past_local_lower_bound)
     orig_obj = minimum(result_orig[:past_local_lower_bound])
-    fp_obj = minimum(result_fp[:past_local_lower_bound])
-    gap = abs(orig_obj - fp_obj)
-    println("\n  Orig vs Full Primal objective gap: $gap  $(gap < 1e-3 ? "✓" : "✗")")
+    hyb_obj = minimum(result_hyb[:past_local_lower_bound])
+    gap = abs(orig_obj - hyb_obj)
+    println("\n  Orig vs Hybrid objective gap: $gap  $(gap < 1e-3 ? "✓" : "✗")")
 end
+
+# NOTE: full_primal=true is disabled.
+# Outer cut extraction via Mosek IPM shadow prices (evaluate_master_opt_cut_from_primal)
+# produces non-uniformly inaccurate coefficients (30-40% error vs dual ISP variable values)
+# due to conic dual degeneracy. This causes invalid outer cuts → OMP extreme solutions → ISP infeasible.
+# Unlike inner cut μ offset (uniform +ε, correctable), this cannot be simply fixed.
+# See memory/ipm_mu_offset.md and debug_test/test_outer_cut_compare.jl.
 
 println("\n" * "="^80)
 println("TEST COMPLETE")

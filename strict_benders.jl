@@ -32,6 +32,7 @@ function build_omp(network, ϕU, λU, γ, w; optimizer=nothing, multi_cut=false)
     @variable(model, h[1:num_arcs] >= 0)
     @variable(model, ψ0[1:num_arcs] >= 0)
     @constraint(model, resource_budget, sum(h) <= λ * w)
+    # @constraint(model, [i=1:num_arcs], h[i] <= w * x[i])  # per-arc recovery cap: only interdicted arcs
     @constraint(model, sum(x) <= γ)
     # x must be binary, and only interdictable arcs can be selected
     for i in 1:num_arcs
@@ -41,7 +42,7 @@ function build_omp(network, ϕU, λU, γ, w; optimizer=nothing, multi_cut=false)
         end
     end
 
-    @constraint(model, λ>=0.01)
+    @constraint(model, λ>=0.001)
     # mccormick envelope constraints for ψ0
     for k in 1:num_arcs
         @constraint(model, ψ0[k] <= λU * x[k])

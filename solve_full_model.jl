@@ -33,8 +33,10 @@ end
 # Model parameters
 S = 2# Number of scenarios
 λU = 10.0  # Upper bound on λ
-γ = 2.0  # Interdiction budget
-w = 1.0  # Budget weight
+γ_ratio = 0.10  # Interdiction budget as fraction of interdictable arcs: γ = ceil(γ_ratio * |A_I|)
+                 # Sensitivity: γ_ratio ∈ {0.03, 0.05, 0.10}
+ρ = 0.2  # Recovery power ratio: w = ρ·γ·c̄, follower's max recovery = ρ × expected interdiction damage
+         # Sensitivity: ρ ∈ {0.05, 0.1, 0.2, 0.3}
 v = 1.0  # Interdiction effectiveness parameter (NOT the decision variable ν!)
 seed = 42
 mip_solver = Gurobi.Optimizer
@@ -46,10 +48,22 @@ println("\n[1] Generating 3×3 grid network...")
 network = generate_grid_network(4, 4, seed=seed)
 print_network_summary(network)
 
+# Compute γ from network size
+num_arcs = length(network.arcs) - 1
+num_interdictable = sum(network.interdictable_arcs[1:num_arcs])
+γ = ceil(Int, γ_ratio * num_interdictable)
+println("  Interdiction budget: γ = ceil($γ_ratio × $num_interdictable) = $γ")
+
 # ===== Use Factor Model =====
 # capacities, F = generate_capacity_scenarios(length(network.arcs), network.interdictable_arcs, S, seed=120)
 # ===== Use Uniform Model =====
 capacities, F = generate_capacity_scenarios_uniform_model(length(network.arcs), S, seed=seed)
+
+# Compute w = ρ · γ · c̄ (mean capacity of interdictable arcs)
+interdictable_idx = findall(network.interdictable_arcs[1:num_arcs])
+c_bar = sum(capacities[interdictable_idx, :]) / (length(interdictable_idx) * S)
+w = ρ * γ * c_bar
+println("  Recovery budget: w = ρ·γ·c̄ = $ρ × $γ × $(round(c_bar, digits=2)) = $(round(w, digits=4))")
 
 # S=1
 # capacities = capacities[:,2]
@@ -87,7 +101,6 @@ if solve_full_model
     # Build model (without optimizer for initial testing)
     model, vars = build_full_2DRNDP_model(network, S, ϕU, λU, γ, w, v,uncertainty_set, mip_solver=mip_solver, conic_solver=conic_solver)
     add_sparsity_constraints!(model, vars, network, S)
-    @constraint(model, vars[:λ]>=0.01)
     # @constraint(model, vars[:x].== [0.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0])
     # @constraint(model, vars[:h][9].== 0.01)
     # model, vars = build_full_2SP_model(network, S, ϕU, λU, γ, w, v,uncertainty_set)

@@ -810,6 +810,14 @@ end
 Extract outer cut coefficients entirely from primal ISP shadow prices.
 No dual ISP needed.
 
+WARNING: This function produces inaccurate outer cuts due to Mosek IPM conic dual degeneracy.
+Shadow prices from IPM differ non-uniformly (30-40%) from dual ISP variable values
+(the true subgradient). Unlike the inner cut μ offset (uniform +ε, correctable),
+this cannot be simply corrected. Invalid outer cuts allow OMP to select extreme parameters
+(e.g. λ=λU, h=ϕU) which then cause primal ISP infeasibility.
+Use primal_evaluate_master_opt_cut (hybrid: dual ISP for outer cuts) instead.
+See memory/ipm_mu_offset.md and debug_test/test_outer_cut_compare.jl for details.
+
 Uses residual intercept: intercept = subprob_obj - eval(cut_terms at x*,h*,λ*,ψ0*)
 
 Sign conventions (MOI, Min problem):

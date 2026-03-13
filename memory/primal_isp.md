@@ -6,7 +6,7 @@
 |------|-----------|-----------|-----------------|
 | `:dual` (default) | dual ISP (`isp_leader_optimize!`) | `evaluate_master_opt_cut` (value of dual vars) | Yes |
 | `:hybrid` | primal ISP (`primal_isp_leader_optimize!`) | `primal_evaluate_master_opt_cut` (re-solve dual ISP at converged α) | Yes |
-| `:full_primal` | primal ISP | `evaluate_master_opt_cut_from_primal` (constraint shadow prices) | No |
+| `:full_primal` | primal ISP | `evaluate_master_opt_cut_from_primal` (constraint shadow prices) | No | **DISABLED** — IPM shadow prices are non-uniformly inaccurate (30-40% error), causing invalid outer cuts |
 
 ## Parameter Location Reversal (Dual vs Primal ISP)
 | | Dual ISP | Primal ISP |

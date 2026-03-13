@@ -45,8 +45,10 @@ include("build_isp_compact.jl")
 
 # ===== Parameters =====
 λU = 10.0
-γ = 2.0
-w = 1.0
+γ_ratio = 0.10  # Interdiction budget as fraction of interdictable arcs: γ = ceil(γ_ratio * |A_I|)
+                 # Sensitivity: γ_ratio ∈ {0.03, 0.05, 0.10}
+ρ = 0.2  # Recovery power ratio: w = ρ·γ·c̄, follower's max recovery = ρ × expected interdiction damage
+         # Sensitivity: ρ ∈ {0.05, 0.1, 0.2, 0.3}
 v = 1.0
 seed = 42
 epsilon = 0.5
@@ -63,7 +65,12 @@ println("="^80)
 
 S = 1
 network = generate_grid_network(5, 5, seed=seed)
+warm_num_arcs = length(network.arcs) - 1
+warm_interd_count = sum(network.interdictable_arcs[1:warm_num_arcs])
+γ = ceil(Int, γ_ratio * warm_interd_count)
 warm_cap, _ = generate_capacity_scenarios_uniform_model(length(network.arcs), S, seed=seed)
+warm_interd = findall(network.interdictable_arcs[1:warm_num_arcs])
+w = ρ * γ * sum(warm_cap[warm_interd, :]) / (length(warm_interd) * S)
 R, r_dict, xi_bar = build_robust_counterpart_matrices(warm_cap[1:end-1, :], epsilon)
 warm_uset = Dict(:R => R, :r_dict => r_dict, :xi_bar => xi_bar, :epsilon => epsilon)
 
@@ -80,6 +87,10 @@ print_compact_ldr_stats(network)
 # ===== Phase 1: 원본 (Original) 전체 실행 =====
 network = generate_grid_network(5, 5, seed=seed)
 print_network_summary(network)
+num_arcs = length(network.arcs) - 1
+num_interdictable = sum(network.interdictable_arcs[1:num_arcs])
+γ = ceil(Int, γ_ratio * num_interdictable)
+println("  Interdiction budget: γ = ceil($γ_ratio × $num_interdictable) = $γ")
 
 results_orig = Dict{Int, Any}()
 
@@ -90,6 +101,11 @@ for test_S in [1, 2]
 
     global S = test_S
     capacities, F = generate_capacity_scenarios_uniform_model(length(network.arcs), test_S, seed=seed)
+    num_arcs_c = length(network.arcs) - 1
+    interd_c = findall(network.interdictable_arcs[1:num_arcs_c])
+    c_bar_c = sum(capacities[interd_c, :]) / (length(interd_c) * test_S)
+    global w = ρ * γ * c_bar_c
+    println("  Recovery budget: w = ρ·γ·c̄ = $ρ × $γ × $(round(c_bar_c, digits=2)) = $(round(w, digits=4))")
     capacity_scenarios_regular = capacities[1:end-1, :]
     global R, r_dict, xi_bar = build_robust_counterpart_matrices(capacity_scenarios_regular, epsilon)
     uset = Dict(:R => R, :r_dict => r_dict, :xi_bar => xi_bar, :epsilon => epsilon)
@@ -145,6 +161,10 @@ for test_S in [1, 2]
 
     global S = test_S
     capacities, F = generate_capacity_scenarios_uniform_model(length(network.arcs), test_S, seed=seed)
+    num_arcs_c = length(network.arcs) - 1
+    interd_c = findall(network.interdictable_arcs[1:num_arcs_c])
+    c_bar_c = sum(capacities[interd_c, :]) / (length(interd_c) * test_S)
+    global w = ρ * γ * c_bar_c
     capacity_scenarios_regular = capacities[1:end-1, :]
     global R, r_dict, xi_bar = build_robust_counterpart_matrices(capacity_scenarios_regular, epsilon)
     uset = Dict(:R => R, :r_dict => r_dict, :xi_bar => xi_bar, :epsilon => epsilon)

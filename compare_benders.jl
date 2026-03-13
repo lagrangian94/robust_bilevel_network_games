@@ -28,9 +28,8 @@ using Revise
 includet("network_generator.jl")
 includet("build_uncertainty_set.jl")
 includet("strict_benders.jl")
-includet("nested_benders.jl")
+# includet("nested_benders.jl")
 includet("nested_benders_trust_region.jl")
-includet("build_primal_isp.jl")
 includet("plot_benders.jl")
 
 using .NetworkGenerator: generate_grid_network, generate_capacity_scenarios_uniform_model, print_network_summary,
@@ -91,8 +90,10 @@ using .NetworkGenerator: generate_grid_network, generate_capacity_scenarios_unif
 # ===== Common Parameters =====
 S = 1
 λU = 10.0
-γ = 2.0
-w = 1.0
+γ_ratio = 0.10  # Interdiction budget as fraction of interdictable arcs: γ = ceil(γ_ratio * |A_I|)
+                 # Sensitivity: γ_ratio ∈ {0.03, 0.05, 0.10}
+ρ = 0.2  # Recovery power ratio: w = ρ·γ·c̄, follower's max recovery = ρ × expected interdiction damage
+         # Sensitivity: ρ ∈ {0.05, 0.1, 0.2, 0.3}
 v = 1.0
 seed = 42
 epsilon = 0.5
@@ -194,14 +195,59 @@ println("="^80)
 #     println("    Time: $(round(net_results["nested_benders"], digits=2)) sec")
 # end
 # @infiltrate
-network = generate_grid_network(4, 4, seed=seed)
+network = generate_grid_network(3, 3, seed=seed)
 print_network_summary(network)
+
+# Compute γ from network size
+num_arcs = length(network.arcs) - 1
+num_interdictable = sum(network.interdictable_arcs[1:num_arcs])
+γ = ceil(Int, γ_ratio * num_interdictable)
+println("  Interdiction budget: γ = ceil($γ_ratio × $num_interdictable) = $γ")
+
 capacities, F = generate_capacity_scenarios_uniform_model(length(network.arcs), S, seed=seed)
+
+# Compute w = ρ · γ · c̄ (mean capacity of interdictable arcs)
+interdictable_idx = findall(network.interdictable_arcs[1:num_arcs])
+c_bar = sum(capacities[interdictable_idx, :]) / (length(interdictable_idx) * S)
+w = ρ * γ * c_bar
+println("  Recovery budget: w = ρ·γ·c̄ = $ρ × $γ × $(round(c_bar, digits=2)) = $(round(w, digits=4))")
+
 capacity_scenarios_regular = capacities[1:end-1, :]
 R, r_dict, xi_bar = build_robust_counterpart_matrices(capacity_scenarios_regular, epsilon)
 uncertainty_set = Dict(:R => R, :r_dict => r_dict, :xi_bar => xi_bar, :epsilon => epsilon)
 
 results = Dict{String, Any}()
+
+# ===== 0. Full Model (no decomposition) =====
+println("\n" * "="^80)
+println("0. FULL 2DRNDP MODEL (Pajarito, no decomposition)")
+println("="^80)
+
+GC.gc()
+full_model, full_vars = build_full_2DRNDP_model(network, S, ϕU, λU, γ, w, v, uncertainty_set;
+    mip_solver=Gurobi.Optimizer, conic_solver=Mosek.Optimizer)
+add_sparsity_constraints!(full_model, full_vars, network, S)
+t0_start = time()
+optimize!(full_model)
+t0_end = time()
+results["full_model"] = t0_end - t0_start
+
+full_status = termination_status(full_model)
+if full_status == MOI.OPTIMAL || full_status == MOI.FEASIBLE_POINT
+    result0_obj = objective_value(full_model)
+    result0 = Dict(
+        :obj => result0_obj,
+        :x => value.(full_vars[:x]),
+        :h => value.(full_vars[:h]),
+        :λ => value(full_vars[:λ]),
+        :ψ0 => value.(full_vars[:ψ0])
+    )
+    println("\n>> Full model objective: $(round(result0_obj, digits=6))")
+else
+    result0 = Dict(:obj => NaN)
+    println("\n>> Full model did not solve to optimality. Status: $full_status")
+end
+println(">> Full model time: $(round(results["full_model"], digits=2)) seconds")
 
 # ===== 1. Strict Benders =====
 println("\n" * "="^80)
@@ -216,133 +262,91 @@ t1_end = time()
 results["strict_benders"] = t1_end - t1_start
 println("\n>> Strict Benders time: $(results["strict_benders"]) seconds")
 
-@infiltrate
 
-# ===== 2. Nested Benders =====
+# ===== 2. Dual Nested Benders (TR Both) =====
 println("\n" * "="^80)
-println("2. NESTED BENDERS DECOMPOSITION")
+println("2. TR NESTED BENDERS — DUAL (outer=true, inner=true)")
 println("="^80)
 
 GC.gc()
 model2, vars2 = build_omp(network, ϕU, λU, γ, w; optimizer=Gurobi.Optimizer, multi_cut=true)
 t2_start = time()
-result2 = nested_benders_optimize!(model2, vars2, network, ϕU, λU, γ, w, uncertainty_set; mip_optimizer=Gurobi.Optimizer, conic_optimizer=Mosek.Optimizer, multi_cut=true)
+result2 = tr_nested_benders_optimize!(model2, vars2, network, ϕU, λU, γ, w, uncertainty_set;
+    mip_optimizer=Gurobi.Optimizer, conic_optimizer=Mosek.Optimizer,
+    multi_cut=true, outer_tr=true, inner_tr=true)
 t2_end = time()
-results["nested_benders"] = t2_end - t2_start
+results["tr_dual"] = t2_end - t2_start
 if haskey(result2, :solution_time)
-    results["nested_benders_internal"] = result2[:solution_time]
+    results["tr_dual_internal"] = result2[:solution_time]
 end
-println("\n>> Nested Benders time: $(results["nested_benders"]) seconds")
+println("\n>> Dual TR Both time: $(results["tr_dual"]) seconds")
 
 
-# ===== 3. TR Nested Benders — No TR (outer=false, inner=false) =====
+
+# ===== 3. TR Nested Benders — Hybrid (primal ISP inner + dual ISP outer cuts) =====
 println("\n" * "="^80)
-println("3a. TR NESTED BENDERS — NO TR (outer=false, inner=false)")
+println("3. TR NESTED BENDERS — HYBRID (primal ISP inner + dual ISP outer)")
 println("="^80)
 
 GC.gc()
-model3a, vars3a = build_omp(network, ϕU, λU, γ, w; optimizer=Gurobi.Optimizer, multi_cut=true)
-t3a_start = time()
-result3a = tr_nested_benders_optimize!(model3a, vars3a, network, ϕU, λU, γ, w, uncertainty_set; mip_optimizer=Gurobi.Optimizer, conic_optimizer=Mosek.Optimizer, multi_cut=true, outer_tr=false, inner_tr=false)
-t3a_end = time()
-results["tr_none"] = t3a_end - t3a_start
-if haskey(result3a, :solution_time)
-    results["tr_none_internal"] = result3a[:solution_time]
-end
-println("\n>> No TR time: $(results["tr_none"]) seconds")
-
-# ===== 3b. TR Nested Benders — Outer TR only =====
-println("\n" * "="^80)
-println("3b. TR NESTED BENDERS — OUTER TR ONLY (outer=true, inner=false)")
-println("="^80)
-
-GC.gc()
-model3b, vars3b = build_omp(network, ϕU, λU, γ, w; optimizer=Gurobi.Optimizer, multi_cut=true)
-t3b_start = time()
-result3b = tr_nested_benders_optimize!(model3b, vars3b, network, ϕU, λU, γ, w, uncertainty_set; mip_optimizer=Gurobi.Optimizer, conic_optimizer=Mosek.Optimizer, multi_cut=true, outer_tr=true, inner_tr=false)
-t3b_end = time()
-results["tr_outer_only"] = t3b_end - t3b_start
-if haskey(result3b, :solution_time)
-    results["tr_outer_only_internal"] = result3b[:solution_time]
-end
-println("\n>> Outer TR only time: $(results["tr_outer_only"]) seconds")
-
-# ===== 3c. TR Nested Benders — Inner TR only =====
-println("\n" * "="^80)
-println("3c. TR NESTED BENDERS — INNER TR ONLY (outer=false, inner=true)")
-println("="^80)
-
-GC.gc()
-model3c, vars3c = build_omp(network, ϕU, λU, γ, w; optimizer=Gurobi.Optimizer, multi_cut=true)
-t3c_start = time()
-result3c = tr_nested_benders_optimize!(model3c, vars3c, network, ϕU, λU, γ, w, uncertainty_set; mip_optimizer=Gurobi.Optimizer, conic_optimizer=Mosek.Optimizer, multi_cut=true, outer_tr=false, inner_tr=true)
-t3c_end = time()
-results["tr_inner_only"] = t3c_end - t3c_start
-if haskey(result3c, :solution_time)
-    results["tr_inner_only_internal"] = result3c[:solution_time]
-end
-println("\n>> Inner TR only time: $(results["tr_inner_only"]) seconds")
-
-# ===== 3d. TR Nested Benders — Both (original) =====
-println("\n" * "="^80)
-println("3d. TR NESTED BENDERS — BOTH TR (outer=true, inner=true)")
-println("="^80)
-
-GC.gc()
-model3d, vars3d = build_omp(network, ϕU, λU, γ, w; optimizer=Gurobi.Optimizer, multi_cut=true)
-t3d_start = time()
-result3d = tr_nested_benders_optimize!(model3d, vars3d, network, ϕU, λU, γ, w, uncertainty_set; mip_optimizer=Gurobi.Optimizer, conic_optimizer=Mosek.Optimizer, multi_cut=true, outer_tr=true, inner_tr=true)
-t3d_end = time()
-results["tr_both"] = t3d_end - t3d_start
-if haskey(result3d, :solution_time)
-    results["tr_both_internal"] = result3d[:solution_time]
-end
-println("\n>> Both TR time: $(results["tr_both"]) seconds")
-
-# ===== 4. TR Nested Benders — Hybrid (primal ISP inner + dual ISP outer cuts) =====
-println("\n" * "="^80)
-println("4. TR NESTED BENDERS — HYBRID (primal ISP inner + dual ISP outer)")
-println("="^80)
-
-GC.gc()
-model4, vars4 = build_omp(network, ϕU, λU, γ, w; optimizer=Gurobi.Optimizer, multi_cut=true)
-t4_start = time()
-result4 = tr_nested_benders_optimize!(model4, vars4, network, ϕU, λU, γ, w, uncertainty_set; mip_optimizer=Gurobi.Optimizer, conic_optimizer=Mosek.Optimizer, multi_cut=true, outer_tr=true, inner_tr=true, isp_mode=:hybrid)
-t4_end = time()
-results["tr_hybrid"] = t4_end - t4_start
-if haskey(result4, :solution_time)
-    results["tr_hybrid_internal"] = result4[:solution_time]
+model3, vars3 = build_omp(network, ϕU, λU, γ, w; optimizer=Gurobi.Optimizer, multi_cut=true)
+t3_start = time()
+result3 = tr_nested_benders_optimize_hybrid!(model3, vars3, network,
+    ϕU, λU, γ, w, uncertainty_set;
+    mip_optimizer=Gurobi.Optimizer, conic_optimizer=Mosek.Optimizer,
+    multi_cut=true, outer_tr=true, inner_tr=true)
+t3_end = time()
+results["tr_hybrid"] = t3_end - t3_start
+if haskey(result3, :solution_time)
+    results["tr_hybrid_internal"] = result3[:solution_time]
 end
 println("\n>> Hybrid time: $(results["tr_hybrid"]) seconds")
 
-# ===== 5. TR Nested Benders — Full Primal (primal ISP only, no dual ISP) =====
-println("\n" * "="^80)
-println("5. TR NESTED BENDERS — FULL PRIMAL (primal ISP only)")
-println("="^80)
 
-GC.gc()
-model5, vars5 = build_omp(network, ϕU, λU, γ, w; optimizer=Gurobi.Optimizer, multi_cut=true)
-t5_start = time()
-result5 = tr_nested_benders_optimize!(model5, vars5, network, ϕU, λU, γ, w, uncertainty_set; mip_optimizer=Gurobi.Optimizer, conic_optimizer=Mosek.Optimizer, multi_cut=true, outer_tr=true, inner_tr=true, isp_mode=:full_primal)
-t5_end = time()
-results["tr_full_primal"] = t5_end - t5_start
-if haskey(result5, :solution_time)
-    results["tr_full_primal_internal"] = result5[:solution_time]
-end
-println("\n>> Full Primal time: $(results["tr_full_primal"]) seconds")
 
 # ===== Summary =====
 println("\n" * "="^80)
 println("COMPARISON SUMMARY")
 println("="^80)
-println("  Strict Benders:              $(round(results["strict_benders"], digits=2)) sec")
-println("  Nested Benders:              $(round(results["nested_benders"], digits=2)) sec")
-println("  TR None (F,F):               $(round(results["tr_none"], digits=2)) sec")
-println("  TR Outer only (T,F):         $(round(results["tr_outer_only"], digits=2)) sec")
-println("  TR Inner only (F,T):         $(round(results["tr_inner_only"], digits=2)) sec")
-println("  TR Both (T,T):               $(round(results["tr_both"], digits=2)) sec")
-println("  TR Hybrid (primal inner):    $(round(results["tr_hybrid"], digits=2)) sec")
-println("  TR Full Primal:              $(round(results["tr_full_primal"], digits=2)) sec")
+println("  Parameters:")
+println("    Network:  3×3 grid, |A|=$num_arcs, |A_I|=$num_interdictable")
+println("    S=$S, ε=$epsilon, ϕU=$ϕU, λU=$λU, v=$v")
+println("    γ=$γ (ratio=$γ_ratio), w=$(round(w, digits=4)) (ρ=$ρ)")
+println()
+function extract_obj(r)
+    if haskey(r, :past_local_lower_bound)
+        return minimum(r[:past_local_lower_bound])
+    elseif haskey(r, :past_lower_bound)
+        return r[:past_lower_bound][end]
+    elseif haskey(r, :past_subprob_obj)
+        return r[:past_subprob_obj][end]
+    else
+        return NaN
+    end
+end
+obj0 = result0[:obj]
+obj1 = extract_obj(result1)
+obj2 = extract_obj(result2)
+obj3 = extract_obj(result3)
+
+println("  " * rpad("Algorithm", 30) * rpad("Time (sec)", 14) * "Obj. value")
+println("  " * "-"^56)
+println("  " * rpad("0. Full Model (Pajarito)", 30) * rpad(round(results["full_model"], digits=2), 14) * "$(round(obj0, digits=6))")
+println("  " * rpad("1. Strict Benders", 30) * rpad(round(results["strict_benders"], digits=2), 14) * "$(round(obj1, digits=6))")
+println("  " * rpad("2. TR Dual (T,T)", 30) * rpad(round(results["tr_dual"], digits=2), 14) * "$(round(obj2, digits=6))")
+println("  " * rpad("3. TR Hybrid (T,T)", 30) * rpad(round(results["tr_hybrid"], digits=2), 14) * "$(round(obj3, digits=6))")
+println("  " * "-"^56)
+
+# 목적함수 일치 확인
+all_objs = filter(!isnan, [obj0, obj1, obj2, obj3])
+if length(all_objs) >= 2
+    max_obj_gap = maximum(abs(a - b) for a in all_objs for b in all_objs)
+    if max_obj_gap < 1e-3
+        println("  ✓ All objectives match (max gap = $(round(max_obj_gap, sigdigits=3)))")
+    else
+        println("  ✗ Objective mismatch! (max gap = $(round(max_obj_gap, sigdigits=3)))")
+    end
+end
 println("="^80)
 
 # ==============================================================================

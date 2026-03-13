@@ -192,7 +192,8 @@ function build_full_2DRNDP_model(network, S, ϕU, λU, γ, w, v, uncertainty_set
     # --- (14b) Initial resource and domain constraints ---
     if isnothing(λ_fixed)
         @constraint(model, resource_budget, sum(h) <= λ * w)
-        @constraint(model, sum(x) <= γ) 
+        # @constraint(model, [i=1:num_arcs], h[i] <= w * x[i])  # per-arc recovery cap: only interdicted arcs
+        @constraint(model, sum(x) <= γ)
         # x must be binary, and only interdictable arcs can be selected
         for i in 1:num_arcs
             if !network.interdictable_arcs[i]
@@ -348,6 +349,7 @@ function build_full_2DRNDP_model(network, S, ϕU, λU, γ, w, v, uncertainty_set
     end
     println("  ✓ Dual constraints (14m-14p) added for all scenarios")
         # 
+    @constraint(model, λ>=0.001)
     # --- (14q) Linearization constraints for ψ0 ---
     # These linearize the product λ * x
     if isnothing(λ_fixed)
