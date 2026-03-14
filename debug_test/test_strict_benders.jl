@@ -7,11 +7,11 @@ using Gurobi
 using Mosek, MosekTools
 using Hypatia, HiGHS
 
-# Load network generator
-includet("network_generator.jl")
-includet("build_dualized_outer_subprob.jl")
-includet("build_full_model.jl")
-using .NetworkGenerator
+# NOTE: includes are handled by the calling script (diagnose_osp_ray.jl)
+# includet("network_generator.jl")
+# includet("build_dualized_outer_subprob.jl")
+# includet("build_full_model.jl")
+# using .NetworkGenerator
 
 
 function build_omp(network, ϕU, λU, γ, w; optimizer=nothing, multi_cut=false)

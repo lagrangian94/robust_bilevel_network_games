@@ -11,9 +11,9 @@ using Hypatia, HiGHS
 @locals 입력하면 모든 변수 확인
 @continue 또는 @exit로 계속 진행
 """
-# Load network generator
-include("network_generator.jl")
-using .NetworkGenerator
+# NOTE: includes are handled by the calling script (diagnose_osp_ray.jl)
+# include("network_generator.jl")
+# using .NetworkGenerator
 """
 Build the full 2DRNDP model (14) without COP constraints (14f, 14i)
 

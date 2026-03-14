@@ -36,7 +36,7 @@ println("="^80)
 # w = 1.0
 # v = 1.0
 
-S = 1
+S = 10
 λU = 10.0
 γ_ratio = 0.10  # Interdiction budget as fraction of interdictable arcs: γ = ceil(γ_ratio * |A_I|)
                  # Sensitivity: γ_ratio ∈ {0.03, 0.05, 0.10}
