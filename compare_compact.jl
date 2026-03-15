@@ -70,7 +70,7 @@ warm_interd_count = sum(network.interdictable_arcs[1:warm_num_arcs])
 γ = ceil(Int, γ_ratio * warm_interd_count)
 warm_cap, _ = generate_capacity_scenarios_uniform_model(length(network.arcs), S, seed=seed)
 warm_interd = findall(network.interdictable_arcs[1:warm_num_arcs])
-w = ρ * γ * sum(warm_cap[warm_interd, :]) / (length(warm_interd) * S)
+w = round(ρ * γ * sum(warm_cap[warm_interd, :]) / (length(warm_interd) * S), digits=4)
 R, r_dict, xi_bar = build_robust_counterpart_matrices(warm_cap[1:end-1, :], epsilon)
 warm_uset = Dict(:R => R, :r_dict => r_dict, :xi_bar => xi_bar, :epsilon => epsilon)
 
@@ -104,7 +104,7 @@ for test_S in [1, 2]
     num_arcs_c = length(network.arcs) - 1
     interd_c = findall(network.interdictable_arcs[1:num_arcs_c])
     c_bar_c = sum(capacities[interd_c, :]) / (length(interd_c) * test_S)
-    global w = ρ * γ * c_bar_c
+    global w = round(ρ * γ * c_bar_c, digits=4)
     println("  Recovery budget: w = ρ·γ·c̄ = $ρ × $γ × $(round(c_bar_c, digits=2)) = $(round(w, digits=4))")
     capacity_scenarios_regular = capacities[1:end-1, :]
     global R, r_dict, xi_bar = build_robust_counterpart_matrices(capacity_scenarios_regular, epsilon)
@@ -164,7 +164,7 @@ for test_S in [1, 2]
     num_arcs_c = length(network.arcs) - 1
     interd_c = findall(network.interdictable_arcs[1:num_arcs_c])
     c_bar_c = sum(capacities[interd_c, :]) / (length(interd_c) * test_S)
-    global w = ρ * γ * c_bar_c
+    global w = round(ρ * γ * c_bar_c, digits=4)
     capacity_scenarios_regular = capacities[1:end-1, :]
     global R, r_dict, xi_bar = build_robust_counterpart_matrices(capacity_scenarios_regular, epsilon)
     uset = Dict(:R => R, :r_dict => r_dict, :xi_bar => xi_bar, :epsilon => epsilon)

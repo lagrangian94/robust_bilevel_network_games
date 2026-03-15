@@ -591,7 +591,7 @@ function tr_imp_optimize_hybrid!(imp_model::Model, imp_vars::Dict,
     primal_leader_instances::Dict, primal_follower_instances::Dict;
     isp_data=nothing, λ_sol=nothing, x_sol=nothing,
     h_sol=nothing, ψ0_sol=nothing, outer_iter=nothing,
-    imp_cuts=nothing, inner_tr=true)
+    imp_cuts=nothing, inner_tr=true, tol=1e-4)
 
     st = MOI.get(imp_model, MOI.TerminationStatus())
     iter = 0
@@ -651,8 +651,8 @@ function tr_imp_optimize_hybrid!(imp_model::Model, imp_vars::Dict,
             subprob_obj += cut_info_l[:obj_val] + cut_info_f[:obj_val]
         end
         lower_bound = max(lower_bound, subprob_obj)
-        gap = model_estimate - lower_bound
-        if gap <= 1e-4
+        gap = abs(model_estimate - lower_bound) / max(abs(model_estimate), 1e-10)
+        if gap <= tol
             @info "Termination condition met (hybrid)"
             println("model_estimate: ", model_estimate, ", subprob_obj: ", subprob_obj)
             result[:past_obj] = past_obj

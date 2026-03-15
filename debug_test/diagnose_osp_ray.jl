@@ -41,7 +41,7 @@ num_interdictable = sum(network.interdictable_arcs[1:num_arcs])
 capacities, F = generate_capacity_scenarios_uniform_model(length(network.arcs), S, seed=seed)
 interdictable_idx = findall(network.interdictable_arcs[1:num_arcs])
 c_bar = sum(capacities[interdictable_idx, :]) / (length(interdictable_idx) * S)
-w = ρ * γ * c_bar
+w = round(ρ * γ * c_bar, digits=4)
 
 capacity_scenarios_regular = capacities[1:end-1, :]
 R, r_dict, xi_bar = build_robust_counterpart_matrices(capacity_scenarios_regular, epsilon)

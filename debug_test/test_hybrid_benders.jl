@@ -62,7 +62,7 @@ capacities, F = generate_capacity_scenarios_uniform_model(length(network.arcs), 
 # Compute w = ρ · γ · c̄ (mean capacity of interdictable arcs)
 interdictable_idx = findall(network.interdictable_arcs[1:num_arcs])
 c_bar = sum(capacities[interdictable_idx, :]) / (length(interdictable_idx) * S)
-w = ρ * γ * c_bar
+w = round(ρ * γ * c_bar, digits=4)
 println("  Recovery budget: w = ρ·γ·c̄ = $ρ × $γ × $(round(c_bar, digits=2)) = $(round(w, digits=4))")
 
 

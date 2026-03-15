@@ -146,7 +146,7 @@ function initialize_omp(omp_model::Model, omp_vars::Dict)
     return st, value(omp_vars[:λ]), value.(omp_vars[:x]), value.(omp_vars[:h]), value.(omp_vars[:ψ0])
 end
 
-function strict_benders_optimize!(omp_model::Model, omp_vars::Dict, network, ϕU, λU, γ, w, uncertainty_set; optimizer=nothing, outer_tr=false, max_iter=1000)
+function strict_benders_optimize!(omp_model::Model, omp_vars::Dict, network, ϕU, λU, γ, w, uncertainty_set; optimizer=nothing, outer_tr=false, max_iter=1000, tol=1e-4)
     ### --------Begin Initialization--------
     st, λ_sol, x_sol, h_sol, ψ0_sol = initialize_omp(omp_model, omp_vars)
     x, h, λ, ψ0, t_0 = omp_vars[:x], omp_vars[:h], omp_vars[:λ], omp_vars[:ψ0], omp_vars[:t_0]
@@ -225,7 +225,7 @@ function strict_benders_optimize!(omp_model::Model, omp_vars::Dict, network, ϕU
 
             if outer_tr
                 lower_bound = max(lower_bound, t_0_sol)
-                gap = upper_bound - lower_bound
+                gap = abs(upper_bound - lower_bound) / max(abs(upper_bound), 1e-10)
 
                 # Serious step test
                 if iter == 1
@@ -246,7 +246,7 @@ function strict_benders_optimize!(omp_model::Model, omp_vars::Dict, network, ϕU
                     tr_needs_update = true
                 end
             else
-                gap = upper_bound - t_0_sol
+                gap = abs(upper_bound - t_0_sol) / max(abs(upper_bound), 1e-10)
             end
 
             # Store history
@@ -259,7 +259,7 @@ function strict_benders_optimize!(omp_model::Model, omp_vars::Dict, network, ϕU
         end
 
         # Convergence check
-        if gap <= 1e-4
+        if gap <= tol
             if !outer_tr
                 # No outer TR: simple convergence
                 time_end = time()
