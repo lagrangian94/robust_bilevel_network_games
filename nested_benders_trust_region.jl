@@ -64,7 +64,7 @@ function update_outer_trust_region_constraints!(
     model::Model, 
     vars::Dict, 
     centers::Dict,
-    B_bin::Float64, 
+    B_bin::Real,
     B_con::Union{Float64, Nothing},
     old_cons::Dict,
     network
@@ -168,7 +168,7 @@ function build_imp(network, S, ϕU, λU, γ, w, v, uncertainty_set; mip_optimize
     @variable(model, t_1_l[s=1:S], upper_bound= flow_upper)
     @variable(model, t_1_f[s=1:S], upper_bound= flow_upper)
     @variable(model, α[k=1:num_arcs] >= 0)
-    @constraint(model, sum(α) == w*(1/S)) # full model에선 자연스럽게 inequality가 equality가 되지만 decomposed된 imp에선 그런다는 보장이 없으므로 명시적으로 equality 유지
+    @constraint(model, sum(α) <= w*(1/S)) # full model에선 자연스럽게 inequality가 equality가 되지만 decomposed된 imp에선 그런다는 보장이 없으므로 명시적으로 equality 유지
     @objective(model, Max, sum(t_1_l) + sum(t_1_f))
 
     vars = Dict(
@@ -534,7 +534,7 @@ function tr_nested_benders_optimize!(omp_model::Model, omp_vars::Dict, network, 
     if outer_tr
         B_bin_sequence = [0.05, 0.5, 1.0]
         B_bin_stage = 1
-        B_bin = B_bin_sequence[B_bin_stage] * sum(network.interdictable_arcs)
+        B_bin = max(1, round(Int, B_bin_sequence[B_bin_stage] * sum(network.interdictable_arcs))) # 정수 보장 (비정수 B → Hamming distance gap 발생 방지)
         B_con = nothing # 나중에 생각
         ## Stability Centers
         # Stability centers (will be initialized after first solve)
@@ -706,7 +706,7 @@ function tr_nested_benders_optimize!(omp_model::Model, omp_vars::Dict, network, 
                 # Trust region 확장
                 B_bin_stage +=1
                 B_bin_old = B_bin
-                B_bin = B_bin_sequence[B_bin_stage] * sum(network.interdictable_arcs)
+                B_bin = max(1, round(Int, B_bin_sequence[B_bin_stage] * sum(network.interdictable_arcs))) # 정수 보장
                 push!(bin_B_steps, iter)
                 push!(past_local_lower_bound, lower_bound)
                 push!(past_local_optimizer, Dict(:x=>value.(x_sol), :h=>value.(h_sol), :λ=>value.(λ_sol), :ψ0=>value.(ψ0_sol)))
@@ -887,7 +887,7 @@ function tr_nested_benders_optimize_hybrid!(omp_model::Model, omp_vars::Dict, ne
     if outer_tr
         B_bin_sequence = [0.05, 0.5, 1.0]
         B_bin_stage = 1
-        B_bin = B_bin_sequence[B_bin_stage] * sum(network.interdictable_arcs)
+        B_bin = max(1, round(Int, B_bin_sequence[B_bin_stage] * sum(network.interdictable_arcs))) # 정수 보장
         B_con = nothing
         centers = Dict{Symbol, Any}(
             :x => nothing, :h => nothing, :λ => nothing, :ψ0 => nothing
@@ -1047,7 +1047,7 @@ function tr_nested_benders_optimize_hybrid!(omp_model::Model, omp_vars::Dict, ne
             if B_bin_stage <= length(B_bin_sequence)-1
                 B_bin_stage +=1
                 B_bin_old = B_bin
-                B_bin = B_bin_sequence[B_bin_stage] * sum(network.interdictable_arcs)
+                B_bin = max(1, round(Int, B_bin_sequence[B_bin_stage] * sum(network.interdictable_arcs))) # 정수 보장
                 push!(bin_B_steps, iter)
                 push!(past_local_lower_bound, lower_bound)
                 push!(past_local_optimizer, Dict(:x=>value.(x_sol), :h=>value.(h_sol), :λ=>value.(λ_sol), :ψ0=>value.(ψ0_sol)))

@@ -26,21 +26,20 @@ using .NetworkGenerator: generate_grid_network, generate_capacity_scenarios_unif
 
 # ===== Common Parameters =====
 S = 1
-λU = 10.0
 γ_ratio = 0.10
 ρ = 0.2
 v = 1.0
 seed = 42
 epsilon = 0.5
-ϕU = 1/epsilon
-λU = ϕU ## 왜 λU <= ϕU 해야 에러가 안나는지?
+ϕU = 1/epsilon ## 10.0 -> 1/epsilon으로 변경.
+λU = ϕU ## 10.0 -> ϕU로 변경.
 
 # ===== Generate Network & Uncertainty Set =====
 println("="^80)
 println("GENERATING NETWORK AND UNCERTAINTY SET")
 println("="^80)
 
-network = generate_grid_network(4, 4, seed=seed)
+network = generate_grid_network(5, 5, seed=seed)
 print_network_summary(network)
 
 num_arcs = length(network.arcs) - 1
@@ -61,8 +60,8 @@ uncertainty_set = Dict(:R => R, :r_dict => r_dict, :xi_bar => xi_bar, :epsilon =
 
 results = Dict{String, Any}()
 
-γ=2.0
-w=1.0
+# γ=2.0
+# w=1.0
 
 # ===== 1. Strict Benders =====
 println("\n" * "="^80)
@@ -113,7 +112,7 @@ println("\n" * "="^80)
 println("COMPARISON SUMMARY")
 println("="^80)
 println("  Parameters:")
-println("    Network:  3×3 grid, |A|=$num_arcs, |A_I|=$num_interdictable")
+println("    Network:  |A|=$num_arcs, |A_I|=$num_interdictable")
 println("    S=$S, ε=$epsilon, ϕU=$ϕU, λU=$λU, v=$v")
 println("    γ=$γ (ratio=$γ_ratio), w=$(round(w, digits=4)) (ρ=$ρ)")
 println()
@@ -123,8 +122,10 @@ function extract_obj(r)
         return minimum(r[:past_local_lower_bound])
     elseif haskey(r, :past_lower_bound)
         return r[:past_lower_bound][end]
+    elseif haskey(r, :past_upper_bound)
+        return r[:past_upper_bound][end]  # upper_bound = min(subprob_obj over all iters)
     elseif haskey(r, :past_subprob_obj)
-        return r[:past_subprob_obj][end]
+        return minimum(r[:past_subprob_obj])  # fallback: min over all subprob objectives
     else
         return NaN
     end

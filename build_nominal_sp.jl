@@ -75,7 +75,7 @@ function build_full_2SP_model(network, S, ϕU, λU, γ, w, v, uncertainty_set; o
     # @variable(model, t)  # Objective epigraph variable
     @variable(model, nu>= 0)  # Budget for recourse decisions
     if isnothing(λ_fixed)
-        @variable(model, λ >= 0)  # Budget allocation parameter
+        @variable(model, λ, lower_bound=0.0, upper_bound=ϕU)  # λ ≤ ϕU: LDR P-bound 조건
     else
         λ=λ_fixed
     end

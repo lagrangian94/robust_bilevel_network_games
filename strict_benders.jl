@@ -27,7 +27,7 @@ function build_omp(network, ϕU, λU, γ, w; optimizer=nothing, multi_cut=false)
         @variable(model, t_0 >= 0)  # Objective epigraph variable
         @objective(model, Min, t_0)
     end
-    @variable(model, λ >= 0)  # Budget allocation parameter
+    @variable(model, λ, lower_bound=0.0, upper_bound=λU)  # λ ≤ λU ≤ ϕU: LDR P-bound에서 π̃₀_sink ≤ ϕU이므로 eq(6d) Nts⊺π̃ ≥ λ 만족 필요
     @variable(model, x[1:num_arcs], Bin)
     @variable(model, h[1:num_arcs] >= 0)
     @variable(model, ψ0[1:num_arcs] >= 0)
