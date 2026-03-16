@@ -326,6 +326,7 @@ function build_dualized_outer_subproblem(network, S, ϕU, λU, γ, w, v, uncerta
     @constraint(model, [s=1:S], Ztilde2[s,:,:]*R[s]' + βtilde2[s,:]*r_dict[s]' + Γtilde2[s,:,:] .== 0.0)
 
     vars = Dict(
+        :α => α,
         :Mhat => Mhat,
         :Mtilde => Mtilde,
         :Zhat1 => Zhat1,

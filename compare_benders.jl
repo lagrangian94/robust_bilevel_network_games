@@ -108,19 +108,20 @@ results = Dict{String, Any}()
 # end
 # println("\n>> Full Model time: $(results["full_model"]) seconds")
 
-# # ===== 1. Strict Benders =====
-# println("\n" * "="^80)
-# println("1. STRICT BENDERS DECOMPOSITION (multi-cut)")
-# println("="^80)
+# ===== 1. Strict Benders =====
+println("\n" * "="^80)
+println("1. STRICT BENDERS DECOMPOSITION (multi-cut)")
+println("="^80)
 
-# GC.gc()
-# model1, vars1 = build_omp(network, ϕU, λU, γ, w; optimizer=Gurobi.Optimizer, multi_cut=true)
-# t1_start = time()
-# result1 = strict_benders_optimize!(model1, vars1, network, ϕU, λU, γ, w, uncertainty_set; optimizer=Gurobi.Optimizer, multi_cut=true, πU=πU, yU=yU, ytsU=ytsU)
-# t1_end = time()
-# results["strict_benders"] = t1_end - t1_start
-# println("\n>> Strict Benders time: $(results["strict_benders"]) seconds")
+GC.gc()
+model1, vars1 = build_omp(network, ϕU, λU, γ, w; optimizer=Gurobi.Optimizer, multi_cut=true)
+t1_start = time()
+result1 = strict_benders_optimize!(model1, vars1, network, ϕU, λU, γ, w, uncertainty_set; optimizer=Gurobi.Optimizer, multi_cut=true, πU=πU, yU=yU, ytsU=ytsU, strengthen_cuts=true)
+t1_end = time()
+results["strict_benders"] = t1_end - t1_start
+println("\n>> Strict Benders time: $(results["strict_benders"]) seconds")
 
+@infiltrate()
 
 # ===== 2. TR Nested Benders — Dual (T,T) =====
 println("\n" * "="^80)

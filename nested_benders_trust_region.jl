@@ -531,7 +531,254 @@ function evaluate_master_opt_cut(isp_leader_instances::Dict, isp_follower_instan
 end
 
 
-function tr_nested_benders_optimize!(omp_model::Model, omp_vars::Dict, network, ϕU, λU, γ, w, uncertainty_set; mip_optimizer=nothing, conic_optimizer=nothing, multi_cut=false, outer_tr=true, inner_tr=true, max_outer_iter=1000, isp_mode=:dual, tol=1e-4, πU=ϕU, yU=ϕU, ytsU=ϕU)
+"""
+    generate_core_points(network, γ, λU, w, v; interdictable_idx=nothing, strategy=:interior_and_arcs)
+
+OMP의 feasible region 내부에 있는 core point들을 생성.
+Magnanti-Wong cut의 objective로 사용됨.
+
+Strategies:
+- `:interior` — fractional x̄ᵢ = γ/|A_I|, λ̄ = λU/2
+- `:arc_directed` — interdictable arc별 eᵢ (γ개 binary points)
+- `:interior_and_arcs` — 둘 합산
+"""
+function generate_core_points(network, γ, λU, w, v;
+    interdictable_idx=nothing, strategy=:interior_and_arcs)
+    num_arcs = length(network.arcs) - 1
+    if interdictable_idx === nothing
+        interdictable_idx = findall(network.interdictable_arcs[1:num_arcs])
+    end
+    num_interdictable = length(interdictable_idx)
+
+    points = NamedTuple{(:x, :λ, :h, :ψ0), Tuple{Vector{Float64}, Float64, Vector{Float64}, Vector{Float64}}}[]
+
+    if strategy == :interior || strategy == :interior_and_arcs
+        # Interior point: fractional x
+        x_bar = zeros(num_arcs)
+        x_bar[interdictable_idx] .= γ / num_interdictable
+        λ_bar = λU / 2
+        h_bar = fill(λ_bar * w / num_arcs, num_arcs)
+        # McCormick: ψ0 ∈ [max(λ - λU(1-x), 0), min(λU*x, λ)]
+        ψ0_bar = [min(λU * x_bar[k], λ_bar, max(λ_bar - λU * (1 - x_bar[k]), 0.0)) for k in 1:num_arcs]
+        push!(points, (x=x_bar, λ=λ_bar, h=h_bar, ψ0=ψ0_bar))
+    end
+
+    if strategy == :arc_directed || strategy == :interior_and_arcs
+        # Arc-directed: single interdicted arc per core point
+        for idx in interdictable_idx[1:min(γ, num_interdictable)]
+            x_arc = zeros(num_arcs)
+            x_arc[idx] = 1.0
+            λ_arc = λU / 2
+            h_arc = fill(λ_arc * w / num_arcs, num_arcs)
+            ψ0_arc = [min(λU * x_arc[k], λ_arc, max(λ_arc - λU * (1 - x_arc[k]), 0.0)) for k in 1:num_arcs]
+            push!(points, (x=x_arc, λ=λ_arc, h=h_arc, ψ0=ψ0_arc))
+        end
+    end
+
+    return points
+end
+
+
+"""
+    evaluate_mw_opt_cut(...)
+
+Magnanti-Wong cut 생성: α*에서 ISP가 이미 solved 상태인 것을 전제.
+z* = objective_value에 대해 optimality constraint를 추가한 뒤,
+core point에서의 cut value를 최대화하여 Pareto-optimal cut을 생성.
+
+반환: evaluate_master_opt_cut과 동일한 Dict.
+"""
+function evaluate_mw_opt_cut(
+    isp_leader_instances, isp_follower_instances, isp_data, cut_info, iter;
+    x_sol, λ_sol, h_sol, ψ0_sol,
+    x_core, λ_core, h_core, ψ0_core,
+    multi_cut=false)
+
+    S = isp_data[:S]
+    ϕU = isp_data[:ϕU]
+    πU = isp_data[:πU]
+    yU = isp_data[:yU]
+    ytsU = isp_data[:ytsU]
+    E = isp_data[:E]
+    d0 = isp_data[:d0]
+    v_param = isp_data[:v]
+    α_sol = cut_info[:α_sol]
+    num_arcs = length(x_sol)
+    xi_bar = isp_data[:uncertainty_set][:xi_bar]
+
+    # Pre-compute matrices
+    diag_x_sol_E = Diagonal(x_sol) * E
+    diag_x_core_E = Diagonal(x_core) * E
+    diag_λ_ψ_sol = Diagonal(λ_sol * ones(num_arcs) - v_param .* ψ0_sol)
+    diag_λ_ψ_core = Diagonal(λ_core * ones(num_arcs) - v_param .* ψ0_core)
+
+    mw_cons = []  # track constraints for cleanup
+
+    for s in 1:S
+        xi_bar_s = xi_bar[s]
+
+        # ===== Leader MW =====
+        model_l = isp_leader_instances[s][1]
+        vars_l = isp_leader_instances[s][2]
+        Uhat1 = vars_l[:Uhat1]
+        Uhat3 = vars_l[:Uhat3]
+        Phat1_Φ = vars_l[:Phat1_Φ]
+        Phat1_Π = vars_l[:Phat1_Π]
+        Phat2_Φ = vars_l[:Phat2_Φ]
+        Phat2_Π = vars_l[:Phat2_Π]
+        βhat1_1 = vars_l[:βhat1_1]
+
+        z_star_l = objective_value(model_l)
+
+        # Reconstruct original objective (at x_sol) — mirrors isp_leader_optimize! lines 194-201
+        orig_l_1 = -ϕU * sum(Uhat1[1, :, :] .* diag_x_sol_E)
+        orig_l_2 = -ϕU * sum(Uhat3[1, :, :] .* (E - diag_x_sol_E))
+        orig_l_3 = (d0') * βhat1_1[1, :]
+        orig_l_ub = -ϕU * sum(Phat1_Φ[1, :, :]) - πU * sum(Phat1_Π[1, :, :])
+        orig_l_lb = -ϕU * sum(Phat2_Φ[1, :, :]) - πU * sum(Phat2_Π[1, :, :])
+        orig_obj_l = orig_l_1 + orig_l_2 + orig_l_3 + orig_l_ub + orig_l_lb
+
+        # MW optimality constraint
+        mw_con_l = @constraint(model_l, orig_obj_l >= z_star_l - 1e-6)
+        push!(mw_cons, (model_l, mw_con_l))
+
+        # Core objective (replace x_sol → x_core; intercept terms unchanged)
+        core_l_1 = -ϕU * sum(Uhat1[1, :, :] .* diag_x_core_E)
+        core_l_2 = -ϕU * sum(Uhat3[1, :, :] .* (E - diag_x_core_E))
+        core_obj_l = core_l_1 + core_l_2 + orig_l_3 + orig_l_ub + orig_l_lb
+        @objective(model_l, Max, core_obj_l)
+        optimize!(model_l)
+
+        st_l = termination_status(model_l)
+        if !(st_l == MOI.OPTIMAL || st_l == MOI.SLOW_PROGRESS)
+            @warn "MW leader solve failed for s=$s: $st_l, using original solution"
+            # Cleanup and restore
+            delete(model_l, mw_con_l)
+            @objective(model_l, Max, orig_obj_l)
+            optimize!(model_l)
+            pop!(mw_cons)
+            push!(mw_cons, nothing)
+            continue
+        end
+
+        # ===== Follower MW =====
+        model_f = isp_follower_instances[s][1]
+        vars_f = isp_follower_instances[s][2]
+        Utilde1 = vars_f[:Utilde1]
+        Utilde3 = vars_f[:Utilde3]
+        Ztilde1_3 = vars_f[:Ztilde1_3]
+        Ptilde1_Φ = vars_f[:Ptilde1_Φ]
+        Ptilde1_Π = vars_f[:Ptilde1_Π]
+        Ptilde2_Φ = vars_f[:Ptilde2_Φ]
+        Ptilde2_Π = vars_f[:Ptilde2_Π]
+        Ptilde1_Y = vars_f[:Ptilde1_Y]
+        Ptilde1_Yts = vars_f[:Ptilde1_Yts]
+        Ptilde2_Y = vars_f[:Ptilde2_Y]
+        Ptilde2_Yts = vars_f[:Ptilde2_Yts]
+        βtilde1_1 = vars_f[:βtilde1_1]
+        βtilde1_3 = vars_f[:βtilde1_3]
+
+        z_star_f = objective_value(model_f)
+
+        # Reconstruct original objective (at x_sol, λ_sol, h_sol, ψ0_sol) — mirrors isp_follower_optimize! lines 239-248
+        orig_f_1 = -ϕU * sum(Utilde1[1, :, :] .* diag_x_sol_E)
+        orig_f_2 = -ϕU * sum(Utilde3[1, :, :] .* (E - diag_x_sol_E))
+        orig_f_4 = sum(Ztilde1_3[1, :, :] .* (diag_λ_ψ_sol * diagm(xi_bar_s)))
+        orig_f_5 = (λ_sol * d0') * βtilde1_1[1, :]
+        orig_f_6 = -(h_sol + diag_λ_ψ_sol * xi_bar_s)' * βtilde1_3[1, :]
+        orig_f_ub = -ϕU * sum(Ptilde1_Φ[1, :, :]) - πU * sum(Ptilde1_Π[1, :, :]) - yU * sum(Ptilde1_Y[1, :, :]) - ytsU * sum(Ptilde1_Yts[1, :])
+        orig_f_lb = -ϕU * sum(Ptilde2_Φ[1, :, :]) - πU * sum(Ptilde2_Π[1, :, :]) - yU * sum(Ptilde2_Y[1, :, :]) - ytsU * sum(Ptilde2_Yts[1, :])
+        orig_obj_f = orig_f_1 + orig_f_2 + orig_f_4 + orig_f_5 + orig_f_6 + orig_f_ub + orig_f_lb
+
+        # MW optimality constraint
+        mw_con_f = @constraint(model_f, orig_obj_f >= z_star_f - 1e-6)
+        push!(mw_cons, (model_f, mw_con_f))
+
+        # Core objective (replace x_sol → x_core, λ_sol → λ_core, etc.; P-terms unchanged)
+        core_f_1 = -ϕU * sum(Utilde1[1, :, :] .* diag_x_core_E)
+        core_f_2 = -ϕU * sum(Utilde3[1, :, :] .* (E - diag_x_core_E))
+        core_f_4 = sum(Ztilde1_3[1, :, :] .* (diag_λ_ψ_core * diagm(xi_bar_s)))
+        core_f_5 = (λ_core * d0') * βtilde1_1[1, :]
+        core_f_6 = -(h_core + diag_λ_ψ_core * xi_bar_s)' * βtilde1_3[1, :]
+        core_obj_f = core_f_1 + core_f_2 + core_f_4 + core_f_5 + core_f_6 + orig_f_ub + orig_f_lb
+        @objective(model_f, Max, core_obj_f)
+        optimize!(model_f)
+
+        st_f = termination_status(model_f)
+        if !(st_f == MOI.OPTIMAL || st_f == MOI.SLOW_PROGRESS)
+            @warn "MW follower solve failed for s=$s: $st_f"
+        end
+    end
+
+    # ===== Extract coefficients (same as evaluate_master_opt_cut) =====
+    Uhat1_out = cat([value.(isp_leader_instances[s][2][:Uhat1]) for s in 1:S]...; dims=1)
+    Utilde1_out = cat([value.(isp_follower_instances[s][2][:Utilde1]) for s in 1:S]...; dims=1)
+    Uhat3_out = cat([value.(isp_leader_instances[s][2][:Uhat3]) for s in 1:S]...; dims=1)
+    Utilde3_out = cat([value.(isp_follower_instances[s][2][:Utilde3]) for s in 1:S]...; dims=1)
+    Ztilde1_3_out = cat([value.(isp_follower_instances[s][2][:Ztilde1_3]) for s in 1:S]...; dims=1)
+    βtilde1_1_out = cat([value.(isp_follower_instances[s][2][:βtilde1_1]) for s in 1:S]...; dims=1)
+    βtilde1_3_out = cat([value.(isp_follower_instances[s][2][:βtilde1_3]) for s in 1:S]...; dims=1)
+
+    if multi_cut
+        intercept_l = [value.(isp_leader_instances[s][2][:intercept]) for s in 1:S]
+        intercept_f = [value.(isp_follower_instances[s][2][:intercept]) for s in 1:S]
+        intercept = sum(intercept_l) + sum(intercept_f)
+    else
+        intercept = sum(value.(isp_leader_instances[s][2][:intercept]) for s in 1:S) + sum(value.(isp_follower_instances[s][2][:intercept]) for s in 1:S)
+        intercept_l, intercept_f = nothing, nothing
+    end
+
+    # ===== Cleanup: delete MW constraints, restore original objectives =====
+    for item in mw_cons
+        item === nothing && continue
+        model, con = item
+        delete(model, con)
+    end
+    # Restore original objectives and re-solve so ISPs are in correct state
+    # (필수: 다음 MW core point 호출 시 objective_value가 원래 z*를 반환해야 함)
+    for s in 1:S
+        xi_bar_s = xi_bar[s]
+        # Restore leader objective
+        model_l = isp_leader_instances[s][1]
+        vars_l = isp_leader_instances[s][2]
+        Uhat1 = vars_l[:Uhat1]; Uhat3 = vars_l[:Uhat3]
+        Phat1_Φ = vars_l[:Phat1_Φ]; Phat1_Π = vars_l[:Phat1_Π]
+        Phat2_Φ = vars_l[:Phat2_Φ]; Phat2_Π = vars_l[:Phat2_Π]
+        βhat1_1 = vars_l[:βhat1_1]
+        @objective(model_l, Max,
+            -ϕU * sum(Uhat1[1, :, :] .* diag_x_sol_E) +
+            -ϕU * sum(Uhat3[1, :, :] .* (E - diag_x_sol_E)) +
+            (d0') * βhat1_1[1, :] +
+            -ϕU * sum(Phat1_Φ[1, :, :]) - πU * sum(Phat1_Π[1, :, :]) +
+            -ϕU * sum(Phat2_Φ[1, :, :]) - πU * sum(Phat2_Π[1, :, :]))
+        optimize!(model_l)
+        # Restore follower objective
+        model_f = isp_follower_instances[s][1]
+        vars_f = isp_follower_instances[s][2]
+        Utilde1 = vars_f[:Utilde1]; Utilde3 = vars_f[:Utilde3]; Ztilde1_3_v = vars_f[:Ztilde1_3]
+        Ptilde1_Φ = vars_f[:Ptilde1_Φ]; Ptilde1_Π = vars_f[:Ptilde1_Π]
+        Ptilde2_Φ = vars_f[:Ptilde2_Φ]; Ptilde2_Π = vars_f[:Ptilde2_Π]
+        Ptilde1_Y = vars_f[:Ptilde1_Y]; Ptilde1_Yts = vars_f[:Ptilde1_Yts]
+        Ptilde2_Y = vars_f[:Ptilde2_Y]; Ptilde2_Yts = vars_f[:Ptilde2_Yts]
+        βtilde1_1_v = vars_f[:βtilde1_1]; βtilde1_3_v = vars_f[:βtilde1_3]
+        @objective(model_f, Max,
+            -ϕU * sum(Utilde1[1, :, :] .* diag_x_sol_E) +
+            -ϕU * sum(Utilde3[1, :, :] .* (E - diag_x_sol_E)) +
+            sum(Ztilde1_3_v[1, :, :] .* (diag_λ_ψ_sol * diagm(xi_bar_s))) +
+            (λ_sol * d0') * βtilde1_1_v[1, :] +
+            -(h_sol + diag_λ_ψ_sol * xi_bar_s)' * βtilde1_3_v[1, :] +
+            -ϕU * sum(Ptilde1_Φ[1, :, :]) - πU * sum(Ptilde1_Π[1, :, :]) - yU * sum(Ptilde1_Y[1, :, :]) - ytsU * sum(Ptilde1_Yts[1, :]) +
+            -ϕU * sum(Ptilde2_Φ[1, :, :]) - πU * sum(Ptilde2_Π[1, :, :]) - yU * sum(Ptilde2_Y[1, :, :]) - ytsU * sum(Ptilde2_Yts[1, :]))
+        optimize!(model_f)
+    end
+
+    return Dict(:Uhat1=>Uhat1_out, :Utilde1=>Utilde1_out, :Uhat3=>Uhat3_out, :Utilde3=>Utilde3_out,
+        :Ztilde1_3=>Ztilde1_3_out, :βtilde1_1=>βtilde1_1_out, :βtilde1_3=>βtilde1_3_out,
+        :intercept=>intercept, :intercept_l=>intercept_l, :intercept_f=>intercept_f)
+end
+
+
+function tr_nested_benders_optimize!(omp_model::Model, omp_vars::Dict, network, ϕU, λU, γ, w, uncertainty_set; mip_optimizer=nothing, conic_optimizer=nothing, multi_cut=false, outer_tr=true, inner_tr=true, max_outer_iter=1000, isp_mode=:dual, tol=1e-4, πU=ϕU, yU=ϕU, ytsU=ϕU, strengthen_cuts=false)
     ### -------- Trust Region 초기화 --------
     if outer_tr
         num_interdictable = sum(network.interdictable_arcs)
@@ -598,6 +845,11 @@ function tr_nested_benders_optimize!(omp_model::Model, omp_vars::Dict, network, 
     result[:cuts] = Dict()
     result[:tr_info] = Dict()
     result[:inner_iter] = []
+    # Debug logging arrays
+    result[:debug_α] = []
+    result[:debug_intercept_l] = []
+    result[:debug_intercept_f] = []
+    result[:debug_coeff_norms] = []
     upper_bound = Inf  # global UB (never reset)
     local_upper_bound = Inf  # local UB (reset per stage)
     lower_bound = -Inf
@@ -801,6 +1053,25 @@ function tr_nested_benders_optimize!(omp_model::Model, omp_vars::Dict, network, 
             else
                 outer_cut_info = evaluate_master_opt_cut(leader_instances, follower_instances, isp_data, cut_info, iter, multi_cut=multi_cut)
             end
+            # Debug logging
+            push!(result[:debug_α], cut_info[:α_sol])
+            if multi_cut
+                push!(result[:debug_intercept_l], sum(outer_cut_info[:intercept_l]))
+                push!(result[:debug_intercept_f], sum(outer_cut_info[:intercept_f]))
+            else
+                # intercept_l/f may be nothing in single-cut mode; use total intercept
+                push!(result[:debug_intercept_l], NaN)
+                push!(result[:debug_intercept_f], NaN)
+            end
+            push!(result[:debug_coeff_norms], Dict(
+                :Uhat1 => norm(outer_cut_info[:Uhat1]),
+                :Utilde1 => norm(outer_cut_info[:Utilde1]),
+                :Uhat3 => norm(outer_cut_info[:Uhat3]),
+                :Utilde3 => norm(outer_cut_info[:Utilde3]),
+                :βtilde1_1 => norm(outer_cut_info[:βtilde1_1]),
+                :βtilde1_3 => norm(outer_cut_info[:βtilde1_3]),
+                :Ztilde1_3 => norm(outer_cut_info[:Ztilde1_3]),
+            ))
             if multi_cut
                 cut_1_l =  -ϕU * [sum(outer_cut_info[:Uhat1][s,:,:] .* diag_x_E) for s in 1:S]
                 cut_1_f =  -ϕU * [sum(outer_cut_info[:Utilde1][s,:,:] .* diag_x_E) for s in 1:S]
@@ -860,6 +1131,49 @@ function tr_nested_benders_optimize!(omp_model::Model, omp_vars::Dict, network, 
             end
             println("subproblem objective: ", subprob_obj)
             @info "Optimality cut added"
+
+            # ===== Magnanti-Wong Cut Strengthening =====
+            if strengthen_cuts && leader_instances !== nothing
+                interdictable_idx = findall(network.interdictable_arcs[1:num_arcs])
+                core_points = generate_core_points(network, γ, λU, w, v;
+                    interdictable_idx=interdictable_idx, strategy=:interior_and_arcs)
+                for (cp_idx, cp) in enumerate(core_points)
+                    mw_info = evaluate_mw_opt_cut(
+                        leader_instances, follower_instances, isp_data, cut_info, iter;
+                        x_sol=x_sol, λ_sol=λ_sol, h_sol=h_sol, ψ0_sol=ψ0_sol,
+                        x_core=cp.x, λ_core=cp.λ, h_core=cp.h, ψ0_core=cp.ψ0,
+                        multi_cut=multi_cut)
+                    # Add MW cut to OMP (same structure as regular cut)
+                    if multi_cut
+                        mw_1_l = -ϕU * [sum(mw_info[:Uhat1][s,:,:] .* diag_x_E) for s in 1:S]
+                        mw_1_f = -ϕU * [sum(mw_info[:Utilde1][s,:,:] .* diag_x_E) for s in 1:S]
+                        mw_2_l = -ϕU * [sum(mw_info[:Uhat3][s,:,:] .* (isp_data[:E] - diag_x_E)) for s in 1:S]
+                        mw_2_f = -ϕU * [sum(mw_info[:Utilde3][s,:,:] .* (isp_data[:E] - diag_x_E)) for s in 1:S]
+                        mw_3_f = [sum(mw_info[:Ztilde1_3][s,:,:] .* (diag_λ_ψ * diagm(xi_bar[s]))) for s in 1:S]
+                        mw_4_f = [(isp_data[:d0]'*mw_info[:βtilde1_1][s,:]) * λ for s in 1:S]
+                        mw_5_f = -1 * [(h + diag_λ_ψ * xi_bar[s])'* mw_info[:βtilde1_3][s,:] for s in 1:S]
+                        mw_cut_l = sum(mw_1_l) + sum(mw_2_l) + sum(mw_info[:intercept_l])
+                        mw_cut_f = sum(mw_1_f) + sum(mw_2_f) + sum(mw_3_f) + sum(mw_4_f) + sum(mw_5_f) + sum(mw_info[:intercept_f])
+                        mw_added_l = @constraint(omp_model, t_0_l >= mw_cut_l)
+                        mw_added_f = @constraint(omp_model, t_0_f >= mw_cut_f)
+                        set_name(mw_added_l, "mw_cut_$(iter)_cp$(cp_idx)_l")
+                        set_name(mw_added_f, "mw_cut_$(iter)_cp$(cp_idx)_f")
+                        result[:cuts]["mw_cut_$(iter)_cp$(cp_idx)_l"] = mw_added_l
+                        result[:cuts]["mw_cut_$(iter)_cp$(cp_idx)_f"] = mw_added_f
+                    else
+                        mw_1 = -ϕU * [sum((mw_info[:Uhat1][s,:,:] + mw_info[:Utilde1][s,:,:]) .* diag_x_E) for s in 1:S]
+                        mw_2 = -ϕU * [sum((mw_info[:Uhat3][s,:,:] + mw_info[:Utilde3][s,:,:]) .* (isp_data[:E] - diag_x_E)) for s in 1:S]
+                        mw_3 = [sum(mw_info[:Ztilde1_3][s,:,:] .* (diag_λ_ψ * diagm(xi_bar[s]))) for s in 1:S]
+                        mw_4 = [(isp_data[:d0]'*mw_info[:βtilde1_1][s,:]) * λ for s in 1:S]
+                        mw_5 = -1 * [(h + diag_λ_ψ * xi_bar[s])'* mw_info[:βtilde1_3][s,:] for s in 1:S]
+                        mw_cut = sum(mw_1) + sum(mw_2) + sum(mw_3) + sum(mw_4) + sum(mw_5) + sum(mw_info[:intercept])
+                        mw_added = @constraint(omp_model, t_0 >= mw_cut)
+                        set_name(mw_added, "mw_cut_$(iter)_cp$(cp_idx)")
+                        result[:cuts]["mw_cut_$(iter)_cp$(cp_idx)"] = mw_added
+                    end
+                end
+                @info "  $(length(core_points)) MW strengthening cuts added"
+            end
 
             # Update TR constraints if needed
             if outer_tr && tr_needs_update
