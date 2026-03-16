@@ -777,7 +777,160 @@ function evaluate_mw_opt_cut(
 end
 
 
-function tr_nested_benders_optimize!(omp_model::Model, omp_vars::Dict, network, ϕU, λU, γ, w, uncertainty_set; mip_optimizer=nothing, conic_optimizer=nothing, multi_cut=false, outer_tr=true, inner_tr=true, max_outer_iter=1000, isp_mode=:dual, tol=1e-4, πU=ϕU, yU=ϕU, ytsU=ϕU, strengthen_cuts=false)
+"""
+    evaluate_sherali_opt_cut(...)
+
+Sherali & Lunday (2011) ζ-perturbation cut 생성.
+Master 변수를 ζ만큼 core point 방향으로 perturb한 뒤 ISP를 re-solve하여
+ε₀-optimal maximal nondominated cut을 1회 solve로 추출.
+
+MW 대비 장점: constraint 추가/삭제/cleanup 불필요, conic solve 1회 절약.
+다음 iteration에서 ISP objective가 새 (x,λ,h,ψ0)로 갱신되므로 state 복원 불필요.
+
+ζ 선택: additive perturbation x_pert = x_sol + ζ·x_core이므로, x_sol[i]=1인 arc에서
+x_pert[i] > 1이 되면 ISP objective의 (E - diag(x)·E) 부호가 반전 → DUAL_INFEASIBLE.
+ζ=1e-8은 solver가 수치적으로 무시하는 수준이라 안전. ζ ≥ 1e-7부터 unbounded 발생 확인됨.
+상세: pareto_optimal_cuts.md 참조.
+
+반환: evaluate_master_opt_cut과 동일한 Dict.
+"""
+function evaluate_sherali_opt_cut(
+    isp_leader_instances, isp_follower_instances, isp_data, cut_info, iter;
+    x_sol, λ_sol, h_sol, ψ0_sol,
+    x_core, λ_core, h_core, ψ0_core,
+    ζ=1e-8, multi_cut=false)  # ζ ≥ 1e-7 → DUAL_INFEASIBLE (see docstring)
+
+    S = isp_data[:S]
+    α_sol = cut_info[:α_sol]
+    E = isp_data[:E]
+    ϕU = isp_data[:ϕU]
+    πU = get(isp_data, :πU, ϕU)
+    yU = get(isp_data, :yU, ϕU)
+    ytsU = get(isp_data, :ytsU, ϕU)
+    d0 = isp_data[:d0]
+    v_param = isp_data[:v]
+    xi_bar = isp_data[:uncertainty_set][:xi_bar]
+    num_arcs = length(x_sol)
+
+    # 1. Perturb master variables
+    x_pert = x_sol .+ ζ .* x_core
+    λ_pert = λ_sol + ζ * λ_core
+    h_pert = h_sol .+ ζ .* h_core
+    ψ0_pert = ψ0_sol .+ ζ .* ψ0_core
+
+    diag_x_pert_E = Diagonal(x_pert) * E
+    diag_λ_ψ_pert = Diagonal(λ_pert * ones(num_arcs) - v_param .* ψ0_pert)
+
+    # 2. Set perturbed objectives & solve ISP directly (bypass isp_leader/follower_optimize! assertions)
+    for s in 1:S
+        xi_bar_s = xi_bar[s]
+
+        # --- Leader: set objective with perturbed x ---
+        model_l = isp_leader_instances[s][1]
+        vars_l = isp_leader_instances[s][2]
+        Uhat1_v = vars_l[:Uhat1]; Uhat3_v = vars_l[:Uhat3]
+        Phat1_Φ = vars_l[:Phat1_Φ]; Phat1_Π = vars_l[:Phat1_Π]
+        Phat2_Φ = vars_l[:Phat2_Φ]; Phat2_Π = vars_l[:Phat2_Π]
+        βhat1_1_v = vars_l[:βhat1_1]
+
+        @objective(model_l, Max,
+            -ϕU * sum(Uhat1_v[1, :, :] .* diag_x_pert_E) +
+            -ϕU * sum(Uhat3_v[1, :, :] .* (E - diag_x_pert_E)) +
+            (d0') * βhat1_1_v[1, :] +
+            -ϕU * sum(Phat1_Φ[1, :, :]) - πU * sum(Phat1_Π[1, :, :]) +
+            -ϕU * sum(Phat2_Φ[1, :, :]) - πU * sum(Phat2_Π[1, :, :]))
+        set_normalized_rhs.(vec(model_l[:coupling_cons]), α_sol)
+        optimize!(model_l)
+        st_l = termination_status(model_l)
+        if !(st_l == MOI.OPTIMAL || st_l == MOI.SLOW_PROGRESS)
+            @warn "Sherali leader solve failed for s=$s: $st_l"
+        end
+
+        # --- Follower: set objective with perturbed x, λ, h, ψ0 ---
+        model_f = isp_follower_instances[s][1]
+        vars_f = isp_follower_instances[s][2]
+        Utilde1_v = vars_f[:Utilde1]; Utilde3_v = vars_f[:Utilde3]; Ztilde1_3_v = vars_f[:Ztilde1_3]
+        Ptilde1_Φ = vars_f[:Ptilde1_Φ]; Ptilde1_Π = vars_f[:Ptilde1_Π]
+        Ptilde2_Φ = vars_f[:Ptilde2_Φ]; Ptilde2_Π = vars_f[:Ptilde2_Π]
+        Ptilde1_Y = vars_f[:Ptilde1_Y]; Ptilde1_Yts = vars_f[:Ptilde1_Yts]
+        Ptilde2_Y = vars_f[:Ptilde2_Y]; Ptilde2_Yts = vars_f[:Ptilde2_Yts]
+        βtilde1_1_v = vars_f[:βtilde1_1]; βtilde1_3_v = vars_f[:βtilde1_3]
+
+        @objective(model_f, Max,
+            -ϕU * sum(Utilde1_v[1, :, :] .* diag_x_pert_E) +
+            -ϕU * sum(Utilde3_v[1, :, :] .* (E - diag_x_pert_E)) +
+            sum(Ztilde1_3_v[1, :, :] .* (diag_λ_ψ_pert * diagm(xi_bar_s))) +
+            (λ_pert * d0') * βtilde1_1_v[1, :] +
+            -(h_pert + diag_λ_ψ_pert * xi_bar_s)' * βtilde1_3_v[1, :] +
+            -ϕU * sum(Ptilde1_Φ[1, :, :]) - πU * sum(Ptilde1_Π[1, :, :]) - yU * sum(Ptilde1_Y[1, :, :]) - ytsU * sum(Ptilde1_Yts[1, :]) +
+            -ϕU * sum(Ptilde2_Φ[1, :, :]) - πU * sum(Ptilde2_Π[1, :, :]) - yU * sum(Ptilde2_Y[1, :, :]) - ytsU * sum(Ptilde2_Yts[1, :]))
+        set_normalized_rhs.(vec(model_f[:coupling_cons]), α_sol)
+        optimize!(model_f)
+        st_f = termination_status(model_f)
+        if !(st_f == MOI.OPTIMAL || st_f == MOI.SLOW_PROGRESS)
+            @warn "Sherali follower solve failed for s=$s: $st_f"
+        end
+    end
+
+    # 3. Extract coefficients (primal variable values — same as evaluate_master_opt_cut)
+    Uhat1 = cat([value.(isp_leader_instances[s][2][:Uhat1]) for s in 1:S]...; dims=1)
+    Utilde1 = cat([value.(isp_follower_instances[s][2][:Utilde1]) for s in 1:S]...; dims=1)
+    Uhat3 = cat([value.(isp_leader_instances[s][2][:Uhat3]) for s in 1:S]...; dims=1)
+    Utilde3 = cat([value.(isp_follower_instances[s][2][:Utilde3]) for s in 1:S]...; dims=1)
+    Ztilde1_3 = cat([value.(isp_follower_instances[s][2][:Ztilde1_3]) for s in 1:S]...; dims=1)
+    βtilde1_1 = cat([value.(isp_follower_instances[s][2][:βtilde1_1]) for s in 1:S]...; dims=1)
+    βtilde1_3 = cat([value.(isp_follower_instances[s][2][:βtilde1_3]) for s in 1:S]...; dims=1)
+
+    if multi_cut
+        intercept_l = [value.(isp_leader_instances[s][2][:intercept]) for s in 1:S]
+        intercept_f = [value.(isp_follower_instances[s][2][:intercept]) for s in 1:S]
+        intercept = sum(intercept_l) + sum(intercept_f)
+    else
+        intercept = sum(value.(isp_leader_instances[s][2][:intercept]) for s in 1:S) + sum(value.(isp_follower_instances[s][2][:intercept]) for s in 1:S)
+        intercept_l, intercept_f = nothing, nothing
+    end
+
+    # Logging: perturbed obj + cut value at original point
+    pert_obj = sum(objective_value(isp_leader_instances[s][1]) for s in 1:S) +
+               sum(objective_value(isp_follower_instances[s][1]) for s in 1:S)
+    # Evaluate Sherali cut at original (x_sol, λ_sol, h_sol, ψ0_sol)
+    diag_x_sol_E = Diagonal(x_sol) * E
+    diag_λ_ψ_sol = Diagonal(λ_sol * ones(num_arcs) - v_param .* ψ0_sol)
+    cut_val_at_x = 0.0
+    for s in 1:S
+        cut_val_at_x += -ϕU * sum(Uhat1[s,:,:] .* diag_x_sol_E)
+        cut_val_at_x += -ϕU * sum(Uhat3[s,:,:] .* (E - diag_x_sol_E))
+        cut_val_at_x += -ϕU * sum(Utilde1[s,:,:] .* diag_x_sol_E)
+        cut_val_at_x += -ϕU * sum(Utilde3[s,:,:] .* (E - diag_x_sol_E))
+        cut_val_at_x += sum(Ztilde1_3[s,:,:] .* (diag_λ_ψ_sol * diagm(xi_bar[s])))
+        cut_val_at_x += (d0' * βtilde1_1[s,:]) * λ_sol
+        cut_val_at_x += -(h_sol + diag_λ_ψ_sol * xi_bar[s])' * βtilde1_3[s,:]
+    end
+    if multi_cut
+        cut_val_at_x += sum(intercept_l) + sum(intercept_f)
+    else
+        cut_val_at_x += intercept
+    end
+    slack = cut_val_at_x - cut_info[:obj_val]
+    if slack > 1e-3
+        @error "Sherali cut INVALID: cut@x̄ > z*(x̄) + 1e-3 (slack=$slack)"
+        @assert false "Invalid Sherali cut: cut@x̄=$(cut_val_at_x) > z*=$(cut_info[:obj_val])"
+    elseif slack > -1e-2
+        quality = "(near-optimal)"
+    elseif slack > -1e-1
+        quality = "(slightly loose)"
+    else
+        quality = "(LOOSE — weak strengthening)"
+    end
+    @info "  Sherali cut: ζ=$ζ, cut@x̄=$(round(cut_val_at_x, digits=4)), orig_obj=$(round(cut_info[:obj_val], digits=4)), slack=$(round(slack, digits=6)) $quality"
+
+    return Dict(:Uhat1=>Uhat1, :Utilde1=>Utilde1, :Uhat3=>Uhat3, :Utilde3=>Utilde3,
+        :Ztilde1_3=>Ztilde1_3, :βtilde1_1=>βtilde1_1, :βtilde1_3=>βtilde1_3,
+        :intercept=>intercept, :intercept_l=>intercept_l, :intercept_f=>intercept_f)
+end
+
+
+function tr_nested_benders_optimize!(omp_model::Model, omp_vars::Dict, network, ϕU, λU, γ, w, uncertainty_set; mip_optimizer=nothing, conic_optimizer=nothing, multi_cut=false, outer_tr=true, inner_tr=true, max_outer_iter=1000, isp_mode=:dual, tol=1e-4, πU=ϕU, yU=ϕU, ytsU=ϕU, strengthen_cuts=:none)
     ### -------- Trust Region 초기화 --------
     if outer_tr
         num_interdictable = sum(network.interdictable_arcs)
@@ -1131,47 +1284,56 @@ function tr_nested_benders_optimize!(omp_model::Model, omp_vars::Dict, network, 
             println("subproblem objective: ", subprob_obj)
             @info "Optimality cut added"
 
-            # ===== Magnanti-Wong Cut Strengthening =====
-            if strengthen_cuts && leader_instances !== nothing
+            # ===== Cut Strengthening (:mw or :sherali) =====
+            if strengthen_cuts != :none && leader_instances !== nothing
                 interdictable_idx = findall(network.interdictable_arcs[1:num_arcs])
                 core_points = generate_core_points(network, γ, λU, w, v;
                     interdictable_idx=interdictable_idx, strategy=:interior)
                 for (cp_idx, cp) in enumerate(core_points)
-                    mw_info = evaluate_mw_opt_cut(
-                        leader_instances, follower_instances, isp_data, cut_info, iter;
-                        x_sol=x_sol, λ_sol=λ_sol, h_sol=h_sol, ψ0_sol=ψ0_sol,
-                        x_core=cp.x, λ_core=cp.λ, h_core=cp.h, ψ0_core=cp.ψ0,
-                        multi_cut=multi_cut)
-                    # Add MW cut to OMP (same structure as regular cut)
+                    if strengthen_cuts == :mw
+                        str_info = evaluate_mw_opt_cut(
+                            leader_instances, follower_instances, isp_data, cut_info, iter;
+                            x_sol=x_sol, λ_sol=λ_sol, h_sol=h_sol, ψ0_sol=ψ0_sol,
+                            x_core=cp.x, λ_core=cp.λ, h_core=cp.h, ψ0_core=cp.ψ0,
+                            multi_cut=multi_cut)
+                    elseif strengthen_cuts == :sherali
+                        str_info = evaluate_sherali_opt_cut(
+                            leader_instances, follower_instances, isp_data, cut_info, iter;
+                            x_sol=x_sol, λ_sol=λ_sol, h_sol=h_sol, ψ0_sol=ψ0_sol,
+                            x_core=cp.x, λ_core=cp.λ, h_core=cp.h, ψ0_core=cp.ψ0,
+                            multi_cut=multi_cut)
+                    end
+                    # Add strengthened cut to OMP (same structure as regular cut)
+                    str_label = strengthen_cuts == :mw ? "mw" : "sherali"
                     if multi_cut
-                        mw_1_l = -ϕU * [sum(mw_info[:Uhat1][s,:,:] .* diag_x_E) for s in 1:S]
-                        mw_1_f = -ϕU * [sum(mw_info[:Utilde1][s,:,:] .* diag_x_E) for s in 1:S]
-                        mw_2_l = -ϕU * [sum(mw_info[:Uhat3][s,:,:] .* (isp_data[:E] - diag_x_E)) for s in 1:S]
-                        mw_2_f = -ϕU * [sum(mw_info[:Utilde3][s,:,:] .* (isp_data[:E] - diag_x_E)) for s in 1:S]
-                        mw_3_f = [sum(mw_info[:Ztilde1_3][s,:,:] .* (diag_λ_ψ * diagm(xi_bar[s]))) for s in 1:S]
-                        mw_4_f = [(isp_data[:d0]'*mw_info[:βtilde1_1][s,:]) * λ for s in 1:S]
-                        mw_5_f = -1 * [(h + diag_λ_ψ * xi_bar[s])'* mw_info[:βtilde1_3][s,:] for s in 1:S]
-                        mw_cut_l = sum(mw_1_l) + sum(mw_2_l) + sum(mw_info[:intercept_l])
-                        mw_cut_f = sum(mw_1_f) + sum(mw_2_f) + sum(mw_3_f) + sum(mw_4_f) + sum(mw_5_f) + sum(mw_info[:intercept_f])
+                        mw_1_l = -ϕU * [sum(str_info[:Uhat1][s,:,:] .* diag_x_E) for s in 1:S]
+                        mw_1_f = -ϕU * [sum(str_info[:Utilde1][s,:,:] .* diag_x_E) for s in 1:S]
+                        mw_2_l = -ϕU * [sum(str_info[:Uhat3][s,:,:] .* (isp_data[:E] - diag_x_E)) for s in 1:S]
+                        mw_2_f = -ϕU * [sum(str_info[:Utilde3][s,:,:] .* (isp_data[:E] - diag_x_E)) for s in 1:S]
+                        mw_3_f = [sum(str_info[:Ztilde1_3][s,:,:] .* (diag_λ_ψ * diagm(xi_bar[s]))) for s in 1:S]
+                        mw_4_f = [(isp_data[:d0]'*str_info[:βtilde1_1][s,:]) * λ for s in 1:S]
+                        mw_5_f = -1 * [(h + diag_λ_ψ * xi_bar[s])'* str_info[:βtilde1_3][s,:] for s in 1:S]
+                        mw_cut_l = sum(mw_1_l) + sum(mw_2_l) + sum(str_info[:intercept_l])
+                        mw_cut_f = sum(mw_1_f) + sum(mw_2_f) + sum(mw_3_f) + sum(mw_4_f) + sum(mw_5_f) + sum(str_info[:intercept_f])
                         mw_added_l = @constraint(omp_model, t_0_l >= mw_cut_l)
                         mw_added_f = @constraint(omp_model, t_0_f >= mw_cut_f)
-                        set_name(mw_added_l, "mw_cut_$(iter)_cp$(cp_idx)_l")
-                        set_name(mw_added_f, "mw_cut_$(iter)_cp$(cp_idx)_f")
-                        result[:cuts]["mw_cut_$(iter)_cp$(cp_idx)_l"] = mw_added_l
-                        result[:cuts]["mw_cut_$(iter)_cp$(cp_idx)_f"] = mw_added_f
+                        set_name(mw_added_l, "$(str_label)_cut_$(iter)_cp$(cp_idx)_l")
+                        set_name(mw_added_f, "$(str_label)_cut_$(iter)_cp$(cp_idx)_f")
+                        result[:cuts]["$(str_label)_cut_$(iter)_cp$(cp_idx)_l"] = mw_added_l
+                        result[:cuts]["$(str_label)_cut_$(iter)_cp$(cp_idx)_f"] = mw_added_f
                     else
-                        mw_1 = -ϕU * [sum((mw_info[:Uhat1][s,:,:] + mw_info[:Utilde1][s,:,:]) .* diag_x_E) for s in 1:S]
-                        mw_2 = -ϕU * [sum((mw_info[:Uhat3][s,:,:] + mw_info[:Utilde3][s,:,:]) .* (isp_data[:E] - diag_x_E)) for s in 1:S]
-                        mw_3 = [sum(mw_info[:Ztilde1_3][s,:,:] .* (diag_λ_ψ * diagm(xi_bar[s]))) for s in 1:S]
-                        mw_4 = [(isp_data[:d0]'*mw_info[:βtilde1_1][s,:]) * λ for s in 1:S]
-                        mw_5 = -1 * [(h + diag_λ_ψ * xi_bar[s])'* mw_info[:βtilde1_3][s,:] for s in 1:S]
-                        mw_cut = sum(mw_1) + sum(mw_2) + sum(mw_3) + sum(mw_4) + sum(mw_5) + sum(mw_info[:intercept])
+                        mw_1 = -ϕU * [sum((str_info[:Uhat1][s,:,:] + str_info[:Utilde1][s,:,:]) .* diag_x_E) for s in 1:S]
+                        mw_2 = -ϕU * [sum((str_info[:Uhat3][s,:,:] + str_info[:Utilde3][s,:,:]) .* (isp_data[:E] - diag_x_E)) for s in 1:S]
+                        mw_3 = [sum(str_info[:Ztilde1_3][s,:,:] .* (diag_λ_ψ * diagm(xi_bar[s]))) for s in 1:S]
+                        mw_4 = [(isp_data[:d0]'*str_info[:βtilde1_1][s,:]) * λ for s in 1:S]
+                        mw_5 = -1 * [(h + diag_λ_ψ * xi_bar[s])'* str_info[:βtilde1_3][s,:] for s in 1:S]
+                        mw_cut = sum(mw_1) + sum(mw_2) + sum(mw_3) + sum(mw_4) + sum(mw_5) + sum(str_info[:intercept])
                         mw_added = @constraint(omp_model, t_0 >= mw_cut)
-                        set_name(mw_added, "mw_cut_$(iter)_cp$(cp_idx)")
-                        result[:cuts]["mw_cut_$(iter)_cp$(cp_idx)"] = mw_added
+                        set_name(mw_added, "$(str_label)_cut_$(iter)_cp$(cp_idx)")
+                        result[:cuts]["$(str_label)_cut_$(iter)_cp$(cp_idx)"] = mw_added
                     end
                 end
-                @info "  $(length(core_points)) MW strengthening cuts added"
+                @info "  $(length(core_points)) $(strengthen_cuts) strengthening cuts added"
             end
 
             # Update TR constraints if needed
@@ -1191,7 +1353,7 @@ end
 
 
 function tr_nested_benders_optimize_hybrid!(omp_model::Model, omp_vars::Dict, network, ϕU, λU, γ, w, uncertainty_set;
-    mip_optimizer=nothing, conic_optimizer=nothing, multi_cut=false, outer_tr=true, inner_tr=true, max_outer_iter=1000, full_primal=false, tol=1e-4, πU=ϕU, yU=ϕU, ytsU=ϕU, strengthen_cuts=false)
+    mip_optimizer=nothing, conic_optimizer=nothing, multi_cut=false, outer_tr=true, inner_tr=true, max_outer_iter=1000, full_primal=false, tol=1e-4, πU=ϕU, yU=ϕU, ytsU=ϕU, strengthen_cuts=:none)
 
     # full_primal=true is NOT recommended.
     # Outer cut extraction via Mosek IPM shadow prices (evaluate_master_opt_cut_from_primal)
@@ -1495,46 +1657,55 @@ function tr_nested_benders_optimize_hybrid!(omp_model::Model, omp_vars::Dict, ne
             println("subproblem objective (hybrid): ", subprob_obj)
             @info "Optimality cut added (hybrid)"
 
-            # ===== Magnanti-Wong Cut Strengthening (hybrid) =====
-            if strengthen_cuts && dual_leader_instances !== nothing
+            # ===== Cut Strengthening (hybrid) =====
+            if strengthen_cuts != :none && dual_leader_instances !== nothing
                 interdictable_idx = findall(network.interdictable_arcs[1:num_arcs])
                 core_points = generate_core_points(network, γ, λU, w, v;
                     interdictable_idx=interdictable_idx, strategy=:interior)
                 for (cp_idx, cp) in enumerate(core_points)
-                    mw_info = evaluate_mw_opt_cut(
-                        dual_leader_instances, dual_follower_instances, isp_data, cut_info, iter;
-                        x_sol=x_sol, λ_sol=λ_sol, h_sol=h_sol, ψ0_sol=ψ0_sol,
-                        x_core=cp.x, λ_core=cp.λ, h_core=cp.h, ψ0_core=cp.ψ0,
-                        multi_cut=multi_cut)
+                    if strengthen_cuts == :mw
+                        str_info = evaluate_mw_opt_cut(
+                            dual_leader_instances, dual_follower_instances, isp_data, cut_info, iter;
+                            x_sol=x_sol, λ_sol=λ_sol, h_sol=h_sol, ψ0_sol=ψ0_sol,
+                            x_core=cp.x, λ_core=cp.λ, h_core=cp.h, ψ0_core=cp.ψ0,
+                            multi_cut=multi_cut)
+                    elseif strengthen_cuts == :sherali
+                        str_info = evaluate_sherali_opt_cut(
+                            dual_leader_instances, dual_follower_instances, isp_data, cut_info, iter;
+                            x_sol=x_sol, λ_sol=λ_sol, h_sol=h_sol, ψ0_sol=ψ0_sol,
+                            x_core=cp.x, λ_core=cp.λ, h_core=cp.h, ψ0_core=cp.ψ0,
+                            multi_cut=multi_cut)
+                    end
+                    str_label = strengthen_cuts == :mw ? "mw" : "sherali"
                     if multi_cut
-                        mw_1_l = -ϕU * [sum(mw_info[:Uhat1][s,:,:] .* diag_x_E) for s in 1:S]
-                        mw_1_f = -ϕU * [sum(mw_info[:Utilde1][s,:,:] .* diag_x_E) for s in 1:S]
-                        mw_2_l = -ϕU * [sum(mw_info[:Uhat3][s,:,:] .* (isp_data[:E] - diag_x_E)) for s in 1:S]
-                        mw_2_f = -ϕU * [sum(mw_info[:Utilde3][s,:,:] .* (isp_data[:E] - diag_x_E)) for s in 1:S]
-                        mw_3_f = [sum(mw_info[:Ztilde1_3][s,:,:] .* (diag_λ_ψ * diagm(xi_bar_local[s]))) for s in 1:S]
-                        mw_4_f = [(isp_data[:d0]'*mw_info[:βtilde1_1][s,:]) * λ for s in 1:S]
-                        mw_5_f = -1 * [(h + diag_λ_ψ * xi_bar_local[s])'* mw_info[:βtilde1_3][s,:] for s in 1:S]
-                        mw_cut_l = sum(mw_1_l) + sum(mw_2_l) + sum(mw_info[:intercept_l])
-                        mw_cut_f = sum(mw_1_f) + sum(mw_2_f) + sum(mw_3_f) + sum(mw_4_f) + sum(mw_5_f) + sum(mw_info[:intercept_f])
+                        mw_1_l = -ϕU * [sum(str_info[:Uhat1][s,:,:] .* diag_x_E) for s in 1:S]
+                        mw_1_f = -ϕU * [sum(str_info[:Utilde1][s,:,:] .* diag_x_E) for s in 1:S]
+                        mw_2_l = -ϕU * [sum(str_info[:Uhat3][s,:,:] .* (isp_data[:E] - diag_x_E)) for s in 1:S]
+                        mw_2_f = -ϕU * [sum(str_info[:Utilde3][s,:,:] .* (isp_data[:E] - diag_x_E)) for s in 1:S]
+                        mw_3_f = [sum(str_info[:Ztilde1_3][s,:,:] .* (diag_λ_ψ * diagm(xi_bar_local[s]))) for s in 1:S]
+                        mw_4_f = [(isp_data[:d0]'*str_info[:βtilde1_1][s,:]) * λ for s in 1:S]
+                        mw_5_f = -1 * [(h + diag_λ_ψ * xi_bar_local[s])'* str_info[:βtilde1_3][s,:] for s in 1:S]
+                        mw_cut_l = sum(mw_1_l) + sum(mw_2_l) + sum(str_info[:intercept_l])
+                        mw_cut_f = sum(mw_1_f) + sum(mw_2_f) + sum(mw_3_f) + sum(mw_4_f) + sum(mw_5_f) + sum(str_info[:intercept_f])
                         mw_added_l = @constraint(omp_model, t_0_l >= mw_cut_l)
                         mw_added_f = @constraint(omp_model, t_0_f >= mw_cut_f)
-                        set_name(mw_added_l, "mw_cut_$(iter)_cp$(cp_idx)_l")
-                        set_name(mw_added_f, "mw_cut_$(iter)_cp$(cp_idx)_f")
-                        result[:cuts]["mw_cut_$(iter)_cp$(cp_idx)_l"] = mw_added_l
-                        result[:cuts]["mw_cut_$(iter)_cp$(cp_idx)_f"] = mw_added_f
+                        set_name(mw_added_l, "$(str_label)_cut_$(iter)_cp$(cp_idx)_l")
+                        set_name(mw_added_f, "$(str_label)_cut_$(iter)_cp$(cp_idx)_f")
+                        result[:cuts]["$(str_label)_cut_$(iter)_cp$(cp_idx)_l"] = mw_added_l
+                        result[:cuts]["$(str_label)_cut_$(iter)_cp$(cp_idx)_f"] = mw_added_f
                     else
-                        mw_1 = -ϕU * [sum((mw_info[:Uhat1][s,:,:] + mw_info[:Utilde1][s,:,:]) .* diag_x_E) for s in 1:S]
-                        mw_2 = -ϕU * [sum((mw_info[:Uhat3][s,:,:] + mw_info[:Utilde3][s,:,:]) .* (isp_data[:E] - diag_x_E)) for s in 1:S]
-                        mw_3 = [sum(mw_info[:Ztilde1_3][s,:,:] .* (diag_λ_ψ * diagm(xi_bar_local[s]))) for s in 1:S]
-                        mw_4 = [(isp_data[:d0]'*mw_info[:βtilde1_1][s,:]) * λ for s in 1:S]
-                        mw_5 = -1 * [(h + diag_λ_ψ * xi_bar_local[s])'* mw_info[:βtilde1_3][s,:] for s in 1:S]
-                        mw_cut = sum(mw_1) + sum(mw_2) + sum(mw_3) + sum(mw_4) + sum(mw_5) + sum(mw_info[:intercept])
+                        mw_1 = -ϕU * [sum((str_info[:Uhat1][s,:,:] + str_info[:Utilde1][s,:,:]) .* diag_x_E) for s in 1:S]
+                        mw_2 = -ϕU * [sum((str_info[:Uhat3][s,:,:] + str_info[:Utilde3][s,:,:]) .* (isp_data[:E] - diag_x_E)) for s in 1:S]
+                        mw_3 = [sum(str_info[:Ztilde1_3][s,:,:] .* (diag_λ_ψ * diagm(xi_bar_local[s]))) for s in 1:S]
+                        mw_4 = [(isp_data[:d0]'*str_info[:βtilde1_1][s,:]) * λ for s in 1:S]
+                        mw_5 = -1 * [(h + diag_λ_ψ * xi_bar_local[s])'* str_info[:βtilde1_3][s,:] for s in 1:S]
+                        mw_cut = sum(mw_1) + sum(mw_2) + sum(mw_3) + sum(mw_4) + sum(mw_5) + sum(str_info[:intercept])
                         mw_added = @constraint(omp_model, t_0 >= mw_cut)
-                        set_name(mw_added, "mw_cut_$(iter)_cp$(cp_idx)")
-                        result[:cuts]["mw_cut_$(iter)_cp$(cp_idx)"] = mw_added
+                        set_name(mw_added, "$(str_label)_cut_$(iter)_cp$(cp_idx)")
+                        result[:cuts]["$(str_label)_cut_$(iter)_cp$(cp_idx)"] = mw_added
                     end
                 end
-                @info "  $(length(core_points)) MW strengthening cuts added (hybrid)"
+                @info "  $(length(core_points)) $(strengthen_cuts) strengthening cuts added (hybrid)"
             end
 
             if outer_tr && tr_needs_update

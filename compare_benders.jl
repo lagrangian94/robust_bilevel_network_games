@@ -78,7 +78,7 @@ max_cap = maximum(capacity_scenarios_regular)
 yU = min(max_cap, ϕU)            # analytic > ϕU이면 ϕU 유지
 ytsU = min(max_flow_ub, ϕU)      # analytic > ϕU이면 ϕU 유지
 println("  LDR bounds: ϕU=$ϕU, πU=$πU, yU=$yU, ytsU=$ytsU")
-
+strengthen_cuts = :mw # :none, :mw, :sherali
 results = Dict{String, Any}()
 
 # γ=2.0
@@ -108,34 +108,35 @@ results = Dict{String, Any}()
 # end
 # println("\n>> Full Model time: $(results["full_model"]) seconds")
 
-# # ===== 1. Strict Benders =====
-# println("\n" * "="^80)
-# println("1. STRICT BENDERS DECOMPOSITION (multi-cut)")
-# println("="^80)
+# ===== 1. Strict Benders =====
+println("\n" * "="^80)
+println("1. STRICT BENDERS DECOMPOSITION (multi-cut)")
+println("="^80)
 
-# GC.gc()
-# model1, vars1 = build_omp(network, ϕU, λU, γ, w; optimizer=Gurobi.Optimizer, multi_cut=true)
-# t1_start = time()
-# result1 = strict_benders_optimize!(model1, vars1, network, ϕU, λU, γ, w, uncertainty_set; optimizer=Gurobi.Optimizer, multi_cut=true, πU=πU, yU=yU, ytsU=ytsU, strengthen_cuts=true)
-# t1_end = time()
-# results["strict_benders"] = t1_end - t1_start
-# println("\n>> Strict Benders time: $(results["strict_benders"]) seconds")
+GC.gc()
+model1, vars1 = build_omp(network, ϕU, λU, γ, w; optimizer=Gurobi.Optimizer, multi_cut=true)
+t1_start = time()
+result1 = strict_benders_optimize!(model1, vars1, network, ϕU, λU, γ, w, uncertainty_set; optimizer=Gurobi.Optimizer, multi_cut=true, πU=πU, yU=yU, ytsU=ytsU, strengthen_cuts=strengthen_cuts)
+t1_end = time()
+results["strict_benders"] = t1_end - t1_start
+println("\n>> Strict Benders time: $(results["strict_benders"]) seconds")
 
-# # ===== 2. TR Nested Benders — Dual (T,T) =====
-# println("\n" * "="^80)
-# println("2. TR NESTED BENDERS — DUAL (outer=true, inner=true)")
-# println("="^80)
+@infiltrate
+# ===== 2. TR Nested Benders — Dual (T,T) =====
+println("\n" * "="^80)
+println("2. TR NESTED BENDERS — DUAL (outer=true, inner=true)")
+println("="^80)
 
-# GC.gc()
-# model2, vars2 = build_omp(network, ϕU, λU, γ, w; optimizer=Gurobi.Optimizer, multi_cut=true)
-# t2_start = time()
-# result2 = tr_nested_benders_optimize!(model2, vars2, network, ϕU, λU, γ, w, uncertainty_set;
-#     mip_optimizer=Gurobi.Optimizer, conic_optimizer=Mosek.Optimizer,
-#     multi_cut=true, outer_tr=false, inner_tr=true,
-#     πU=πU, yU=yU, ytsU=ytsU, strengthen_cuts=true)
-# t2_end = time()
-# results["tr_dual"] = t2_end - t2_start
-# println("\n>> Dual TR Both time: $(results["tr_dual"]) seconds")
+GC.gc()
+model2, vars2 = build_omp(network, ϕU, λU, γ, w; optimizer=Gurobi.Optimizer, multi_cut=true)
+t2_start = time()
+result2 = tr_nested_benders_optimize!(model2, vars2, network, ϕU, λU, γ, w, uncertainty_set;
+    mip_optimizer=Gurobi.Optimizer, conic_optimizer=Mosek.Optimizer,
+    multi_cut=true, outer_tr=false, inner_tr=true,
+    πU=πU, yU=yU, ytsU=ytsU, strengthen_cuts=strengthen_cuts)
+t2_end = time()
+results["tr_dual"] = t2_end - t2_start
+println("\n>> Dual TR Both time: $(results["tr_dual"]) seconds")
 
 
 # ===== 3. TR Nested Benders — Hybrid (T,T) =====
@@ -150,7 +151,7 @@ result3 = tr_nested_benders_optimize_hybrid!(model3, vars3, network,
     ϕU, λU, γ, w, uncertainty_set;
     mip_optimizer=Gurobi.Optimizer, conic_optimizer=Mosek.Optimizer,
     multi_cut=true, outer_tr=true, inner_tr=true,
-    πU=πU, yU=yU, ytsU=ytsU, strengthen_cuts=true)
+    πU=πU, yU=yU, ytsU=ytsU, strengthen_cuts=strengthen_cuts)
 t3_end = time()
 results["tr_hybrid"] = t3_end - t3_start
 println("\n>> Hybrid time: $(results["tr_hybrid"]) seconds")

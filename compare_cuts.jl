@@ -218,9 +218,25 @@ if !isempty(mw_arc_cuts)
 end
 outer_cut_mw_arc = isempty(mw_arc_cuts) ? outer_cut_mw_interior : mw_arc_cuts[best_arc_idx]
 
+# ===== Step 3d: Sherali ζ-perturbation cut =====
+println("\n" * "="^80)
+println("STEP 3d: Sherali ζ-perturbation cut (interior core point)")
+println("="^80)
+
+outer_cut_sherali = evaluate_sherali_opt_cut(
+    leader_instances, follower_instances, isp_data, cut_nested, 1;
+    x_sol=x_test, λ_sol=λ_test, h_sol=h_test, ψ0_sol=ψ0_test,
+    x_core=core_points[1].x, λ_core=core_points[1].λ,
+    h_core=core_points[1].h, ψ0_core=core_points[1].ψ0,
+    ζ=1e-8, multi_cut=true)
+
+println("  Sherali: ||Uhat1||=$(round(norm(outer_cut_sherali[:Uhat1]), digits=4))")
+println("  Σ intercept_l (Sherali): $(sum(outer_cut_sherali[:intercept_l]))")
+println("  Σ intercept_f (Sherali): $(sum(outer_cut_sherali[:intercept_f]))")
+
 # ===== Step 4: Comparison =====
 println("\n" * "="^80)
-println("COMPARISON: Strict vs Nested vs Hybrid vs MW-interior vs MW-arc")
+println("COMPARISON: Strict vs Nested vs Hybrid vs MW-interior vs MW-arc vs Sherali")
 println("="^80)
 
 # α comparison
@@ -245,18 +261,19 @@ println("  intercept_l:  strict=$(round(il_s, digits=6))  nested=$(round(il_n, d
 println("  intercept_f:  strict=$(round(if_s, digits=6))  nested=$(round(if_n, digits=6))  diff=$(round(if_s - if_n, digits=6))")
 println("  total:        strict=$(round(il_s+if_s, digits=6))  nested=$(round(il_n+if_n, digits=6))  diff=$(round((il_s+if_s)-(il_n+if_n), digits=6))")
 
-# Coefficient norms comparison (5-way)
-println("\n--- Coefficient norms comparison (5-way) ---")
+# Coefficient norms comparison (6-way)
+println("\n--- Coefficient norms comparison (6-way) ---")
 coeff_names = [:Uhat1, :Utilde1, :Uhat3, :Utilde3, :βtilde1_1, :βtilde1_3, :Ztilde1_3]
-println("  " * rpad("Coeff", 13) * rpad("Strict", 12) * rpad("Nested", 12) * rpad("Hybrid", 12) * rpad("MW-int", 12) * "MW-arc")
-println("  " * "-"^73)
+println("  " * rpad("Coeff", 13) * rpad("Strict", 12) * rpad("Nested", 12) * rpad("Hybrid", 12) * rpad("MW-int", 12) * rpad("MW-arc", 12) * "Sherali")
+println("  " * "-"^85)
 for cn in coeff_names
     ns = norm(cut_strict[cn])
     nn = norm(outer_cut_nested[cn])
     nh = norm(outer_cut_hybrid[cn])
     nmi = norm(outer_cut_mw_interior[cn])
     nma = norm(outer_cut_mw_arc[cn])
-    println("  " * rpad(string(cn), 13) * rpad(round(ns, digits=4), 12) * rpad(round(nn, digits=4), 12) * rpad(round(nh, digits=4), 12) * rpad(round(nmi, digits=4), 12) * "$(round(nma, digits=4))")
+    nsh = norm(outer_cut_sherali[cn])
+    println("  " * rpad(string(cn), 13) * rpad(round(ns, digits=4), 12) * rpad(round(nn, digits=4), 12) * rpad(round(nh, digits=4), 12) * rpad(round(nmi, digits=4), 12) * rpad(round(nma, digits=4), 12) * "$(round(nsh, digits=4))")
 end
 
 # ===== Step 4b: Uhat1/Utilde1 element-wise decomposition =====
@@ -364,25 +381,28 @@ val_nested_at_pt, vl_n, vf_n = eval_cut_value(outer_cut_nested, x_test, λ_test,
 val_hybrid_at_pt, vl_h, vf_h = eval_cut_value(outer_cut_hybrid, x_test, λ_test, h_test, ψ0_test)
 val_mwi_at_pt, vl_mi, vf_mi = eval_cut_value(outer_cut_mw_interior, x_test, λ_test, h_test, ψ0_test)
 val_mwa_at_pt, vl_ma, vf_ma = eval_cut_value(outer_cut_mw_arc, x_test, λ_test, h_test, ψ0_test)
+val_sherali_at_pt, vl_sh, vf_sh = eval_cut_value(outer_cut_sherali, x_test, λ_test, h_test, ψ0_test)
 
 println("\n  At current test point (should match OSP obj):")
 println("    OSP obj (strict): $(round(cut_strict[:obj_val], digits=6))")
-println("    cut_val (strict): $(round(val_strict_at_pt, digits=6))  (l=$(round(vl_s, digits=4)), f=$(round(vf_s, digits=4)))")
+println("    cut_val (strict):  $(round(val_strict_at_pt, digits=6))  (l=$(round(vl_s, digits=4)), f=$(round(vf_s, digits=4)))")
 println("    OSP obj (nested): $(round(cut_nested[:obj_val], digits=6))")
-println("    cut_val (nested): $(round(val_nested_at_pt, digits=6))  (l=$(round(vl_n, digits=4)), f=$(round(vf_n, digits=4)))")
-println("    cut_val (hybrid): $(round(val_hybrid_at_pt, digits=6))  (l=$(round(vl_h, digits=4)), f=$(round(vf_h, digits=4)))")
-println("    cut_val (MW-int): $(round(val_mwi_at_pt, digits=6))  (l=$(round(vl_mi, digits=4)), f=$(round(vf_mi, digits=4)))")
-println("    cut_val (MW-arc): $(round(val_mwa_at_pt, digits=6))  (l=$(round(vl_ma, digits=4)), f=$(round(vf_ma, digits=4)))")
+println("    cut_val (nested):  $(round(val_nested_at_pt, digits=6))  (l=$(round(vl_n, digits=4)), f=$(round(vf_n, digits=4)))")
+println("    cut_val (hybrid):  $(round(val_hybrid_at_pt, digits=6))  (l=$(round(vl_h, digits=4)), f=$(round(vf_h, digits=4)))")
+println("    cut_val (MW-int):  $(round(val_mwi_at_pt, digits=6))  (l=$(round(vl_mi, digits=4)), f=$(round(vf_mi, digits=4)))")
+println("    cut_val (MW-arc):  $(round(val_mwa_at_pt, digits=6))  (l=$(round(vl_ma, digits=4)), f=$(round(vf_ma, digits=4)))")
+println("    cut_val (Sherali): $(round(val_sherali_at_pt, digits=6))  (l=$(round(vl_sh, digits=4)), f=$(round(vf_sh, digits=4)))")
 println("    MW validity: MW-int >= z*-ε? $(val_mwi_at_pt >= cut_nested[:obj_val] - 1e-3), MW-arc >= z*-ε? $(val_mwa_at_pt >= cut_nested[:obj_val] - 1e-3)")
+println("    Sherali validity: Sherali >= z*-ε? $(val_sherali_at_pt >= cut_nested[:obj_val] - 1e-3)")
 
 # Generate random feasible x points (binary, sum ≤ γ, only interdictable arcs)
 rng = MersenneTwister(123)
 n_random = 10
-println("\n  Cut values at $n_random random feasible x points (5-way):")
-println("  " * rpad("Point", 7) * rpad("Strict", 12) * rpad("Nested", 12) * rpad("Hybrid", 12) * rpad("MW-int", 12) * rpad("MW-arc", 12) * "Best")
-println("  " * "-"^79)
+println("\n  Cut values at $n_random random feasible x points (6-way):")
+println("  " * rpad("Point", 7) * rpad("Strict", 12) * rpad("Nested", 12) * rpad("Hybrid", 12) * rpad("MW-int", 12) * rpad("MW-arc", 12) * rpad("Sherali", 12) * "Best")
+println("  " * "-"^91)
 
-wins = Dict("Strict"=>0, "Nested"=>0, "Hybrid"=>0, "MW-int"=>0, "MW-arc"=>0)
+wins = Dict("Strict"=>0, "Nested"=>0, "Hybrid"=>0, "MW-int"=>0, "MW-arc"=>0, "Sherali"=>0)
 
 for trial in 1:n_random
     global wins
@@ -408,14 +428,15 @@ for trial in 1:n_random
     val_h, _, _ = eval_cut_value(outer_cut_hybrid, x_rand, λ_rand, h_rand, ψ0_rand)
     val_mi, _, _ = eval_cut_value(outer_cut_mw_interior, x_rand, λ_rand, h_rand, ψ0_rand)
     val_ma, _, _ = eval_cut_value(outer_cut_mw_arc, x_rand, λ_rand, h_rand, ψ0_rand)
-    vals = [val_s, val_n, val_h, val_mi, val_ma]
-    names = ["Strict", "Nested", "Hybrid", "MW-int", "MW-arc"]
+    val_sh, _, _ = eval_cut_value(outer_cut_sherali, x_rand, λ_rand, h_rand, ψ0_rand)
+    vals = [val_s, val_n, val_h, val_mi, val_ma, val_sh]
+    names = ["Strict", "Nested", "Hybrid", "MW-int", "MW-arc", "Sherali"]
     best = names[argmax(vals)]
     wins[best] += 1
-    println("  " * rpad(trial, 7) * rpad(round(val_s, digits=4), 12) * rpad(round(val_n, digits=4), 12) * rpad(round(val_h, digits=4), 12) * rpad(round(val_mi, digits=4), 12) * rpad(round(val_ma, digits=4), 12) * best)
+    println("  " * rpad(trial, 7) * rpad(round(val_s, digits=4), 12) * rpad(round(val_n, digits=4), 12) * rpad(round(val_h, digits=4), 12) * rpad(round(val_mi, digits=4), 12) * rpad(round(val_ma, digits=4), 12) * rpad(round(val_sh, digits=4), 12) * best)
 end
 
-println("\n  Wins: Strict=$(wins["Strict"]), Nested=$(wins["Nested"]), Hybrid=$(wins["Hybrid"]), MW-int=$(wins["MW-int"]), MW-arc=$(wins["MW-arc"]) / $n_random")
+println("\n  Wins: Strict=$(wins["Strict"]), Nested=$(wins["Nested"]), Hybrid=$(wins["Hybrid"]), MW-int=$(wins["MW-int"]), MW-arc=$(wins["MW-arc"]), Sherali=$(wins["Sherali"]) / $n_random")
 println("  (Higher cut value = more restrictive = better for LB)")
 println("="^80)
 
