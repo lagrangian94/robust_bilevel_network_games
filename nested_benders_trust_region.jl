@@ -613,6 +613,10 @@ function evaluate_mw_opt_cut(
 
     mw_cons = []  # track constraints for cleanup
 
+    # Cache z_star before any modifications (re-solve 불필요하게 만듦)
+    z_star_cache_l = [objective_value(isp_leader_instances[s][1]) for s in 1:S]
+    z_star_cache_f = [objective_value(isp_follower_instances[s][1]) for s in 1:S]
+
     for s in 1:S
         xi_bar_s = xi_bar[s]
 
@@ -627,7 +631,7 @@ function evaluate_mw_opt_cut(
         Phat2_Π = vars_l[:Phat2_Π]
         βhat1_1 = vars_l[:βhat1_1]
 
-        z_star_l = objective_value(model_l)
+        z_star_l = z_star_cache_l[s]
 
         # Reconstruct original objective (at x_sol) — mirrors isp_leader_optimize! lines 194-201
         orig_l_1 = -ϕU * sum(Uhat1[1, :, :] .* diag_x_sol_E)
@@ -651,12 +655,7 @@ function evaluate_mw_opt_cut(
         st_l = termination_status(model_l)
         if !(st_l == MOI.OPTIMAL || st_l == MOI.SLOW_PROGRESS)
             @warn "MW leader solve failed for s=$s: $st_l, using original solution"
-            # Cleanup and restore
-            delete(model_l, mw_con_l)
-            @objective(model_l, Max, orig_obj_l)
-            optimize!(model_l)
-            pop!(mw_cons)
-            push!(mw_cons, nothing)
+            # MW constraint는 cleanup에서 일괄 삭제
             continue
         end
 
@@ -677,7 +676,7 @@ function evaluate_mw_opt_cut(
         βtilde1_1 = vars_f[:βtilde1_1]
         βtilde1_3 = vars_f[:βtilde1_3]
 
-        z_star_f = objective_value(model_f)
+        z_star_f = z_star_cache_f[s]
 
         # Reconstruct original objective (at x_sol, λ_sol, h_sol, ψ0_sol) — mirrors isp_follower_optimize! lines 239-248
         orig_f_1 = -ϕU * sum(Utilde1[1, :, :] .* diag_x_sol_E)
@@ -727,48 +726,11 @@ function evaluate_mw_opt_cut(
         intercept_l, intercept_f = nothing, nothing
     end
 
-    # ===== Cleanup: delete MW constraints, restore original objectives =====
+    # ===== Cleanup: delete MW constraints only (re-solve 불필요 — z_star는 캐싱됨) =====
     for item in mw_cons
         item === nothing && continue
         model, con = item
         delete(model, con)
-    end
-    # Restore original objectives and re-solve so ISPs are in correct state
-    # (필수: 다음 MW core point 호출 시 objective_value가 원래 z*를 반환해야 함)
-    for s in 1:S
-        xi_bar_s = xi_bar[s]
-        # Restore leader objective
-        model_l = isp_leader_instances[s][1]
-        vars_l = isp_leader_instances[s][2]
-        Uhat1 = vars_l[:Uhat1]; Uhat3 = vars_l[:Uhat3]
-        Phat1_Φ = vars_l[:Phat1_Φ]; Phat1_Π = vars_l[:Phat1_Π]
-        Phat2_Φ = vars_l[:Phat2_Φ]; Phat2_Π = vars_l[:Phat2_Π]
-        βhat1_1 = vars_l[:βhat1_1]
-        @objective(model_l, Max,
-            -ϕU * sum(Uhat1[1, :, :] .* diag_x_sol_E) +
-            -ϕU * sum(Uhat3[1, :, :] .* (E - diag_x_sol_E)) +
-            (d0') * βhat1_1[1, :] +
-            -ϕU * sum(Phat1_Φ[1, :, :]) - πU * sum(Phat1_Π[1, :, :]) +
-            -ϕU * sum(Phat2_Φ[1, :, :]) - πU * sum(Phat2_Π[1, :, :]))
-        optimize!(model_l)
-        # Restore follower objective
-        model_f = isp_follower_instances[s][1]
-        vars_f = isp_follower_instances[s][2]
-        Utilde1 = vars_f[:Utilde1]; Utilde3 = vars_f[:Utilde3]; Ztilde1_3_v = vars_f[:Ztilde1_3]
-        Ptilde1_Φ = vars_f[:Ptilde1_Φ]; Ptilde1_Π = vars_f[:Ptilde1_Π]
-        Ptilde2_Φ = vars_f[:Ptilde2_Φ]; Ptilde2_Π = vars_f[:Ptilde2_Π]
-        Ptilde1_Y = vars_f[:Ptilde1_Y]; Ptilde1_Yts = vars_f[:Ptilde1_Yts]
-        Ptilde2_Y = vars_f[:Ptilde2_Y]; Ptilde2_Yts = vars_f[:Ptilde2_Yts]
-        βtilde1_1_v = vars_f[:βtilde1_1]; βtilde1_3_v = vars_f[:βtilde1_3]
-        @objective(model_f, Max,
-            -ϕU * sum(Utilde1[1, :, :] .* diag_x_sol_E) +
-            -ϕU * sum(Utilde3[1, :, :] .* (E - diag_x_sol_E)) +
-            sum(Ztilde1_3_v[1, :, :] .* (diag_λ_ψ_sol * diagm(xi_bar_s))) +
-            (λ_sol * d0') * βtilde1_1_v[1, :] +
-            -(h_sol + diag_λ_ψ_sol * xi_bar_s)' * βtilde1_3_v[1, :] +
-            -ϕU * sum(Ptilde1_Φ[1, :, :]) - πU * sum(Ptilde1_Π[1, :, :]) - yU * sum(Ptilde1_Y[1, :, :]) - ytsU * sum(Ptilde1_Yts[1, :]) +
-            -ϕU * sum(Ptilde2_Φ[1, :, :]) - πU * sum(Ptilde2_Π[1, :, :]) - yU * sum(Ptilde2_Y[1, :, :]) - ytsU * sum(Ptilde2_Yts[1, :]))
-        optimize!(model_f)
     end
 
     return Dict(:Uhat1=>Uhat1_out, :Utilde1=>Utilde1_out, :Uhat3=>Uhat3_out, :Utilde3=>Utilde3_out,
