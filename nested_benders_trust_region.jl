@@ -574,7 +574,6 @@ function generate_core_points(network, γ, λU, w, v;
             push!(points, (x=x_arc, λ=λ_arc, h=h_arc, ψ0=ψ0_arc))
         end
     end
-    @infiltrate
     return points
 end
 
@@ -1192,7 +1191,7 @@ end
 
 
 function tr_nested_benders_optimize_hybrid!(omp_model::Model, omp_vars::Dict, network, ϕU, λU, γ, w, uncertainty_set;
-    mip_optimizer=nothing, conic_optimizer=nothing, multi_cut=false, outer_tr=true, inner_tr=true, max_outer_iter=1000, full_primal=false, tol=1e-4, πU=ϕU, yU=ϕU, ytsU=ϕU)
+    mip_optimizer=nothing, conic_optimizer=nothing, multi_cut=false, outer_tr=true, inner_tr=true, max_outer_iter=1000, full_primal=false, tol=1e-4, πU=ϕU, yU=ϕU, ytsU=ϕU, strengthen_cuts=false)
 
     # full_primal=true is NOT recommended.
     # Outer cut extraction via Mosek IPM shadow prices (evaluate_master_opt_cut_from_primal)
@@ -1495,6 +1494,48 @@ function tr_nested_benders_optimize_hybrid!(omp_model::Model, omp_vars::Dict, ne
             end
             println("subproblem objective (hybrid): ", subprob_obj)
             @info "Optimality cut added (hybrid)"
+
+            # ===== Magnanti-Wong Cut Strengthening (hybrid) =====
+            if strengthen_cuts && dual_leader_instances !== nothing
+                interdictable_idx = findall(network.interdictable_arcs[1:num_arcs])
+                core_points = generate_core_points(network, γ, λU, w, v;
+                    interdictable_idx=interdictable_idx, strategy=:interior)
+                for (cp_idx, cp) in enumerate(core_points)
+                    mw_info = evaluate_mw_opt_cut(
+                        dual_leader_instances, dual_follower_instances, isp_data, cut_info, iter;
+                        x_sol=x_sol, λ_sol=λ_sol, h_sol=h_sol, ψ0_sol=ψ0_sol,
+                        x_core=cp.x, λ_core=cp.λ, h_core=cp.h, ψ0_core=cp.ψ0,
+                        multi_cut=multi_cut)
+                    if multi_cut
+                        mw_1_l = -ϕU * [sum(mw_info[:Uhat1][s,:,:] .* diag_x_E) for s in 1:S]
+                        mw_1_f = -ϕU * [sum(mw_info[:Utilde1][s,:,:] .* diag_x_E) for s in 1:S]
+                        mw_2_l = -ϕU * [sum(mw_info[:Uhat3][s,:,:] .* (isp_data[:E] - diag_x_E)) for s in 1:S]
+                        mw_2_f = -ϕU * [sum(mw_info[:Utilde3][s,:,:] .* (isp_data[:E] - diag_x_E)) for s in 1:S]
+                        mw_3_f = [sum(mw_info[:Ztilde1_3][s,:,:] .* (diag_λ_ψ * diagm(xi_bar_local[s]))) for s in 1:S]
+                        mw_4_f = [(isp_data[:d0]'*mw_info[:βtilde1_1][s,:]) * λ for s in 1:S]
+                        mw_5_f = -1 * [(h + diag_λ_ψ * xi_bar_local[s])'* mw_info[:βtilde1_3][s,:] for s in 1:S]
+                        mw_cut_l = sum(mw_1_l) + sum(mw_2_l) + sum(mw_info[:intercept_l])
+                        mw_cut_f = sum(mw_1_f) + sum(mw_2_f) + sum(mw_3_f) + sum(mw_4_f) + sum(mw_5_f) + sum(mw_info[:intercept_f])
+                        mw_added_l = @constraint(omp_model, t_0_l >= mw_cut_l)
+                        mw_added_f = @constraint(omp_model, t_0_f >= mw_cut_f)
+                        set_name(mw_added_l, "mw_cut_$(iter)_cp$(cp_idx)_l")
+                        set_name(mw_added_f, "mw_cut_$(iter)_cp$(cp_idx)_f")
+                        result[:cuts]["mw_cut_$(iter)_cp$(cp_idx)_l"] = mw_added_l
+                        result[:cuts]["mw_cut_$(iter)_cp$(cp_idx)_f"] = mw_added_f
+                    else
+                        mw_1 = -ϕU * [sum((mw_info[:Uhat1][s,:,:] + mw_info[:Utilde1][s,:,:]) .* diag_x_E) for s in 1:S]
+                        mw_2 = -ϕU * [sum((mw_info[:Uhat3][s,:,:] + mw_info[:Utilde3][s,:,:]) .* (isp_data[:E] - diag_x_E)) for s in 1:S]
+                        mw_3 = [sum(mw_info[:Ztilde1_3][s,:,:] .* (diag_λ_ψ * diagm(xi_bar_local[s]))) for s in 1:S]
+                        mw_4 = [(isp_data[:d0]'*mw_info[:βtilde1_1][s,:]) * λ for s in 1:S]
+                        mw_5 = -1 * [(h + diag_λ_ψ * xi_bar_local[s])'* mw_info[:βtilde1_3][s,:] for s in 1:S]
+                        mw_cut = sum(mw_1) + sum(mw_2) + sum(mw_3) + sum(mw_4) + sum(mw_5) + sum(mw_info[:intercept])
+                        mw_added = @constraint(omp_model, t_0 >= mw_cut)
+                        set_name(mw_added, "mw_cut_$(iter)_cp$(cp_idx)")
+                        result[:cuts]["mw_cut_$(iter)_cp$(cp_idx)"] = mw_added
+                    end
+                end
+                @info "  $(length(core_points)) MW strengthening cuts added (hybrid)"
+            end
 
             if outer_tr && tr_needs_update
                 @info "Updating Trust Region"
