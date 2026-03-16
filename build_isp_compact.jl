@@ -56,7 +56,7 @@ using .NetworkGenerator
 #    원본 nested_benders_trust_region.jl의 build_isp_leader()와 동일한 수학적 구조이나,
 #    LDR 관련 dual 변수 (U, P)를 dictionary-indexed로 생성하여 변수 수를 줄인다.
 # =============================================================================
-function build_isp_leader_compact(network, S, ϕU, λU, γ, w, v, uncertainty_set, optimizer, λ_sol, x_sol, h_sol, ψ0_sol, α_sol, true_S)
+function build_isp_leader_compact(network, S, ϕU, λU, γ, w, v, uncertainty_set, optimizer, λ_sol, x_sol, h_sol, ψ0_sol, α_sol, true_S; πU=ϕU)
     num_nodes = length(network.nodes)
     num_arcs = length(network.arcs) - 1  # 마지막 arc는 dummy (t→s)
     N = network.N  # node-arc incidence 행렬
@@ -146,8 +146,8 @@ function build_isp_leader_compact(network, S, ϕU, λU, γ, w, v, uncertainty_se
     # d0 = [0,...,0,1]: βhat1_1의 intercept 열만 추출
     obj_term3 = d0' * βhat1_1[1, :]
     # P 변수들의 합: LDR 제약의 dual bound 기여
-    obj_ub = -ϕU * (sum(Phat1_Φ[p] for p in afp) + sum(Phat1_Π[p] for p in nfp))
-    obj_lb = -ϕU * (sum(Phat2_Φ[p] for p in afp) + sum(Phat2_Π[p] for p in nfp))
+    obj_ub = -ϕU * sum(Phat1_Φ[p] for p in afp) - πU * sum(Phat1_Π[p] for p in nfp)
+    obj_lb = -ϕU * sum(Phat2_Φ[p] for p in afp) - πU * sum(Phat2_Π[p] for p in nfp)
     @objective(model, Max, obj_term1 + obj_term2 + obj_term3 + obj_ub + obj_lb)
 
     # intercept: x에 의존하지 않는 항 (outer cut 구성 시 사용)
@@ -253,7 +253,7 @@ end
 #    Y_tilde (flow LDR), Yts_tilde (dummy arc flow LDR) 변수가 있다.
 #    Y_tilde는 arc adjacency 기반 compact, Yts_tilde는 1D이므로 dense 유지.
 # =============================================================================
-function build_isp_follower_compact(network, S, ϕU, λU, γ, w, v, uncertainty_set, optimizer, λ_sol, x_sol, h_sol, ψ0_sol, α_sol, true_S)
+function build_isp_follower_compact(network, S, ϕU, λU, γ, w, v, uncertainty_set, optimizer, λ_sol, x_sol, h_sol, ψ0_sol, α_sol, true_S; πU=ϕU, yU=ϕU, ytsU=ϕU)
     num_nodes = length(network.nodes)
     num_arcs = length(network.arcs) - 1
     N = network.N
@@ -361,10 +361,10 @@ function build_isp_follower_compact(network, S, ϕU, λU, γ, w, v, uncertainty_
     obj_term5 = (λ * d0') * βtilde1_1[1, :]
     obj_term6 = -(h + diag_λ_ψ * xi_bar[1])' * βtilde1_3[1, :]
     # P 변수들의 합: follower는 P_Y, P_Yts도 포함
-    obj_ub = -ϕU * (sum(Ptilde1_Φ[p] for p in afp) + sum(Ptilde1_Π[p] for p in nfp) +
-                     sum(Ptilde1_Y[p] for p in afp) + sum(Ptilde1_Yts[1, :]))
-    obj_lb = -ϕU * (sum(Ptilde2_Φ[p] for p in afp) + sum(Ptilde2_Π[p] for p in nfp) +
-                     sum(Ptilde2_Y[p] for p in afp) + sum(Ptilde2_Yts[1, :]))
+    obj_ub = -ϕU * sum(Ptilde1_Φ[p] for p in afp) - πU * sum(Ptilde1_Π[p] for p in nfp) -
+              yU * sum(Ptilde1_Y[p] for p in afp) - ytsU * sum(Ptilde1_Yts[1, :])
+    obj_lb = -ϕU * sum(Ptilde2_Φ[p] for p in afp) - πU * sum(Ptilde2_Π[p] for p in nfp) -
+              yU * sum(Ptilde2_Y[p] for p in afp) - ytsU * sum(Ptilde2_Yts[1, :])
     @objective(model, Max, obj_term1 + obj_term2 + obj_term4 + obj_term5 + obj_term6 + obj_ub + obj_lb)
 
     # intercept: x에 의존하지 않는 항 (P 합만 포함, follower는 obj_term4~6도 x-독립이지만
@@ -502,6 +502,7 @@ end
 function isp_leader_optimize_compact!(isp_leader_model::Model, isp_leader_vars::Dict; isp_data=nothing, uncertainty_set::Dict=nothing, λ_sol=nothing, x_sol=nothing, h_sol=nothing, ψ0_sol=nothing, α_sol=nothing)
     model, vars = isp_leader_model, isp_leader_vars
     E, ϕU, d0 = isp_data[:E], isp_data[:ϕU], isp_data[:d0]
+    πU = get(isp_data, :πU, ϕU)
     R, r_dict, xi_bar, epsilon = uncertainty_set[:R], uncertainty_set[:r_dict], uncertainty_set[:xi_bar], uncertainty_set[:epsilon]
     true_S = isp_data[:S]  # 전체 시나리오 수 (ISP는 S=1이지만 true_S로 정규화)
 
@@ -520,8 +521,8 @@ function isp_leader_optimize_compact!(isp_leader_model::Model, isp_leader_vars::
     obj_term1 = -ϕU * sum(Uhat1[(i,j)] * x_sol[i] for (i,j) in afp)
     obj_term2 = -ϕU * sum(Uhat3[(i,j)] * (1.0 - x_sol[i]) for (i,j) in afp)
     obj_term3 = d0' * βhat1_1[1, :]
-    obj_ub = -ϕU * (sum(Phat1_Φ[p] for p in afp) + sum(Phat1_Π[p] for p in nfp))
-    obj_lb = -ϕU * (sum(Phat2_Φ[p] for p in afp) + sum(Phat2_Π[p] for p in nfp))
+    obj_ub = -ϕU * sum(Phat1_Φ[p] for p in afp) - πU * sum(Phat1_Π[p] for p in nfp)
+    obj_lb = -ϕU * sum(Phat2_Φ[p] for p in afp) - πU * sum(Phat2_Π[p] for p in nfp)
     @objective(model, Max, obj_term1 + obj_term2 + obj_term3 + obj_ub + obj_lb)
 
     ## coupling 제약 RHS 갱신: α_sol이 바뀌므로 βhat2[s,k] ≤ α[k] 업데이트
@@ -559,6 +560,7 @@ end
 function isp_follower_optimize_compact!(isp_follower_model::Model, isp_follower_vars::Dict; isp_data=nothing, uncertainty_set::Dict=nothing, λ_sol=nothing, x_sol=nothing, h_sol=nothing, ψ0_sol=nothing, α_sol=nothing)
     model, vars = isp_follower_model, isp_follower_vars
     E, ϕU, d0 = isp_data[:E], isp_data[:ϕU], isp_data[:d0]
+    πU, yU, ytsU = get(isp_data, :πU, ϕU), get(isp_data, :yU, ϕU), get(isp_data, :ytsU, ϕU)
     R, r_dict, xi_bar, epsilon = uncertainty_set[:R], uncertainty_set[:r_dict], uncertainty_set[:xi_bar], uncertainty_set[:epsilon]
     num_arcs = length(x_sol)
     diag_λ_ψ = Diagonal(λ_sol * ones(num_arcs) - v .* ψ0_sol)
@@ -587,10 +589,10 @@ function isp_follower_optimize_compact!(isp_follower_model::Model, isp_follower_
     obj_term4 = sum(Ztilde1_3[1, :, :] .* (diag_λ_ψ * diagm(xi_bar[1])))
     obj_term5 = (λ_sol * d0') * βtilde1_1[1, :]
     obj_term6 = -(h_sol + diag_λ_ψ * xi_bar[1])' * βtilde1_3[1, :]
-    obj_ub = -ϕU * (sum(Ptilde1_Φ[p] for p in afp) + sum(Ptilde1_Π[p] for p in nfp) +
-                     sum(Ptilde1_Y[p] for p in afp) + sum(Ptilde1_Yts[1, :]))
-    obj_lb = -ϕU * (sum(Ptilde2_Φ[p] for p in afp) + sum(Ptilde2_Π[p] for p in nfp) +
-                     sum(Ptilde2_Y[p] for p in afp) + sum(Ptilde2_Yts[1, :]))
+    obj_ub = -ϕU * sum(Ptilde1_Φ[p] for p in afp) - πU * sum(Ptilde1_Π[p] for p in nfp) -
+              yU * sum(Ptilde1_Y[p] for p in afp) - ytsU * sum(Ptilde1_Yts[1, :])
+    obj_lb = -ϕU * sum(Ptilde2_Φ[p] for p in afp) - πU * sum(Ptilde2_Π[p] for p in nfp) -
+              yU * sum(Ptilde2_Y[p] for p in afp) - ytsU * sum(Ptilde2_Yts[1, :])
     @objective(model, Max, obj_term1 + obj_term2 + obj_term4 + obj_term5 + obj_term6 + obj_ub + obj_lb)
 
     ## update constraints
@@ -734,14 +736,14 @@ Dictionary-indexed compact ISP 인스턴스를 모든 시나리오에 대해 생
 원본 initialize_isp()의 drop-in replacement.
 compact optimize 함수들과 함께 사용해야 한다.
 """
-function initialize_isp_compact(network, S, ϕU, λU, γ, w, v, uncertainty_set; conic_optimizer=nothing, λ_sol=nothing, x_sol=nothing, h_sol=nothing, ψ0_sol=nothing, α_sol=nothing)
+function initialize_isp_compact(network, S, ϕU, λU, γ, w, v, uncertainty_set; conic_optimizer=nothing, λ_sol=nothing, x_sol=nothing, h_sol=nothing, ψ0_sol=nothing, α_sol=nothing, πU=ϕU, yU=ϕU, ytsU=ϕU)
     R, r_dict, xi_bar, epsilon = uncertainty_set[:R], uncertainty_set[:r_dict], uncertainty_set[:xi_bar], uncertainty_set[:epsilon]
     leader_instances = Dict{Int, Tuple{Model, Dict}}()
     follower_instances = Dict{Int, Tuple{Model, Dict}}()
     for s in 1:S
         U_s = Dict(:R => Dict(1=>R[s]), :r_dict => Dict(1=>r_dict[s]), :xi_bar => Dict(1=>xi_bar[s]), :epsilon => epsilon)
-        leader_instances[s] = build_isp_leader_compact(network, 1, ϕU, λU, γ, w, v, U_s, conic_optimizer, λ_sol, x_sol, h_sol, ψ0_sol, α_sol, S)
-        follower_instances[s] = build_isp_follower_compact(network, 1, ϕU, λU, γ, w, v, U_s, conic_optimizer, λ_sol, x_sol, h_sol, ψ0_sol, α_sol, S)
+        leader_instances[s] = build_isp_leader_compact(network, 1, ϕU, λU, γ, w, v, U_s, conic_optimizer, λ_sol, x_sol, h_sol, ψ0_sol, α_sol, S; πU=πU)
+        follower_instances[s] = build_isp_follower_compact(network, 1, ϕU, λU, γ, w, v, U_s, conic_optimizer, λ_sol, x_sol, h_sol, ψ0_sol, α_sol, S; πU=πU, yU=yU, ytsU=ytsU)
     end
     return leader_instances, follower_instances
 end

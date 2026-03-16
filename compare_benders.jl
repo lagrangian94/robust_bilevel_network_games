@@ -37,6 +37,7 @@ epsilon = 0.5
 ϕU = 1/epsilon ## 10.0 -> 1/epsilon으로 변경.
 λU = ϕU ## 10.0 -> ϕU로 변경.
 
+
 # ===== Generate Network & Uncertainty Set =====
 println("="^80)
 println("GENERATING NETWORK AND UNCERTAINTY SET")
@@ -60,6 +61,23 @@ println("  Recovery budget: w = ρ·γ·c̄ = $ρ × $γ × $(round(c_bar, digit
 capacity_scenarios_regular = capacities[1:end-1, :]
 R, r_dict, xi_bar = build_robust_counterpart_matrices(capacity_scenarios_regular, epsilon)
 uncertainty_set = Dict(:R => R, :r_dict => r_dict, :xi_bar => xi_bar, :epsilon => epsilon)
+
+# --- Tight LDR coefficient bounds (Idea 3: analytic bounds) ---
+# ϕU: flow dual Φ̂/Φ̃ LDR coeff bound (also McCormick) — stays as is
+# πU: node price Π̂/Π̃ — bounded by 1 (max-flow value in standard form, d0=[0,...,1])
+# yU: follower flow Ỹ — bounded by max arc capacity (per-arc flow ≤ capacity)
+# ytsU: dummy arc Ỹ_ts — bounded by max-flow value (≤ sum of source-out capacities)
+#
+# 물리적 해석: node price ∈ [0,1], flow ≤ capacity, total flow ≤ min-cut
+# LDR coeff는 value 범위에서 결정됨 (ζ는 dimensionless, ||ζ||≤ε)
+source_arc_idx = findall(a -> a[1] == "s", network.arcs[1:num_arcs])
+max_flow_ub = maximum(sum(capacities[source_arc_idx, s] for s in 1:S) / S)  # avg max-flow upper bound
+max_cap = maximum(capacity_scenarios_regular)
+
+πU = ϕU                          # node price: 이론적으로 동일 (LDR coeff ≤ 1/ε)
+yU = min(max_cap, ϕU)            # analytic > ϕU이면 ϕU 유지
+ytsU = min(max_flow_ub, ϕU)      # analytic > ϕU이면 ϕU 유지
+println("  LDR bounds: ϕU=$ϕU, πU=$πU, yU=$yU, ytsU=$ytsU")
 
 results = Dict{String, Any}()
 
@@ -92,16 +110,17 @@ results = Dict{String, Any}()
 
 # # ===== 1. Strict Benders =====
 # println("\n" * "="^80)
-# println("1. STRICT BENDERS DECOMPOSITION")
+# println("1. STRICT BENDERS DECOMPOSITION (multi-cut)")
 # println("="^80)
 
 # GC.gc()
-# model1, vars1 = build_omp(network, ϕU, λU, γ, w; optimizer=Gurobi.Optimizer, multi_cut=false)
+# model1, vars1 = build_omp(network, ϕU, λU, γ, w; optimizer=Gurobi.Optimizer, multi_cut=true)
 # t1_start = time()
-# result1 = strict_benders_optimize!(model1, vars1, network, ϕU, λU, γ, w, uncertainty_set; optimizer=Gurobi.Optimizer)
+# result1 = strict_benders_optimize!(model1, vars1, network, ϕU, λU, γ, w, uncertainty_set; optimizer=Gurobi.Optimizer, multi_cut=true, πU=πU, yU=yU, ytsU=ytsU)
 # t1_end = time()
 # results["strict_benders"] = t1_end - t1_start
 # println("\n>> Strict Benders time: $(results["strict_benders"]) seconds")
+
 
 # ===== 2. TR Nested Benders — Dual (T,T) =====
 println("\n" * "="^80)
@@ -113,10 +132,13 @@ model2, vars2 = build_omp(network, ϕU, λU, γ, w; optimizer=Gurobi.Optimizer, 
 t2_start = time()
 result2 = tr_nested_benders_optimize!(model2, vars2, network, ϕU, λU, γ, w, uncertainty_set;
     mip_optimizer=Gurobi.Optimizer, conic_optimizer=Mosek.Optimizer,
-    multi_cut=true, outer_tr=true, inner_tr=true)
+    multi_cut=true, outer_tr=false, inner_tr=true,
+    πU=πU, yU=yU, ytsU=ytsU)
 t2_end = time()
 results["tr_dual"] = t2_end - t2_start
 println("\n>> Dual TR Both time: $(results["tr_dual"]) seconds")
+
+@infiltrate
 
 # ===== 3. TR Nested Benders — Hybrid (T,T) =====
 println("\n" * "="^80)
@@ -129,7 +151,8 @@ t3_start = time()
 result3 = tr_nested_benders_optimize_hybrid!(model3, vars3, network,
     ϕU, λU, γ, w, uncertainty_set;
     mip_optimizer=Gurobi.Optimizer, conic_optimizer=Mosek.Optimizer,
-    multi_cut=true, outer_tr=true, inner_tr=true)
+    multi_cut=true, outer_tr=true, inner_tr=true,
+    πU=πU, yU=yU, ytsU=ytsU)
 t3_end = time()
 results["tr_hybrid"] = t3_end - t3_start
 println("\n>> Hybrid time: $(results["tr_hybrid"]) seconds")
@@ -140,7 +163,7 @@ println("COMPARISON SUMMARY")
 println("="^80)
 println("  Parameters:")
 println("    Network:  |A|=$num_arcs, |A_I|=$num_interdictable")
-println("    S=$S, ε=$epsilon, ϕU=$ϕU, λU=$λU, v=$v")
+println("    S=$S, ε=$epsilon, ϕU=$ϕU, λU=$λU, v=$v, πU=$πU, yU=$yU, ytsU=$ytsU")
 println("    γ=$γ (ratio=$γ_ratio), w=$(round(w, digits=4)) (ρ=$ρ)")
 println()
 

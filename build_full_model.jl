@@ -37,7 +37,8 @@ Note:
 """
 function build_full_2DRNDP_model(network, S, ϕU, λU, γ, w, v, uncertainty_set; mip_solver=nothing, conic_solver=nothing,
     # Optional: if provided, these are treated as fixed parameters
-    x_fixed=nothing, λ_fixed=nothing, h_fixed=nothing, ψ0_fixed=nothing)
+    x_fixed=nothing, λ_fixed=nothing, h_fixed=nothing, ψ0_fixed=nothing,
+    πU=ϕU, yU=ϕU, ytsU=ϕU)
 
     # Extract network dimensions
     num_nodes = length(network.nodes)
@@ -131,14 +132,14 @@ function build_full_2DRNDP_model(network, S, ϕU, λU, γ, w, v, uncertainty_set
 
     # Additional LDR coefficients
     # Π: (|V|-1) × |A| matrices (node prices, excluding source)
-    @variable(model, Πhat[s=1:S, 1:num_nodes-1, 1:num_arcs+1], lower_bound= -ϕU, upper_bound = ϕU)  # Leader's price coefficient
-    @variable(model, Πtilde[s=1:S, 1:num_nodes-1, 1:num_arcs+1], lower_bound= -ϕU, upper_bound = ϕU) # Follower's price coefficient
+    @variable(model, Πhat[s=1:S, 1:num_nodes-1, 1:num_arcs+1], lower_bound= -πU, upper_bound = πU)  # Leader's price coefficient
+    @variable(model, Πtilde[s=1:S, 1:num_nodes-1, 1:num_arcs+1], lower_bound= -πU, upper_bound = πU) # Follower's price coefficient
 
     # Y: |A| × |A| matrix (follower's additional LDR coefficient)
-    @variable(model, Ytilde[s=1:S, 1:num_arcs, 1:num_arcs+1], lower_bound= -ϕU, upper_bound = ϕU)  
+    @variable(model, Ytilde[s=1:S, 1:num_arcs, 1:num_arcs+1], lower_bound= -yU, upper_bound = yU)
 
     # Yts: 1 x (|A|+1) matrix (coefficient for dummy arc t->s)
-    @variable(model, Yts_tilde[s=1:S, 1, 1:num_arcs+1], lower_bound= -ϕU, upper_bound = ϕU)  
+    @variable(model, Yts_tilde[s=1:S, 1, 1:num_arcs+1], lower_bound= -ytsU, upper_bound = ytsU)
 
 
     # 변수 따로 정리
