@@ -28,7 +28,7 @@ includet("plot_benders.jl")
 using .NetworkGenerator: generate_grid_network, generate_capacity_scenarios_uniform_model, print_network_summary
 
 # ===== Common Parameters =====
-S = 1
+S = 10
 γ_ratio = 0.10
 ρ = 0.2
 v = 1.0
@@ -81,13 +81,19 @@ println("  LDR bounds: ϕU=$ϕU, πU=$πU, yU=$yU, ytsU=$ytsU")
 strengthen_cuts = :mw # :none, :mw, :sherali
 results = Dict{String, Any}()
 
-# γ=2.0
-# w=1.0
 
 # # ===== 0. Full Model (Pajarito) =====
 # println("\n" * "="^80)
 # println("0. FULL MODEL (Pajarito: MIP + Conic)")
 # println("="^80)
+
+# """
+# S=10, 5x5 grid networks에서 이미 한시간넘어도 수렴안함.
+#      7    14    0.84251    3   20          -    0.09367      -   0.0  331s
+#     27    38    3.73988    5   16   11.28263    1.61417  85.7%   0.0  640s
+#     39    44    4.15700    6   16   11.28263    2.27480  79.8%   0.0  855s
+#    352    39    8.82591   10    7    9.24680    5.80339  37.2%   0.0 3614s
+# """
 
 # GC.gc()
 # model0, vars0 = build_full_2DRNDP_model(network, S, ϕU, λU, γ, w, v, uncertainty_set,
@@ -108,36 +114,38 @@ results = Dict{String, Any}()
 # end
 # println("\n>> Full Model time: $(results["full_model"]) seconds")
 
-# ===== 1. Strict Benders =====
-println("\n" * "="^80)
-println("1. STRICT BENDERS DECOMPOSITION (multi-cut)")
-println("="^80)
 
-GC.gc()
-model1, vars1 = build_omp(network, ϕU, λU, γ, w; optimizer=Gurobi.Optimizer, multi_cut=true)
-t1_start = time()
-result1 = strict_benders_optimize!(model1, vars1, network, ϕU, λU, γ, w, uncertainty_set; optimizer=Gurobi.Optimizer, multi_cut=true, πU=πU, yU=yU, ytsU=ytsU, strengthen_cuts=strengthen_cuts)
-t1_end = time()
-results["strict_benders"] = t1_end - t1_start
-println("\n>> Strict Benders time: $(results["strict_benders"]) seconds")
+# # ===== 1. Strict Benders =====
+# println("\n" * "="^80)
+# println("1. STRICT BENDERS DECOMPOSITION (multi-cut)")
+# println("="^80)
 
-@infiltrate
+# GC.gc()
+# model1, vars1 = build_omp(network, ϕU, λU, γ, w; optimizer=Gurobi.Optimizer, multi_cut_lf=true)
+# t1_start = time()
+# result1 = strict_benders_optimize!(model1, vars1, network, ϕU, λU, γ, w, uncertainty_set; optimizer=Gurobi.Optimizer, multi_cut_lf=true, πU=πU, yU=yU, ytsU=ytsU, strengthen_cuts=strengthen_cuts)
+# t1_end = time()
+# results["strict_benders"] = t1_end - t1_start
+# println("\n>> Strict Benders time: $(results["strict_benders"]) seconds")
+
+
 # ===== 2. TR Nested Benders — Dual (T,T) =====
 println("\n" * "="^80)
 println("2. TR NESTED BENDERS — DUAL (outer=true, inner=true)")
 println("="^80)
 
 GC.gc()
-model2, vars2 = build_omp(network, ϕU, λU, γ, w; optimizer=Gurobi.Optimizer, multi_cut=true)
+model2, vars2 = build_omp(network, ϕU, λU, γ, w; optimizer=Gurobi.Optimizer, multi_cut_lf=true, multi_cut_scenario=true, S=S)
 t2_start = time()
 result2 = tr_nested_benders_optimize!(model2, vars2, network, ϕU, λU, γ, w, uncertainty_set;
     mip_optimizer=Gurobi.Optimizer, conic_optimizer=Mosek.Optimizer,
-    multi_cut=true, outer_tr=false, inner_tr=true,
+    multi_cut_lf=true, multi_cut_scenario=true, outer_tr=false, inner_tr=true,
     πU=πU, yU=yU, ytsU=ytsU, strengthen_cuts=strengthen_cuts)
 t2_end = time()
 results["tr_dual"] = t2_end - t2_start
 println("\n>> Dual TR Both time: $(results["tr_dual"]) seconds")
 
+@infiltrate
 
 # ===== 3. TR Nested Benders — Hybrid (T,T) =====
 println("\n" * "="^80)
@@ -145,12 +153,12 @@ println("3. TR NESTED BENDERS — HYBRID (primal ISP inner + dual ISP outer)")
 println("="^80)
 
 GC.gc()
-model3, vars3 = build_omp(network, ϕU, λU, γ, w; optimizer=Gurobi.Optimizer, multi_cut=true)
+model3, vars3 = build_omp(network, ϕU, λU, γ, w; optimizer=Gurobi.Optimizer, multi_cut_lf=true)
 t3_start = time()
 result3 = tr_nested_benders_optimize_hybrid!(model3, vars3, network,
     ϕU, λU, γ, w, uncertainty_set;
     mip_optimizer=Gurobi.Optimizer, conic_optimizer=Mosek.Optimizer,
-    multi_cut=true, outer_tr=true, inner_tr=true,
+    multi_cut_lf=true, outer_tr=true, inner_tr=true,
     πU=πU, yU=yU, ytsU=ytsU, strengthen_cuts=strengthen_cuts)
 t3_end = time()
 results["tr_hybrid"] = t3_end - t3_start

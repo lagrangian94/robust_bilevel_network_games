@@ -633,7 +633,7 @@ end
 #    dense 행렬 슬라이싱 (.* diag_x_E 등)을 사용하므로, compact → dense 변환이 필수.
 #    비인접 항목은 0으로 채워지므로 수학적으로 동일한 cut을 생성한다.
 # =============================================================================
-function evaluate_master_opt_cut_compact(isp_leader_instances::Dict, isp_follower_instances::Dict, isp_data::Dict, cut_info::Dict, iter::Int; multi_cut=false)
+function evaluate_master_opt_cut_compact(isp_leader_instances::Dict, isp_follower_instances::Dict, isp_data::Dict, cut_info::Dict, iter::Int; multi_cut_lf=false)
     S = isp_data[:S]
     α_sol = cut_info[:α_sol]
     num_arcs = length(isp_data[:network].arcs) - 1
@@ -697,20 +697,16 @@ function evaluate_master_opt_cut_compact(isp_leader_instances::Dict, isp_followe
     βtilde1_1 = cat([value.(isp_follower_instances[s][2][:βtilde1_1]) for s in 1:S]...; dims=1)
     βtilde1_3 = cat([value.(isp_follower_instances[s][2][:βtilde1_3]) for s in 1:S]...; dims=1)
 
-    if multi_cut
-        intercept_l = [value.(isp_leader_instances[s][2][:intercept]) for s in 1:S]
-        intercept_f = [value.(isp_follower_instances[s][2][:intercept]) for s in 1:S]
-        intercept = sum(intercept_l) + sum(intercept_f)
-    else
-        intercept = sum(value.(isp_leader_instances[s][2][:intercept]) for s in 1:S) + sum(value.(isp_follower_instances[s][2][:intercept]) for s in 1:S)
-        intercept_l, intercept_f = nothing, nothing
-    end
+    intercept_l = [value.(isp_leader_instances[s][2][:intercept]) for s in 1:S]
+    intercept_f = [value.(isp_follower_instances[s][2][:intercept]) for s in 1:S]
+    intercept = sum(intercept_l) + sum(intercept_f)
 
     leader_obj = sum(objective_value(isp_leader_instances[s][1]) for s in 1:S)
     follower_obj = sum(objective_value(isp_follower_instances[s][1]) for s in 1:S)
-    println("summation of leader and follower objective: ", leader_obj + follower_obj, ", cut_info[:obj_val]: ", cut_info[:obj_val])
+    avg_obj = (leader_obj + follower_obj) / S  # average over scenarios
+    println("avg of leader and follower objective: ", avg_obj, ", cut_info[:obj_val]: ", cut_info[:obj_val])
     println("Outer loop iteration: ", iter)
-    @assert abs(leader_obj + follower_obj - cut_info[:obj_val]) < 1e-3
+    @assert abs(avg_obj - cut_info[:obj_val]) < 1e-3
 
     return Dict(
         :Uhat1 => Uhat1, :Utilde1 => Utilde1,

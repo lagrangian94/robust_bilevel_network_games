@@ -596,6 +596,7 @@ function tr_imp_optimize_hybrid!(imp_model::Model, imp_vars::Dict,
     st = MOI.get(imp_model, MOI.TerminationStatus())
     iter = 0
     uncertainty_set = isp_data[:uncertainty_set]
+    S_total = isp_data[:S]  # scenario count for /S averaging
     past_obj = []
     past_subprob_obj = []
     past_major_subprob_obj = []
@@ -633,7 +634,7 @@ function tr_imp_optimize_hybrid!(imp_model::Model, imp_vars::Dict,
         optimize!(imp_model)
         st = MOI.get(imp_model, MOI.TerminationStatus())
         α_sol = max.(value.(imp_vars[:α]), 0.0)  # clamp: 음수 numerical tolerance → unbounded 방지
-        model_estimate = sum(value.(imp_vars[:t_1_l])) + sum(value.(imp_vars[:t_1_f]))
+        model_estimate = (sum(value.(imp_vars[:t_1_l])) + sum(value.(imp_vars[:t_1_f]))) / S_total  # average over scenarios
         subprob_obj = 0
         dict_cut_info_l, dict_cut_info_f = Dict(), Dict()
         status = true
@@ -650,6 +651,7 @@ function tr_imp_optimize_hybrid!(imp_model::Model, imp_vars::Dict,
             dict_cut_info_f[s] = cut_info_f
             subprob_obj += cut_info_l[:obj_val] + cut_info_f[:obj_val]
         end
+        subprob_obj /= S_total  # average over scenarios
         lower_bound = max(lower_bound, subprob_obj)
         gap = abs(model_estimate - lower_bound) / max(abs(model_estimate), 1e-10)
         if gap <= tol
@@ -775,7 +777,7 @@ function primal_evaluate_master_opt_cut(
     dual_leader_instances::Dict, dual_follower_instances::Dict,
     isp_data::Dict, cut_info::Dict, iter::Int;
     λ_sol=nothing, x_sol=nothing, h_sol=nothing, ψ0_sol=nothing,
-    multi_cut=false)
+    multi_cut_lf=false)
 
     S = isp_data[:S]
     α_sol = cut_info[:α_sol]
@@ -802,7 +804,7 @@ function primal_evaluate_master_opt_cut(
     # Now dual ISP objectives are updated. Call evaluate_master_opt_cut as usual.
     return evaluate_master_opt_cut(
         dual_leader_instances, dual_follower_instances,
-        isp_data, cut_info, iter; multi_cut=multi_cut)
+        isp_data, cut_info, iter; multi_cut_lf=multi_cut_lf)
 end
 
 
@@ -829,7 +831,7 @@ function evaluate_master_opt_cut_from_primal(
     primal_leader_instances::Dict, primal_follower_instances::Dict,
     isp_data::Dict, cut_info::Dict, iter::Int;
     λ_sol=nothing, x_sol=nothing, h_sol=nothing, ψ0_sol=nothing,
-    multi_cut=false)
+    multi_cut_lf=false)
 
     S = isp_data[:S]
     α_sol = cut_info[:α_sol]
@@ -905,49 +907,26 @@ function evaluate_master_opt_cut_from_primal(
     # Compute cut terms at current (x*, h*, λ*, ψ0*)
     leader_obj = sum(objective_value(primal_leader_instances[s][1]) for s in 1:S)
     follower_obj = sum(objective_value(primal_follower_instances[s][1]) for s in 1:S)
-    total_obj = leader_obj + follower_obj
+    avg_obj = (leader_obj + follower_obj) / S  # average over scenarios
 
-    println("summation of leader and follower objective: ", total_obj, ", cut_info[:obj_val]: ", cut_info[:obj_val])
+    println("avg of leader and follower objective: ", avg_obj, ", cut_info[:obj_val]: ", cut_info[:obj_val])
     println("Outer loop iteration (full primal): ", iter)
-    @assert abs(total_obj - cut_info[:obj_val]) < 1e-3 "obj mismatch: total=$total_obj, cut_info=$(cut_info[:obj_val])"
+    @assert abs(avg_obj - cut_info[:obj_val]) < 1e-3 "obj mismatch: avg=$avg_obj, cut_info=$(cut_info[:obj_val])"
 
-    if multi_cut
-        # Leader cut terms at current x*
-        cut_1_l_star = sum(-ϕU * sum(Uhat1[s,:,:] .* diag_x_E) for s in 1:S)
-        cut_2_l_star = sum(-ϕU * sum(Uhat3[s,:,:] .* (E - diag_x_E)) for s in 1:S)
-        intercept_l_per_s = [objective_value(primal_leader_instances[s][1]) -
-            (-ϕU * sum(Uhat1[s,:,:] .* diag_x_E) - ϕU * sum(Uhat3[s,:,:] .* (E - diag_x_E)))
-            for s in 1:S]
-
-        # Follower cut terms at current (x*, h*, λ*, ψ0*)
-        intercept_f_per_s = Float64[]
-        for s in 1:S
-            ct1 = -ϕU * sum(Utilde1[s,:,:] .* diag_x_E)
-            ct2 = -ϕU * sum(Utilde3[s,:,:] .* (E - diag_x_E))
-            ct3 = sum(Ztilde1_3[s,:,:] .* (diag_λ_ψ * diagm(xi_bar[s])))
-            ct4 = (d0' * βtilde1_1[s,:]) * λ_sol
-            ct5 = -(h_sol + diag_λ_ψ * xi_bar[s])' * βtilde1_3[s,:]
-            push!(intercept_f_per_s, objective_value(primal_follower_instances[s][1]) - (ct1 + ct2 + ct3 + ct4 + ct5))
-        end
-
-        intercept = sum(intercept_l_per_s) + sum(intercept_f_per_s)
-        intercept_l = intercept_l_per_s
-        intercept_f = intercept_f_per_s
-    else
-        # Single cut: compute total intercept residually
-        cut_terms_at_star = 0.0
-        for s in 1:S
-            ct1 = -ϕU * sum((Uhat1[s,:,:] + Utilde1[s,:,:]) .* diag_x_E)
-            ct2 = -ϕU * sum((Uhat3[s,:,:] + Utilde3[s,:,:]) .* (E - diag_x_E))
-            ct3 = sum(Ztilde1_3[s,:,:] .* (diag_λ_ψ * diagm(xi_bar[s])))
-            ct4 = (d0' * βtilde1_1[s,:]) * λ_sol
-            ct5 = -(h_sol + diag_λ_ψ * xi_bar[s])' * βtilde1_3[s,:]
-            cut_terms_at_star += ct1 + ct2 + ct3 + ct4 + ct5
-        end
-        intercept = total_obj - cut_terms_at_star
-        intercept_l = nothing
-        intercept_f = nothing
+    # Always compute per-scenario intercepts (leader + follower)
+    intercept_l = [objective_value(primal_leader_instances[s][1]) -
+        (-ϕU * sum(Uhat1[s,:,:] .* diag_x_E) - ϕU * sum(Uhat3[s,:,:] .* (E - diag_x_E)))
+        for s in 1:S]
+    intercept_f = Float64[]
+    for s in 1:S
+        ct1 = -ϕU * sum(Utilde1[s,:,:] .* diag_x_E)
+        ct2 = -ϕU * sum(Utilde3[s,:,:] .* (E - diag_x_E))
+        ct3 = sum(Ztilde1_3[s,:,:] .* (diag_λ_ψ * diagm(xi_bar[s])))
+        ct4 = (d0' * βtilde1_1[s,:]) * λ_sol
+        ct5 = -(h_sol + diag_λ_ψ * xi_bar[s])' * βtilde1_3[s,:]
+        push!(intercept_f, objective_value(primal_follower_instances[s][1]) - (ct1 + ct2 + ct3 + ct4 + ct5))
     end
+    intercept = sum(intercept_l) + sum(intercept_f)
 
     return Dict(:Uhat1=>Uhat1, :Utilde1=>Utilde1, :Uhat3=>Uhat3, :Utilde3=>Utilde3,
                 :Ztilde1_3=>Ztilde1_3, :βtilde1_1=>βtilde1_1, :βtilde1_3=>βtilde1_3,

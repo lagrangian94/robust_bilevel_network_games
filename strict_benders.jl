@@ -14,18 +14,25 @@ includet("build_full_model.jl")
 using .NetworkGenerator
 
 
-function build_omp(network, ϕU, λU, γ, w; optimizer=nothing, multi_cut=false)
+function build_omp(network, ϕU, λU, γ, w; optimizer=nothing, multi_cut_lf=false, multi_cut_scenario=false, S=1)
     # Extract network dimensions
     num_arcs = length(network.arcs)-1 #dummy arc 제외
     # Create model
     model = Model(optimizer_with_attributes(optimizer, MOI.Silent() => true))
-    if multi_cut
-        @variable(model, t_0_l >= 0)  # Objective epigraph variable
-        @variable(model, t_0_f >= 0)  # Objective epigraph variable
-        @objective(model, Min, t_0_l + t_0_f)
+    if multi_cut_scenario && multi_cut_lf
+        @variable(model, t_l[1:S] >= 0)
+        @variable(model, t_f[1:S] >= 0)
+        @objective(model, Min, (sum(t_l) + sum(t_f)) / S)
+    elseif multi_cut_scenario
+        @variable(model, t_s[1:S] >= 0)
+        @objective(model, Min, sum(t_s) / S)
+    elseif multi_cut_lf
+        @variable(model, t_0_l >= 0)
+        @variable(model, t_0_f >= 0)
+        @objective(model, Min, (t_0_l + t_0_f) / S)
     else
-        @variable(model, t_0 >= 0)  # Objective epigraph variable
-        @objective(model, Min, t_0)
+        @variable(model, t_0 >= 0)
+        @objective(model, Min, t_0 / S)
     end
     @variable(model, λ, lower_bound=0.0, upper_bound=λU)  # λ ≤ λU ≤ ϕU: LDR P-bound에서 π̃₀_sink ≤ ϕU이므로 eq(6d) Nts⊺π̃ ≥ λ 만족 필요
     @variable(model, x[1:num_arcs], Bin)
@@ -50,29 +57,25 @@ function build_omp(network, ϕU, λU, γ, w; optimizer=nothing, multi_cut=false)
         @constraint(model, ψ0[k] >= λ - λU * (1 - x[k]))
         @constraint(model, ψ0[k] >= 0)
     end
-    if multi_cut
-        vars = Dict(
-            :t_0_l => t_0_l,
-            :t_0_f => t_0_f,
-            :λ => λ,
-            :x => x,
-            :h => h,
-            :ψ0 => ψ0,
-            :t_0 => t_0_l + t_0_f
-        )
+    vars = Dict(:λ => λ, :x => x, :h => h, :ψ0 => ψ0)
+    if multi_cut_scenario && multi_cut_lf
+        vars[:t_l] = t_l
+        vars[:t_f] = t_f
+        vars[:t_0] = sum(t_l) + sum(t_f)
+    elseif multi_cut_scenario
+        vars[:t_s] = t_s
+        vars[:t_0] = sum(t_s)
+    elseif multi_cut_lf
+        vars[:t_0_l] = t_0_l
+        vars[:t_0_f] = t_0_f
+        vars[:t_0] = t_0_l + t_0_f
     else
-        vars = Dict(
-            :t_0 => t_0,
-            :λ => λ,
-            :x => x,
-            :h => h,
-            :ψ0 => ψ0
-        )
+        vars[:t_0] = t_0
     end
     return model, vars
 end
 
-function osp_optimize!(osp_model::Model, osp_vars::Dict, osp_data::Dict, λ_sol, x_sol, h_sol, ψ0_sol; multi_cut=false)
+function osp_optimize!(osp_model::Model, osp_vars::Dict, osp_data::Dict, λ_sol, x_sol, h_sol, ψ0_sol; multi_cut_lf=false)
     E = osp_data[:E]
     v = osp_data[:v]
     ϕU = osp_data[:ϕU]
@@ -111,8 +114,8 @@ function osp_optimize!(osp_model::Model, osp_vars::Dict, osp_data::Dict, λ_sol,
     obj_term_lb_hat = [-ϕU * sum(Phat2_Φ[s,:,:]) - πU * sum(Phat2_Π[s,:,:]) for s=1:S]
     obj_term_ub_tilde = [-ϕU * sum(Ptilde1_Φ[s,:,:]) - πU * sum(Ptilde1_Π[s,:,:]) - yU * sum(Ptilde1_Y[s,:,:]) - ytsU * sum(Ptilde1_Yts[s,:]) for s=1:S]
     obj_term_lb_tilde = [-ϕU * sum(Ptilde2_Φ[s,:,:]) - πU * sum(Ptilde2_Π[s,:,:]) - yU * sum(Ptilde2_Y[s,:,:]) - ytsU * sum(Ptilde2_Yts[s,:]) for s=1:S]
-    @objective(osp_model, Max, sum(obj_term1) + sum(obj_term2) + sum(obj_term3) + sum(obj_term4) + sum(obj_term5) + sum(obj_term6)
-    + sum(obj_term_ub_hat) + sum(obj_term_lb_hat) + sum(obj_term_ub_tilde) + sum(obj_term_lb_tilde))
+    @objective(osp_model, Max, (sum(obj_term1) + sum(obj_term2) + sum(obj_term3) + sum(obj_term4) + sum(obj_term5) + sum(obj_term6)
+    + sum(obj_term_ub_hat) + sum(obj_term_lb_hat) + sum(obj_term_ub_tilde) + sum(obj_term_lb_tilde)) / S)
 
     optimize!(osp_model)
     st = MOI.get(osp_model, MOI.TerminationStatus())
@@ -129,12 +132,10 @@ function osp_optimize!(osp_model::Model, osp_vars::Dict, osp_data::Dict, λ_sol,
             :obj_val => obj_val,
             :α_sol => value.(osp_vars[:α]),
         )
-        # Always compute separate intercepts for debug
+        # Always compute separate intercepts (per-scenario vectors)
         cut_coeff[:intercept_l] = value.(obj_term3) .+ value.(obj_term_ub_hat) .+ value.(obj_term_lb_hat)
         cut_coeff[:intercept_f] = value.(obj_term_ub_tilde) .+ value.(obj_term_lb_tilde)
-        if !multi_cut
-            cut_coeff[:intercept] = cut_coeff[:intercept_l] .+ cut_coeff[:intercept_f]
-        end
+        cut_coeff[:intercept] = cut_coeff[:intercept_l] .+ cut_coeff[:intercept_f]
         return (:OptimalityCut, cut_coeff)
     else
         t_status = termination_status(osp_model)
@@ -146,6 +147,77 @@ function osp_optimize!(osp_model::Model, osp_vars::Dict, osp_data::Dict, λ_sol,
     end
 end
 
+"""
+    add_optimality_cuts!(omp_model, omp_vars, cut_info, diag_x_E, E, diag_λ_ψ, xi_bar, d0, ϕU, λ_var, h_var, S, iter;
+        multi_cut_lf=false, multi_cut_scenario=false, prefix="opt_cut", result_cuts=nothing)
+
+Cut 조립 helper. cut_info에서 coefficient를 읽어 omp_model에 constraint를 추가.
+4가지 모드 지원: (multi_cut_lf × multi_cut_scenario).
+Returns combined AffExpr for tightness check.
+"""
+function add_optimality_cuts!(omp_model, omp_vars, cut_info, diag_x_E, E, diag_λ_ψ, xi_bar, d0, ϕU, λ_var, h_var, S, iter;
+    multi_cut_lf=false, multi_cut_scenario=false, prefix="opt_cut", result_cuts=nothing)
+    # Per-scenario cut terms (always compute leader/follower separately)
+    leader_s = Vector{Any}(undef, S)
+    follower_s = Vector{Any}(undef, S)
+    for s in 1:S
+        leader_s[s] = -ϕU * sum(cut_info[:Uhat1][s,:,:] .* diag_x_E) +
+                      -ϕU * sum(cut_info[:Uhat3][s,:,:] .* (E - diag_x_E)) +
+                      cut_info[:intercept_l][s]
+        follower_s[s] = -ϕU * sum(cut_info[:Utilde1][s,:,:] .* diag_x_E) +
+                        -ϕU * sum(cut_info[:Utilde3][s,:,:] .* (E - diag_x_E)) +
+                        sum(cut_info[:Ztilde1_3][s,:,:] .* (diag_λ_ψ * diagm(xi_bar[s]))) +
+                        (d0' * cut_info[:βtilde1_1][s,:]) * λ_var +
+                        -(h_var + diag_λ_ψ * xi_bar[s])' * cut_info[:βtilde1_3][s,:] +
+                        cut_info[:intercept_f][s]
+    end
+
+    # Add constraints based on mode
+    if multi_cut_scenario && multi_cut_lf
+        t_l, t_f = omp_vars[:t_l], omp_vars[:t_f]
+        for s in 1:S
+            c_l = @constraint(omp_model, t_l[s] >= leader_s[s])
+            c_f = @constraint(omp_model, t_f[s] >= follower_s[s])
+            set_name(c_l, "$(prefix)_$(iter)_l_s$(s)")
+            set_name(c_f, "$(prefix)_$(iter)_f_s$(s)")
+            if result_cuts !== nothing
+                result_cuts["$(prefix)_$(iter)_l_s$(s)"] = c_l
+                result_cuts["$(prefix)_$(iter)_f_s$(s)"] = c_f
+            end
+        end
+    elseif multi_cut_scenario
+        t_sv = omp_vars[:t_s]
+        for s in 1:S
+            c = @constraint(omp_model, t_sv[s] >= leader_s[s] + follower_s[s])
+            set_name(c, "$(prefix)_$(iter)_s$(s)")
+            if result_cuts !== nothing
+                result_cuts["$(prefix)_$(iter)_s$(s)"] = c
+            end
+        end
+    elseif multi_cut_lf
+        opt_cut_l = sum(leader_s)
+        opt_cut_f = sum(follower_s)
+        c_l = @constraint(omp_model, omp_vars[:t_0_l] >= opt_cut_l)
+        c_f = @constraint(omp_model, omp_vars[:t_0_f] >= opt_cut_f)
+        set_name(c_l, "$(prefix)_$(iter)_l")
+        set_name(c_f, "$(prefix)_$(iter)_f")
+        if result_cuts !== nothing
+            result_cuts["$(prefix)_$(iter)_l"] = c_l
+            result_cuts["$(prefix)_$(iter)_f"] = c_f
+        end
+    else
+        opt_cut = sum(leader_s) + sum(follower_s)
+        c = @constraint(omp_model, omp_vars[:t_0] >= opt_cut)
+        set_name(c, "$(prefix)_$(iter)")
+        if result_cuts !== nothing
+            result_cuts["$(prefix)_$(iter)"] = c
+        end
+    end
+
+    # Return combined expression for tightness check
+    return sum(leader_s) + sum(follower_s)
+end
+
 function initialize_omp(omp_model::Model, omp_vars::Dict)
     optimize!(omp_model) # 여기서 최적화를 하는 이유는 초기해를 뽑아서 subproblem을 build하기 위함임.
     st = MOI.get(omp_model, MOI.TerminationStatus())    
@@ -154,18 +226,13 @@ function initialize_omp(omp_model::Model, omp_vars::Dict)
     return st, value(omp_vars[:λ]), value.(omp_vars[:x]), value.(omp_vars[:h]), value.(omp_vars[:ψ0])
 end
 
-function strict_benders_optimize!(omp_model::Model, omp_vars::Dict, network, ϕU, λU, γ, w, uncertainty_set; optimizer=nothing, outer_tr=false, multi_cut=false, max_iter=1000, tol=1e-4, πU=ϕU, yU=ϕU, ytsU=ϕU, strengthen_cuts=:none, conic_optimizer=nothing)
+function strict_benders_optimize!(omp_model::Model, omp_vars::Dict, network, ϕU, λU, γ, w, uncertainty_set; optimizer=nothing, outer_tr=false, multi_cut_lf=false, multi_cut_scenario=false, max_iter=1000, tol=1e-4, πU=ϕU, yU=ϕU, ytsU=ϕU, strengthen_cuts=:none, conic_optimizer=nothing)
     ### --------Begin Initialization--------
     st, λ_sol, x_sol, h_sol, ψ0_sol = initialize_omp(omp_model, omp_vars)
     x, h, λ, ψ0 = omp_vars[:x], omp_vars[:h], omp_vars[:λ], omp_vars[:ψ0]
-    if multi_cut
-        t_0_l = omp_vars[:t_0_l]
-        t_0_f = omp_vars[:t_0_f]
-        t_0 = t_0_l + t_0_f
-    else
-        t_0 = omp_vars[:t_0]
-    end
+    t_0 = omp_vars[:t_0]  # always composite (sum of epigraph vars)
     num_arcs = length(network.arcs) - 1
+    S_total = length(uncertainty_set[:xi_bar])  # scenario count for /S averaging
     osp_model, osp_vars, osp_data = build_dualized_outer_subproblem(network, S, ϕU, λU, γ, w, v, uncertainty_set, MosekTools.Optimizer, λ_sol, x_sol, h_sol, ψ0_sol; πU=πU, yU=yU, ytsU=ytsU)
 
     diag_x_E = Diagonal(x) * osp_data[:E]  # diag(x)E
@@ -251,9 +318,9 @@ function strict_benders_optimize!(omp_model::Model, omp_vars::Dict, network, ϕU
         else
             x_sol = round.(value.(omp_vars[:x]))  # binary rounding for numerical stability
             h_sol, λ_sol, ψ0_sol = value.(omp_vars[:h]), value(omp_vars[:λ]), value.(omp_vars[:ψ0])
-            t_0_sol = value(omp_vars[:t_0])
+            t_0_sol = value(omp_vars[:t_0]) / S_total  # average over scenarios
 
-            (status, cut_info) = osp_optimize!(osp_model, osp_vars, osp_data, λ_sol, x_sol, h_sol, ψ0_sol; multi_cut=multi_cut)
+            (status, cut_info) = osp_optimize!(osp_model, osp_vars, osp_data, λ_sol, x_sol, h_sol, ψ0_sol; multi_cut_lf=multi_cut_lf)
             subprob_obj = cut_info[:obj_val]
             upper_bound = min(upper_bound, subprob_obj)
 
@@ -366,44 +433,10 @@ function strict_benders_optimize!(omp_model::Model, omp_vars::Dict, network, ϕU
             end
         else
             # Gap still large → Add cut and continue
-            @info "Iter $iter: LB=$(outer_tr ? round(lower_bound, digits=4) : round(t_0_sol, digits=4))  UB=$(round(upper_bound, digits=4))  gap=$(round(gap, digits=6))"
+            @info "Iter $iter: LB=$(outer_tr ? round(lower_bound, digits=4) : round(t_0_sol, digits=4))  UB=$(round(upper_bound, digits=4))  gap=$(round(gap, digits=6))  (globalUB=$(round(upper_bound, digits=4)); $(round(time()-time_start, digits=1))s)"
 
-            if multi_cut
-                # === Multi-cut: leader (hat) / follower (tilde) 분리 ===
-                cut_1_l = -ϕU * [sum(cut_info[:Uhat1][s,:,:] .* diag_x_E) for s in 1:S]
-                cut_2_l = -ϕU * [sum(cut_info[:Uhat3][s,:,:] .* (osp_data[:E] - diag_x_E)) for s in 1:S]
-                cut_intercept_l = cut_info[:intercept_l]
-                opt_cut_l = sum(cut_1_l) + sum(cut_2_l) + sum(cut_intercept_l)
-
-                cut_1_f = -ϕU * [sum(cut_info[:Utilde1][s,:,:] .* diag_x_E) for s in 1:S]
-                cut_2_f = -ϕU * [sum(cut_info[:Utilde3][s,:,:] .* (osp_data[:E] - diag_x_E)) for s in 1:S]
-                cut_3_f = [sum(cut_info[:Ztilde1_3][s,:,:] .* (diag_λ_ψ * diagm(xi_bar[s]))) for s in 1:S]
-                cut_4_f = [(osp_data[:d0]'*cut_info[:βtilde1_1][s,:]) * λ for s in 1:S]
-                cut_5_f = -1* [(h + diag_λ_ψ * xi_bar[s])'* cut_info[:βtilde1_3][s,:] for s in 1:S]
-                cut_intercept_f = cut_info[:intercept_f]
-                opt_cut_f = sum(cut_1_f) + sum(cut_2_f) + sum(cut_3_f) + sum(cut_4_f) + sum(cut_5_f) + sum(cut_intercept_f)
-
-                cut_added_l = @constraint(omp_model, t_0_l >= opt_cut_l)
-                cut_added_f = @constraint(omp_model, t_0_f >= opt_cut_f)
-                set_name(cut_added_l, "opt_cut_l_$iter")
-                set_name(cut_added_f, "opt_cut_f_$iter")
-                result[:cuts]["opt_cut_l_$iter"] = cut_added_l
-                result[:cuts]["opt_cut_f_$iter"] = cut_added_f
-                opt_cut = opt_cut_l + opt_cut_f  # for tightness check
-            else
-                # === Single-cut: 기존 동작 그대로 ===
-                cut_1 =  -ϕU * [sum((cut_info[:Uhat1][s,:,:] + cut_info[:Utilde1][s,:,:]) .* diag_x_E) for s in 1:S]
-                cut_2 =  -ϕU * [sum((cut_info[:Uhat3][s,:,:] + cut_info[:Utilde3][s,:,:]) .* (osp_data[:E] - diag_x_E)) for s in 1:S]
-                cut_3 =  [sum(cut_info[:Ztilde1_3][s,:,:] .* (diag_λ_ψ * diagm(xi_bar[s]))) for s in 1:S]
-                cut_4 =  [(osp_data[:d0]'*cut_info[:βtilde1_1][s,:]) * λ for s in 1:S]
-                cut_5 =  -1* [(h + diag_λ_ψ * xi_bar[s])'* cut_info[:βtilde1_3][s,:] for s in 1:S]
-                cut_intercept = cut_info[:intercept]
-                opt_cut = sum(cut_1)+ sum(cut_2)+ sum(cut_3)+ sum(cut_4)+ sum(cut_5)+ sum(cut_intercept)
-
-                cut_added = @constraint(omp_model, t_0 >= opt_cut)
-                set_name(cut_added, "opt_cut_$iter")
-                result[:cuts]["opt_cut_$iter"] = cut_added
-            end
+            opt_cut = add_optimality_cuts!(omp_model, omp_vars, cut_info, diag_x_E, osp_data[:E], diag_λ_ψ, xi_bar, osp_data[:d0], ϕU, λ, h, S, iter;
+                multi_cut_lf=multi_cut_lf, multi_cut_scenario=multi_cut_scenario, prefix="opt_cut", result_cuts=result[:cuts])
 
             println("subproblem objective: ", subprob_obj)
             @info "Optimality cut added"
@@ -426,7 +459,7 @@ function strict_benders_optimize!(omp_model::Model, omp_vars::Dict, network, ϕU
                 end
                 return eval_result
             end
-            if abs(subprob_obj - evaluate_expr(opt_cut, y)) > 1e-4
+            if abs(subprob_obj * S_total - evaluate_expr(opt_cut, y)) > 1e-4  # opt_cut is raw (not /S), subprob_obj is /S
                 println("something went wrong")
                 @infiltrate
             end
@@ -456,36 +489,10 @@ function strict_benders_optimize!(omp_model::Model, omp_vars::Dict, network, ϕU
                     # Step A: ISP-based cut (Hybrid: OSP α → ISP coefficients)
                     isp_cut = evaluate_master_opt_cut(
                         isp_leader_instances, isp_follower_instances,
-                        isp_data_strict, osp_cut_as_info, iter; multi_cut=multi_cut)
+                        isp_data_strict, osp_cut_as_info, iter; multi_cut_lf=multi_cut_lf)
 
-                    # Add ISP-based cut to OMP
-                    if multi_cut
-                        isp_1_l = -ϕU * [sum(isp_cut[:Uhat1][s,:,:] .* diag_x_E) for s in 1:S]
-                        isp_1_f = -ϕU * [sum(isp_cut[:Utilde1][s,:,:] .* diag_x_E) for s in 1:S]
-                        isp_2_l = -ϕU * [sum(isp_cut[:Uhat3][s,:,:] .* (osp_data[:E] - diag_x_E)) for s in 1:S]
-                        isp_2_f = -ϕU * [sum(isp_cut[:Utilde3][s,:,:] .* (osp_data[:E] - diag_x_E)) for s in 1:S]
-                        isp_3_f = [sum(isp_cut[:Ztilde1_3][s,:,:] .* (diag_λ_ψ * diagm(xi_bar[s]))) for s in 1:S]
-                        isp_4_f = [(osp_data[:d0]'*isp_cut[:βtilde1_1][s,:]) * λ for s in 1:S]
-                        isp_5_f = -1 * [(h + diag_λ_ψ * xi_bar[s])'* isp_cut[:βtilde1_3][s,:] for s in 1:S]
-                        isp_cut_l = sum(isp_1_l) + sum(isp_2_l) + sum(isp_cut[:intercept_l])
-                        isp_cut_f = sum(isp_1_f) + sum(isp_2_f) + sum(isp_3_f) + sum(isp_4_f) + sum(isp_5_f) + sum(isp_cut[:intercept_f])
-                        isp_added_l = @constraint(omp_model, t_0_l >= isp_cut_l)
-                        isp_added_f = @constraint(omp_model, t_0_f >= isp_cut_f)
-                        set_name(isp_added_l, "isp_cut_$(iter)_l")
-                        set_name(isp_added_f, "isp_cut_$(iter)_f")
-                        result[:cuts]["isp_cut_$(iter)_l"] = isp_added_l
-                        result[:cuts]["isp_cut_$(iter)_f"] = isp_added_f
-                    else
-                        isp_1 = -ϕU * [sum((isp_cut[:Uhat1][s,:,:] + isp_cut[:Utilde1][s,:,:]) .* diag_x_E) for s in 1:S]
-                        isp_2 = -ϕU * [sum((isp_cut[:Uhat3][s,:,:] + isp_cut[:Utilde3][s,:,:]) .* (osp_data[:E] - diag_x_E)) for s in 1:S]
-                        isp_3 = [sum(isp_cut[:Ztilde1_3][s,:,:] .* (diag_λ_ψ * diagm(xi_bar[s]))) for s in 1:S]
-                        isp_4 = [(osp_data[:d0]'*isp_cut[:βtilde1_1][s,:]) * λ for s in 1:S]
-                        isp_5 = -1 * [(h + diag_λ_ψ * xi_bar[s])'* isp_cut[:βtilde1_3][s,:] for s in 1:S]
-                        isp_opt_cut = sum(isp_1) + sum(isp_2) + sum(isp_3) + sum(isp_4) + sum(isp_5) + sum(isp_cut[:intercept])
-                        isp_added = @constraint(omp_model, t_0 >= isp_opt_cut)
-                        set_name(isp_added, "isp_cut_$iter")
-                        result[:cuts]["isp_cut_$iter"] = isp_added
-                    end
+                    add_optimality_cuts!(omp_model, omp_vars, isp_cut, diag_x_E, osp_data[:E], diag_λ_ψ, xi_bar, osp_data[:d0], ϕU, λ, h, S, iter;
+                        multi_cut_lf=multi_cut_lf, multi_cut_scenario=multi_cut_scenario, prefix="isp_cut", result_cuts=result[:cuts])
                     @info "  ISP-based cut added (Hybrid: OSP α → ISP coefficients)"
 
                     # Step B: MW cuts from core points
@@ -498,34 +505,9 @@ function strict_benders_optimize!(omp_model::Model, omp_vars::Dict, network, ϕU
                             isp_data_strict, osp_cut_as_info, iter;
                             x_sol=x_sol, λ_sol=λ_sol, h_sol=h_sol, ψ0_sol=ψ0_sol,
                             x_core=cp.x, λ_core=cp.λ, h_core=cp.h, ψ0_core=cp.ψ0,
-                            multi_cut=multi_cut)
-                        if multi_cut
-                            mw_1_l = -ϕU * [sum(str_info[:Uhat1][s,:,:] .* diag_x_E) for s in 1:S]
-                            mw_1_f = -ϕU * [sum(str_info[:Utilde1][s,:,:] .* diag_x_E) for s in 1:S]
-                            mw_2_l = -ϕU * [sum(str_info[:Uhat3][s,:,:] .* (osp_data[:E] - diag_x_E)) for s in 1:S]
-                            mw_2_f = -ϕU * [sum(str_info[:Utilde3][s,:,:] .* (osp_data[:E] - diag_x_E)) for s in 1:S]
-                            mw_3_f = [sum(str_info[:Ztilde1_3][s,:,:] .* (diag_λ_ψ * diagm(xi_bar[s]))) for s in 1:S]
-                            mw_4_f = [(osp_data[:d0]'*str_info[:βtilde1_1][s,:]) * λ for s in 1:S]
-                            mw_5_f = -1 * [(h + diag_λ_ψ * xi_bar[s])'* str_info[:βtilde1_3][s,:] for s in 1:S]
-                            mw_cut_l = sum(mw_1_l) + sum(mw_2_l) + sum(str_info[:intercept_l])
-                            mw_cut_f = sum(mw_1_f) + sum(mw_2_f) + sum(mw_3_f) + sum(mw_4_f) + sum(mw_5_f) + sum(str_info[:intercept_f])
-                            mw_added_l = @constraint(omp_model, t_0_l >= mw_cut_l)
-                            mw_added_f = @constraint(omp_model, t_0_f >= mw_cut_f)
-                            set_name(mw_added_l, "mw_cut_$(iter)_cp$(cp_idx)_l")
-                            set_name(mw_added_f, "mw_cut_$(iter)_cp$(cp_idx)_f")
-                            result[:cuts]["mw_cut_$(iter)_cp$(cp_idx)_l"] = mw_added_l
-                            result[:cuts]["mw_cut_$(iter)_cp$(cp_idx)_f"] = mw_added_f
-                        else
-                            mw_1 = -ϕU * [sum((str_info[:Uhat1][s,:,:] + str_info[:Utilde1][s,:,:]) .* diag_x_E) for s in 1:S]
-                            mw_2 = -ϕU * [sum((str_info[:Uhat3][s,:,:] + str_info[:Utilde3][s,:,:]) .* (osp_data[:E] - diag_x_E)) for s in 1:S]
-                            mw_3 = [sum(str_info[:Ztilde1_3][s,:,:] .* (diag_λ_ψ * diagm(xi_bar[s]))) for s in 1:S]
-                            mw_4 = [(osp_data[:d0]'*str_info[:βtilde1_1][s,:]) * λ for s in 1:S]
-                            mw_5 = -1 * [(h + diag_λ_ψ * xi_bar[s])'* str_info[:βtilde1_3][s,:] for s in 1:S]
-                            mw_cut = sum(mw_1) + sum(mw_2) + sum(mw_3) + sum(mw_4) + sum(mw_5) + sum(str_info[:intercept])
-                            mw_added = @constraint(omp_model, t_0 >= mw_cut)
-                            set_name(mw_added, "mw_cut_$(iter)_cp$(cp_idx)")
-                            result[:cuts]["mw_cut_$(iter)_cp$(cp_idx)"] = mw_added
-                        end
+                            multi_cut_lf=multi_cut_lf)
+                        add_optimality_cuts!(omp_model, omp_vars, str_info, diag_x_E, osp_data[:E], diag_λ_ψ, xi_bar, osp_data[:d0], ϕU, λ, h, S, iter;
+                            multi_cut_lf=multi_cut_lf, multi_cut_scenario=multi_cut_scenario, prefix="mw_cut_cp$(cp_idx)", result_cuts=result[:cuts])
                     end
                     @info "  $(length(core_points)) mw strengthening cuts added"
 
@@ -540,34 +522,9 @@ function strict_benders_optimize!(omp_model::Model, omp_vars::Dict, network, ϕU
                             isp_data_strict, osp_cut_as_info, iter;
                             x_sol=x_sol, λ_sol=λ_sol, h_sol=h_sol, ψ0_sol=ψ0_sol,
                             x_core=cp.x, λ_core=cp.λ, h_core=cp.h, ψ0_core=cp.ψ0,
-                            multi_cut=multi_cut)
-                        if multi_cut
-                            mw_1_l = -ϕU * [sum(str_info[:Uhat1][s,:,:] .* diag_x_E) for s in 1:S]
-                            mw_1_f = -ϕU * [sum(str_info[:Utilde1][s,:,:] .* diag_x_E) for s in 1:S]
-                            mw_2_l = -ϕU * [sum(str_info[:Uhat3][s,:,:] .* (osp_data[:E] - diag_x_E)) for s in 1:S]
-                            mw_2_f = -ϕU * [sum(str_info[:Utilde3][s,:,:] .* (osp_data[:E] - diag_x_E)) for s in 1:S]
-                            mw_3_f = [sum(str_info[:Ztilde1_3][s,:,:] .* (diag_λ_ψ * diagm(xi_bar[s]))) for s in 1:S]
-                            mw_4_f = [(osp_data[:d0]'*str_info[:βtilde1_1][s,:]) * λ for s in 1:S]
-                            mw_5_f = -1 * [(h + diag_λ_ψ * xi_bar[s])'* str_info[:βtilde1_3][s,:] for s in 1:S]
-                            mw_cut_l = sum(mw_1_l) + sum(mw_2_l) + sum(str_info[:intercept_l])
-                            mw_cut_f = sum(mw_1_f) + sum(mw_2_f) + sum(mw_3_f) + sum(mw_4_f) + sum(mw_5_f) + sum(str_info[:intercept_f])
-                            mw_added_l = @constraint(omp_model, t_0_l >= mw_cut_l)
-                            mw_added_f = @constraint(omp_model, t_0_f >= mw_cut_f)
-                            set_name(mw_added_l, "sherali_cut_$(iter)_cp$(cp_idx)_l")
-                            set_name(mw_added_f, "sherali_cut_$(iter)_cp$(cp_idx)_f")
-                            result[:cuts]["sherali_cut_$(iter)_cp$(cp_idx)_l"] = mw_added_l
-                            result[:cuts]["sherali_cut_$(iter)_cp$(cp_idx)_f"] = mw_added_f
-                        else
-                            mw_1 = -ϕU * [sum((str_info[:Uhat1][s,:,:] + str_info[:Utilde1][s,:,:]) .* diag_x_E) for s in 1:S]
-                            mw_2 = -ϕU * [sum((str_info[:Uhat3][s,:,:] + str_info[:Utilde3][s,:,:]) .* (osp_data[:E] - diag_x_E)) for s in 1:S]
-                            mw_3 = [sum(str_info[:Ztilde1_3][s,:,:] .* (diag_λ_ψ * diagm(xi_bar[s]))) for s in 1:S]
-                            mw_4 = [(osp_data[:d0]'*str_info[:βtilde1_1][s,:]) * λ for s in 1:S]
-                            mw_5 = -1 * [(h + diag_λ_ψ * xi_bar[s])'* str_info[:βtilde1_3][s,:] for s in 1:S]
-                            mw_cut = sum(mw_1) + sum(mw_2) + sum(mw_3) + sum(mw_4) + sum(mw_5) + sum(str_info[:intercept])
-                            mw_added = @constraint(omp_model, t_0 >= mw_cut)
-                            set_name(mw_added, "sherali_cut_$(iter)_cp$(cp_idx)")
-                            result[:cuts]["sherali_cut_$(iter)_cp$(cp_idx)"] = mw_added
-                        end
+                            multi_cut_lf=multi_cut_lf)
+                        add_optimality_cuts!(omp_model, omp_vars, str_info, diag_x_E, osp_data[:E], diag_λ_ψ, xi_bar, osp_data[:d0], ϕU, λ, h, S, iter;
+                            multi_cut_lf=multi_cut_lf, multi_cut_scenario=multi_cut_scenario, prefix="sherali_cut_cp$(cp_idx)", result_cuts=result[:cuts])
                     end
                     @info "  $(length(core_points)) sherali cuts added (direct, no ISP base solve)"
                 end

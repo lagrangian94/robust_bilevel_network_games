@@ -76,9 +76,9 @@ println("STEP 1: Getting feasible point from OMP")
 println("="^80)
 
 # Run a few iterations of strict benders to get a reasonable point
-model_s, vars_s = build_omp(network, ϕU, λU, γ, w; optimizer=Gurobi.Optimizer, multi_cut=true)
+model_s, vars_s = build_omp(network, ϕU, λU, γ, w; optimizer=Gurobi.Optimizer, multi_cut_lf=true)
 result_s = strict_benders_optimize!(model_s, vars_s, network, ϕU, λU, γ, w, uncertainty_set;
-    optimizer=Gurobi.Optimizer, multi_cut=true, max_iter=5, πU=πU, yU=yU, ytsU=ytsU)
+    optimizer=Gurobi.Optimizer, multi_cut_lf=true, max_iter=5, πU=πU, yU=yU, ytsU=ytsU)
 
 # Use the solution from the last iteration
 x_test = result_s[:debug_α][1] !== nothing ? round.(value.(vars_s[:x])) : zeros(num_arcs)
@@ -112,7 +112,7 @@ osp_model, osp_vars, osp_data = build_dualized_outer_subproblem(
     λ_test, x_test, h_test, ψ0_test; πU=πU, yU=yU, ytsU=ytsU)
 
 (status_strict, cut_strict) = osp_optimize!(osp_model, osp_vars, osp_data,
-    λ_test, x_test, h_test, ψ0_test; multi_cut=true)
+    λ_test, x_test, h_test, ψ0_test; multi_cut_lf=true)
 
 println("  Status: $status_strict")
 println("  OSP objective (strict): $(cut_strict[:obj_val])")
@@ -152,7 +152,7 @@ println("  α_sol (nested): $(round.(α_sol_nested, digits=6))")
 
 # Now extract outer cut coefficients by re-evaluating ISP at converged α
 outer_cut_nested = evaluate_master_opt_cut(
-    leader_instances, follower_instances, isp_data, cut_nested, 1; multi_cut=true)
+    leader_instances, follower_instances, isp_data, cut_nested, 1; multi_cut_lf=true)
 
 println("  Σ intercept_l (nested): $(sum(outer_cut_nested[:intercept_l]))")
 println("  Σ intercept_f (nested): $(sum(outer_cut_nested[:intercept_f]))")
@@ -166,7 +166,7 @@ println("="^80)
 α_strict_for_isp = cut_strict[:α_sol]
 hybrid_cut_info = Dict(:α_sol => α_strict_for_isp, :obj_val => cut_strict[:obj_val])
 outer_cut_hybrid = evaluate_master_opt_cut(
-    leader_instances, follower_instances, isp_data, hybrid_cut_info, 1; multi_cut=true)
+    leader_instances, follower_instances, isp_data, hybrid_cut_info, 1; multi_cut_lf=true)
 
 println("  α used: OSP's α_sol (same as strict)")
 println("  Σ intercept_l (hybrid): $(sum(outer_cut_hybrid[:intercept_l]))")
@@ -190,7 +190,7 @@ outer_cut_mw_interior = evaluate_mw_opt_cut(
     x_sol=x_test, λ_sol=λ_test, h_sol=h_test, ψ0_sol=ψ0_test,
     x_core=core_points[1].x, λ_core=core_points[1].λ,
     h_core=core_points[1].h, ψ0_core=core_points[1].ψ0,
-    multi_cut=true)
+    multi_cut_lf=true)
 
 println("  MW-interior: ||Uhat1||=$(round(norm(outer_cut_mw_interior[:Uhat1]), digits=4))")
 println("  Σ intercept_l (MW-int): $(sum(outer_cut_mw_interior[:intercept_l]))")
@@ -204,7 +204,7 @@ for cp_idx in 2:length(core_points)
         leader_instances, follower_instances, isp_data, cut_nested, 1;
         x_sol=x_test, λ_sol=λ_test, h_sol=h_test, ψ0_sol=ψ0_test,
         x_core=cp.x, λ_core=cp.λ, h_core=cp.h, ψ0_core=cp.ψ0,
-        multi_cut=true)
+        multi_cut_lf=true)
     push!(mw_arc_cuts, mw_arc)
     arc_idx = interdictable_idx[cp_idx - 1]
     println("  MW-arc$(arc_idx): ||Uhat1||=$(round(norm(mw_arc[:Uhat1]), digits=4))")
@@ -228,7 +228,7 @@ outer_cut_sherali = evaluate_sherali_opt_cut(
     x_sol=x_test, λ_sol=λ_test, h_sol=h_test, ψ0_sol=ψ0_test,
     x_core=core_points[1].x, λ_core=core_points[1].λ,
     h_core=core_points[1].h, ψ0_core=core_points[1].ψ0,
-    ζ=1e-8, multi_cut=true)
+    ζ=1e-8, multi_cut_lf=true)
 
 println("  Sherali: ||Uhat1||=$(round(norm(outer_cut_sherali[:Uhat1]), digits=4))")
 println("  Σ intercept_l (Sherali): $(sum(outer_cut_sherali[:intercept_l]))")
