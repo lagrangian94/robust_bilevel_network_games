@@ -492,7 +492,7 @@ function strict_benders_optimize!(omp_model::Model, omp_vars::Dict, network, ϕU
                 # Step B: MW cuts from core points
                 interdictable_idx = findall(network.interdictable_arcs[1:num_arcs])
                 core_points = generate_core_points(network, γ, λU, w, v;
-                    interdictable_idx=interdictable_idx, strategy=:interior_and_arcs)
+                    interdictable_idx=interdictable_idx, strategy=:interior)
                 for (cp_idx, cp) in enumerate(core_points)
                     mw_info = evaluate_mw_opt_cut(
                         isp_leader_instances, isp_follower_instances,

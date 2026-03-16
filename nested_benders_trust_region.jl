@@ -574,7 +574,7 @@ function generate_core_points(network, γ, λU, w, v;
             push!(points, (x=x_arc, λ=λ_arc, h=h_arc, ψ0=ψ0_arc))
         end
     end
-
+    @infiltrate
     return points
 end
 
@@ -1136,7 +1136,7 @@ function tr_nested_benders_optimize!(omp_model::Model, omp_vars::Dict, network, 
             if strengthen_cuts && leader_instances !== nothing
                 interdictable_idx = findall(network.interdictable_arcs[1:num_arcs])
                 core_points = generate_core_points(network, γ, λU, w, v;
-                    interdictable_idx=interdictable_idx, strategy=:interior_and_arcs)
+                    interdictable_idx=interdictable_idx, strategy=:interior)
                 for (cp_idx, cp) in enumerate(core_points)
                     mw_info = evaluate_mw_opt_cut(
                         leader_instances, follower_instances, isp_data, cut_info, iter;
