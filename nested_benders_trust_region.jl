@@ -50,6 +50,7 @@ using Hypatia, HiGHS
 includet("network_generator.jl")
 includet("build_dualized_outer_subprob.jl")
 includet("build_full_model.jl")
+includet("parallel_utils.jl")
 includet("strict_benders.jl")
 includet("build_primal_isp.jl")
 
@@ -185,7 +186,7 @@ function isp_leader_optimize!(isp_leader_model::Model, isp_leader_vars::Dict; is
     πU = get(isp_data, :πU, ϕU)
     R, r_dict, xi_bar, epsilon = uncertainty_set[:R], uncertainty_set[:r_dict], uncertainty_set[:xi_bar], uncertainty_set[:epsilon]
     diag_x_E = Diagonal(x_sol) * E  # diag(x)E
-    true_S = isp_data[:S]
+    scaling_S = get(isp_data, :scaling_S, isp_data[:S])
 
     S = 1
     ## update objective if necessary
@@ -210,7 +211,7 @@ function isp_leader_optimize!(isp_leader_model::Model, isp_leader_vars::Dict; is
         ## obtain cuts
         μhat = shadow_price.(coupling_cons) # subgradient
         ηhat = shadow_price.(vec(model[:cons_dual_constant]))
-        intercept, subgradient = (1/true_S)*sum(ηhat), μhat ##실제 S로 나눠주어야 함.
+        intercept, subgradient = (1/scaling_S)*sum(ηhat), μhat ##실제 S로 나눠주어야 함.
         dual_obj = intercept + α_sol'*subgradient
         #dual model의 목적함수를 shadow price로 query해서 evaluate한 뒤 strong duality 성립하는지 확인
         @assert abs(dual_obj - objective_value(model)) < 1e-4
@@ -231,7 +232,7 @@ function isp_follower_optimize!(isp_follower_model::Model, isp_follower_vars::Di
     diag_x_E = Diagonal(x_sol) * E  # diag(x)E
     num_arcs = length(x_sol)
     diag_λ_ψ = Diagonal(λ_sol*ones(num_arcs)-v.*ψ0_sol)
-    true_S = isp_data[:S]
+    scaling_S = get(isp_data, :scaling_S, isp_data[:S])
     S = 1
     ## update objective if necessary
     Utilde1, Utilde3, Ztilde1_3, Ptilde1_Φ, Ptilde1_Π, Ptilde2_Φ, Ptilde2_Π, Ptilde1_Y, Ptilde1_Yts, Ptilde2_Y, Ptilde2_Yts = vars[:Utilde1], vars[:Utilde3], vars[:Ztilde1_3], vars[:Ptilde1_Φ], vars[:Ptilde1_Π], vars[:Ptilde2_Φ], vars[:Ptilde2_Π], vars[:Ptilde1_Y], vars[:Ptilde1_Yts], vars[:Ptilde2_Y], vars[:Ptilde2_Yts]
@@ -258,10 +259,10 @@ function isp_follower_optimize!(isp_follower_model::Model, isp_follower_vars::Di
         ## obtain cuts
         μtilde = shadow_price.(coupling_cons) # subgradient
         # ηtilde = shadow_price.(vec(model[:cons_dual_constant]))
-        # intercept = (1/true_S)*sum(ηtilde) ##실제 S로 나눠주어야 함.
+        # intercept = (1/scaling_S)*sum(ηtilde) ##실제 S로 나눠주어야 함.
         ηtilde_pos = shadow_price.(vec(model[:cons_dual_constant_pos]))
         ηtilde_neg = shadow_price.(vec(model[:cons_dual_constant_neg]))
-        intercept = sum((1/true_S)*(ηtilde_pos-ηtilde_neg)) ## 이러면 ηtilde sign 반대로 나오는거 robust하게 대응 가능.
+        intercept = sum((1/scaling_S)*(ηtilde_pos-ηtilde_neg)) ## 이러면 ηtilde sign 반대로 나오는거 robust하게 대응 가능.
         subgradient = μtilde
         dual_obj = intercept + α_sol'*subgradient
         #dual model의 목적함수를 shadow price로 query해서 evaluate한 뒤 strong duality 성립하는지 확인
@@ -280,7 +281,7 @@ function isp_follower_optimize!(isp_follower_model::Model, isp_follower_vars::Di
     end
 end
 
-function tr_imp_optimize!(imp_model::Model, imp_vars::Dict, isp_leader_instances::Dict, isp_follower_instances::Dict; isp_data=nothing, λ_sol=nothing, x_sol=nothing, h_sol=nothing, ψ0_sol=nothing, outer_iter=nothing, imp_cuts=nothing, inner_tr=true, tol=1e-4)
+function tr_imp_optimize!(imp_model::Model, imp_vars::Dict, isp_leader_instances::Dict, isp_follower_instances::Dict; isp_data=nothing, λ_sol=nothing, x_sol=nothing, h_sol=nothing, ψ0_sol=nothing, outer_iter=nothing, imp_cuts=nothing, inner_tr=true, tol=1e-4, parallel=false)
     st = MOI.get(imp_model, MOI.TerminationStatus())
     iter = 0
     uncertainty_set = isp_data[:uncertainty_set]
@@ -326,26 +327,28 @@ function tr_imp_optimize!(imp_model::Model, imp_vars::Dict, isp_leader_instances
         model_estimate = (sum(value.(imp_vars[:t_1_l])) + sum(value.(imp_vars[:t_1_f]))) / S_total  # average over scenarios
         subprob_obj = 0
         dict_cut_info_l, dict_cut_info_f = Dict(), Dict()
-        status = true
-        for s in 1:S
+        scenario_results, status = solve_scenarios(S; parallel=parallel) do s
             U_s = Dict(:R => Dict(:1=>R[s]), :r_dict => Dict(:1=>r_dict[s]), :xi_bar => Dict(:1=>xi_bar[s]), :epsilon => epsilon)
             (status_l, cut_info_l) =isp_leader_optimize!(isp_leader_instances[s][1], isp_leader_instances[s][2]; isp_data=isp_data, uncertainty_set=U_s, λ_sol=λ_sol, x_sol=x_sol, h_sol=h_sol, ψ0_sol=ψ0_sol, α_sol=α_sol)
             (status_f, cut_info_f) =isp_follower_optimize!(isp_follower_instances[s][1], isp_follower_instances[s][2]; isp_data=isp_data, uncertainty_set=U_s, λ_sol=λ_sol, x_sol=x_sol, h_sol=h_sol, ψ0_sol=ψ0_sol, α_sol=α_sol)
-            status = status &&(status_l == :OptimalityCut) && (status_f == :OptimalityCut)
-            dict_cut_info_l[s] = cut_info_l
-            dict_cut_info_f[s] = cut_info_f
-            subprob_obj += cut_info_l[:obj_val]+cut_info_f[:obj_val]
+            ok = (status_l == :OptimalityCut) && (status_f == :OptimalityCut)
+            return (ok, (cut_info_l, cut_info_f))
+        end
+        for s in 1:S
+            dict_cut_info_l[s] = scenario_results[s][1]
+            dict_cut_info_f[s] = scenario_results[s][2]
+            subprob_obj += scenario_results[s][1][:obj_val] + scenario_results[s][2][:obj_val]
         end
         subprob_obj /= S_total  # average over scenarios
         lower_bound = max(lower_bound, subprob_obj) ## inner master problem은 Maximization이니까 우린 항상 더 높은 값을 추구
         gap = abs(model_estimate - lower_bound) / max(abs(model_estimate), 1e-10)
-        if gap <= tol
+        if gap <= tol || lower_bound > model_estimate - 1e-4
             @info "Termination condition met"
             println("model_estimate: ", model_estimate, ", subprob_obj: ", subprob_obj)
             result[:past_obj] = past_obj
             result[:past_subprob_obj] = past_subprob_obj
             result[:α_sol] = α_sol
-            result[:obj_val] = subprob_obj  # subproblem의 정확한 값 (IMP objective는 upper bound이므로 gap만큼 차이남)
+            result[:obj_val] = subprob_obj
             result[:past_lower_bound] = past_lower_bound
             result[:iter] = iter
             if inner_tr && tr_constraints[:continuous] !== nothing
@@ -467,45 +470,46 @@ function initialize_imp(imp_model::Model, imp_vars::Dict)
     return st, α_sol
 end
 
-function initialize_isp(network, S, ϕU, λU, γ, w, v, uncertainty_set; conic_optimizer=nothing, λ_sol=nothing, x_sol=nothing, h_sol=nothing, ψ0_sol=nothing, α_sol=nothing, πU=ϕU, yU=ϕU, ytsU=ϕU)
+function initialize_isp(network, S, ϕU, λU, γ, w, v, uncertainty_set; conic_optimizer=nothing, λ_sol=nothing, x_sol=nothing, h_sol=nothing, ψ0_sol=nothing, α_sol=nothing, πU=ϕU, yU=ϕU, ytsU=ϕU, scaling_S=S)
     R, r_dict, xi_bar, epsilon = uncertainty_set[:R], uncertainty_set[:r_dict], uncertainty_set[:xi_bar], uncertainty_set[:epsilon]
     leader_instances = Dict{Int, Tuple{Model, Dict}}()
     follower_instances = Dict{Int, Tuple{Model, Dict}}()
     for s in 1:S
         U_s = Dict(:R => Dict(:1=>R[s]), :r_dict => Dict(:1=>r_dict[s]), :xi_bar => Dict(:1=>xi_bar[s]), :epsilon => epsilon)
-        leader_instances[s] = build_isp_leader(network, 1, ϕU, λU, γ, w, v, U_s, conic_optimizer, λ_sol, x_sol, h_sol, ψ0_sol, α_sol, S; πU=πU)
-        follower_instances[s] = build_isp_follower(network, 1, ϕU, λU, γ, w, v, U_s, conic_optimizer, λ_sol, x_sol, h_sol, ψ0_sol, α_sol, S; πU=πU, yU=yU, ytsU=ytsU)
-        
+        leader_instances[s] = build_isp_leader(network, 1, ϕU, λU, γ, w, v, U_s, conic_optimizer, λ_sol, x_sol, h_sol, ψ0_sol, α_sol, scaling_S; πU=πU)
+        follower_instances[s] = build_isp_follower(network, 1, ϕU, λU, γ, w, v, U_s, conic_optimizer, λ_sol, x_sol, h_sol, ψ0_sol, α_sol, scaling_S; πU=πU, yU=yU, ytsU=ytsU)
+
     end
     return leader_instances, follower_instances
 end
 
-function evaluate_master_opt_cut(isp_leader_instances::Dict, isp_follower_instances::Dict, isp_data::Dict, cut_info::Dict, iter::Int; multi_cut_lf=false)
+function evaluate_master_opt_cut(isp_leader_instances::Dict, isp_follower_instances::Dict, isp_data::Dict, cut_info::Dict, iter::Int; multi_cut_lf=false, parallel=false)
     """
     α를 fix 시키고 outer subproblem의 값을 다시 정확하게 구하는 코드
     """
     S = isp_data[:S]
     α_sol = cut_info[:α_sol]
-    status = true
-    for s in 1:S
+    _, status = solve_scenarios(S; parallel=parallel) do s
+        α_s = α_sol isa Vector{<:AbstractVector} ? α_sol[s] : α_sol  # per-scenario α support
         model_l = isp_leader_instances[s][1]
         model_f = isp_follower_instances[s][1]
-        set_normalized_rhs.(vec(model_l[:coupling_cons]), α_sol)
+        set_normalized_rhs.(vec(model_l[:coupling_cons]), α_s)
         optimize!(model_l)
         st_l = MOI.get(model_l, MOI.TerminationStatus())
 
-        set_normalized_rhs.(vec(model_f[:coupling_cons]), α_sol)
+        set_normalized_rhs.(vec(model_f[:coupling_cons]), α_s)
         optimize!(model_f)
         st_f = MOI.get(model_f, MOI.TerminationStatus())
 
-        status = status && (st_l == MOI.OPTIMAL) && (st_f == MOI.OPTIMAL)
-        if status == false
+        ok = (st_l == MOI.OPTIMAL) && (st_f == MOI.OPTIMAL)
+        if !ok
             if (st_l == MOI.SLOW_PROGRESS) || (st_f == MOI.SLOW_PROGRESS)
-                status = true
-            else
+                ok = true
+            elseif !parallel
                 @infiltrate
             end
         end
+        return (ok, nothing)
     end
     Uhat1 = cat([value.(isp_leader_instances[s][2][:Uhat1]) for s in 1:S]...; dims=1)
     Utilde1 = cat([value.(isp_follower_instances[s][2][:Utilde1]) for s in 1:S]...; dims=1)
@@ -589,7 +593,7 @@ function evaluate_mw_opt_cut(
     isp_leader_instances, isp_follower_instances, isp_data, cut_info, iter;
     x_sol, λ_sol, h_sol, ψ0_sol,
     x_core, λ_core, h_core, ψ0_core,
-    multi_cut_lf=false)
+    multi_cut_lf=false, parallel=false)
 
     S = isp_data[:S]
     ϕU = isp_data[:ϕU]
@@ -609,13 +613,11 @@ function evaluate_mw_opt_cut(
     diag_λ_ψ_sol = Diagonal(λ_sol * ones(num_arcs) - v_param .* ψ0_sol)
     diag_λ_ψ_core = Diagonal(λ_core * ones(num_arcs) - v_param .* ψ0_core)
 
-    mw_cons = []  # track constraints for cleanup
-
     # Cache z_star before any modifications (re-solve 불필요하게 만듦)
     z_star_cache_l = [objective_value(isp_leader_instances[s][1]) for s in 1:S]
     z_star_cache_f = [objective_value(isp_follower_instances[s][1]) for s in 1:S]
 
-    for s in 1:S
+    mw_results, _ = solve_scenarios(S; parallel=parallel) do s
         xi_bar_s = xi_bar[s]
 
         # ===== Leader MW =====
@@ -641,7 +643,6 @@ function evaluate_mw_opt_cut(
 
         # MW optimality constraint
         mw_con_l = @constraint(model_l, orig_obj_l >= z_star_l - 1e-6)
-        push!(mw_cons, (model_l, mw_con_l))
 
         # Core objective (replace x_sol → x_core; intercept terms unchanged)
         core_l_1 = -ϕU * sum(Uhat1[1, :, :] .* diag_x_core_E)
@@ -653,8 +654,6 @@ function evaluate_mw_opt_cut(
         st_l = termination_status(model_l)
         if !(st_l == MOI.OPTIMAL || st_l == MOI.SLOW_PROGRESS)
             @warn "MW leader solve failed for s=$s: $st_l, using original solution"
-            # MW constraint는 cleanup에서 일괄 삭제
-            continue
         end
 
         # ===== Follower MW =====
@@ -688,7 +687,6 @@ function evaluate_mw_opt_cut(
 
         # MW optimality constraint
         mw_con_f = @constraint(model_f, orig_obj_f >= z_star_f - 1e-6)
-        push!(mw_cons, (model_f, mw_con_f))
 
         # Core objective (replace x_sol → x_core, λ_sol → λ_core, etc.; P-terms unchanged)
         core_f_1 = -ϕU * sum(Utilde1[1, :, :] .* diag_x_core_E)
@@ -704,6 +702,16 @@ function evaluate_mw_opt_cut(
         if !(st_f == MOI.OPTIMAL || st_f == MOI.SLOW_PROGRESS)
             @warn "MW follower solve failed for s=$s: $st_f"
         end
+
+        return (true, (mw_con_l, model_l, mw_con_f, model_f))
+    end
+
+    # Collect mw_cons for cleanup
+    mw_cons = []
+    for s in 1:S
+        (mw_con_l, model_l, mw_con_f, model_f) = mw_results[s]
+        push!(mw_cons, (model_l, mw_con_l))
+        push!(mw_cons, (model_f, mw_con_f))
     end
 
     # ===== Extract coefficients (same as evaluate_master_opt_cut) =====
@@ -753,7 +761,7 @@ function evaluate_sherali_opt_cut(
     isp_leader_instances, isp_follower_instances, isp_data, cut_info, iter;
     x_sol, λ_sol, h_sol, ψ0_sol,
     x_core, λ_core, h_core, ψ0_core,
-    ζ=1e-8, multi_cut_lf=false)  # ζ ≥ 1e-7 → DUAL_INFEASIBLE (see docstring)
+    ζ=1e-8, multi_cut_lf=false, parallel=false)  # ζ ≥ 1e-7 → DUAL_INFEASIBLE (see docstring)
 
     S = isp_data[:S]
     α_sol = cut_info[:α_sol]
@@ -777,7 +785,8 @@ function evaluate_sherali_opt_cut(
     diag_λ_ψ_pert = Diagonal(λ_pert * ones(num_arcs) - v_param .* ψ0_pert)
 
     # 2. Set perturbed objectives & solve ISP directly (bypass isp_leader/follower_optimize! assertions)
-    for s in 1:S
+    solve_scenarios(S; parallel=parallel) do s
+        α_s = α_sol isa Vector{<:AbstractVector} ? α_sol[s] : α_sol  # per-scenario α support
         xi_bar_s = xi_bar[s]
 
         # --- Leader: set objective with perturbed x ---
@@ -794,7 +803,7 @@ function evaluate_sherali_opt_cut(
             (d0') * βhat1_1_v[1, :] +
             -ϕU * sum(Phat1_Φ[1, :, :]) - πU * sum(Phat1_Π[1, :, :]) +
             -ϕU * sum(Phat2_Φ[1, :, :]) - πU * sum(Phat2_Π[1, :, :]))
-        set_normalized_rhs.(vec(model_l[:coupling_cons]), α_sol)
+        set_normalized_rhs.(vec(model_l[:coupling_cons]), α_s)
         optimize!(model_l)
         st_l = termination_status(model_l)
         if !(st_l == MOI.OPTIMAL || st_l == MOI.SLOW_PROGRESS)
@@ -819,12 +828,13 @@ function evaluate_sherali_opt_cut(
             -(h_pert + diag_λ_ψ_pert * xi_bar_s)' * βtilde1_3_v[1, :] +
             -ϕU * sum(Ptilde1_Φ[1, :, :]) - πU * sum(Ptilde1_Π[1, :, :]) - yU * sum(Ptilde1_Y[1, :, :]) - ytsU * sum(Ptilde1_Yts[1, :]) +
             -ϕU * sum(Ptilde2_Φ[1, :, :]) - πU * sum(Ptilde2_Π[1, :, :]) - yU * sum(Ptilde2_Y[1, :, :]) - ytsU * sum(Ptilde2_Yts[1, :]))
-        set_normalized_rhs.(vec(model_f[:coupling_cons]), α_sol)
+        set_normalized_rhs.(vec(model_f[:coupling_cons]), α_s)
         optimize!(model_f)
         st_f = termination_status(model_f)
         if !(st_f == MOI.OPTIMAL || st_f == MOI.SLOW_PROGRESS)
             @warn "Sherali follower solve failed for s=$s: $st_f"
         end
+        return (true, nothing)
     end
 
     # 3. Extract coefficients (primal variable values — same as evaluate_master_opt_cut)
@@ -876,7 +886,7 @@ function evaluate_sherali_opt_cut(
 end
 
 
-function tr_nested_benders_optimize!(omp_model::Model, omp_vars::Dict, network, ϕU, λU, γ, w, uncertainty_set; mip_optimizer=nothing, conic_optimizer=nothing, multi_cut_lf=false, multi_cut_scenario=false, outer_tr=true, inner_tr=true, max_outer_iter=1000, isp_mode=:dual, tol=1e-4, πU=ϕU, yU=ϕU, ytsU=ϕU, strengthen_cuts=:none)
+function tr_nested_benders_optimize!(omp_model::Model, omp_vars::Dict, network, ϕU, λU, γ, w, uncertainty_set; mip_optimizer=nothing, conic_optimizer=nothing, multi_cut_lf=true, multi_cut_scenario=true, outer_tr=true, inner_tr=true, max_outer_iter=1000, isp_mode=:dual, tol=1e-4, πU=ϕU, yU=ϕU, ytsU=ϕU, strengthen_cuts=:none, parallel=false)
     ### -------- Trust Region 초기화 --------
     if outer_tr
         num_interdictable = sum(network.interdictable_arcs)
@@ -993,9 +1003,9 @@ function tr_nested_benders_optimize!(omp_model::Model, omp_vars::Dict, network, 
             end
             # Outer Subproblem 풀기
             if isp_mode == :dual
-                status, cut_info = tr_imp_optimize!(imp_model, imp_vars, leader_instances, follower_instances; isp_data=isp_data, λ_sol=λ_sol, x_sol=x_sol, h_sol=h_sol, ψ0_sol=ψ0_sol, outer_iter=iter, imp_cuts=imp_cuts, inner_tr=inner_tr, tol=tol)
+                status, cut_info = tr_imp_optimize!(imp_model, imp_vars, leader_instances, follower_instances; isp_data=isp_data, λ_sol=λ_sol, x_sol=x_sol, h_sol=h_sol, ψ0_sol=ψ0_sol, outer_iter=iter, imp_cuts=imp_cuts, inner_tr=inner_tr, tol=tol, parallel=parallel)
             else
-                status, cut_info = tr_imp_optimize_hybrid!(imp_model, imp_vars, primal_leader_instances, primal_follower_instances; isp_data=isp_data, λ_sol=λ_sol, x_sol=x_sol, h_sol=h_sol, ψ0_sol=ψ0_sol, outer_iter=iter, imp_cuts=imp_cuts, inner_tr=inner_tr, tol=tol)
+                status, cut_info = tr_imp_optimize_hybrid!(imp_model, imp_vars, primal_leader_instances, primal_follower_instances; isp_data=isp_data, λ_sol=λ_sol, x_sol=x_sol, h_sol=h_sol, ψ0_sol=ψ0_sol, outer_iter=iter, imp_cuts=imp_cuts, inner_tr=inner_tr, tol=tol, parallel=parallel)
             end
             if status != :OptimalityCut
                 @warn "Outer Subproblem not optimal"
@@ -1046,7 +1056,8 @@ function tr_nested_benders_optimize!(omp_model::Model, omp_vars::Dict, network, 
         if pruned
             @info "  ✂ Pruned: localLB=$(round(lower_bound, digits=4)) > globalUB=$(round(upper_bound, digits=4)). Skipping to next stage."
         end
-        if gap <= tol || pruned
+        converged = gap <= tol || lower_bound > local_upper_bound - 1e-4
+        if converged || pruned
             if !outer_tr
                 # No outer TR: simple convergence
                 time_end = time()
@@ -1144,7 +1155,7 @@ function tr_nested_benders_optimize!(omp_model::Model, omp_vars::Dict, network, 
                     isp_data, cut_info, iter;
                     λ_sol=λ_sol, x_sol=x_sol, h_sol=h_sol, ψ0_sol=ψ0_sol, multi_cut_lf=multi_cut_lf)
             else
-                outer_cut_info = evaluate_master_opt_cut(leader_instances, follower_instances, isp_data, cut_info, iter, multi_cut_lf=multi_cut_lf)
+                outer_cut_info = evaluate_master_opt_cut(leader_instances, follower_instances, isp_data, cut_info, iter, multi_cut_lf=multi_cut_lf, parallel=parallel)
             end
             # Debug logging
             push!(result[:debug_α], cut_info[:α_sol])
@@ -1196,13 +1207,13 @@ function tr_nested_benders_optimize!(omp_model::Model, omp_vars::Dict, network, 
                             leader_instances, follower_instances, isp_data, cut_info, iter;
                             x_sol=x_sol, λ_sol=λ_sol, h_sol=h_sol, ψ0_sol=ψ0_sol,
                             x_core=cp.x, λ_core=cp.λ, h_core=cp.h, ψ0_core=cp.ψ0,
-                            multi_cut_lf=multi_cut_lf)
+                            multi_cut_lf=multi_cut_lf, parallel=parallel)
                     elseif strengthen_cuts == :sherali
                         str_info = evaluate_sherali_opt_cut(
                             leader_instances, follower_instances, isp_data, cut_info, iter;
                             x_sol=x_sol, λ_sol=λ_sol, h_sol=h_sol, ψ0_sol=ψ0_sol,
                             x_core=cp.x, λ_core=cp.λ, h_core=cp.h, ψ0_core=cp.ψ0,
-                            multi_cut_lf=multi_cut_lf)
+                            multi_cut_lf=multi_cut_lf, parallel=parallel)
                     end
                     str_label = strengthen_cuts == :mw ? "mw" : "sherali"
                     add_optimality_cuts!(omp_model, omp_vars, str_info, diag_x_E, isp_data[:E], diag_λ_ψ, xi_bar, isp_data[:d0], ϕU, λ, h, S, iter;
@@ -1356,7 +1367,7 @@ function tr_nested_benders_optimize_hybrid!(omp_model::Model, omp_vars::Dict, ne
             status, cut_info = tr_imp_optimize_hybrid!(imp_model, imp_vars,
                 primal_leader_instances, primal_follower_instances;
                 isp_data=isp_data, λ_sol=λ_sol, x_sol=x_sol, h_sol=h_sol, ψ0_sol=ψ0_sol,
-                outer_iter=iter, imp_cuts=imp_cuts, inner_tr=inner_tr, tol=tol)
+                outer_iter=iter, imp_cuts=imp_cuts, inner_tr=inner_tr, tol=tol, parallel=parallel)
 
             if status != :OptimalityCut
                 @warn "Outer Subproblem not optimal (hybrid)"
@@ -1402,7 +1413,8 @@ function tr_nested_benders_optimize_hybrid!(omp_model::Model, omp_vars::Dict, ne
         if pruned
             @info "  ✂ Pruned: localLB=$(round(lower_bound, digits=4)) > globalUB=$(round(upper_bound, digits=4)). Skipping to next stage."
         end
-        if gap <= tol || pruned
+        converged = gap <= tol || lower_bound > local_upper_bound - 1e-4
+        if converged || pruned
             if !outer_tr
                 time_end = time()
                 result[:solution_time] = time_end - time_start
@@ -1505,13 +1517,13 @@ function tr_nested_benders_optimize_hybrid!(omp_model::Model, omp_vars::Dict, ne
                             dual_leader_instances, dual_follower_instances, isp_data, cut_info, iter;
                             x_sol=x_sol, λ_sol=λ_sol, h_sol=h_sol, ψ0_sol=ψ0_sol,
                             x_core=cp.x, λ_core=cp.λ, h_core=cp.h, ψ0_core=cp.ψ0,
-                            multi_cut_lf=multi_cut_lf)
+                            multi_cut_lf=multi_cut_lf, parallel=parallel)
                     elseif strengthen_cuts == :sherali
                         str_info = evaluate_sherali_opt_cut(
                             dual_leader_instances, dual_follower_instances, isp_data, cut_info, iter;
                             x_sol=x_sol, λ_sol=λ_sol, h_sol=h_sol, ψ0_sol=ψ0_sol,
                             x_core=cp.x, λ_core=cp.λ, h_core=cp.h, ψ0_core=cp.ψ0,
-                            multi_cut_lf=multi_cut_lf)
+                            multi_cut_lf=multi_cut_lf, parallel=parallel)
                     end
                     str_label = strengthen_cuts == :mw ? "mw" : "sherali"
                     add_optimality_cuts!(omp_model, omp_vars, str_info, diag_x_E, isp_data[:E], diag_λ_ψ, xi_bar_local, isp_data[:d0], ϕU, λ, h, S, iter;

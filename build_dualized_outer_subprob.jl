@@ -53,6 +53,7 @@ function build_dualized_outer_subproblem(network, S, ϕU, λU, γ, w, v, uncerta
     I_0 = [Matrix{Float64}(I, num_arcs, num_arcs) zeros(num_arcs)]
     # Create model
     model = Model(optimizer)
+    set_silent(model)
     d0 = zeros(num_arcs + 1)
     d0[end] = 1.0
     println("Building dualized outer subproblem...")

@@ -704,9 +704,7 @@ function evaluate_master_opt_cut_compact(isp_leader_instances::Dict, isp_followe
     leader_obj = sum(objective_value(isp_leader_instances[s][1]) for s in 1:S)
     follower_obj = sum(objective_value(isp_follower_instances[s][1]) for s in 1:S)
     avg_obj = (leader_obj + follower_obj) / S  # average over scenarios
-    println("avg of leader and follower objective: ", avg_obj, ", cut_info[:obj_val]: ", cut_info[:obj_val])
-    println("Outer loop iteration: ", iter)
-    @assert abs(avg_obj - cut_info[:obj_val]) < 1e-3
+    @assert abs(avg_obj - cut_info[:obj_val]) < 1e-3 "obj mismatch: avg=$avg_obj, cut_info=$(cut_info[:obj_val])"
 
     return Dict(
         :Uhat1 => Uhat1, :Utilde1 => Utilde1,

@@ -4,6 +4,14 @@ Compare Benders decomposition algorithms:
 1. Strict Benders
 2. TR Nested Benders — Dual (outer_tr=true, inner_tr=true)
 3. TR Nested Benders — Hybrid (primal ISP inner + dual ISP outer, outer_tr=true, inner_tr=true)
+
+병렬 실행하려면:
+julia -t 4    # 4 threads
+julia -t auto # CPU 코어 수만큼 자동
+
+또는 환경변수:
+set JULIA_NUM_THREADS=4
+julia
 """
 
 using JuMP
@@ -21,6 +29,7 @@ using Pajarito
 includet("network_generator.jl")
 includet("build_uncertainty_set.jl")
 includet("build_full_model.jl")
+includet("parallel_utils.jl")
 includet("strict_benders.jl")
 includet("nested_benders_trust_region.jl")
 includet("plot_benders.jl")
@@ -28,7 +37,7 @@ includet("plot_benders.jl")
 using .NetworkGenerator: generate_grid_network, generate_capacity_scenarios_uniform_model, print_network_summary
 
 # ===== Common Parameters =====
-S = 10
+S = 20
 γ_ratio = 0.10
 ρ = 0.2
 v = 1.0
@@ -123,46 +132,81 @@ results = Dict{String, Any}()
 # GC.gc()
 # model1, vars1 = build_omp(network, ϕU, λU, γ, w; optimizer=Gurobi.Optimizer, multi_cut_lf=true)
 # t1_start = time()
-# result1 = strict_benders_optimize!(model1, vars1, network, ϕU, λU, γ, w, uncertainty_set; optimizer=Gurobi.Optimizer, multi_cut_lf=true, πU=πU, yU=yU, ytsU=ytsU, strengthen_cuts=strengthen_cuts)
+# result1 = strict_benders_optimize!(model1, vars1, network, ϕU, λU, γ, w, uncertainty_set; optimizer=Gurobi.Optimizer, πU=πU, yU=yU, ytsU=ytsU, strengthen_cuts=strengthen_cuts)
 # t1_end = time()
 # results["strict_benders"] = t1_end - t1_start
 # println("\n>> Strict Benders time: $(results["strict_benders"]) seconds")
 
 
-# ===== 2. TR Nested Benders — Dual (T,T) =====
+# # ===== 2. TR Nested Benders — Dual (T,T) =====
+# println("\n" * "="^80)
+# println("2. TR NESTED BENDERS — DUAL (outer=true, inner=true)")
+# println("="^80)
+# """
+# 2700초 걸렸음
+# """
+# GC.gc()
+# model2, vars2 = build_omp(network, ϕU, λU, γ, w; optimizer=Gurobi.Optimizer, S=S)
+# t2_start = time()
+# result2 = tr_nested_benders_optimize!(model2, vars2, network, ϕU, λU, γ, w, uncertainty_set;
+#     mip_optimizer=Gurobi.Optimizer, conic_optimizer=Mosek.Optimizer,
+#      outer_tr=false, inner_tr=true,
+#     πU=πU, yU=yU, ytsU=ytsU, strengthen_cuts=strengthen_cuts, parallel=true)
+# t2_end = time()
+# results["tr_dual"] = t2_end - t2_start
+# println("\n>> Dual TR Both time: $(results["tr_dual"]) seconds")
+
+# TODO:: solve only subset of scenarios (partial solve; 첫번째에선 다 풀어서 하한 다 찾아놓음) (upper bound eval. = iter N번마다 한번씩 full evaluate)
+
+# ===== 2.5. Scenario-Decomposed Benders =====
 println("\n" * "="^80)
-println("2. TR NESTED BENDERS — DUAL (outer=true, inner=true)")
+println("2.5. SCENARIO-DECOMPOSED BENDERS (OMP → S × OSP(s=1))")
 println("="^80)
+"""
+Outer loop iteration: 81
+[ Info:   ISP-based cut added (per-scenario α)
+[ Info:   1 mw strengthening cuts added
+[ Info: [Scenario-Decomposed] Iteration 82
+[ Info: Iter 82: LB=9.2463  UB=9.2478  gap=0.000168  (1588.6s)
+subproblem objective: 9.247832604675885
+[ Info: Optimality cut added
+avg of leader and follower objective: 9.247826496938178, cut_info[:obj_val]: 9.247832604675885
+Outer loop iteration: 82
+[ Info:   ISP-based cut added (per-scenario α)
+[ Info:   1 mw strengthening cuts added
+[ Info: [Scenario-Decomposed] Iteration 83
+[ Info: Termination condition met
+t_0_sol: 9.246660175886632, subprob_obj: 9.247547305636884
+
+>> Scenario-Decomposed Benders time: 1623.7960000038147 seconds
+"""
 
 GC.gc()
-model2, vars2 = build_omp(network, ϕU, λU, γ, w; optimizer=Gurobi.Optimizer, multi_cut_lf=true, multi_cut_scenario=true, S=S)
-t2_start = time()
-result2 = tr_nested_benders_optimize!(model2, vars2, network, ϕU, λU, γ, w, uncertainty_set;
-    mip_optimizer=Gurobi.Optimizer, conic_optimizer=Mosek.Optimizer,
-    multi_cut_lf=true, multi_cut_scenario=true, outer_tr=false, inner_tr=true,
-    πU=πU, yU=yU, ytsU=ytsU, strengthen_cuts=strengthen_cuts)
-t2_end = time()
-results["tr_dual"] = t2_end - t2_start
-println("\n>> Dual TR Both time: $(results["tr_dual"]) seconds")
+model_sd, vars_sd = build_omp(network, ϕU, λU, γ, w; optimizer=Gurobi.Optimizer, multi_cut_lf=true, multi_cut_scenario=true, S=S)
+t_sd_start = time()
+result_sd = scenario_benders_optimize!(model_sd, vars_sd, network, ϕU, λU, γ, w, v, uncertainty_set;
+    conic_optimizer=Mosek.Optimizer, multi_cut_lf=true, multi_cut_scenario=true,
+    πU=πU, yU=yU, ytsU=ytsU, parallel=true, strengthen_cuts=strengthen_cuts)
+t_sd_end = time()
+results["scenario_decomposed"] = t_sd_end - t_sd_start
+println("\n>> Scenario-Decomposed Benders time: $(results["scenario_decomposed"]) seconds")
 
-@infiltrate
+# # ===== 3. TR Nested Benders — Hybrid (T,T) =====
+# println("\n" * "="^80)
+# println("3. TR NESTED BENDERS — HYBRID (primal ISP inner + dual ISP outer)")
+# println("="^80)
 
-# ===== 3. TR Nested Benders — Hybrid (T,T) =====
-println("\n" * "="^80)
-println("3. TR NESTED BENDERS — HYBRID (primal ISP inner + dual ISP outer)")
-println("="^80)
-
-GC.gc()
-model3, vars3 = build_omp(network, ϕU, λU, γ, w; optimizer=Gurobi.Optimizer, multi_cut_lf=true)
-t3_start = time()
-result3 = tr_nested_benders_optimize_hybrid!(model3, vars3, network,
-    ϕU, λU, γ, w, uncertainty_set;
-    mip_optimizer=Gurobi.Optimizer, conic_optimizer=Mosek.Optimizer,
-    multi_cut_lf=true, outer_tr=true, inner_tr=true,
-    πU=πU, yU=yU, ytsU=ytsU, strengthen_cuts=strengthen_cuts)
-t3_end = time()
-results["tr_hybrid"] = t3_end - t3_start
-println("\n>> Hybrid time: $(results["tr_hybrid"]) seconds")
+# GC.gc()
+# model3, vars3 = build_omp(network, ϕU, λU, γ, w; optimizer=Gurobi.Optimizer, multi_cut_lf=true, multi_cut_scenario=true, S=S)
+# t3_start = time()
+# result3 = tr_nested_benders_optimize_hybrid!(model3, vars3, network,
+#     ϕU, λU, γ, w, uncertainty_set;
+#     mip_optimizer=Gurobi.Optimizer, conic_optimizer=Mosek.Optimizer,
+#     multi_cut_lf=true, multi_cut_scenario=true, outer_tr=false, inner_tr=true,
+#     πU=πU, yU=yU, ytsU=ytsU, strengthen_cuts=strengthen_cuts)
+# t3_end = time()
+# results["tr_hybrid"] = t3_end - t3_start
+# println("\n>> Hybrid time: $(results["tr_hybrid"]) seconds")
 
 # ===== Summary =====
 println("\n" * "="^80)
@@ -185,6 +229,12 @@ sb_lb = result1[:past_obj][end]
 sb_ub = minimum(result1[:past_upper_bound])
 sb_gap = abs(sb_ub - sb_lb) / max(abs(sb_ub), 1e-10)
 sb_iters = length(result1[:past_obj])
+
+# --- 2.5. Scenario-Decomposed Benders ---
+sd_lb = result_sd[:past_obj][end]
+sd_ub = minimum(result_sd[:past_upper_bound])
+sd_gap = abs(sd_ub - sd_lb) / max(abs(sd_ub), 1e-10)
+sd_iters = length(result_sd[:past_obj])
 
 # --- 2. TR Nested Benders — Dual ---
 # outer_tr=true → past_local_lower_bound 존재, past_upper_bound = min(subprob over all stages)
@@ -219,13 +269,16 @@ println("  " * rpad("1. Strict Benders", 30) * rpad(round(results["strict_bender
 println("  " * rpad("2. TR Dual (T,T)", 30) * rpad(round(results["tr_dual"], digits=2), 10) *
     rpad(round(nd_lb, digits=6), 12) * rpad(round(nd_ub, digits=6), 12) *
     rpad(round(nd_gap*100, digits=2), 10) * "$nd_iters")
+println("  " * rpad("2.5. Scenario-Decomposed", 30) * rpad(round(results["scenario_decomposed"], digits=2), 10) *
+    rpad(round(sd_lb, digits=6), 12) * rpad(round(sd_ub, digits=6), 12) *
+    rpad(round(sd_gap*100, digits=2), 10) * "$sd_iters")
 println("  " * rpad("3. TR Hybrid (T,T)", 30) * rpad(round(results["tr_hybrid"], digits=2), 10) *
     rpad(round(nh_lb, digits=6), 12) * rpad(round(nh_ub, digits=6), 12) *
     rpad(round(nh_gap*100, digits=2), 10) * "$nh_iters")
 println("  " * "-"^76)
 
 # UB 일치 확인 (best feasible solution 비교)
-all_ubs = filter(!isnan, [obj0, sb_ub, nd_ub, nh_ub])
+all_ubs = filter(!isnan, [obj0, sb_ub, sd_ub, nd_ub, nh_ub])
 if length(all_ubs) >= 2
     max_ub_gap = maximum(abs(a - b) for a in all_ubs for b in all_ubs)
     if max_ub_gap < 1e-3

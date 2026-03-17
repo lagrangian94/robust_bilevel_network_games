@@ -591,7 +591,7 @@ function tr_imp_optimize_hybrid!(imp_model::Model, imp_vars::Dict,
     primal_leader_instances::Dict, primal_follower_instances::Dict;
     isp_data=nothing, λ_sol=nothing, x_sol=nothing,
     h_sol=nothing, ψ0_sol=nothing, outer_iter=nothing,
-    imp_cuts=nothing, inner_tr=true, tol=1e-4)
+    imp_cuts=nothing, inner_tr=true, tol=1e-4, parallel=false)
 
     st = MOI.get(imp_model, MOI.TerminationStatus())
     iter = 0
@@ -637,8 +637,7 @@ function tr_imp_optimize_hybrid!(imp_model::Model, imp_vars::Dict,
         model_estimate = (sum(value.(imp_vars[:t_1_l])) + sum(value.(imp_vars[:t_1_f]))) / S_total  # average over scenarios
         subprob_obj = 0
         dict_cut_info_l, dict_cut_info_f = Dict(), Dict()
-        status = true
-        for s in 1:S
+        scenario_results, status = solve_scenarios(S; parallel=parallel) do s
             # Primal ISP: only needs isp_data and α_sol (x,h,λ,ψ0 are in constraints)
             (status_l, cut_info_l) = primal_isp_leader_optimize!(
                 primal_leader_instances[s][1], primal_leader_instances[s][2];
@@ -646,17 +645,20 @@ function tr_imp_optimize_hybrid!(imp_model::Model, imp_vars::Dict,
             (status_f, cut_info_f) = primal_isp_follower_optimize!(
                 primal_follower_instances[s][1], primal_follower_instances[s][2];
                 isp_data=isp_data, α_sol=α_sol)
-            status = status && (status_l == :OptimalityCut) && (status_f == :OptimalityCut)
-            dict_cut_info_l[s] = cut_info_l
-            dict_cut_info_f[s] = cut_info_f
-            subprob_obj += cut_info_l[:obj_val] + cut_info_f[:obj_val]
+            ok = (status_l == :OptimalityCut) && (status_f == :OptimalityCut)
+            return (ok, (cut_info_l, cut_info_f))
+        end
+        for s in 1:S
+            dict_cut_info_l[s] = scenario_results[s][1]
+            dict_cut_info_f[s] = scenario_results[s][2]
+            subprob_obj += scenario_results[s][1][:obj_val] + scenario_results[s][2][:obj_val]
         end
         subprob_obj /= S_total  # average over scenarios
         lower_bound = max(lower_bound, subprob_obj)
         gap = abs(model_estimate - lower_bound) / max(abs(model_estimate), 1e-10)
-        if gap <= tol
+        if gap <= tol || lower_bound > model_estimate - 1e-4
             @info "Termination condition met (hybrid)"
-            println("model_estimate: ", model_estimate, ", subprob_obj: ", subprob_obj)
+            println("model_estimate: ", model_estimate, ", subprob_obj: ", subprob_obj, ", lower_bound: ", lower_bound)
             result[:past_obj] = past_obj
             result[:past_subprob_obj] = past_subprob_obj
             result[:α_sol] = α_sol
@@ -756,7 +758,7 @@ function tr_imp_optimize_hybrid!(imp_model::Model, imp_vars::Dict,
                 return eval_result
             end
             opt_cut_val = sum(evaluate_expr(intercept_l[s] + imp_vars[:α]'*subgradient_l[s], y) for s in 1:S) + sum(evaluate_expr(intercept_f[s] + imp_vars[:α]'*subgradient_f[s], y) for s in 1:S)
-            if abs(subprob_obj - opt_cut_val) > 1e-4
+            if abs(subprob_obj * S_total - opt_cut_val) > 1e-4  # opt_cut_val is raw, subprob_obj is /S
                 println("something went wrong (hybrid)")
                 @infiltrate
             end
@@ -909,8 +911,6 @@ function evaluate_master_opt_cut_from_primal(
     follower_obj = sum(objective_value(primal_follower_instances[s][1]) for s in 1:S)
     avg_obj = (leader_obj + follower_obj) / S  # average over scenarios
 
-    println("avg of leader and follower objective: ", avg_obj, ", cut_info[:obj_val]: ", cut_info[:obj_val])
-    println("Outer loop iteration (full primal): ", iter)
     @assert abs(avg_obj - cut_info[:obj_val]) < 1e-3 "obj mismatch: avg=$avg_obj, cut_info=$(cut_info[:obj_val])"
 
     # Always compute per-scenario intercepts (leader + follower)
