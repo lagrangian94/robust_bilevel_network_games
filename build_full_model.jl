@@ -268,8 +268,11 @@ function build_full_2DRNDP_model(network, S, ϕU, λU, γ, w, v, uncertainty_set
     println("  ✓ Big-M constraints (14j, 14k) added")
 
     # --- (14l) Budget constraint for dual variables ---
-    for k in 1:num_arcs
-        @constraint(model, sum(μtilde[s,k] + μhat[s,k] for s in 1:S) <= nu)
+    # Per-scenario bound: μ[s,k] ≤ ν (NOT summed over s)
+    # OSP dual의 coupling constraint β[s,k] ≤ α[k]와 일관성 유지
+    for s in 1:S, k in 1:num_arcs
+        @constraint(model, μhat[s,k] <= nu)
+        @constraint(model, μtilde[s,k] <= nu)
     end
 
     println("  ✓ Budget constraint (14l) added")

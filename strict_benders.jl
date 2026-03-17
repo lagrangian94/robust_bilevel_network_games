@@ -541,9 +541,9 @@ function scenario_benders_optimize!(omp_model::Model, omp_vars::Dict, network, �
         push!(past_upper_bound, upper_bound)
 
         # Convergence check
-        if gap <= tol
+        if gap <= tol || t_0_sol > upper_bound - 1e-4
             time_end = time()
-            @info "Termination condition met"
+            @info "[Scenario-Decomposed] Termination condition met (gap=$(round(gap, digits=6)), LB=$(round(t_0_sol, digits=4)), UB=$(round(upper_bound, digits=4)))"
             println("t_0_sol: ", t_0_sol, ", subprob_obj: ", subprob_obj)
             result[:past_obj] = past_obj
             result[:past_subprob_obj] = past_subprob_obj
@@ -714,9 +714,9 @@ function strict_benders_optimize!(omp_model::Model, omp_vars::Dict, network, ϕU
             break
         end
         if outer_tr
-            @info "Iteration $iter (B_bin=$B_bin, Stage=$(B_bin_stage)/$(length(B_bin_sequence)))"
+            @info "[Strict] Iteration $iter (B_bin=$B_bin, Stage=$(B_bin_stage)/$(length(B_bin_sequence)))"
         else
-            @info "Iteration $iter"
+            @info "[Strict] Iteration $iter"
         end
         optimize!(omp_model)
         st = MOI.get(omp_model, MOI.TerminationStatus())
@@ -788,11 +788,11 @@ function strict_benders_optimize!(omp_model::Model, omp_vars::Dict, network, ϕU
         end
 
         # Convergence check
-        if gap <= tol
+        if gap <= tol || t_0_sol > upper_bound - 1e-4
             if !outer_tr
                 # No outer TR: simple convergence
                 time_end = time()
-                @info "Termination condition met"
+                @info "[Strict] Termination condition met (gap=$(round(gap, digits=6)), LB=$(round(t_0_sol, digits=4)), UB=$(round(upper_bound, digits=4)))"
                 println("t_0_sol: ", t_0_sol, ", subprob_obj: ", subprob_obj)
                 result[:past_obj] = past_obj
                 result[:past_subprob_obj] = past_subprob_obj
@@ -843,7 +843,7 @@ function strict_benders_optimize!(omp_model::Model, omp_vars::Dict, network, ϕU
             end
         else
             # Gap still large → Add cut and continue
-            @info "Iter $iter: LB=$(outer_tr ? round(lower_bound, digits=4) : round(t_0_sol, digits=4))  UB=$(round(upper_bound, digits=4))  gap=$(round(gap, digits=6))  (globalUB=$(round(upper_bound, digits=4)); $(round(time()-time_start, digits=1))s)"
+            @info "[Strict] Iter $iter: LB=$(outer_tr ? round(lower_bound, digits=4) : round(t_0_sol, digits=4))  UB=$(round(upper_bound, digits=4))  gap=$(round(gap, digits=6))  (globalUB=$(round(upper_bound, digits=4)); $(round(time()-time_start, digits=1))s)"
 
             opt_cut = add_optimality_cuts!(omp_model, omp_vars, cut_info, diag_x_E, osp_data[:E], diag_λ_ψ, xi_bar, osp_data[:d0], ϕU, λ, h, S, iter;
                 multi_cut_lf=multi_cut_lf, multi_cut_scenario=multi_cut_scenario, prefix="opt_cut", result_cuts=result[:cuts])
