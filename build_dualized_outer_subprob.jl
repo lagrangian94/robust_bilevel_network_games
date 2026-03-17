@@ -36,7 +36,7 @@ Note:
 - ν (nu) is a DECISION VARIABLE (appears in objective and constraint 14l)
 - v is a PARAMETER (appears in COP matrix Φ - vW)
 """
-function build_dualized_outer_subproblem(network, S, ϕU, λU, γ, w, v, uncertainty_set, optimizer, λ, x, h, ψ0; πU=ϕU, yU=ϕU, ytsU=ϕU)
+function build_dualized_outer_subproblem(network, S, ϕU, λU, γ, w, v, uncertainty_set, optimizer, λ, x, h, ψ0; πU=ϕU, yU=ϕU, ytsU=ϕU, scaling_S=S)
     # Extract network dimensions
     num_nodes = length(network.nodes)
     num_arcs = length(network.arcs)-1 #dummy arc 제외
@@ -175,7 +175,7 @@ function build_dualized_outer_subproblem(network, S, ϕU, λU, γ, w, v, uncerta
     obj_term_ub_tilde = [-ϕU * sum(Ptilde1_Φ[s,:,:]) - πU * sum(Ptilde1_Π[s,:,:]) - yU * sum(Ptilde1_Y[s,:,:]) - ytsU * sum(Ptilde1_Yts[s,:]) for s=1:S]
     obj_term_lb_tilde = [-ϕU * sum(Ptilde2_Φ[s,:,:]) - πU * sum(Ptilde2_Π[s,:,:]) - yU * sum(Ptilde2_Y[s,:,:]) - ytsU * sum(Ptilde2_Yts[s,:]) for s=1:S]
     @objective(model, Max, (sum(obj_term1) + sum(obj_term2) + sum(obj_term3) + sum(obj_term4) + sum(obj_term5) + sum(obj_term6)
-    + sum(obj_term_ub_hat) + sum(obj_term_lb_hat) + sum(obj_term_ub_tilde) + sum(obj_term_lb_tilde)) / S)
+    + sum(obj_term_ub_hat) + sum(obj_term_lb_hat) + sum(obj_term_ub_tilde) + sum(obj_term_lb_tilde)) / scaling_S)
     # =========================================================================
     # CONSTRAINTS
     # =========================================================================
@@ -190,9 +190,9 @@ function build_dualized_outer_subproblem(network, S, ϕU, λU, γ, w, v, uncerta
     @constraint(model, [s=1:S, i=1:dim_Λtilde2_rows], Γtilde2[s, i, :] in SecondOrderCone())
 
     # Scalar constraints
-    @constraint(model, [s=1:S], Mhat[s, num_arcs+1, num_arcs+1] <= 1/S)
-    @constraint(model, [s=1:S], Mtilde[s, num_arcs+1, num_arcs+1] == 1/S)
-    @constraint(model, sum(α) <= w*(1/S))
+    @constraint(model, [s=1:S], Mhat[s, num_arcs+1, num_arcs+1] <= 1/scaling_S)
+    @constraint(model, [s=1:S], Mtilde[s, num_arcs+1, num_arcs+1] == 1/scaling_S)
+    @constraint(model, sum(α) <= w*(1/scaling_S))
     @constraint(model, [s=1:S], tr(Mhat[s, 1:num_arcs, 1:num_arcs]) - Mhat[s,end,end]*(epsilon^2) <= 0)
     @constraint(model, [s=1:S], tr(Mtilde[s, 1:num_arcs, 1:num_arcs]) - Mtilde[s,end,end]*(epsilon^2) <= 0)
     # --- Matrix Constraints ---
@@ -284,9 +284,9 @@ function build_dualized_outer_subproblem(network, S, ϕU, λU, γ, w, v, uncerta
         @constraint(model, Adj_0_Mtilde_22 - N_ts' * βtilde1_2[s,:] + Ptilde1_Yts[s,end]' - Ptilde2_Yts[s,end]' .== 0)
     end
     # --- From μhat ---
-    @constraint(model, [s=1:S, k=1:num_arcs], βhat2[s,k] <= α[k])
+    @constraint(model, coupling_hat[s=1:S, k=1:num_arcs], βhat2[s,k] <= α[k])
     # --- From μtilde ---
-    @constraint(model, [s=1:S, k=1:num_arcs], βtilde2[s,k] <= α[k])
+    @constraint(model, coupling_tilde[s=1:S, k=1:num_arcs], βtilde2[s,k] <= α[k])
     # --- From Πhat ---
     # --- Πhat_L constraint
     for i in 1:(num_nodes-1), j in 1:num_arcs
@@ -368,6 +368,7 @@ function build_dualized_outer_subproblem(network, S, ϕU, λU, γ, w, v, uncerta
         :yU => yU,
         :ytsU => ytsU,
         :S => S,
+        :scaling_S => scaling_S,
         :d0 => d0,
         :uncertainty_set => uncertainty_set,
     )

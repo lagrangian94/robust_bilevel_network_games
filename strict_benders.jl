@@ -83,6 +83,7 @@ function osp_optimize!(osp_model::Model, osp_vars::Dict, osp_data::Dict, λ_sol,
     yU = get(osp_data, :yU, ϕU)
     ytsU = get(osp_data, :ytsU, ϕU)
     S = osp_data[:S]
+    scaling_S = get(osp_data, :scaling_S, S)
     d0 = osp_data[:d0]
     uncertainty_set = osp_data[:uncertainty_set]
     xi_bar = uncertainty_set[:xi_bar]
@@ -115,7 +116,7 @@ function osp_optimize!(osp_model::Model, osp_vars::Dict, osp_data::Dict, λ_sol,
     obj_term_ub_tilde = [-ϕU * sum(Ptilde1_Φ[s,:,:]) - πU * sum(Ptilde1_Π[s,:,:]) - yU * sum(Ptilde1_Y[s,:,:]) - ytsU * sum(Ptilde1_Yts[s,:]) for s=1:S]
     obj_term_lb_tilde = [-ϕU * sum(Ptilde2_Φ[s,:,:]) - πU * sum(Ptilde2_Π[s,:,:]) - yU * sum(Ptilde2_Y[s,:,:]) - ytsU * sum(Ptilde2_Yts[s,:]) for s=1:S]
     @objective(osp_model, Max, (sum(obj_term1) + sum(obj_term2) + sum(obj_term3) + sum(obj_term4) + sum(obj_term5) + sum(obj_term6)
-    + sum(obj_term_ub_hat) + sum(obj_term_lb_hat) + sum(obj_term_ub_tilde) + sum(obj_term_lb_tilde)) / S)
+    + sum(obj_term_ub_hat) + sum(obj_term_lb_hat) + sum(obj_term_ub_tilde) + sum(obj_term_lb_tilde)) / scaling_S)
 
     optimize!(osp_model)
     st = MOI.get(osp_model, MOI.TerminationStatus())
@@ -227,21 +228,131 @@ function initialize_omp(omp_model::Model, omp_vars::Dict)
 end
 
 """
+    osp_inner_optimize!(osp_model, osp_vars, osp_data, λ_sol, x_sol, h_sol, ψ0_sol, α_sol)
+
+OSP를 inner subproblem으로 사용: α를 fix한 뒤 solve하고 inner Benders cut 정보 추출.
+Returns (status, cut_info_l, cut_info_f, outer_cut_coeff):
+- cut_info_l: Dict(:μhat, :intercept, :obj_val) — IMP leader cut용
+- cut_info_f: Dict(:μtilde, :intercept, :obj_val) — IMP follower cut용
+- outer_cut_coeff: osp_optimize!의 원래 반환값 (outer Benders cut 조립용)
+"""
+function osp_inner_optimize!(osp_model::Model, osp_vars::Dict, osp_data::Dict,
+                              λ_sol, x_sol, h_sol, ψ0_sol, α_sol)
+    α = osp_vars[:α]
+    num_arcs = length(α)
+    scaling_S = get(osp_data, :scaling_S, osp_data[:S])
+
+    # Fix α to IMP's solution
+    for k in 1:num_arcs
+        fix(α[k], α_sol[k]; force=true)
+    end
+
+    # Solve OSP with fixed α
+    (status, cut_coeff) = osp_optimize!(osp_model, osp_vars, osp_data, λ_sol, x_sol, h_sol, ψ0_sol)
+
+    if status != :OptimalityCut
+        for k in 1:num_arcs; unfix(α[k]); set_lower_bound(α[k], 0.0); end
+        return (status, nothing, nothing, nothing)
+    end
+
+    # Extract shadow prices from named coupling constraints
+    coupling_hat = osp_model[:coupling_hat]      # [s=1, k=1:num_arcs]
+    coupling_tilde = osp_model[:coupling_tilde]   # [s=1, k=1:num_arcs]
+
+    # Shadow prices are for /scaling_S-scaled objective → multiply by scaling_S for raw subgradients
+    μhat = scaling_S .* [shadow_price(coupling_hat[1, k]) for k in 1:num_arcs]
+    μtilde = scaling_S .* [shadow_price(coupling_tilde[1, k]) for k in 1:num_arcs]
+
+    # Compute V_l and V_f: decompose objective into leader (hat) and follower (tilde) portions
+    E = osp_data[:E]
+    v_param = osp_data[:v]
+    ϕU = osp_data[:ϕU]
+    πU = get(osp_data, :πU, ϕU)
+    yU = get(osp_data, :yU, ϕU)
+    ytsU = get(osp_data, :ytsU, ϕU)
+    d0 = osp_data[:d0]
+    uncertainty_set = osp_data[:uncertainty_set]
+    xi_bar_local = uncertainty_set[:xi_bar]
+
+    diag_x_E = Diagonal(x_sol) * E
+    diag_λ_ψ = Diagonal(λ_sol*ones(num_arcs) - v_param .* ψ0_sol)
+
+    Uhat1_val = value.(osp_vars[:Uhat1])
+    Uhat3_val = value.(osp_vars[:Uhat3])
+    Utilde1_val = value.(osp_vars[:Utilde1])
+    Utilde3_val = value.(osp_vars[:Utilde3])
+    βhat1_1_val = value.(osp_vars[:βhat1_1])
+    βtilde1_1_val = value.(osp_vars[:βtilde1_1])
+    βtilde1_3_val = value.(osp_vars[:βtilde1_3])
+    Ztilde1_3_val = value.(osp_vars[:Ztilde1_3])
+    Phat1_Φ_val = value.(osp_vars[:Phat1_Φ])
+    Phat1_Π_val = value.(osp_vars[:Phat1_Π])
+    Phat2_Φ_val = value.(osp_vars[:Phat2_Φ])
+    Phat2_Π_val = value.(osp_vars[:Phat2_Π])
+    Ptilde1_Φ_val = value.(osp_vars[:Ptilde1_Φ])
+    Ptilde1_Π_val = value.(osp_vars[:Ptilde1_Π])
+    Ptilde2_Φ_val = value.(osp_vars[:Ptilde2_Φ])
+    Ptilde2_Π_val = value.(osp_vars[:Ptilde2_Π])
+    Ptilde1_Y_val = value.(osp_vars[:Ptilde1_Y])
+    Ptilde1_Yts_val = value.(osp_vars[:Ptilde1_Yts])
+    Ptilde2_Y_val = value.(osp_vars[:Ptilde2_Y])
+    Ptilde2_Yts_val = value.(osp_vars[:Ptilde2_Yts])
+
+    s = 1  # single-scenario OSP
+    V_l = -ϕU * sum(Uhat1_val[s,:,:] .* diag_x_E) +
+          -ϕU * sum(Uhat3_val[s,:,:] .* (E - diag_x_E)) +
+          d0' * βhat1_1_val[s,:] +
+          (-ϕU * sum(Phat1_Φ_val[s,:,:]) - πU * sum(Phat1_Π_val[s,:,:])) +
+          (-ϕU * sum(Phat2_Φ_val[s,:,:]) - πU * sum(Phat2_Π_val[s,:,:]))
+
+    V_f = -ϕU * sum(Utilde1_val[s,:,:] .* diag_x_E) +
+          -ϕU * sum(Utilde3_val[s,:,:] .* (E - diag_x_E)) +
+          sum(Ztilde1_3_val[s,:,:] .* (diag_λ_ψ * diagm(xi_bar_local[1]))) +
+          (λ_sol * d0') * βtilde1_1_val[s,:] +
+          -(h_sol + diag_λ_ψ * xi_bar_local[1])' * βtilde1_3_val[s,:] +
+          (-ϕU * sum(Ptilde1_Φ_val[s,:,:]) - πU * sum(Ptilde1_Π_val[s,:,:]) - yU * sum(Ptilde1_Y_val[s,:,:]) - ytsU * sum(Ptilde1_Yts_val[s,:])) +
+          (-ϕU * sum(Ptilde2_Φ_val[s,:,:]) - πU * sum(Ptilde2_Π_val[s,:,:]) - yU * sum(Ptilde2_Y_val[s,:,:]) - ytsU * sum(Ptilde2_Yts_val[s,:]))
+
+    # Verify: (V_l + V_f) / scaling_S ≈ objective_value
+    obj_check = (V_l + V_f) / scaling_S
+    if abs(obj_check - objective_value(osp_model)) > 1e-3
+        @warn "V_l+V_f decomposition mismatch: $(obj_check) vs $(objective_value(osp_model))"
+    end
+
+    # Inner Benders cut: t_1_l[s] ≤ benders_intercept + μhat' * α
+    benders_intercept_l = V_l - μhat' * α_sol
+    benders_intercept_f = V_f - μtilde' * α_sol
+
+    # Unfix α for next iteration
+    for k in 1:num_arcs
+        unfix(α[k])
+        set_lower_bound(α[k], 0.0)
+    end
+
+    cut_info_l = Dict(:μhat => μhat, :intercept => benders_intercept_l, :obj_val => V_l)
+    cut_info_f = Dict(:μtilde => μtilde, :intercept => benders_intercept_f, :obj_val => V_f)
+
+    return (status, cut_info_l, cut_info_f, cut_coeff)
+end
+
+"""
     scenario_benders_optimize!(omp_model, omp_vars, network, ϕU, λU, γ, w, v, uncertainty_set; ...)
 
-Scenario-decomposed Benders: OMP → S × OSP(s=1).
-각 시나리오별 leader+follower+α를 독립 OSP에서 풀고, 시나리오 간 병렬화 가능.
-Strict Benders와 Nested Benders의 중간 구조.
+Scenario-decomposed nested Benders: OMP → IMP(shared α) → S × OSP(s=1).
+Nested Benders와 동일하게 IMP에서 α를 공유하되, inner subproblem은 ISP_l + ISP_f 대신
+joint OSP(s=1)로 leader+follower를 한 번에 풀어 conic solve 수를 절반으로 줄임.
 
 | | Strict | Scenario-Decomposed | Nested |
 |---|---|---|---|
-| 구조 | OMP → 1 OSP(S개) | OMP → S × OSP(1개) | OMP → IMP → S × (ISP_l + ISP_f) |
-| α 공유 | 전체 공유 | 시나리오별 독립 | IMP에서 공유 |
-| 병렬화 | 불가 | S개 병렬 | S개 병렬 (inner) |
+| 구조 | OMP → 1 OSP(S개) | OMP → IMP → S × OSP(1개) | OMP → IMP → S × (ISP_l + ISP_f) |
+| α 공유 | 전체 공유 | IMP에서 공유 | IMP에서 공유 |
+| Inner conic solves | 없음 | S × 1 | S × 2 |
+| 병렬화 | 불가 | S개 병렬 | S개 병렬 |
 """
 function scenario_benders_optimize!(omp_model::Model, omp_vars::Dict, network, ϕU, λU, γ, w, v, uncertainty_set;
     conic_optimizer=nothing, multi_cut_lf=true, multi_cut_scenario=true,
-    max_iter=1000, tol=1e-4, πU=ϕU, yU=ϕU, ytsU=ϕU, parallel=false, strengthen_cuts=:none)
+    max_iter=1000, tol=1e-4, πU=ϕU, yU=ϕU, ytsU=ϕU, parallel=false,
+    inner_max_iter=100, inner_tol=1e-4, mip_optimizer=nothing, strengthen_cuts=:none)
     ### --------Begin Initialization--------
     st, λ_sol, x_sol, h_sol, ψ0_sol = initialize_omp(omp_model, omp_vars)
     x, h, λ, ψ0 = omp_vars[:x], omp_vars[:h], omp_vars[:λ], omp_vars[:ψ0]
@@ -254,6 +365,12 @@ function scenario_benders_optimize!(omp_model::Model, omp_vars::Dict, network, �
     epsilon = uncertainty_set[:epsilon]
 
     conic_opt = conic_optimizer !== nothing ? conic_optimizer : Mosek.Optimizer
+    mip_opt = mip_optimizer !== nothing ? mip_optimizer : Gurobi.Optimizer
+
+    # Build IMP (shared α with per-scenario t_1_l, t_1_f)
+    imp_model, imp_vars = build_imp(network, S, ϕU, λU, γ, w, v, uncertainty_set; mip_optimizer=mip_opt)
+    initialize_imp(imp_model, imp_vars)
+    imp_cuts = Dict{String, Any}()  # inner cuts to delete between outer iterations
 
     # Build S separate single-scenario OSP instances
     osp_instances = Vector{Tuple}(undef, S)
@@ -262,7 +379,7 @@ function scenario_benders_optimize!(omp_model::Model, omp_vars::Dict, network, �
                     :xi_bar => Dict(1 => xi_bar[s]), :epsilon => epsilon)
         osp_instances[s] = build_dualized_outer_subproblem(
             network, 1, ϕU, λU, γ, w, v, U_s, conic_opt,
-            λ_sol, x_sol, h_sol, ψ0_sol; πU=πU, yU=yU, ytsU=ytsU)
+            λ_sol, x_sol, h_sol, ψ0_sol; πU=πU, yU=yU, ytsU=ytsU, scaling_S=S)
     end
 
     # Common data from first instance
@@ -271,20 +388,18 @@ function scenario_benders_optimize!(omp_model::Model, omp_vars::Dict, network, �
     diag_x_E = Diagonal(x) * E
     diag_λ_ψ = Diagonal(λ*ones(num_arcs) - v.*ψ0)
 
-    # ISP instances for cut strengthening (per-scenario α → ISP → MW/Sherali cuts)
+    # ISP instances for cut strengthening (MW/Sherali at outer level using converged α)
     isp_leader_instances, isp_follower_instances = nothing, nothing
     isp_data_sd = nothing
     if strengthen_cuts != :none
-        E_isp = ones(num_arcs, num_arcs + 1)
-        d0_isp = zeros(num_arcs + 1); d0_isp[end] = 1.0
         α_dummy = zeros(num_arcs)
         isp_leader_instances, isp_follower_instances = initialize_isp(
             network, S, ϕU, λU, γ, w, v, uncertainty_set;
             conic_optimizer=conic_opt, λ_sol=λ_sol, x_sol=x_sol, h_sol=h_sol, ψ0_sol=ψ0_sol,
-            α_sol=α_dummy, πU=πU, yU=yU, ytsU=ytsU, scaling_S=1)
-        isp_data_sd = Dict(:E => E_isp, :network => network, :ϕU => ϕU, :πU => πU,
+            α_sol=α_dummy, πU=πU, yU=yU, ytsU=ytsU, scaling_S=S)
+        isp_data_sd = Dict(:E => E, :network => network, :ϕU => ϕU, :πU => πU,
             :yU => yU, :ytsU => ytsU, :λU => λU, :γ => γ, :w => w, :v => v,
-            :uncertainty_set => uncertainty_set, :d0 => d0_isp, :S => S, :scaling_S => 1)
+            :uncertainty_set => uncertainty_set, :d0 => d0, :S => S, :scaling_S => S)
     end
 
     iter = 0
@@ -294,6 +409,7 @@ function scenario_benders_optimize!(omp_model::Model, omp_vars::Dict, network, �
     upper_bound = Inf
     result = Dict()
     result[:cuts] = Dict()
+    result[:inner_iter] = []
     result[:debug_α] = []
     result[:debug_intercept_l] = []
     result[:debug_intercept_f] = []
@@ -306,7 +422,7 @@ function scenario_benders_optimize!(omp_model::Model, omp_vars::Dict, network, �
             @warn "Maximum iterations ($max_iter) reached."
             break
         end
-        @info "[Scenario-Decomposed] Iteration $iter"
+        @info "[Scenario-Decomposed] Outer Iteration $iter"
 
         optimize!(omp_model)
         st = MOI.get(omp_model, MOI.TerminationStatus())
@@ -315,27 +431,92 @@ function scenario_benders_optimize!(omp_model::Model, omp_vars::Dict, network, �
         h_sol, λ_sol, ψ0_sol = value.(omp_vars[:h]), value(omp_vars[:λ]), value.(omp_vars[:ψ0])
         t_0_sol = value(omp_vars[:t_0]) / S
 
-        # Solve S scenarios independently (each with S=1)
-        scenario_results, all_ok = solve_scenarios(S; parallel=parallel) do s
-            osp_m, osp_v, osp_d = osp_instances[s]
-            (status_s, cut_info_s) = osp_optimize!(osp_m, osp_v, osp_d, λ_sol, x_sol, h_sol, ψ0_sol; multi_cut_lf=multi_cut_lf)
-            return (status_s == :OptimalityCut, cut_info_s)
+        # ===== Inner loop: IMP → S × OSP(s=1) =====
+        # Delete old inner cuts from previous outer iteration
+        if iter > 1
+            for (_, cut_ref) in imp_cuts
+                delete(imp_model, cut_ref)
+            end
+            imp_cuts = Dict{String, Any}()
         end
 
-        if !all_ok
-            error("Some scenario subproblems failed")
-        end
+        inner_lower_bound = -Inf
+        inner_iter = 0
+        converged_α = nothing
+        converged_obj = 0.0
+        last_outer_coeffs = Dict{Int, Dict}()
 
-        # Assemble cut_info: stack [1,...] arrays into [S,...] shape
+        for iiter in 1:inner_max_iter
+            inner_iter = iiter
+            @info "    [Inner] Iteration $iiter"
+            optimize!(imp_model)
+
+            α_sol_imp = value.(imp_vars[:α])
+            model_estimate = (sum(value.(imp_vars[:t_1_l])) + sum(value.(imp_vars[:t_1_f]))) / S
+
+            # Solve S OSPs with fixed α
+            subprob_obj = 0.0
+            dict_cut_l, dict_cut_f = Dict(), Dict()
+
+            scenario_results, all_ok = solve_scenarios(S; parallel=parallel) do s
+                osp_m, osp_v, osp_d = osp_instances[s]
+                (st_s, ci_l, ci_f, occ) = osp_inner_optimize!(osp_m, osp_v, osp_d, λ_sol, x_sol, h_sol, ψ0_sol, α_sol_imp)
+                return (st_s == :OptimalityCut, (ci_l, ci_f, occ))
+            end
+
+            if !all_ok
+                @warn "Some inner subproblems failed"
+            end
+
+            for s in 1:S
+                dict_cut_l[s] = scenario_results[s][1]
+                dict_cut_f[s] = scenario_results[s][2]
+                last_outer_coeffs[s] = scenario_results[s][3]
+                subprob_obj += dict_cut_l[s][:obj_val] + dict_cut_f[s][:obj_val]
+            end
+            subprob_obj /= S
+
+            inner_lower_bound = max(inner_lower_bound, subprob_obj)
+            inner_gap = abs(model_estimate - inner_lower_bound) / max(abs(model_estimate), 1e-10)
+
+            if inner_gap <= inner_tol || inner_lower_bound > model_estimate - 1e-4
+                @info "    Inner convergence reached (gap=$(round(inner_gap, digits=6)))"
+                converged_α = α_sol_imp
+                converged_obj = subprob_obj
+                break
+            end
+
+            # Add IMP cuts (per-scenario leader/follower)
+            subgradient_l = [dict_cut_l[s][:μhat] for s in 1:S]
+            subgradient_f = [dict_cut_f[s][:μtilde] for s in 1:S]
+            intercept_l = [dict_cut_l[s][:intercept] for s in 1:S]
+            intercept_f = [dict_cut_f[s][:intercept] for s in 1:S]
+
+            cut_added_l = @constraint(imp_model, [s=1:S], imp_vars[:t_1_l][s] <= intercept_l[s] + imp_vars[:α]' * subgradient_l[s])
+            cut_added_f = @constraint(imp_model, [s=1:S], imp_vars[:t_1_f][s] <= intercept_f[s] + imp_vars[:α]' * subgradient_f[s])
+            imp_cuts["inner_$(iiter)_l"] = cut_added_l
+            imp_cuts["inner_$(iiter)_f"] = cut_added_f
+
+            println("    inner subprob obj: ", subprob_obj)
+
+            if iiter == inner_max_iter
+                @warn "Inner loop max iterations reached"
+                converged_α = α_sol_imp
+                converged_obj = subprob_obj
+            end
+        end
+        push!(result[:inner_iter], inner_iter)
+
+        # ===== Assemble outer cut_info from last OSP solutions =====
         cut_info = Dict{Symbol, Any}()
         for key in [:Uhat1, :Utilde1, :Uhat3, :Utilde3, :βtilde1_1, :βtilde1_3, :Ztilde1_3]
-            cut_info[key] = cat([scenario_results[s][key] for s in 1:S]...; dims=1)
+            cut_info[key] = cat([last_outer_coeffs[s][key] for s in 1:S]...; dims=1)
         end
-        cut_info[:intercept_l] = [scenario_results[s][:intercept_l][1] for s in 1:S]
-        cut_info[:intercept_f] = [scenario_results[s][:intercept_f][1] for s in 1:S]
-        cut_info[:intercept] = cut_info[:intercept_l] .+ cut_info[:intercept_f]
-        cut_info[:obj_val] = sum(scenario_results[s][:obj_val] for s in 1:S) / S
-        cut_info[:α_sol] = [scenario_results[s][:α_sol] for s in 1:S]  # Vector of per-scenario α
+        cut_info[:intercept_l] = [last_outer_coeffs[s][:intercept_l][1] for s in 1:S]
+        cut_info[:intercept_f] = [last_outer_coeffs[s][:intercept_f][1] for s in 1:S]
+        cut_info[:intercept] = sum(cut_info[:intercept_l]) + sum(cut_info[:intercept_f])
+        cut_info[:obj_val] = sum(last_outer_coeffs[s][:obj_val] for s in 1:S)  # each already /S from scaling_S
+        cut_info[:α_sol] = converged_α
 
         subprob_obj = cut_info[:obj_val]
         upper_bound = min(upper_bound, subprob_obj)
@@ -372,7 +553,7 @@ function scenario_benders_optimize!(omp_model::Model, omp_vars::Dict, network, �
             return result
         end
 
-        @info "Iter $iter: LB=$(round(t_0_sol, digits=4))  UB=$(round(upper_bound, digits=4))  gap=$(round(gap, digits=6))  ($(round(time()-time_start, digits=1))s)"
+        @info "Iter $iter: LB=$(round(t_0_sol, digits=4))  UB=$(round(upper_bound, digits=4))  gap=$(round(gap, digits=6))  inner_iter=$(inner_iter)  ($(round(time()-time_start, digits=1))s)"
 
         opt_cut = add_optimality_cuts!(omp_model, omp_vars, cut_info, diag_x_E, E, diag_λ_ψ, xi_bar, d0, ϕU, λ, h, S, iter;
             multi_cut_lf=multi_cut_lf, multi_cut_scenario=multi_cut_scenario, prefix="opt_cut", result_cuts=result[:cuts])
@@ -398,72 +579,52 @@ function scenario_benders_optimize!(omp_model::Model, omp_vars::Dict, network, �
             end
             return eval_result
         end
-        if abs(subprob_obj * S - evaluate_expr(opt_cut, y)) > 1e-4
-            println("something went wrong")
+        if abs(subprob_obj * S - evaluate_expr(opt_cut, y)) > 1e-3
+            println("something went wrong: subprob_obj*S=$(subprob_obj*S), opt_cut=$(evaluate_expr(opt_cut, y))")
             @infiltrate
         end
 
-        # ===== Cut Strengthening (per-scenario α) =====
+        # ===== Cut Strengthening (MW/Sherali at outer level using converged α) =====
         if strengthen_cuts != :none && isp_leader_instances !== nothing
-            α_from_osp = cut_info[:α_sol]  # Vector of per-scenario α vectors
-            osp_cut_as_info = Dict(:α_sol => α_from_osp, :obj_val => cut_info[:obj_val])
+            # ISP를 converged α*에서 먼저 풀어야 MW/Sherali가 objective_value 접근 가능
+            solve_scenarios(S; parallel=parallel) do s_isp
+                U_s = Dict(:R => Dict(1=>R_us[s_isp]), :r_dict => Dict(1=>r_dict_us[s_isp]),
+                           :xi_bar => Dict(1=>xi_bar[s_isp]), :epsilon => epsilon)
+                isp_leader_optimize!(isp_leader_instances[s_isp][1], isp_leader_instances[s_isp][2];
+                    isp_data=isp_data_sd, uncertainty_set=U_s,
+                    λ_sol=λ_sol, x_sol=x_sol, h_sol=h_sol, ψ0_sol=ψ0_sol, α_sol=converged_α)
+                isp_follower_optimize!(isp_follower_instances[s_isp][1], isp_follower_instances[s_isp][2];
+                    isp_data=isp_data_sd, uncertainty_set=U_s,
+                    λ_sol=λ_sol, x_sol=x_sol, h_sol=h_sol, ψ0_sol=ψ0_sol, α_sol=converged_α)
+                return (true, nothing)
+            end
 
-            if strengthen_cuts == :mw
-                # MW: ISP solve → ISP cut + MW cut
-                solve_scenarios(S; parallel=parallel) do s_isp
-                    U_s = Dict(:R => Dict(1=>R_us[s_isp]), :r_dict => Dict(1=>r_dict_us[s_isp]),
-                               :xi_bar => Dict(1=>xi_bar[s_isp]), :epsilon => epsilon)
-                    α_s = α_from_osp[s_isp]
-                    isp_leader_optimize!(isp_leader_instances[s_isp][1], isp_leader_instances[s_isp][2];
-                        isp_data=isp_data_sd, uncertainty_set=U_s,
-                        λ_sol=λ_sol, x_sol=x_sol, h_sol=h_sol, ψ0_sol=ψ0_sol, α_sol=α_s)
-                    isp_follower_optimize!(isp_follower_instances[s_isp][1], isp_follower_instances[s_isp][2];
-                        isp_data=isp_data_sd, uncertainty_set=U_s,
-                        λ_sol=λ_sol, x_sol=x_sol, h_sol=h_sol, ψ0_sol=ψ0_sol, α_sol=α_s)
-                    return (true, nothing)
-                end
+            osp_cut_as_info = Dict(:α_sol => converged_α, :obj_val => cut_info[:obj_val])
 
-                # Step A: ISP-based cut
-                isp_cut = evaluate_master_opt_cut(
-                    isp_leader_instances, isp_follower_instances,
-                    isp_data_sd, osp_cut_as_info, iter; multi_cut_lf=multi_cut_lf, parallel=parallel)
-
-                add_optimality_cuts!(omp_model, omp_vars, isp_cut, diag_x_E, E, diag_λ_ψ, xi_bar, d0, ϕU, λ, h, S, iter;
-                    multi_cut_lf=multi_cut_lf, multi_cut_scenario=multi_cut_scenario, prefix="isp_cut", result_cuts=result[:cuts])
-                @info "  ISP-based cut added (per-scenario α)"
-
-                # Step B: MW cuts from core points
-                interdictable_idx = findall(network.interdictable_arcs[1:num_arcs])
-                core_points = generate_core_points(network, γ, λU, w, v;
-                    interdictable_idx=interdictable_idx, strategy=:interior)
-                for (cp_idx, cp) in enumerate(core_points)
+            interdictable_idx = findall(network.interdictable_arcs[1:num_arcs])
+            core_points = generate_core_points(network, γ, λU, w, v;
+                interdictable_idx=interdictable_idx, strategy=:interior)
+            for (cp_idx, cp) in enumerate(core_points)
+                if strengthen_cuts == :mw
                     str_info = evaluate_mw_opt_cut(
                         isp_leader_instances, isp_follower_instances,
                         isp_data_sd, osp_cut_as_info, iter;
                         x_sol=x_sol, λ_sol=λ_sol, h_sol=h_sol, ψ0_sol=ψ0_sol,
                         x_core=cp.x, λ_core=cp.λ, h_core=cp.h, ψ0_core=cp.ψ0,
                         multi_cut_lf=multi_cut_lf, parallel=parallel)
-                    add_optimality_cuts!(omp_model, omp_vars, str_info, diag_x_E, E, diag_λ_ψ, xi_bar, d0, ϕU, λ, h, S, iter;
-                        multi_cut_lf=multi_cut_lf, multi_cut_scenario=multi_cut_scenario, prefix="mw_cut_cp$(cp_idx)", result_cuts=result[:cuts])
-                end
-                @info "  $(length(core_points)) mw strengthening cuts added"
-
-            elseif strengthen_cuts == :sherali
-                interdictable_idx = findall(network.interdictable_arcs[1:num_arcs])
-                core_points = generate_core_points(network, γ, λU, w, v;
-                    interdictable_idx=interdictable_idx, strategy=:interior)
-                for (cp_idx, cp) in enumerate(core_points)
+                elseif strengthen_cuts == :sherali
                     str_info = evaluate_sherali_opt_cut(
                         isp_leader_instances, isp_follower_instances,
                         isp_data_sd, osp_cut_as_info, iter;
                         x_sol=x_sol, λ_sol=λ_sol, h_sol=h_sol, ψ0_sol=ψ0_sol,
                         x_core=cp.x, λ_core=cp.λ, h_core=cp.h, ψ0_core=cp.ψ0,
                         multi_cut_lf=multi_cut_lf, parallel=parallel)
-                    add_optimality_cuts!(omp_model, omp_vars, str_info, diag_x_E, E, diag_λ_ψ, xi_bar, d0, ϕU, λ, h, S, iter;
-                        multi_cut_lf=multi_cut_lf, multi_cut_scenario=multi_cut_scenario, prefix="sherali_cut_cp$(cp_idx)", result_cuts=result[:cuts])
                 end
-                @info "  $(length(core_points)) sherali cuts added"
+                str_label = strengthen_cuts == :mw ? "mw" : "sherali"
+                add_optimality_cuts!(omp_model, omp_vars, str_info, diag_x_E, E, diag_λ_ψ, xi_bar, d0, ϕU, λ, h, S, iter;
+                    multi_cut_lf=multi_cut_lf, multi_cut_scenario=multi_cut_scenario, prefix="$(str_label)_cut_cp$(cp_idx)", result_cuts=result[:cuts])
             end
+            @info "  $(length(core_points)) $(strengthen_cuts) strengthening cuts added"
         end
     end
     # max_iter reached or while condition false

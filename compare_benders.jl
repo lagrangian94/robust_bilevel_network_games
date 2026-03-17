@@ -35,59 +35,117 @@ includet("nested_benders_trust_region.jl")
 includet("plot_benders.jl")
 
 using .NetworkGenerator: generate_grid_network, generate_capacity_scenarios_uniform_model, print_network_summary
+using .NetworkGenerator: generate_sioux_falls_network, generate_nobel_us_network, generate_abilene_network, generate_polska_network, print_realworld_network_summary
 
-# ===== Common Parameters =====
-S = 20
-γ_ratio = 0.10
-ρ = 0.2
-v = 1.0
-seed = 42
-epsilon = 0.5
-ϕU = 1/epsilon ## 10.0 -> 1/epsilon으로 변경.
-λU = ϕU ## 10.0 -> ϕU로 변경.
+# ===== Network Instance Configs =====
+network_configs = Dict(
+    :grid_3x3 => Dict(:type => :grid, :m => 3, :n => 3),
+    :grid_5x5 => Dict(:type => :grid, :m => 5, :n => 5),
+    :sioux_falls => Dict(:type => :real_world, :generator => generate_sioux_falls_network),
+    :nobel_us => Dict(:type => :real_world, :generator => generate_nobel_us_network),
+    :abilene => Dict(:type => :real_world, :generator => generate_abilene_network),
+    :polska => Dict(:type => :real_world, :generator => generate_polska_network),
+)
 
+"""
+    setup_instance(config_key; S, γ_ratio, ρ, v, seed, epsilon)
 
-# ===== Generate Network & Uncertainty Set =====
+네트워크 인스턴스와 파라미터를 한 번에 생성. grid/real_world 공통 인터페이스.
+Returns: (network, uncertainty_set, params::Dict)
+"""
+function setup_instance(config_key::Symbol;
+    S=10, γ_ratio=0.10, ρ=0.2, v=1.0, seed=42, epsilon=0.5)
+
+    config = network_configs[config_key]
+
+    # --- Network 생성 ---
+    if config[:type] == :grid
+        network = generate_grid_network(config[:m], config[:n], seed=seed)
+        print_network_summary(network)
+    elseif config[:type] == :real_world
+        network = config[:generator]()
+        print_realworld_network_summary(network)
+    end
+
+    num_arcs = length(network.arcs) - 1
+
+    # --- Parameters ---
+    ϕU = 1/epsilon
+    λU = ϕU
+    num_interdictable = sum(network.interdictable_arcs[1:num_arcs])
+    γ = ceil(Int, γ_ratio * num_interdictable)
+    println("  Interdiction budget: γ = ceil($γ_ratio × $num_interdictable) = $γ")
+
+    capacities, F = generate_capacity_scenarios_uniform_model(length(network.arcs), S, seed=seed)
+
+    interdictable_idx = findall(network.interdictable_arcs[1:num_arcs])
+    c_bar = sum(capacities[interdictable_idx, :]) / (length(interdictable_idx) * S)
+    w = round(ρ * γ * c_bar, digits=4)
+    println("  Recovery budget: w = ρ·γ·c̄ = $ρ × $γ × $(round(c_bar, digits=2)) = $(round(w, digits=4))")
+
+    # --- Uncertainty set ---
+    capacity_scenarios_regular = capacities[1:end-1, :]
+    R, r_dict, xi_bar = build_robust_counterpart_matrices(capacity_scenarios_regular, epsilon)
+    uncertainty_set = Dict(:R => R, :r_dict => r_dict, :xi_bar => xi_bar, :epsilon => epsilon)
+
+    # --- LDR coefficient bounds ---
+    source_arc_idx = findall(a -> a[1] == "s", network.arcs[1:num_arcs])
+    max_flow_ub = maximum(sum(capacities[source_arc_idx, s] for s in 1:S) / S)
+    max_cap = maximum(capacity_scenarios_regular)
+    πU = ϕU
+    yU = min(max_cap, ϕU)
+    ytsU = min(max_flow_ub, ϕU)
+    println("  LDR bounds: ϕU=$ϕU, πU=$πU, yU=$yU, ytsU=$ytsU")
+
+    params = Dict(
+        :S => S, :γ => γ, :ϕU => ϕU, :λU => λU, :w => w, :v => v,
+        :πU => πU, :yU => yU, :ytsU => ytsU, :epsilon => epsilon,
+        :γ_ratio => γ_ratio, :ρ => ρ, :seed => seed,
+    )
+
+    return network, uncertainty_set, params
+end
+
+# ===== Interactive Instance 선택 =====
 println("="^80)
-println("GENERATING NETWORK AND UNCERTAINTY SET")
+println("네트워크 인스턴스 선택")
+println("="^80)
+println("  1. Grid network")
+println("  2. Sioux Falls (24 nodes, 76 arcs)")
+println("  3. Nobel US")
+println("  4. Abilene")
+println("  5. Polska")
+print("선택 (1-5): ")
+net_choice = parse(Int, readline())
+
+if net_choice == 1
+    print("Grid rows (m): "); m = parse(Int, readline())
+    print("Grid cols (n): "); n = parse(Int, readline())
+    network_configs[Symbol("grid_$(m)x$(n)")] = Dict(:type => :grid, :m => m, :n => n)
+    instance_key = Symbol("grid_$(m)x$(n)")
+elseif net_choice == 2
+    instance_key = :sioux_falls
+elseif net_choice == 3
+    instance_key = :nobel_us
+elseif net_choice == 4
+    instance_key = :abilene
+elseif net_choice == 5
+    instance_key = :polska
+else
+    error("잘못된 선택: $net_choice")
+end
+
+print("시나리오 수 S: "); S = parse(Int, readline())
+print("Cut strengthening (none/mw/sherali): "); strengthen_cuts = Symbol(readline())
+
+println("\n" * "="^80)
+println("INSTANCE: $instance_key (S=$S, cuts=$strengthen_cuts)")
 println("="^80)
 
-network = generate_grid_network(5, 5, seed=seed)
-print_network_summary(network)
+network, uncertainty_set, params = setup_instance(instance_key; S=S)
+γ, ϕU, λU, w, v = params[:γ], params[:ϕU], params[:λU], params[:w], params[:v]
+πU, yU, ytsU = params[:πU], params[:yU], params[:ytsU]
 
-num_arcs = length(network.arcs) - 1
-num_interdictable = sum(network.interdictable_arcs[1:num_arcs])
-γ = ceil(Int, γ_ratio * num_interdictable)
-println("  Interdiction budget: γ = ceil($γ_ratio × $num_interdictable) = $γ")
-
-capacities, F = generate_capacity_scenarios_uniform_model(length(network.arcs), S, seed=seed)
-
-interdictable_idx = findall(network.interdictable_arcs[1:num_arcs])
-c_bar = sum(capacities[interdictable_idx, :]) / (length(interdictable_idx) * S)
-w = round(ρ * γ * c_bar, digits=4)
-println("  Recovery budget: w = ρ·γ·c̄ = $ρ × $γ × $(round(c_bar, digits=2)) = $(round(w, digits=4))")
-
-capacity_scenarios_regular = capacities[1:end-1, :]
-R, r_dict, xi_bar = build_robust_counterpart_matrices(capacity_scenarios_regular, epsilon)
-uncertainty_set = Dict(:R => R, :r_dict => r_dict, :xi_bar => xi_bar, :epsilon => epsilon)
-
-# --- Tight LDR coefficient bounds (Idea 3: analytic bounds) ---
-# ϕU: flow dual Φ̂/Φ̃ LDR coeff bound (also McCormick) — stays as is
-# πU: node price Π̂/Π̃ — bounded by 1 (max-flow value in standard form, d0=[0,...,1])
-# yU: follower flow Ỹ — bounded by max arc capacity (per-arc flow ≤ capacity)
-# ytsU: dummy arc Ỹ_ts — bounded by max-flow value (≤ sum of source-out capacities)
-#
-# 물리적 해석: node price ∈ [0,1], flow ≤ capacity, total flow ≤ min-cut
-# LDR coeff는 value 범위에서 결정됨 (ζ는 dimensionless, ||ζ||≤ε)
-source_arc_idx = findall(a -> a[1] == "s", network.arcs[1:num_arcs])
-max_flow_ub = maximum(sum(capacities[source_arc_idx, s] for s in 1:S) / S)  # avg max-flow upper bound
-max_cap = maximum(capacity_scenarios_regular)
-
-πU = ϕU                          # node price: 이론적으로 동일 (LDR coeff ≤ 1/ε)
-yU = min(max_cap, ϕU)            # analytic > ϕU이면 ϕU 유지
-ytsU = min(max_flow_ub, ϕU)      # analytic > ϕU이면 ϕU 유지
-println("  LDR bounds: ϕU=$ϕU, πU=$πU, yU=$yU, ytsU=$ytsU")
-strengthen_cuts = :mw # :none, :mw, :sherali
 results = Dict{String, Any}()
 
 
@@ -122,21 +180,20 @@ results = Dict{String, Any}()
 #     println("  Termination status: $t0_status (no optimal solution)")
 # end
 # println("\n>> Full Model time: $(results["full_model"]) seconds")
+# #9.124764
 
+# ===== 1. Strict Benders =====
+println("\n" * "="^80)
+println("1. STRICT BENDERS DECOMPOSITION (multi-cut)")
+println("="^80)
 
-# # ===== 1. Strict Benders =====
-# println("\n" * "="^80)
-# println("1. STRICT BENDERS DECOMPOSITION (multi-cut)")
-# println("="^80)
-
-# GC.gc()
-# model1, vars1 = build_omp(network, ϕU, λU, γ, w; optimizer=Gurobi.Optimizer, multi_cut_lf=true)
-# t1_start = time()
-# result1 = strict_benders_optimize!(model1, vars1, network, ϕU, λU, γ, w, uncertainty_set; optimizer=Gurobi.Optimizer, πU=πU, yU=yU, ytsU=ytsU, strengthen_cuts=strengthen_cuts)
-# t1_end = time()
-# results["strict_benders"] = t1_end - t1_start
-# println("\n>> Strict Benders time: $(results["strict_benders"]) seconds")
-
+GC.gc()
+model1, vars1 = build_omp(network, ϕU, λU, γ, w; optimizer=Gurobi.Optimizer, multi_cut_lf=true, S=S)
+t1_start = time()
+result1 = strict_benders_optimize!(model1, vars1, network, ϕU, λU, γ, w, uncertainty_set; optimizer=Gurobi.Optimizer, πU=πU, yU=yU, ytsU=ytsU, strengthen_cuts=strengthen_cuts)
+t1_end = time()
+results["strict_benders"] = t1_end - t1_start
+println("\n>> Strict Benders time: $(results["strict_benders"]) seconds")
 
 # # ===== 2. TR Nested Benders — Dual (T,T) =====
 # println("\n" * "="^80)
@@ -155,29 +212,13 @@ results = Dict{String, Any}()
 # t2_end = time()
 # results["tr_dual"] = t2_end - t2_start
 # println("\n>> Dual TR Both time: $(results["tr_dual"]) seconds")
-
-# TODO:: solve only subset of scenarios (partial solve; 첫번째에선 다 풀어서 하한 다 찾아놓음) (upper bound eval. = iter N번마다 한번씩 full evaluate)
+# # TODO:: solve only subset of scenarios (partial solve; 첫번째에선 다 풀어서 하한 다 찾아놓음) (upper bound eval. = iter N번마다 한번씩 full evaluate)
 
 # ===== 2.5. Scenario-Decomposed Benders =====
 println("\n" * "="^80)
 println("2.5. SCENARIO-DECOMPOSED BENDERS (OMP → S × OSP(s=1))")
 println("="^80)
 """
-Outer loop iteration: 81
-[ Info:   ISP-based cut added (per-scenario α)
-[ Info:   1 mw strengthening cuts added
-[ Info: [Scenario-Decomposed] Iteration 82
-[ Info: Iter 82: LB=9.2463  UB=9.2478  gap=0.000168  (1588.6s)
-subproblem objective: 9.247832604675885
-[ Info: Optimality cut added
-avg of leader and follower objective: 9.247826496938178, cut_info[:obj_val]: 9.247832604675885
-Outer loop iteration: 82
-[ Info:   ISP-based cut added (per-scenario α)
-[ Info:   1 mw strengthening cuts added
-[ Info: [Scenario-Decomposed] Iteration 83
-[ Info: Termination condition met
-t_0_sol: 9.246660175886632, subprob_obj: 9.247547305636884
-
 >> Scenario-Decomposed Benders time: 1623.7960000038147 seconds
 """
 
@@ -185,7 +226,7 @@ GC.gc()
 model_sd, vars_sd = build_omp(network, ϕU, λU, γ, w; optimizer=Gurobi.Optimizer, multi_cut_lf=true, multi_cut_scenario=true, S=S)
 t_sd_start = time()
 result_sd = scenario_benders_optimize!(model_sd, vars_sd, network, ϕU, λU, γ, w, v, uncertainty_set;
-    conic_optimizer=Mosek.Optimizer, multi_cut_lf=true, multi_cut_scenario=true,
+    conic_optimizer=Mosek.Optimizer, mip_optimizer=Gurobi.Optimizer, multi_cut_lf=true, multi_cut_scenario=true,
     πU=πU, yU=yU, ytsU=ytsU, parallel=true, strengthen_cuts=strengthen_cuts)
 t_sd_end = time()
 results["scenario_decomposed"] = t_sd_end - t_sd_start
