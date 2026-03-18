@@ -1,0 +1,1628 @@
+Set parameter Username
+Set parameter LicenseID to value 2742039
+Academic license - for non-commercial use only - expires 2026-11-20
+Set parameter Username
+Set parameter LicenseID to value 2742039
+Academic license - for non-commercial use only - expires 2026-11-20
+Parameters: S=2, γ=3, ϕU=2.0, λU=2.0, w=3.0, v=1.0
+LDR bounds: πU=2.0, yU=2.0, ytsU=2.0
+
+Hardcoded Strict Benders: UB = 1.1250970192069125
+  x* = [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0]
+
+================================================================================
+STEP 2: Joint OSP value at (x*, h*, λ*, ψ0*)
+================================================================================
+Building dualized outer subproblem...
+  Nodes: 12, Arcs: 30, Scenarios: 2
+  Interdictable arcs: 30
+  Dummy arc index: 31
+  Parameters: ϕU = 2.0, λU = 2.0, γ = 3, w = 3.0, v = 1.0
+Joint OSP obj (= UB): 1.1250970192069125
+Joint α sum: 1.4999999987763475
+
+================================================================================
+STEP 6: scenario_benders_optimize! (strengthen_cuts=:mw)
+================================================================================
+[ Info: Initial status OPTIMAL
+Building dualized outer subproblem...
+  Nodes: 12, Arcs: 30, Scenarios: 1
+  Interdictable arcs: 30
+  Dummy arc index: 31
+  Parameters: ϕU = 2.0, λU = 2.0, γ = 3, w = 3.0, v = 1.0
+Building dualized outer subproblem...
+  Nodes: 12, Arcs: 30, Scenarios: 1
+  Interdictable arcs: 30
+  Dummy arc index: 31
+  Parameters: ϕU = 2.0, λU = 2.0, γ = 3, w = 3.0, v = 1.0
+Building dualized outer subproblem...
+  Nodes: 12, Arcs: 30, Scenarios: 1
+  Interdictable arcs: 30
+  Dummy arc index: 31
+  Parameters: ϕU = 2.0, λU = 2.0, γ = 3, w = 3.0, v = 1.0
+Building dualized outer subproblem...
+  Nodes: 12, Arcs: 30, Scenarios: 1
+  Interdictable arcs: 30
+  Dummy arc index: 31
+  Parameters: ϕU = 2.0, λU = 2.0, γ = 3, w = 3.0, v = 1.0
+Building dualized outer subproblem...
+  Nodes: 12, Arcs: 30, Scenarios: 1
+  Interdictable arcs: 30
+  Dummy arc index: 31
+  Parameters: ϕU = 2.0, λU = 2.0, γ = 3, w = 3.0, v = 1.0
+Building dualized outer subproblem...
+  Nodes: 12, Arcs: 30, Scenarios: 1
+  Interdictable arcs: 30
+  Dummy arc index: 31
+  Parameters: ϕU = 2.0, λU = 2.0, γ = 3, w = 3.0, v = 1.0
+[ Info: [Scenario-Decomposed] Outer Iteration 1
+[ Info:     [Inner] Iteration 1
+    inner subprob obj: 4.201497788807927
+[ Info:     [Inner] Iteration 2
+    inner subprob obj: 4.982039899062194
+[ Info:     [Inner] Iteration 3
+    inner subprob obj: 4.710464572622525
+[ Info:     [Inner] Iteration 4
+    inner subprob obj: 4.96191968058773
+[ Info:     [Inner] Iteration 5
+[ Info:     Inner convergence reached (gap=9.4e-5, LB=4.984278628548484)
+
+⚠ UB DROP DETECTED: iter=1, prev_UB=Inf → new_subprob=4.984279
+  converged_obj (from inner V_l+V_f/S) = 4.984278628548484
+  cut_info[:obj_val] (sum of osp objs) = 4.984278628548482
+  inner_iter = 5
+  x_sol = [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]
+  λ_sol = 0.001, h_norm = 0.0, ψ0_norm = 0.0
+  converged α_sum = 1.5
+  per-scenario osp objs: [2.8386713981637426, 2.14560723038474]
+  per-scenario intercept_l: [5.6740085665495315, 4.289657179070446]
+  per-scenario intercept_f: [4.770213610932809e-6, 1.0292077429001084e-5]
+  --- Verification: solving joint OSP at same (x,h,λ,ψ0) ---
+Building dualized outer subproblem...
+  Nodes: 12, Arcs: 30, Scenarios: 2
+  Interdictable arcs: 30
+  Dummy arc index: 31
+  Parameters: ϕU = 2.0, λU = 2.0, γ = 3, w = 3.0, v = 1.0
+  joint OSP obj = 4.984750857962023,  α_sum = 1.4999999628358984
+  MISMATCH = 0.000472
+  --- Cut validity check at joint α* ---
+Building dualized outer subproblem...
+  Nodes: 12, Arcs: 30, Scenarios: 1
+  Interdictable arcs: 30
+  Dummy arc index: 31
+  Parameters: ϕU = 2.0, λU = 2.0, γ = 3, w = 3.0, v = 1.0
+Building dualized outer subproblem...
+  Nodes: 12, Arcs: 30, Scenarios: 1
+  Interdictable arcs: 30
+  Dummy arc index: 31
+  Parameters: ϕU = 2.0, λU = 2.0, γ = 3, w = 3.0, v = 1.0
+  true Q_l at joint α*: [5.674008083980777, 4.2905783633846895]
+  true Q_f at joint α*: [0.003333634316078078, 0.0015634372544779084]
+  true total/S = 4.984741759468011
+  s=1: IMP feasible t_l=5.674014 (true=5.674008), t_f=0.003334 (true=0.003334)
+  s=2: IMP feasible t_l=4.290574 (true=4.290578), t_f=0.00156 (true=0.001563)
+
+[ Info: Iter 1: LB=0.0  UB=4.9843  gap=1.0  inner_iter=5  (3.7s)
+subproblem objective: 4.984278628548482
+[ Info: Optimality cut added
+[ Info:   1 mw strengthening cuts added
+[ Info: [Scenario-Decomposed] Outer Iteration 2
+[ Info:     [Inner] Iteration 1
+    inner subprob obj: 1.8754026902831922
+[ Info:     [Inner] Iteration 2
+    inner subprob obj: 3.376914773882612
+[ Info:     [Inner] Iteration 3
+[ Info:     Inner convergence reached (gap=0.0, LB=3.376914773882612)
+
+⚠ UB DROP DETECTED: iter=2, prev_UB=4.984279 → new_subprob=3.376915
+  converged_obj (from inner V_l+V_f/S) = 3.376914773882612
+  cut_info[:obj_val] (sum of osp objs) = 3.376914773882609
+  inner_iter = 3
+  x_sol = [-0.0, -0.0, -0.0, -0.0, -0.0, -0.0, 1.0, -0.0, -0.0, -0.0, -0.0, -0.0, -0.0, -0.0, -0.0, -0.0, -0.0, -0.0, 0.0, -0.0, -0.0, -0.0, -0.0, -0.0, -0.0, -0.0, -0.0, -0.0, -0.0, -0.0]
+  λ_sol = 0.001, h_norm = 0.003, ψ0_norm = 0.0009999999999998899
+  converged α_sum = 1.5
+  per-scenario osp objs: [2.2511418699529666, 1.1257729039296422]
+  per-scenario intercept_l: [4.500019909726021, 2.2500076301442316]
+  per-scenario intercept_f: [1.0387676957438505e-5, 4.09374895035855e-6]
+  --- Verification: solving joint OSP at same (x,h,λ,ψ0) ---
+Building dualized outer subproblem...
+  Nodes: 12, Arcs: 30, Scenarios: 2
+  Interdictable arcs: 30
+  Dummy arc index: 31
+  Parameters: ϕU = 2.0, λU = 2.0, γ = 3, w = 3.0, v = 1.0
+  joint OSP obj = 3.3769147285700916,  α_sum = 1.499999983977997
+  MISMATCH = -0.0
+  --- Cut validity check at joint α* ---
+Building dualized outer subproblem...
+  Nodes: 12, Arcs: 30, Scenarios: 1
+  Interdictable arcs: 30
+  Dummy arc index: 31
+  Parameters: ϕU = 2.0, λU = 2.0, γ = 3, w = 3.0, v = 1.0
+Building dualized outer subproblem...
+  Nodes: 12, Arcs: 30, Scenarios: 1
+  Interdictable arcs: 30
+  Dummy arc index: 31
+  Parameters: ϕU = 2.0, λU = 2.0, γ = 3, w = 3.0, v = 1.0
+  true Q_l at joint α*: [4.500023253799609, 2.250017210724693]
+  true Q_f at joint α*: [0.00227008281710345, 0.0015445871823049873]
+  true total/S = 3.376927567261855
+  s=1: IMP feasible t_l=4.500017 (true=4.500023), t_f=0.002264 (true=0.00227)
+  s=2: IMP feasible t_l=2.250005 (true=2.250017), t_f=0.001538 (true=0.001545)
+
+[ Info: Iter 2: LB=0.0  UB=3.3769  gap=1.0  inner_iter=3  (7.2s)
+subproblem objective: 3.376914773882609
+[ Info: Optimality cut added
+[ Info:   1 mw strengthening cuts added
+[ Info: [Scenario-Decomposed] Outer Iteration 3
+[ Info:     [Inner] Iteration 1
+    inner subprob obj: 2.74255917485658
+[ Info:     [Inner] Iteration 2
+    inner subprob obj: 3.5007349725176624
+[ Info:     [Inner] Iteration 3
+[ Info:     Inner convergence reached (gap=0.0, LB=3.5007349725176624)
+[ Info: Iter 3: LB=0.0  UB=3.3769  gap=1.0  inner_iter=3  (9.3s)
+subproblem objective: 3.500734972517664
+[ Info: Optimality cut added
+[ Info:   1 mw strengthening cuts added
+[ Info: [Scenario-Decomposed] Outer Iteration 4
+[ Info:     [Inner] Iteration 1
+    inner subprob obj: 1.6642559559951415
+[ Info:     [Inner] Iteration 2
+    inner subprob obj: 1.8757112442825137
+[ Info:     [Inner] Iteration 3
+    inner subprob obj: 2.4800043021827394
+[ Info:     [Inner] Iteration 4
+    inner subprob obj: 2.2050052890032834
+[ Info:     [Inner] Iteration 5
+[ Info:     Inner convergence reached (gap=5.6e-5, LB=2.4800043021827394)
+
+⚠ UB DROP DETECTED: iter=4, prev_UB=3.376915 → new_subprob=2.480004
+  converged_obj (from inner V_l+V_f/S) = 2.4800043021827394
+  cut_info[:obj_val] (sum of osp objs) = 2.4800043021827456
+  inner_iter = 5
+  x_sol = [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]
+  λ_sol = 0.001, h_norm = 0.003, ψ0_norm = 0.0014142135623726253
+  converged α_sum = 1.5
+  per-scenario osp objs: [1.354495515143667, 1.1255087870390783]
+  per-scenario intercept_l: [2.7074301320813694, 2.2496971977229077]
+  per-scenario intercept_f: [1.5957920711027364e-6, 9.527549143989764e-6]
+  --- Verification: solving joint OSP at same (x,h,λ,ψ0) ---
+Building dualized outer subproblem...
+  Nodes: 12, Arcs: 30, Scenarios: 2
+  Interdictable arcs: 30
+  Dummy arc index: 31
+  Parameters: ϕU = 2.0, λU = 2.0, γ = 3, w = 3.0, v = 1.0
+  joint OSP obj = 2.4800103615834033,  α_sum = 1.4999999687043777
+  MISMATCH = 6.0e-6
+  --- Cut validity check at joint α* ---
+Building dualized outer subproblem...
+  Nodes: 12, Arcs: 30, Scenarios: 1
+  Interdictable arcs: 30
+  Dummy arc index: 31
+  Parameters: ϕU = 2.0, λU = 2.0, γ = 3, w = 3.0, v = 1.0
+Building dualized outer subproblem...
+  Nodes: 12, Arcs: 30, Scenarios: 1
+  Interdictable arcs: 30
+  Dummy arc index: 31
+  Parameters: ϕU = 2.0, λU = 2.0, γ = 3, w = 3.0, v = 1.0
+  true Q_l at joint α*: [2.9514852827555083, 2.0056368740978274]
+  true Q_f at joint α*: [0.0018070691238822741, 0.0010779229896067217]
+  true total/S = 2.4800035744834124
+  s=1: IMP feasible t_l=2.951527 (true=2.951485), t_f=0.001844 (true=0.001807)
+  s=2: IMP feasible t_l=2.005626 (true=2.005637), t_f=0.001073 (true=0.001078)
+
+[ Info: Iter 4: LB=0.0  UB=2.48  gap=1.0  inner_iter=5  (13.5s)
+subproblem objective: 2.4800043021827456
+[ Info: Optimality cut added
+[ Info:   1 mw strengthening cuts added
+[ Info: [Scenario-Decomposed] Outer Iteration 5
+[ Info:     [Inner] Iteration 1
+    inner subprob obj: 2.191624217574365
+[ Info:     [Inner] Iteration 2
+    inner subprob obj: 2.251506499526624
+[ Info:     [Inner] Iteration 3
+    inner subprob obj: 3.2147585802329077
+[ Info:     [Inner] Iteration 4
+    inner subprob obj: 2.9590548281356375
+[ Info:     [Inner] Iteration 5
+    inner subprob obj: 3.2192252635164187
+[ Info:     [Inner] Iteration 6
+    inner subprob obj: 3.2155481753285384
+[ Info:     [Inner] Iteration 7
+    inner subprob obj: 3.2203810592653532
+[ Info:     [Inner] Iteration 8
+    inner subprob obj: 3.2205681058470876
+[ Info:     [Inner] Iteration 9
+[ Info:     Inner convergence reached (gap=5.4e-5, LB=3.2206588874458113)
+[ Info: Iter 5: LB=0.0  UB=2.48  gap=1.0  inner_iter=9  (17.1s)
+subproblem objective: 3.2206588874458144
+[ Info: Optimality cut added
+[ Info:   1 mw strengthening cuts added
+[ Info: [Scenario-Decomposed] Outer Iteration 6
+[ Info:     [Inner] Iteration 1
+    inner subprob obj: 1.1257563141080384
+[ Info:     [Inner] Iteration 2
+    inner subprob obj: 1.8586034587914684
+[ Info:     [Inner] Iteration 3
+    inner subprob obj: 1.8586070447095053
+[ Info:     [Inner] Iteration 4
+    inner subprob obj: 1.8706883136772847
+[ Info:     [Inner] Iteration 5
+    inner subprob obj: 1.8586503096981264
+[ Info:     [Inner] Iteration 6
+    inner subprob obj: 1.8761719564466017
+[ Info:     [Inner] Iteration 7
+    inner subprob obj: 1.8765074507718824
+[ Info:     [Inner] Iteration 8
+[ Info:     Inner convergence reached (gap=1.0e-6, LB=1.8765074507718824)
+
+⚠ UB DROP DETECTED: iter=6, prev_UB=2.480004 → new_subprob=1.876507
+  converged_obj (from inner V_l+V_f/S) = 1.8765074507718824
+  cut_info[:obj_val] (sum of osp objs) = 1.8765074507718817
+  inner_iter = 8
+  x_sol = [-0.0, -0.0, -0.0, -0.0, -0.0, -0.0, -0.0, -0.0, -0.0, -0.0, -0.0, -0.0, -0.0, -0.0, -0.0, -0.0, -0.0, -0.0, 1.0, -0.0, -0.0, -0.0, 1.0, -0.0, -0.0, -0.0, -0.0, 1.0, -0.0, -0.0]
+  λ_sol = 0.001, h_norm = 0.003, ψ0_norm = 0.0017320508075661227
+  converged α_sum = 1.5
+  per-scenario osp objs: [0.9212792571542632, 0.9552281936176185]
+  per-scenario intercept_l: [1.8412163465844475, 1.9087953778797349]
+  per-scenario intercept_f: [1.9619443793346724e-6, 4.773438523496227e-6]
+  --- Verification: solving joint OSP at same (x,h,λ,ψ0) ---
+Building dualized outer subproblem...
+  Nodes: 12, Arcs: 30, Scenarios: 2
+  Interdictable arcs: 30
+  Dummy arc index: 31
+  Parameters: ϕU = 2.0, λU = 2.0, γ = 3, w = 3.0, v = 1.0
+  joint OSP obj = 1.876516488619527,  α_sum = 1.499999973449044
+  MISMATCH = 9.0e-6
+  --- Cut validity check at joint α* ---
+Building dualized outer subproblem...
+  Nodes: 12, Arcs: 30, Scenarios: 1
+  Interdictable arcs: 30
+  Dummy arc index: 31
+  Parameters: ϕU = 2.0, λU = 2.0, γ = 3, w = 3.0, v = 1.0
+Building dualized outer subproblem...
+  Nodes: 12, Arcs: 30, Scenarios: 1
+  Interdictable arcs: 30
+  Dummy arc index: 31
+  Parameters: ϕU = 2.0, λU = 2.0, γ = 3, w = 3.0, v = 1.0
+  true Q_l at joint α*: [2.3964602022030883, 1.3535385198771412]
+  true Q_f at joint α*: [0.0018977941733366915, 0.0011038198565019078]
+  true total/S = 1.8765001680550342
+  s=1: IMP feasible t_l=2.396461 (true=2.39646), t_f=0.001898 (true=0.001898)
+  s=2: IMP feasible t_l=1.353547 (true=1.353539), t_f=0.001107 (true=0.001104)
+
+[ Info: Iter 6: LB=0.0  UB=1.8765  gap=1.0  inner_iter=8  (21.9s)
+subproblem objective: 1.8765074507718817
+[ Info: Optimality cut added
+[ Info:   1 mw strengthening cuts added
+[ Info: [Scenario-Decomposed] Outer Iteration 7
+[ Info:     [Inner] Iteration 1
+    inner subprob obj: 5.933570107245535e-6
+[ Info:     [Inner] Iteration 2
+    inner subprob obj: 1.5015100282807905
+[ Info:     [Inner] Iteration 3
+    inner subprob obj: 1.5015046134722239
+[ Info:     [Inner] Iteration 4
+    inner subprob obj: 8.202812256321545e-6
+[ Info:     [Inner] Iteration 5
+    inner subprob obj: 0.7230391226644635
+[ Info:     [Inner] Iteration 6
+    inner subprob obj: 0.7342739843442476
+[ Info:     [Inner] Iteration 7
+    inner subprob obj: 0.9747404634131154
+[ Info:     [Inner] Iteration 8
+[ Info:     Inner convergence reached (gap=4.0e-6, LB=1.5015101127012582)
+
+⚠ UB DROP DETECTED: iter=7, prev_UB=1.876507 → new_subprob=1.50151
+  converged_obj (from inner V_l+V_f/S) = 1.5015101127012582
+  cut_info[:obj_val] (sum of osp objs) = 1.5015101127012573
+  inner_iter = 8
+  x_sol = [-0.0, -0.0, -0.0, -0.0, 0.0, -0.0, -0.0, -0.0, -0.0, -0.0, 1.0, -0.0, -0.0, -0.0, -0.0, -0.0, -0.0, -0.0, 1.0, -0.0, -0.0, 0.0, 1.0, -0.0, -0.0, -0.0, -0.0, -0.0, -0.0, -0.0]
+  λ_sol = 0.001, h_norm = 0.003, ψ0_norm = 0.0017313504868827767
+  converged α_sum = 1.5
+  per-scenario osp objs: [0.7507554848599045, 0.7507546278413529]
+  per-scenario intercept_l: [1.5000113676281701, 1.5000091881919935]
+  per-scenario intercept_f: [6.429880126673799e-6, 4.63905191883565e-6]
+  --- Verification: solving joint OSP at same (x,h,λ,ψ0) ---
+Building dualized outer subproblem...
+  Nodes: 12, Arcs: 30, Scenarios: 2
+  Interdictable arcs: 30
+  Dummy arc index: 31
+  Parameters: ϕU = 2.0, λU = 2.0, γ = 3, w = 3.0, v = 1.0
+  joint OSP obj = 1.5015089308219798,  α_sum = 1.4999999903371815
+  MISMATCH = -1.0e-6
+  --- Cut validity check at joint α* ---
+Building dualized outer subproblem...
+  Nodes: 12, Arcs: 30, Scenarios: 1
+  Interdictable arcs: 30
+  Dummy arc index: 31
+  Parameters: ϕU = 2.0, λU = 2.0, γ = 3, w = 3.0, v = 1.0
+Building dualized outer subproblem...
+  Nodes: 12, Arcs: 30, Scenarios: 1
+  Interdictable arcs: 30
+  Dummy arc index: 31
+  Parameters: ϕU = 2.0, λU = 2.0, γ = 3, w = 3.0, v = 1.0
+  true Q_l at joint α*: [1.5000053454235824, 1.5000063229602618]
+  true Q_f at joint α*: [0.0015023892549473402, 0.001502451318750098]
+  true total/S = 1.5015082544787708
+  s=1: IMP feasible t_l=1.500003 (true=1.500005), t_f=0.001499 (true=0.001502)
+  s=2: IMP feasible t_l=1.500002 (true=1.500006), t_f=0.0015 (true=0.001502)
+
+[ Info: Iter 7: LB=0.0  UB=1.5015  gap=1.0  inner_iter=8  (26.4s)
+subproblem objective: 1.5015101127012573
+[ Info: Optimality cut added
+[ Info:   1 mw strengthening cuts added
+[ Info: [Scenario-Decomposed] Outer Iteration 8
+[ Info:     [Inner] Iteration 1
+    inner subprob obj: 2.939176371738945
+[ Info:     [Inner] Iteration 2
+    inner subprob obj: 3.206905175440828
+[ Info:     [Inner] Iteration 3
+    inner subprob obj: 2.941290039142248
+[ Info:     [Inner] Iteration 4
+    inner subprob obj: 4.025677817830211
+[ Info:     [Inner] Iteration 5
+    inner subprob obj: 3.578120727049508
+[ Info:     [Inner] Iteration 6
+    inner subprob obj: 4.022153387869399
+[ Info:     [Inner] Iteration 7
+    inner subprob obj: 4.028787555559237
+[ Info:     [Inner] Iteration 8
+    inner subprob obj: 4.1031086695764225
+[ Info:     [Inner] Iteration 9
+    inner subprob obj: 4.100446095002492
+[ Info:     [Inner] Iteration 10
+    inner subprob obj: 4.100101873011459
+[ Info:     [Inner] Iteration 11
+    inner subprob obj: 4.099099082649533
+[ Info:     [Inner] Iteration 12
+    inner subprob obj: 4.098525742254015
+[ Info:     [Inner] Iteration 13
+    inner subprob obj: 4.102560906883056
+[ Info:     [Inner] Iteration 14
+    inner subprob obj: 4.102354473298584
+[ Info:     [Inner] Iteration 15
+    inner subprob obj: 4.1023258804108895
+[ Info:     [Inner] Iteration 16
+[ Info:     Inner convergence reached (gap=8.8e-5, LB=4.103204037136647)
+[ Info: Iter 8: LB=0.0  UB=1.5015  gap=1.0  inner_iter=16  (32.4s)
+subproblem objective: 4.103204037136647
+[ Info: Optimality cut added
+[ Info:   1 mw strengthening cuts added
+[ Info: [Scenario-Decomposed] Outer Iteration 9
+[ Info:     [Inner] Iteration 1
+    inner subprob obj: 5.081155104037324e-7
+[ Info:     [Inner] Iteration 2
+    inner subprob obj: 1.5015017085916251
+[ Info:     [Inner] Iteration 3
+    inner subprob obj: 0.0014449945430565036
+[ Info:     [Inner] Iteration 4
+    inner subprob obj: 1.5015013810312707
+[ Info:     [Inner] Iteration 5
+    inner subprob obj: 1.4671103870458098
+[ Info:     [Inner] Iteration 6
+[ Info:     Inner convergence reached (gap=1.0e-6, LB=1.5015017085916251)
+[ Info: Iter 9: LB=0.0  UB=1.5015  gap=1.0  inner_iter=6  (35.2s)
+subproblem objective: 1.5015017085916258
+[ Info: Optimality cut added
+[ Info:   1 mw strengthening cuts added
+[ Info: [Scenario-Decomposed] Outer Iteration 10
+[ Info:     [Inner] Iteration 1
+    inner subprob obj: 6.600173409660498e-6
+[ Info:     [Inner] Iteration 2
+    inner subprob obj: 2.187659254153476e-6
+[ Info:     [Inner] Iteration 3
+    inner subprob obj: 1.5015001930358864
+[ Info:     [Inner] Iteration 4
+    inner subprob obj: 1.5015102941876497
+[ Info:     [Inner] Iteration 5
+    inner subprob obj: 1.1580308299486677
+[ Info:     [Inner] Iteration 6
+[ Info:     Inner convergence reached (gap=1.0e-6, LB=1.5015102941876497)
+[ Info: Iter 10: LB=0.0  UB=1.5015  gap=1.0  inner_iter=6  (37.8s)
+subproblem objective: 1.5015102941876497
+[ Info: Optimality cut added
+[ Info:   1 mw strengthening cuts added
+[ Info: [Scenario-Decomposed] Outer Iteration 11
+[ Info:     [Inner] Iteration 1
+    inner subprob obj: 2.952533607905599e-6
+[ Info:     [Inner] Iteration 2
+    inner subprob obj: 2.8051364497433638e-6
+[ Info:     [Inner] Iteration 3
+    inner subprob obj: 1.5015119527852825
+[ Info:     [Inner] Iteration 4
+    inner subprob obj: 1.5013677985122658
+[ Info:     [Inner] Iteration 5
+    inner subprob obj: 1.5015009718437864
+[ Info:     [Inner] Iteration 6
+    inner subprob obj: 0.7635482084640247
+[ Info:     [Inner] Iteration 7
+    inner subprob obj: 1.017895450222766
+[ Info:     [Inner] Iteration 8
+[ Info:     Inner convergence reached (gap=6.0e-6, LB=1.5015119527852825)
+[ Info: Iter 11: LB=0.0  UB=1.5015  gap=1.0  inner_iter=8  (40.8s)
+subproblem objective: 1.501511952785282
+[ Info: Optimality cut added
+[ Info:   1 mw strengthening cuts added
+[ Info: [Scenario-Decomposed] Outer Iteration 12
+[ Info:     [Inner] Iteration 1
+    inner subprob obj: 1.4907269969569552
+[ Info:     [Inner] Iteration 2
+    inner subprob obj: 1.875983605578997
+[ Info:     [Inner] Iteration 3
+    inner subprob obj: 1.4907265246980932
+[ Info:     [Inner] Iteration 4
+    inner subprob obj: 2.863026872871842
+[ Info:     [Inner] Iteration 5
+    inner subprob obj: 2.1818526189540295
+[ Info:     [Inner] Iteration 6
+    inner subprob obj: 2.831533798444001
+[ Info:     [Inner] Iteration 7
+    inner subprob obj: 2.801301276841837
+[ Info:     [Inner] Iteration 8
+    inner subprob obj: 2.862838963290998
+[ Info:     [Inner] Iteration 9
+[ Info:     Inner convergence reached (gap=8.8e-5, LB=2.863026872871842)
+[ Info: Iter 12: LB=0.0  UB=1.5015  gap=1.0  inner_iter=9  (44.3s)
+subproblem objective: 2.8630268728718393
+[ Info: Optimality cut added
+[ Info:   1 mw strengthening cuts added
+[ Info: [Scenario-Decomposed] Outer Iteration 13
+[ Info:     [Inner] Iteration 1
+    inner subprob obj: 8.141163306078934e-7
+[ Info:     [Inner] Iteration 2
+    inner subprob obj: 4.258681868148855e-7
+[ Info:     [Inner] Iteration 3
+    inner subprob obj: 1.5010289662912308
+[ Info:     [Inner] Iteration 4
+    inner subprob obj: 1.5015005439919995
+[ Info:     [Inner] Iteration 5
+    inner subprob obj: 1.501509688867461
+[ Info:     [Inner] Iteration 6
+    inner subprob obj: 0.7762796205248317
+[ Info:     [Inner] Iteration 7
+[ Info:     Inner convergence reached (gap=9.3e-5, LB=1.501509688867461)
+[ Info: Iter 13: LB=0.0  UB=1.5015  gap=1.0  inner_iter=7  (47.3s)
+subproblem objective: 1.5015096888674606
+[ Info: Optimality cut added
+[ Info:   1 mw strengthening cuts added
+[ Info: [Scenario-Decomposed] Outer Iteration 14
+[ Info:     [Inner] Iteration 1
+    inner subprob obj: 6.1941593875632406e-6
+[ Info:     [Inner] Iteration 2
+    inner subprob obj: 6.00780864584547e-6
+[ Info:     [Inner] Iteration 3
+    inner subprob obj: 1.5015130091958133
+[ Info:     [Inner] Iteration 4
+    inner subprob obj: 1.5015150588542086
+[ Info:     [Inner] Iteration 5
+    inner subprob obj: 0.7628827422193196
+[ Info:     [Inner] Iteration 6
+    inner subprob obj: 0.777006856064026
+[ Info:     [Inner] Iteration 7
+    inner subprob obj: 1.5015092862772084
+[ Info:     [Inner] Iteration 8
+    inner subprob obj: 1.501419640961509
+[ Info:     [Inner] Iteration 9
+[ Info:     Inner convergence reached (gap=2.3e-5, LB=1.5015150588542086)
+[ Info: Iter 14: LB=0.0  UB=1.5015  gap=1.0  inner_iter=9  (50.5s)
+subproblem objective: 1.5015150588542088
+[ Info: Optimality cut added
+[ Info:   1 mw strengthening cuts added
+[ Info: [Scenario-Decomposed] Outer Iteration 15
+[ Info:     [Inner] Iteration 1
+    inner subprob obj: 5.890803345664457e-6
+[ Info:     [Inner] Iteration 2
+    inner subprob obj: 1.5015107536396752
+[ Info:     [Inner] Iteration 3
+    inner subprob obj: 1.5015005295306776
+[ Info:     [Inner] Iteration 4
+    inner subprob obj: 1.5015001224927675
+[ Info:     [Inner] Iteration 5
+    inner subprob obj: 1.5015007875185824
+[ Info:     [Inner] Iteration 6
+    inner subprob obj: 1.5015005526742797
+[ Info:     [Inner] Iteration 7
+    inner subprob obj: 1.5015016346219228
+[ Info:     [Inner] Iteration 8
+[ Info:     Inner convergence reached (gap=6.0e-6, LB=1.501511219180541)
+[ Info: Iter 15: LB=0.0  UB=1.5015  gap=1.0  inner_iter=8  (53.2s)
+subproblem objective: 1.5015112191805422
+[ Info: Optimality cut added
+[ Info:   1 mw strengthening cuts added
+[ Info: [Scenario-Decomposed] Outer Iteration 16
+[ Info:     [Inner] Iteration 1
+    inner subprob obj: 5.465170907161557e-7
+[ Info:     [Inner] Iteration 2
+    inner subprob obj: 5.345321332335429e-6
+[ Info:     [Inner] Iteration 3
+    inner subprob obj: 1.126136243136652
+[ Info:     [Inner] Iteration 4
+    inner subprob obj: 1.5015132752429574
+[ Info:     [Inner] Iteration 5
+    inner subprob obj: 1.176955516043377
+[ Info:     [Inner] Iteration 6
+[ Info:     Inner convergence reached (gap=2.0e-6, LB=1.5015151074875626)
+[ Info: Iter 16: LB=0.0  UB=1.5015  gap=1.0  inner_iter=6  (55.8s)
+subproblem objective: 1.5015151074875623
+[ Info: Optimality cut added
+[ Info:   1 mw strengthening cuts added
+[ Info: [Scenario-Decomposed] Outer Iteration 17
+[ Info:     [Inner] Iteration 1
+    inner subprob obj: 6.783489532727229e-6
+[ Info:     [Inner] Iteration 2
+    inner subprob obj: 1.126127562152617
+[ Info:     [Inner] Iteration 3
+    inner subprob obj: 1.1261275146244771
+[ Info:     [Inner] Iteration 4
+    inner subprob obj: 0.001167595317482438
+[ Info:     [Inner] Iteration 5
+    inner subprob obj: 1.126129212902633
+[ Info:     [Inner] Iteration 6
+    inner subprob obj: 1.126131711198987
+[ Info:     [Inner] Iteration 7
+    inner subprob obj: 1.1261268214981297
+[ Info:     [Inner] Iteration 8
+    inner subprob obj: 1.1261360895272479
+[ Info:     [Inner] Iteration 9
+    inner subprob obj: 1.126079911614766
+[ Info:     [Inner] Iteration 10
+[ Info:     Inner convergence reached (gap=5.0e-5, LB=1.1261360895272479)
+
+⚠ UB DROP DETECTED: iter=17, prev_UB=1.501502 → new_subprob=1.126136
+  converged_obj (from inner V_l+V_f/S) = 1.1261360895272479
+  cut_info[:obj_val] (sum of osp objs) = 1.1261360895272474
+  inner_iter = 10
+  x_sol = [-0.0, -0.0, -0.0, -0.0, -0.0, -0.0, 1.0, -0.0, -0.0, -0.0, -0.0, -0.0, -0.0, -0.0, -0.0, -0.0, -0.0, -0.0, -0.0, -0.0, -0.0, -0.0, -0.0, -0.0, -0.0, -0.0, 1.0, 1.0, -0.0, -0.0]
+  λ_sol = 0.001, h_norm = 0.003, ψ0_norm = 0.0017320508075633024
+  converged α_sum = 1.5
+  per-scenario osp objs: [0.7503313430212324, 0.375804746506015]
+  per-scenario intercept_l: [1.499161273863271, 0.7508564060069413]
+  per-scenario intercept_f: [3.3982857815329973e-6, 6.2836189620704564e-6]
+  --- Verification: solving joint OSP at same (x,h,λ,ψ0) ---
+Building dualized outer subproblem...
+  Nodes: 12, Arcs: 30, Scenarios: 2
+  Interdictable arcs: 30
+  Dummy arc index: 31
+  Parameters: ϕU = 2.0, λU = 2.0, γ = 3, w = 3.0, v = 1.0
+  joint OSP obj = 1.1261311654537502,  α_sum = 1.499999990337117
+  MISMATCH = -5.0e-6
+  --- Cut validity check at joint α* ---
+Building dualized outer subproblem...
+  Nodes: 12, Arcs: 30, Scenarios: 1
+  Interdictable arcs: 30
+  Dummy arc index: 31
+  Parameters: ϕU = 2.0, λU = 2.0, γ = 3, w = 3.0, v = 1.0
+Building dualized outer subproblem...
+  Nodes: 12, Arcs: 30, Scenarios: 1
+  Interdictable arcs: 30
+  Dummy arc index: 31
+  Parameters: ϕU = 2.0, λU = 2.0, γ = 3, w = 3.0, v = 1.0
+  true Q_l at joint α*: [1.299354373932795, 0.9506565936146721]
+  true Q_f at joint α*: [0.0013045324931375045, 0.0009547656068803436]
+  true total/S = 1.1261351328237426
+  s=1: IMP feasible t_l=1.299349 (true=1.299354), t_f=0.001299 (true=0.001305)
+  s=2: IMP feasible t_l=0.950702 (true=0.950657), t_f=0.000994 (true=0.000955)
+
+[ Info: Iter 17: LB=0.0  UB=1.1261  gap=1.0  inner_iter=10  (60.6s)
+subproblem objective: 1.1261360895272474
+[ Info: Optimality cut added
+[ Info:   1 mw strengthening cuts added
+[ Info: [Scenario-Decomposed] Outer Iteration 18
+[ Info:     [Inner] Iteration 1
+    inner subprob obj: 1.1255359646358647
+[ Info:     [Inner] Iteration 2
+    inner subprob obj: 1.1255361423073573
+[ Info:     [Inner] Iteration 3
+    inner subprob obj: 1.4908567231618606
+[ Info:     [Inner] Iteration 4
+    inner subprob obj: 1.8762895133448612
+[ Info:     [Inner] Iteration 5
+    inner subprob obj: 1.503494060681124
+[ Info:     [Inner] Iteration 6
+    inner subprob obj: 1.8379398324033906
+[ Info:     [Inner] Iteration 7
+    inner subprob obj: 1.842476032410484
+[ Info:     [Inner] Iteration 8
+[ Info:     Inner convergence reached (gap=1.0e-6, LB=1.876295838820149)
+[ Info: Iter 18: LB=0.0  UB=1.1261  gap=1.0  inner_iter=8  (63.8s)
+subproblem objective: 1.8762958388201483
+[ Info: Optimality cut added
+[ Info:   1 mw strengthening cuts added
+[ Info: [Scenario-Decomposed] Outer Iteration 19
+[ Info:     [Inner] Iteration 1
+    inner subprob obj: 3.5700947582985103e-6
+[ Info:     [Inner] Iteration 2
+    inner subprob obj: 1.2585481541012356e-6
+[ Info:     [Inner] Iteration 3
+    inner subprob obj: 1.5014555412973563
+[ Info:     [Inner] Iteration 4
+    inner subprob obj: 1.1261311120935635
+[ Info:     [Inner] Iteration 5
+    inner subprob obj: 1.4724798840281261
+[ Info:     [Inner] Iteration 6
+    inner subprob obj: 1.501509346523771
+[ Info:     [Inner] Iteration 7
+    inner subprob obj: 1.3465097649314606
+[ Info:     [Inner] Iteration 8
+[ Info:     Inner convergence reached (gap=3.0e-6, LB=1.501509346523771)
+[ Info: Iter 19: LB=0.0  UB=1.1261  gap=1.0  inner_iter=8  (67.0s)
+subproblem objective: 1.5015093465237714
+[ Info: Optimality cut added
+[ Info:   1 mw strengthening cuts added
+[ Info: [Scenario-Decomposed] Outer Iteration 20
+[ Info:     [Inner] Iteration 1
+    inner subprob obj: 1.8999475831407836e-6
+[ Info:     [Inner] Iteration 2
+    inner subprob obj: 1.9601818466855037e-6
+[ Info:     [Inner] Iteration 3
+    inner subprob obj: 1.0309179260005226
+[ Info:     [Inner] Iteration 4
+    inner subprob obj: 0.7615474192699891
+[ Info:     [Inner] Iteration 5
+    inner subprob obj: 0.7220360877435958
+[ Info:     [Inner] Iteration 6
+    inner subprob obj: 0.9888143263713617
+[ Info:     [Inner] Iteration 7
+    inner subprob obj: 1.122362960164087
+[ Info:     [Inner] Iteration 8
+    inner subprob obj: 0.9640477902403288
+[ Info:     [Inner] Iteration 9
+    inner subprob obj: 1.1256232185176316
+[ Info:     [Inner] Iteration 10
+[ Info:     Inner convergence reached (gap=5.0e-6, LB=1.1261322160651661)
+[ Info: Iter 20: LB=0.0  UB=1.1261  gap=1.0  inner_iter=10  (70.4s)
+subproblem objective: 1.1261322160651668
+[ Info: Optimality cut added
+[ Info:   1 mw strengthening cuts added
+[ Info: [Scenario-Decomposed] Outer Iteration 21
+[ Info:     [Inner] Iteration 1
+    inner subprob obj: 1.1255420845747461
+[ Info:     [Inner] Iteration 2
+    inner subprob obj: 1.1255342632342331
+[ Info:     [Inner] Iteration 3
+    inner subprob obj: 1.4908584696613727
+[ Info:     [Inner] Iteration 4
+    inner subprob obj: 1.8762894935772731
+[ Info:     [Inner] Iteration 5
+    inner subprob obj: 1.638984456270486
+[ Info:     [Inner] Iteration 6
+[ Info:     Inner convergence reached (gap=2.0e-6, LB=1.8762894935772731)
+[ Info: Iter 21: LB=0.0  UB=1.1261  gap=1.0  inner_iter=6  (73.0s)
+subproblem objective: 1.8762894935772731
+[ Info: Optimality cut added
+[ Info:   1 mw strengthening cuts added
+[ Info: [Scenario-Decomposed] Outer Iteration 22
+[ Info:     [Inner] Iteration 1
+    inner subprob obj: 1.0891040687804636
+[ Info:     [Inner] Iteration 2
+    inner subprob obj: 1.7330662516941335
+[ Info:     [Inner] Iteration 3
+    inner subprob obj: 1.125756143931407
+[ Info:     [Inner] Iteration 4
+    inner subprob obj: 1.1261565055867029
+[ Info:     [Inner] Iteration 5
+    inner subprob obj: 1.4898218328770318
+[ Info:     [Inner] Iteration 6
+    inner subprob obj: 1.4645383901116773
+[ Info:     [Inner] Iteration 7
+    inner subprob obj: 1.7404294816881305
+[ Info:     [Inner] Iteration 8
+    inner subprob obj: 1.7148687039139616
+[ Info:     [Inner] Iteration 9
+    inner subprob obj: 1.7372161513205269
+[ Info:     [Inner] Iteration 10
+    inner subprob obj: 1.7411912793474902
+[ Info:     [Inner] Iteration 11
+    inner subprob obj: 1.741907844485908
+[ Info:     [Inner] Iteration 12
+    inner subprob obj: 1.7421812866144497
+[ Info:     [Inner] Iteration 13
+[ Info:     Inner convergence reached (gap=1.7e-5, LB=1.7421812866144497)
+[ Info: Iter 22: LB=0.0  UB=1.1261  gap=1.0  inner_iter=13  (78.0s)
+subproblem objective: 1.7421812866144495
+[ Info: Optimality cut added
+[ Info:   1 mw strengthening cuts added
+[ Info: [Scenario-Decomposed] Outer Iteration 23
+[ Info:     [Inner] Iteration 1
+    inner subprob obj: 3.507850138987025e-6
+[ Info:     [Inner] Iteration 2
+    inner subprob obj: 4.095014570346374e-6
+[ Info:     [Inner] Iteration 3
+    inner subprob obj: 1.5015050268838435
+[ Info:     [Inner] Iteration 4
+    inner subprob obj: 1.5015128427358289
+[ Info:     [Inner] Iteration 5
+    inner subprob obj: 0.7782203411911979
+[ Info:     [Inner] Iteration 6
+    inner subprob obj: 0.7785443211226937
+[ Info:     [Inner] Iteration 7
+[ Info:     Inner convergence reached (gap=1.2e-5, LB=1.501517699532843)
+[ Info: Iter 23: LB=0.0  UB=1.1261  gap=1.0  inner_iter=7  (80.8s)
+subproblem objective: 1.5015176995328436
+[ Info: Optimality cut added
+[ Info:   1 mw strengthening cuts added
+[ Info: [Scenario-Decomposed] Outer Iteration 24
+[ Info:     [Inner] Iteration 1
+    inner subprob obj: 3.0832228530796293
+[ Info:     [Inner] Iteration 2
+    inner subprob obj: 3.1825966612205296
+[ Info:     [Inner] Iteration 3
+    inner subprob obj: 3.277849546804503
+[ Info:     [Inner] Iteration 4
+    inner subprob obj: 3.395240327353088
+[ Info:     [Inner] Iteration 5
+    inner subprob obj: 3.6664722668682694
+[ Info:     [Inner] Iteration 6
+    inner subprob obj: 3.6195926755517793
+[ Info:     [Inner] Iteration 7
+    inner subprob obj: 3.7974253431153846
+[ Info:     [Inner] Iteration 8
+    inner subprob obj: 3.7925713940598658
+[ Info:     [Inner] Iteration 9
+    inner subprob obj: 3.6350348287253818
+[ Info:     [Inner] Iteration 10
+    inner subprob obj: 3.656089189529381
+[ Info:     [Inner] Iteration 11
+    inner subprob obj: 3.821292564390946
+[ Info:     [Inner] Iteration 12
+    inner subprob obj: 3.828159326885513
+[ Info:     [Inner] Iteration 13
+    inner subprob obj: 3.833418112494985
+[ Info:     [Inner] Iteration 14
+    inner subprob obj: 3.8343936125969154
+[ Info:     [Inner] Iteration 15
+    inner subprob obj: 3.8334128272399135
+[ Info:     [Inner] Iteration 16
+    inner subprob obj: 3.8348801697797112
+[ Info:     [Inner] Iteration 17
+    inner subprob obj: 3.834792297251219
+[ Info:     [Inner] Iteration 18
+[ Info:     Inner convergence reached (gap=5.8e-5, LB=3.8349269538927286)
+[ Info: Iter 24: LB=0.2279  UB=1.1261  gap=0.797598  inner_iter=18  (87.5s)
+subproblem objective: 3.834926953892716
+[ Info: Optimality cut added
+[ Info:   1 mw strengthening cuts added
+[ Info: [Scenario-Decomposed] Outer Iteration 25
+[ Info:     [Inner] Iteration 1
+    inner subprob obj: 6.12951295012739e-6
+[ Info:     [Inner] Iteration 2
+    inner subprob obj: 8.653397559486097e-7
+[ Info:     [Inner] Iteration 3
+    inner subprob obj: 1.126131314127959
+[ Info:     [Inner] Iteration 4
+    inner subprob obj: 1.0878250265223512
+[ Info:     [Inner] Iteration 5
+    inner subprob obj: 1.1261327386259932
+[ Info:     [Inner] Iteration 6
+    inner subprob obj: 0.7504472451892741
+[ Info:     [Inner] Iteration 7
+    inner subprob obj: 1.0841576301812723
+[ Info:     [Inner] Iteration 8
+    inner subprob obj: 1.126135635260973
+[ Info:     [Inner] Iteration 9
+[ Info:     Inner convergence reached (gap=1.0e-6, LB=1.126135635260973)
+[ Info: Iter 25: LB=0.2329  UB=1.1261  gap=0.793145  inner_iter=9  (91.1s)
+subproblem objective: 1.126135635260973
+[ Info: Optimality cut added
+[ Info:   1 mw strengthening cuts added
+[ Info: [Scenario-Decomposed] Outer Iteration 26
+[ Info:     [Inner] Iteration 1
+    inner subprob obj: 2.7573558389601116e-6
+[ Info:     [Inner] Iteration 2
+    inner subprob obj: 1.4676369923921158e-6
+[ Info:     [Inner] Iteration 3
+    inner subprob obj: 1.5015008179992586
+[ Info:     [Inner] Iteration 4
+    inner subprob obj: 0.760451946595899
+[ Info:     [Inner] Iteration 5
+    inner subprob obj: 0.7778501428591524
+[ Info:     [Inner] Iteration 6
+    inner subprob obj: 1.0255122227523854
+[ Info:     [Inner] Iteration 7
+[ Info:     Inner convergence reached (gap=0.0, LB=1.5015008179992586)
+[ Info: Iter 26: LB=0.2701  UB=1.1261  gap=0.760191  inner_iter=7  (93.9s)
+subproblem objective: 1.50150081799926
+[ Info: Optimality cut added
+[ Info:   1 mw strengthening cuts added
+[ Info: [Scenario-Decomposed] Outer Iteration 27
+[ Info:     [Inner] Iteration 1
+    inner subprob obj: 1.865887584888007
+[ Info:     [Inner] Iteration 2
+    inner subprob obj: 2.6266936197547652
+[ Info:     [Inner] Iteration 3
+    inner subprob obj: 2.47004226370732
+[ Info:     [Inner] Iteration 4
+    inner subprob obj: 2.122239438398986
+[ Info:     [Inner] Iteration 5
+    inner subprob obj: 2.62274375551407
+[ Info:     [Inner] Iteration 6
+    inner subprob obj: 2.5309371469684043
+[ Info:     [Inner] Iteration 7
+    inner subprob obj: 2.6266811699605945
+[ Info:     [Inner] Iteration 8
+[ Info:     Inner convergence reached (gap=3.0e-6, LB=2.6266936197547652)
+[ Info: Iter 27: LB=0.2778  UB=1.1261  gap=0.753342  inner_iter=8  (97.2s)
+subproblem objective: 2.6266936197547643
+[ Info: Optimality cut added
+[ Info:   1 mw strengthening cuts added
+[ Info: [Scenario-Decomposed] Outer Iteration 28
+[ Info:     [Inner] Iteration 1
+    inner subprob obj: 2.9914269701207414e-7
+[ Info:     [Inner] Iteration 2
+    inner subprob obj: 4.380984770487756e-7
+[ Info:     [Inner] Iteration 3
+    inner subprob obj: 1.5015010298285933
+[ Info:     [Inner] Iteration 4
+    inner subprob obj: 1.5015033150080197
+[ Info:     [Inner] Iteration 5
+    inner subprob obj: 0.7966794588837787
+[ Info:     [Inner] Iteration 6
+    inner subprob obj: 0.7978550306612613
+[ Info:     [Inner] Iteration 7
+    inner subprob obj: 1.0423191842970625
+[ Info:     [Inner] Iteration 8
+[ Info:     Inner convergence reached (gap=0.0, LB=1.5015033150080197)
+[ Info: Iter 28: LB=0.3014  UB=1.1261  gap=0.732373  inner_iter=8  (100.4s)
+subproblem objective: 1.5015033150080197
+[ Info: Optimality cut added
+[ Info:   1 mw strengthening cuts added
+[ Info: [Scenario-Decomposed] Outer Iteration 29
+[ Info:     [Inner] Iteration 1
+    inner subprob obj: 2.3675449106644417e-6
+[ Info:     [Inner] Iteration 2
+    inner subprob obj: 3.4340150483127576e-6
+[ Info:     [Inner] Iteration 3
+    inner subprob obj: 1.1261278069967684
+[ Info:     [Inner] Iteration 4
+    inner subprob obj: 1.499658313205917
+[ Info:     [Inner] Iteration 5
+    inner subprob obj: 1.5013178279035602
+[ Info:     [Inner] Iteration 6
+    inner subprob obj: 0.7769134604846774
+[ Info:     [Inner] Iteration 7
+    inner subprob obj: 1.0459984382850038
+[ Info:     [Inner] Iteration 8
+[ Info:     Inner convergence reached (gap=0.0, LB=1.501502019095939)
+[ Info: Iter 29: LB=0.3749  UB=1.1261  gap=0.667131  inner_iter=8  (103.3s)
+subproblem objective: 1.5015020190959394
+[ Info: Optimality cut added
+[ Info:   1 mw strengthening cuts added
+[ Info: [Scenario-Decomposed] Outer Iteration 30
+[ Info:     [Inner] Iteration 1
+    inner subprob obj: 3.326834680431645e-6
+[ Info:     [Inner] Iteration 2
+    inner subprob obj: 2.708751618883391e-6
+[ Info:     [Inner] Iteration 3
+    inner subprob obj: 1.5015059991097572
+[ Info:     [Inner] Iteration 4
+    inner subprob obj: 1.5015087118895403
+[ Info:     [Inner] Iteration 5
+    inner subprob obj: 1.178114127517266
+[ Info:     [Inner] Iteration 6
+[ Info:     Inner convergence reached (gap=5.0e-6, LB=1.5015087118895403)
+[ Info: Iter 30: LB=0.5919  UB=1.1261  gap=0.47437  inner_iter=6  (105.9s)
+subproblem objective: 1.50150871188954
+[ Info: Optimality cut added
+[ Info:   1 mw strengthening cuts added
+[ Info: [Scenario-Decomposed] Outer Iteration 31
+[ Info:     [Inner] Iteration 1
+    inner subprob obj: 1.4542987440096977
+[ Info:     [Inner] Iteration 2
+    inner subprob obj: 1.8080381793730598
+[ Info:     [Inner] Iteration 3
+    inner subprob obj: 1.4909440140550176
+[ Info:     [Inner] Iteration 4
+    inner subprob obj: 2.0298507133067925
+[ Info:     [Inner] Iteration 5
+    inner subprob obj: 2.154561333637279
+[ Info:     [Inner] Iteration 6
+    inner subprob obj: 2.0549288500321414
+[ Info:     [Inner] Iteration 7
+    inner subprob obj: 2.126922112042263
+[ Info:     [Inner] Iteration 8
+    inner subprob obj: 2.1330910799133855
+[ Info:     [Inner] Iteration 9
+    inner subprob obj: 2.2076384649681513
+[ Info:     [Inner] Iteration 10
+    inner subprob obj: 2.2073449445969366
+[ Info:     [Inner] Iteration 11
+    inner subprob obj: 2.2098528311299566
+[ Info:     [Inner] Iteration 12
+    inner subprob obj: 2.209720951358561
+[ Info:     [Inner] Iteration 13
+[ Info:     Inner convergence reached (gap=5.1e-5, LB=2.2098882932438912)
+[ Info: Iter 31: LB=0.75  UB=1.1261  gap=0.334005  inner_iter=13  (111.1s)
+subproblem objective: 2.209888293243891
+[ Info: Optimality cut added
+[ Info:   1 mw strengthening cuts added
+[ Info: [Scenario-Decomposed] Outer Iteration 32
+[ Info:     [Inner] Iteration 1
+    inner subprob obj: 1.490726635663241
+[ Info:     [Inner] Iteration 2
+    inner subprob obj: 1.8759812335500072
+[ Info:     [Inner] Iteration 3
+    inner subprob obj: 1.4907334280663616
+[ Info:     [Inner] Iteration 4
+    inner subprob obj: 1.49091474733918
+[ Info:     [Inner] Iteration 5
+    inner subprob obj: 1.73883483201214
+[ Info:     [Inner] Iteration 6
+    inner subprob obj: 2.2073999006106613
+[ Info:     [Inner] Iteration 7
+    inner subprob obj: 2.1671738431967325
+[ Info:     [Inner] Iteration 8
+    inner subprob obj: 1.9183680314576226
+[ Info:     [Inner] Iteration 9
+    inner subprob obj: 1.8035591990132411
+[ Info:     [Inner] Iteration 10
+    inner subprob obj: 2.1951962924776685
+[ Info:     [Inner] Iteration 11
+    inner subprob obj: 2.2179027397175184
+[ Info:     [Inner] Iteration 12
+    inner subprob obj: 2.2255508468761103
+[ Info:     [Inner] Iteration 13
+    inner subprob obj: 2.229718754805867
+[ Info:     [Inner] Iteration 14
+    inner subprob obj: 2.22967131348359
+[ Info:     [Inner] Iteration 15
+    inner subprob obj: 2.2300720514176
+[ Info:     [Inner] Iteration 16
+[ Info:     Inner convergence reached (gap=3.5e-5, LB=2.230192769544308)
+[ Info: Iter 32: LB=0.75  UB=1.1261  gap=0.334005  inner_iter=16  (117.1s)
+subproblem objective: 2.2301927695443067
+[ Info: Optimality cut added
+[ Info:   1 mw strengthening cuts added
+[ Info: [Scenario-Decomposed] Outer Iteration 33
+[ Info:     [Inner] Iteration 1
+    inner subprob obj: 7.448809133594882e-6
+[ Info:     [Inner] Iteration 2
+    inner subprob obj: 1.1261294851982278
+[ Info:     [Inner] Iteration 3
+    inner subprob obj: 1.1261339592428776
+[ Info:     [Inner] Iteration 4
+    inner subprob obj: 4.032167650360779e-6
+[ Info:     [Inner] Iteration 5
+    inner subprob obj: 0.8655919807910357
+[ Info:     [Inner] Iteration 6
+    inner subprob obj: 1.126138788939487
+[ Info:     [Inner] Iteration 7
+    inner subprob obj: 1.1261376300530044
+[ Info:     [Inner] Iteration 8
+[ Info:     Inner convergence reached (gap=5.0e-6, LB=1.126138788939487)
+[ Info: Iter 33: LB=0.75  UB=1.1261  gap=0.334004  inner_iter=8  (120.1s)
+subproblem objective: 1.1261387889394867
+[ Info: Optimality cut added
+[ Info:   1 mw strengthening cuts added
+[ Info: [Scenario-Decomposed] Outer Iteration 34
+[ Info:     [Inner] Iteration 1
+    inner subprob obj: 1.125756968231863
+[ Info:     [Inner] Iteration 2
+    inner subprob obj: 1.8586082271266888
+[ Info:     [Inner] Iteration 3
+    inner subprob obj: 1.818260926124405
+[ Info:     [Inner] Iteration 4
+    inner subprob obj: 1.125763885131009
+[ Info:     [Inner] Iteration 5
+    inner subprob obj: 1.5317026693622382
+[ Info:     [Inner] Iteration 6
+    inner subprob obj: 1.859305480535291
+[ Info:     [Inner] Iteration 7
+    inner subprob obj: 1.8721936581438574
+[ Info:     [Inner] Iteration 8
+    inner subprob obj: 1.8754507064968686
+[ Info:     [Inner] Iteration 9
+    inner subprob obj: 1.8762553737133256
+[ Info:     [Inner] Iteration 10
+[ Info:     Inner convergence reached (gap=3.0e-5, LB=1.8764492785281963)
+[ Info: Iter 34: LB=0.75  UB=1.1261  gap=0.333998  inner_iter=10  (124.1s)
+subproblem objective: 1.8764492785281952
+[ Info: Optimality cut added
+[ Info:   1 mw strengthening cuts added
+[ Info: [Scenario-Decomposed] Outer Iteration 35
+[ Info:     [Inner] Iteration 1
+    inner subprob obj: 1.8586138691659603e-6
+[ Info:     [Inner] Iteration 2
+    inner subprob obj: 1.1261269675028518
+[ Info:     [Inner] Iteration 3
+    inner subprob obj: 1.1261325481846212
+[ Info:     [Inner] Iteration 4
+    inner subprob obj: 0.002607724684349371
+[ Info:     [Inner] Iteration 5
+    inner subprob obj: 1.1261266125458715
+[ Info:     [Inner] Iteration 6
+    inner subprob obj: 1.1261264346466207
+[ Info:     [Inner] Iteration 7
+[ Info:     Inner convergence reached (gap=5.0e-6, LB=1.1261325481846212)
+[ Info: Iter 35: LB=0.7714  UB=1.1261  gap=0.314998  inner_iter=7  (127.2s)
+subproblem objective: 1.1261325481846216
+[ Info: Optimality cut added
+[ Info:   1 mw strengthening cuts added
+[ Info: [Scenario-Decomposed] Outer Iteration 36
+[ Info:     [Inner] Iteration 1
+    inner subprob obj: 1.3536650249337132e-6
+[ Info:     [Inner] Iteration 2
+    inner subprob obj: 1.0023714197188302e-6
+[ Info:     [Inner] Iteration 3
+    inner subprob obj: 1.501393417765073
+[ Info:     [Inner] Iteration 4
+    inner subprob obj: 1.1261410121861841
+[ Info:     [Inner] Iteration 5
+    inner subprob obj: 1.4763067270323416
+[ Info:     [Inner] Iteration 6
+    inner subprob obj: 1.5015013212857462
+[ Info:     [Inner] Iteration 7
+    inner subprob obj: 1.3381078678892884
+[ Info:     [Inner] Iteration 8
+[ Info:     Inner convergence reached (gap=5.0e-6, LB=1.5015087344015838)
+[ Info: Iter 36: LB=0.7717  UB=1.1261  gap=0.314697  inner_iter=8  (130.2s)
+subproblem objective: 1.501508734401583
+[ Info: Optimality cut added
+[ Info:   1 mw strengthening cuts added
+[ Info: [Scenario-Decomposed] Outer Iteration 37
+[ Info:     [Inner] Iteration 1
+    inner subprob obj: 1.6275125844711489
+[ Info:     [Inner] Iteration 2
+    inner subprob obj: 1.8079614711527685
+[ Info:     [Inner] Iteration 3
+    inner subprob obj: 1.7251668658236212
+[ Info:     [Inner] Iteration 4
+    inner subprob obj: 1.665031318367965
+[ Info:     [Inner] Iteration 5
+    inner subprob obj: 1.9842411190234355
+[ Info:     [Inner] Iteration 6
+    inner subprob obj: 1.9232922518126103
+[ Info:     [Inner] Iteration 7
+    inner subprob obj: 1.9676949244690989
+[ Info:     [Inner] Iteration 8
+    inner subprob obj: 2.1094222688994937
+[ Info:     [Inner] Iteration 9
+    inner subprob obj: 2.127251402039251
+[ Info:     [Inner] Iteration 10
+    inner subprob obj: 2.1313404556983393
+[ Info:     [Inner] Iteration 11
+    inner subprob obj: 2.1305934333714145
+[ Info:     [Inner] Iteration 12
+    inner subprob obj: 2.1312780762467725
+[ Info:     [Inner] Iteration 13
+[ Info:     Inner convergence reached (gap=3.4e-5, LB=2.131399614016974)
+[ Info: Iter 37: LB=0.7968  UB=1.1261  gap=0.292473  inner_iter=13  (135.2s)
+subproblem objective: 2.1313996140169746
+[ Info: Optimality cut added
+[ Info:   1 mw strengthening cuts added
+[ Info: [Scenario-Decomposed] Outer Iteration 38
+[ Info:     [Inner] Iteration 1
+    inner subprob obj: 9.073654886066886e-8
+[ Info:     [Inner] Iteration 2
+    inner subprob obj: 9.864177843226167e-8
+[ Info:     [Inner] Iteration 3
+    inner subprob obj: 1.5013991528859711
+[ Info:     [Inner] Iteration 4
+    inner subprob obj: 1.5015012209282292
+[ Info:     [Inner] Iteration 5
+    inner subprob obj: 1.4753653293326483
+[ Info:     [Inner] Iteration 6
+[ Info:     Inner convergence reached (gap=1.0e-6, LB=1.5015012218978678)
+[ Info: Iter 38: LB=0.9085  UB=1.1261  gap=0.193238  inner_iter=6  (137.9s)
+subproblem objective: 1.501501221897869
+[ Info: Optimality cut added
+[ Info:   1 mw strengthening cuts added
+[ Info: [Scenario-Decomposed] Outer Iteration 39
+[ Info:     [Inner] Iteration 1
+    inner subprob obj: 7.517138331288106e-8
+[ Info:     [Inner] Iteration 2
+    inner subprob obj: 1.1261272358046406
+[ Info:     [Inner] Iteration 3
+    inner subprob obj: 0.0010134783848550245
+[ Info:     [Inner] Iteration 4
+    inner subprob obj: 1.1261273218087968
+[ Info:     [Inner] Iteration 5
+    inner subprob obj: 1.1261308185214118
+[ Info:     [Inner] Iteration 6
+[ Info:     Inner convergence reached (gap=6.6e-5, LB=1.1261308185214118)
+[ Info: Iter 39: LB=0.9129  UB=1.1261  gap=0.189339  inner_iter=6  (140.6s)
+subproblem objective: 1.1261308185214114
+[ Info: Optimality cut added
+[ Info:   1 mw strengthening cuts added
+[ Info: [Scenario-Decomposed] Outer Iteration 40
+[ Info:     [Inner] Iteration 1
+    inner subprob obj: 2.4306443666922625e-6
+[ Info:     [Inner] Iteration 2
+    inner subprob obj: 1.126131711210423
+[ Info:     [Inner] Iteration 3
+    inner subprob obj: 1.1261290482639081
+[ Info:     [Inner] Iteration 4
+    inner subprob obj: 0.00019491738627334327
+[ Info:     [Inner] Iteration 5
+    inner subprob obj: 1.1261300442456383
+[ Info:     [Inner] Iteration 6
+[ Info:     Inner convergence reached (gap=3.8e-5, LB=1.126131711210423)
+[ Info: Iter 40: LB=0.9915  UB=1.1261  gap=0.11953  inner_iter=6  (143.1s)
+subproblem objective: 1.126131711210423
+[ Info: Optimality cut added
+[ Info:   1 mw strengthening cuts added
+[ Info: [Scenario-Decomposed] Outer Iteration 41
+[ Info:     [Inner] Iteration 1
+    inner subprob obj: 1.125764890168655
+[ Info:     [Inner] Iteration 2
+    inner subprob obj: 1.1257578000525887
+[ Info:     [Inner] Iteration 3
+    inner subprob obj: 1.8440402023464535
+[ Info:     [Inner] Iteration 4
+    inner subprob obj: 1.8706802702079381
+[ Info:     [Inner] Iteration 5
+    inner subprob obj: 1.5222135637693959
+[ Info:     [Inner] Iteration 6
+    inner subprob obj: 1.8478809894989097
+[ Info:     [Inner] Iteration 7
+    inner subprob obj: 1.868494617738317
+[ Info:     [Inner] Iteration 8
+[ Info:     Inner convergence reached (gap=3.3e-5, LB=1.8764785732020601)
+[ Info: Iter 41: LB=1.002  UB=1.1261  gap=0.110236  inner_iter=8  (146.7s)
+subproblem objective: 1.8764785732020617
+[ Info: Optimality cut added
+[ Info:   1 mw strengthening cuts added
+[ Info: [Scenario-Decomposed] Outer Iteration 42
+[ Info:     [Inner] Iteration 1
+    inner subprob obj: 1.125237366202192
+[ Info:     [Inner] Iteration 2
+    inner subprob obj: 1.1252392786676928
+[ Info:     [Inner] Iteration 3
+    inner subprob obj: 1.7249156836773105
+[ Info:     [Inner] Iteration 4
+    inner subprob obj: 1.87013467916517
+[ Info:     [Inner] Iteration 5
+    inner subprob obj: 1.5008167177299847
+[ Info:     [Inner] Iteration 6
+    inner subprob obj: 1.874374654632361
+[ Info:     [Inner] Iteration 7
+[ Info:     Inner convergence reached (gap=3.8e-5, LB=1.8759970085024054)
+[ Info: Iter 42: LB=1.0115  UB=1.1261  gap=0.101754  inner_iter=7  (150.1s)
+subproblem objective: 1.8759970085024036
+[ Info: Optimality cut added
+[ Info:   1 mw strengthening cuts added
+[ Info: [Scenario-Decomposed] Outer Iteration 43
+[ Info:     [Inner] Iteration 1
+    inner subprob obj: 5.549173548606864e-6
+[ Info:     [Inner] Iteration 2
+    inner subprob obj: 6.792460598605291e-6
+[ Info:     [Inner] Iteration 3
+    inner subprob obj: 1.501500921548784
+[ Info:     [Inner] Iteration 4
+    inner subprob obj: 1.500503157689815
+[ Info:     [Inner] Iteration 5
+    inner subprob obj: 1.5015011277416586
+[ Info:     [Inner] Iteration 6
+    inner subprob obj: 0.7787943449958161
+[ Info:     [Inner] Iteration 7
+    inner subprob obj: 1.025521523665252
+[ Info:     [Inner] Iteration 8
+[ Info:     Inner convergence reached (gap=0.0, LB=1.5015024850974505)
+[ Info: Iter 43: LB=1.0115  UB=1.1261  gap=0.101754  inner_iter=8  (153.3s)
+subproblem objective: 1.5015024850974503
+[ Info: Optimality cut added
+[ Info:   1 mw strengthening cuts added
+[ Info: [Scenario-Decomposed] Outer Iteration 44
+[ Info:     [Inner] Iteration 1
+    inner subprob obj: 1.1255317017334479
+[ Info:     [Inner] Iteration 2
+    inner subprob obj: 1.776083178944664
+[ Info:     [Inner] Iteration 3
+    inner subprob obj: 1.8762797283736683
+[ Info:     [Inner] Iteration 4
+    inner subprob obj: 1.776086490713765
+[ Info:     [Inner] Iteration 5
+    inner subprob obj: 1.8762862908801416
+[ Info:     [Inner] Iteration 6
+    inner subprob obj: 1.8762864337449805
+[ Info:     [Inner] Iteration 7
+[ Info:     Inner convergence reached (gap=1.3e-5, LB=1.8762864337449805)
+[ Info: Iter 44: LB=1.019  UB=1.1261  gap=0.095165  inner_iter=7  (156.3s)
+subproblem objective: 1.8762864337449816
+[ Info: Optimality cut added
+[ Info:   1 mw strengthening cuts added
+[ Info: [Scenario-Decomposed] Outer Iteration 45
+[ Info:     [Inner] Iteration 1
+    inner subprob obj: 3.0426078657288697e-6
+[ Info:     [Inner] Iteration 2
+    inner subprob obj: 1.1261329244611125
+[ Info:     [Inner] Iteration 3
+    inner subprob obj: 1.1261273828527734
+[ Info:     [Inner] Iteration 4
+    inner subprob obj: 3.1567679568869576e-6
+[ Info:     [Inner] Iteration 5
+    inner subprob obj: 0.7225334206454104
+[ Info:     [Inner] Iteration 6
+    inner subprob obj: 1.1261356946939638
+[ Info:     [Inner] Iteration 7
+    inner subprob obj: 1.1261373466449012
+[ Info:     [Inner] Iteration 8
+[ Info:     Inner convergence reached (gap=5.0e-6, LB=1.1261373466449012)
+[ Info: Iter 45: LB=1.019  UB=1.1261  gap=0.095141  inner_iter=8  (159.3s)
+subproblem objective: 1.1261373466449003
+[ Info: Optimality cut added
+[ Info:   1 mw strengthening cuts added
+[ Info: [Scenario-Decomposed] Outer Iteration 46
+[ Info:     [Inner] Iteration 1
+    inner subprob obj: 1.627507221920714
+[ Info:     [Inner] Iteration 2
+    inner subprob obj: 1.8079633598938185
+[ Info:     [Inner] Iteration 3
+    inner subprob obj: 1.6649199089661169
+[ Info:     [Inner] Iteration 4
+    inner subprob obj: 1.7251700239322942
+[ Info:     [Inner] Iteration 5
+    inner subprob obj: 1.9819062492209767
+[ Info:     [Inner] Iteration 6
+    inner subprob obj: 1.929989135710297
+[ Info:     [Inner] Iteration 7
+    inner subprob obj: 1.9728849230606067
+[ Info:     [Inner] Iteration 8
+    inner subprob obj: 2.107669782219758
+[ Info:     [Inner] Iteration 9
+    inner subprob obj: 2.1271627518887293
+[ Info:     [Inner] Iteration 10
+    inner subprob obj: 2.1313457814545345
+[ Info:     [Inner] Iteration 11
+    inner subprob obj: 2.130539256989404
+[ Info:     [Inner] Iteration 12
+    inner subprob obj: 2.1312646061652223
+[ Info:     [Inner] Iteration 13
+[ Info:     Inner convergence reached (gap=3.5e-5, LB=2.131393279526577)
+[ Info: Iter 46: LB=1.028  UB=1.1261  gap=0.087124  inner_iter=13  (164.4s)
+subproblem objective: 2.1313932795265784
+[ Info: Optimality cut added
+[ Info:   1 mw strengthening cuts added
+[ Info: [Scenario-Decomposed] Outer Iteration 47
+[ Info:     [Inner] Iteration 1
+    inner subprob obj: 6.813829864467089e-6
+[ Info:     [Inner] Iteration 2
+    inner subprob obj: 5.9099289593681905e-6
+[ Info:     [Inner] Iteration 3
+    inner subprob obj: 1.501514594607681
+[ Info:     [Inner] Iteration 4
+    inner subprob obj: 1.5015086867004452
+[ Info:     [Inner] Iteration 5
+    inner subprob obj: 1.170514827439444
+[ Info:     [Inner] Iteration 6
+[ Info:     Inner convergence reached (gap=4.0e-6, LB=1.501514594607681)
+[ Info: Iter 47: LB=1.0343  UB=1.1261  gap=0.081584  inner_iter=6  (167.1s)
+subproblem objective: 1.5015145946076798
+[ Info: Optimality cut added
+[ Info:   1 mw strengthening cuts added
+[ Info: [Scenario-Decomposed] Outer Iteration 48
+[ Info:     [Inner] Iteration 1
+    inner subprob obj: 3.926345173075624e-6
+[ Info:     [Inner] Iteration 2
+    inner subprob obj: 1.126132380847665
+[ Info:     [Inner] Iteration 3
+    inner subprob obj: 0.00046895594640186515
+[ Info:     [Inner] Iteration 4
+    inner subprob obj: 1.1261311918125578
+[ Info:     [Inner] Iteration 5
+    inner subprob obj: 1.1261306518364833
+[ Info:     [Inner] Iteration 6
+    inner subprob obj: 0.7542139016259006
+[ Info:     [Inner] Iteration 7
+    inner subprob obj: 0.9971194597673513
+[ Info:     [Inner] Iteration 8
+    inner subprob obj: 1.1261270875589824
+[ Info:     [Inner] Iteration 9
+    inner subprob obj: 1.126129841106175
+[ Info:     [Inner] Iteration 10
+[ Info:     Inner convergence reached (gap=0.0, LB=1.126132380847665)
+[ Info: Iter 48: LB=1.0815  UB=1.1261  gap=0.039633  inner_iter=10  (170.9s)
+subproblem objective: 1.126132380847665
+[ Info: Optimality cut added
+[ Info:   1 mw strengthening cuts added
+[ Info: [Scenario-Decomposed] Outer Iteration 49
+[ Info:     [Inner] Iteration 1
+    inner subprob obj: 1.6643631148772373
+[ Info:     [Inner] Iteration 2
+    inner subprob obj: 1.8758173020129651
+[ Info:     [Inner] Iteration 3
+    inner subprob obj: 1.6643760237595915
+[ Info:     [Inner] Iteration 4
+    inner subprob obj: 2.4801107623249603
+[ Info:     [Inner] Iteration 5
+    inner subprob obj: 1.8516990383245484
+[ Info:     [Inner] Iteration 6
+    inner subprob obj: 2.3304420735387827
+[ Info:     [Inner] Iteration 7
+    inner subprob obj: 2.3889806327642154
+[ Info:     [Inner] Iteration 8
+[ Info:     Inner convergence reached (gap=1.4e-5, LB=2.480126221219389)
+[ Info: Iter 49: LB=1.0975  UB=1.1261  gap=0.025445  inner_iter=8  (174.3s)
+subproblem objective: 2.480126221219389
+[ Info: Optimality cut added
+[ Info:   1 mw strengthening cuts added
+[ Info: [Scenario-Decomposed] Outer Iteration 50
+[ Info:     [Inner] Iteration 1
+    inner subprob obj: 1.1255272538645285
+[ Info:     [Inner] Iteration 2
+    inner subprob obj: 1.7760757951705637
+[ Info:     [Inner] Iteration 3
+    inner subprob obj: 1.876276105356334
+[ Info:     [Inner] Iteration 4
+    inner subprob obj: 1.7760762881126748
+[ Info:     [Inner] Iteration 5
+    inner subprob obj: 1.776369370602516
+[ Info:     [Inner] Iteration 6
+    inner subprob obj: 1.8762860422053314
+[ Info:     [Inner] Iteration 7
+    inner subprob obj: 1.8762873009738719
+[ Info:     [Inner] Iteration 8
+[ Info:     Inner convergence reached (gap=1.0e-6, LB=1.8762873009738719)
+[ Info: Iter 50: LB=1.1221  UB=1.1261  gap=0.003582  inner_iter=8  (177.9s)
+subproblem objective: 1.8762873009738688
+[ Info: Optimality cut added
+[ Info:   1 mw strengthening cuts added
+[ Info: [Scenario-Decomposed] Outer Iteration 51
+[ Info:     [Inner] Iteration 1
+    inner subprob obj: 5.771988385857703e-7
+[ Info:     [Inner] Iteration 2
+    inner subprob obj: 6.162165099592259e-7
+[ Info:     [Inner] Iteration 3
+    inner subprob obj: 1.1261284104420848
+[ Info:     [Inner] Iteration 4
+    inner subprob obj: 0.7617314171404641
+[ Info:     [Inner] Iteration 5
+    inner subprob obj: 0.7794966709537003
+[ Info:     [Inner] Iteration 6
+    inner subprob obj: 1.0268574532904755
+[ Info:     [Inner] Iteration 7
+    inner subprob obj: 1.0914435638238449
+[ Info:     [Inner] Iteration 8
+    inner subprob obj: 1.12613204941733
+[ Info:     [Inner] Iteration 9
+[ Info:     Inner convergence reached (gap=0.0, LB=1.12613204941733)
+[ Info: Iter 51: LB=1.1245  UB=1.1261  gap=0.001464  inner_iter=9  (181.4s)
+subproblem objective: 1.1261320494173293
+[ Info: Optimality cut added
+[ Info:   1 mw strengthening cuts added
+[ Info: [Scenario-Decomposed] Outer Iteration 52
+[ Info:     [Inner] Iteration 1
+    inner subprob obj: 1.8755599482328151
+[ Info:     [Inner] Iteration 2
+    inner subprob obj: 1.8755502601423228
+[ Info:     [Inner] Iteration 3
+    inner subprob obj: 1.87555375148752
+[ Info:     [Inner] Iteration 4
+    inner subprob obj: 1.875549023168837
+[ Info:     [Inner] Iteration 5
+    inner subprob obj: 2.3693513148181684
+[ Info:     [Inner] Iteration 6
+    inner subprob obj: 1.8755625209947497
+[ Info:     [Inner] Iteration 7
+    inner subprob obj: 2.3013458577925894
+[ Info:     [Inner] Iteration 8
+    inner subprob obj: 2.2435316245851533
+[ Info:     [Inner] Iteration 9
+    inner subprob obj: 2.458240269116479
+[ Info:     [Inner] Iteration 10
+    inner subprob obj: 2.5053035874722265
+[ Info:     [Inner] Iteration 11
+    inner subprob obj: 2.6010141492835652
+[ Info:     [Inner] Iteration 12
+    inner subprob obj: 2.6207873469339535
+[ Info:     [Inner] Iteration 13
+    inner subprob obj: 2.625031627470116
+[ Info:     [Inner] Iteration 14
+    inner subprob obj: 2.6260096921108973
+[ Info:     [Inner] Iteration 15
+[ Info:     Inner convergence reached (gap=2.8e-5, LB=2.6262273518508303)
+[ Info: Iter 52: LB=1.1246  UB=1.1261  gap=0.00138  inner_iter=15  (186.9s)
+subproblem objective: 2.6262273518508277
+[ Info: Optimality cut added
+[ Info:   1 mw strengthening cuts added
+[ Info: [Scenario-Decomposed] Outer Iteration 53
+[ Info:     [Inner] Iteration 1
+    inner subprob obj: 2.1870149511926624e-6
+[ Info:     [Inner] Iteration 2
+    inner subprob obj: 2.6800084428476946e-6
+[ Info:     [Inner] Iteration 3
+    inner subprob obj: 1.1261303728654037
+[ Info:     [Inner] Iteration 4
+    inner subprob obj: 1.1261305315198116
+[ Info:     [Inner] Iteration 5
+    inner subprob obj: 1.1261354405039719
+[ Info:     [Inner] Iteration 6
+[ Info:     Inner convergence reached (gap=3.0e-6, LB=1.1261354405039719)
+[ Info: Iter 53: LB=1.1246  UB=1.1261  gap=0.00138  inner_iter=6  (189.8s)
+subproblem objective: 1.1261354405039716
+[ Info: Optimality cut added
+[ Info:   1 mw strengthening cuts added
+[ Info: [Scenario-Decomposed] Outer Iteration 54
+[ Info:     [Inner] Iteration 1
+    inner subprob obj: 2.8382960508746067e-6
+[ Info:     [Inner] Iteration 2
+    inner subprob obj: 3.916314420576989e-6
+[ Info:     [Inner] Iteration 3
+    inner subprob obj: 1.1261290384152929
+[ Info:     [Inner] Iteration 4
+    inner subprob obj: 1.126138550625079
+[ Info:     [Inner] Iteration 5
+    inner subprob obj: 0.738317220773187
+[ Info:     [Inner] Iteration 6
+    inner subprob obj: 0.7521074247296489
+[ Info:     [Inner] Iteration 7
+    inner subprob obj: 0.9958832407224614
+[ Info:     [Inner] Iteration 8
+    inner subprob obj: 1.1261281403548233
+[ Info:     [Inner] Iteration 9
+    inner subprob obj: 1.1261353217782426
+[ Info:     [Inner] Iteration 10
+    inner subprob obj: 1.126137436315586
+[ Info:     [Inner] Iteration 11
+[ Info:     Inner convergence reached (gap=9.8e-5, LB=1.126138550625079)
+[ Info: Iter 54: LB=1.125  UB=1.1261  gap=0.001041  inner_iter=11  (194.0s)
+subproblem objective: 1.1261385506250785
+[ Info: Optimality cut added
+[ Info:   1 mw strengthening cuts added
+[ Info: [Scenario-Decomposed] Outer Iteration 55
+[ Info:     [Inner] Iteration 1
+    inner subprob obj: 3.593953425418441e-6
+[ Info:     [Inner] Iteration 2
+    inner subprob obj: 6.4917572430637505e-6
+[ Info:     [Inner] Iteration 3
+    inner subprob obj: 1.1261362240049646
+[ Info:     [Inner] Iteration 4
+    inner subprob obj: 1.1261341783095884
+[ Info:     [Inner] Iteration 5
+    inner subprob obj: 1.1261376137052543
+[ Info:     [Inner] Iteration 6
+    inner subprob obj: 0.6100893244428588
+[ Info:     [Inner] Iteration 7
+    inner subprob obj: 0.6212705221335604
+[ Info:     [Inner] Iteration 8
+[ Info:     Inner convergence reached (gap=5.3e-5, LB=1.1261376137052543)
+[ Info: Iter 55: LB=1.125  UB=1.1261  gap=0.001024  inner_iter=8  (197.0s)
+subproblem objective: 1.1261376137052543
+[ Info: Optimality cut added
+[ Info:   1 mw strengthening cuts added
+[ Info: [Scenario-Decomposed] Outer Iteration 56
+[ Info:     [Inner] Iteration 1
+    inner subprob obj: 2.208056542037732e-6
+[ Info:     [Inner] Iteration 2
+    inner subprob obj: 1.126127335205464
+[ Info:     [Inner] Iteration 3
+    inner subprob obj: 1.126132268905583
+[ Info:     [Inner] Iteration 4
+    inner subprob obj: 2.3338904480763967e-6
+[ Info:     [Inner] Iteration 5
+    inner subprob obj: 0.8744548376970536
+[ Info:     [Inner] Iteration 6
+    inner subprob obj: 1.1261309713548433
+[ Info:     [Inner] Iteration 7
+[ Info:     Inner convergence reached (gap=7.7e-5, LB=1.1261383128671831)
+[ Info: Iter 56: LB=1.125  UB=1.1261  gap=0.001002  inner_iter=7  (200.3s)
+subproblem objective: 1.1261383128671834
+[ Info: Optimality cut added
+[ Info:   1 mw strengthening cuts added
+[ Info: [Scenario-Decomposed] Outer Iteration 57
+[ Info:     [Inner] Iteration 1
+    inner subprob obj: -0.0027270472058433326
+[ Info:     [Inner] Iteration 2
+    inner subprob obj: 1.1263685806722255
+[ Info:     [Inner] Iteration 3
+    inner subprob obj: -0.0023522340870611985
+[ Info:     [Inner] Iteration 4
+    inner subprob obj: 1.1263720417871586
+[ Info:     [Inner] Iteration 5
+    inner subprob obj: 1.1263678279159166
+[ Info:     [Inner] Iteration 6
+    inner subprob obj: 0.7513729755468239
+[ Info:     [Inner] Iteration 7
+    inner subprob obj: 0.9949642246215566
+[ Info:     [Inner] Iteration 8
+    inner subprob obj: 1.126386175647352
+[ Info:     [Inner] Iteration 9
+    inner subprob obj: 1.1263749414877333
+[ Info:     [Inner] Iteration 10
+[ Info:     Inner convergence reached (gap=8.0e-6, LB=1.126386175647352)
+[ Info: Iter 57: LB=1.125  UB=1.1261  gap=0.000999  inner_iter=10  (204.1s)
+subproblem objective: 1.126386175647352
+[ Info: Optimality cut added
+[ Info:   1 mw strengthening cuts added
+[ Info: [Scenario-Decomposed] Outer Iteration 58
+[ Info:     [Inner] Iteration 1
+    inner subprob obj: -0.863429162457666
+[ Info:     [Inner] Iteration 2
+    inner subprob obj: -0.8634291879410287
+[ Info:     [Inner] Iteration 3
+    inner subprob obj: 2.375000027785144
+[ Info:     [Inner] Iteration 4
+    inner subprob obj: 2.375000034519187
+[ Info:     [Inner] Iteration 5
+    inner subprob obj: 1.852559208781581
+[ Info:     [Inner] Iteration 6
+    inner subprob obj: 2.375000003755285
+[ Info:     [Inner] Iteration 7
+    inner subprob obj: 2.3750000092581685
+[ Info:     [Inner] Iteration 8
+[ Info:     Inner convergence reached (gap=0.0, LB=2.375000065727588)
+[ Info: Iter 58: LB=1.125  UB=1.1261  gap=0.000999  inner_iter=8  (207.5s)
+subproblem objective: 2.375000065727586
+[ Info: Optimality cut added
+[ Info:   1 mw strengthening cuts added
+[ Info: [Scenario-Decomposed] Outer Iteration 59
+[ Info:     [Inner] Iteration 1
+    inner subprob obj: -0.0011160348962009304
+[ Info:     [Inner] Iteration 2
+    inner subprob obj: 1.125567697290233
+[ Info:     [Inner] Iteration 3
+    inner subprob obj: 1.125568125959326
+[ Info:     [Inner] Iteration 4
+    inner subprob obj: 0.00012102479951712103
+[ Info:     [Inner] Iteration 5
+    inner subprob obj: 1.1255653128283916
+[ Info:     [Inner] Iteration 6
+    inner subprob obj: 1.125565225250684
+[ Info:     [Inner] Iteration 7
+[ Info:     Inner convergence reached (gap=1.0e-6, LB=1.125568125959326)
+[ Info: Iter 59: LB=1.125  UB=1.1256  gap=0.0005  inner_iter=7  (210.8s)
+subproblem objective: 1.1255681259593264
+[ Info: Optimality cut added
+[ Info:   1 mw strengthening cuts added
+[ Info: [Scenario-Decomposed] Outer Iteration 60
+[ Info:     [Inner] Iteration 1
+    inner subprob obj: -0.0007732455306130013
+[ Info:     [Inner] Iteration 2
+    inner subprob obj: 1.1252229278210546
+[ Info:     [Inner] Iteration 3
+    inner subprob obj: 1.1252235235232777
+[ Info:     [Inner] Iteration 4
+    inner subprob obj: -0.0007706980271838563
+[ Info:     [Inner] Iteration 5
+    inner subprob obj: 0.8742303725515241
+[ Info:     [Inner] Iteration 6
+    inner subprob obj: 0.8848053573880107
+[ Info:     [Inner] Iteration 7
+    inner subprob obj: 1.1252255991871791
+[ Info:     [Inner] Iteration 8
+    inner subprob obj: 1.1252220918999543
+[ Info:     [Inner] Iteration 9
+    inner subprob obj: 1.1252251079710465
+[ Info:     [Inner] Iteration 10
+    inner subprob obj: 1.1252293694640279
+[ Info:     [Inner] Iteration 11
+    inner subprob obj: 1.1252280981742642
+[ Info:     [Inner] Iteration 12
+    inner subprob obj: 1.1252289338944008
+[ Info:     [Inner] Iteration 13
+[ Info:     Inner convergence reached (gap=1.4e-5, LB=1.1252293694640279)
+[ Info: Iter 60: LB=1.125  UB=1.1252  gap=0.000199  inner_iter=13  (215.8s)
+subproblem objective: 1.1252293694640283
+[ Info: Optimality cut added
+[ Info:   1 mw strengthening cuts added
+[ Info: [Scenario-Decomposed] Outer Iteration 61
+[ Info:     [Inner] Iteration 1
+    inner subprob obj: -0.0008405923315474645
+[ Info:     [Inner] Iteration 2
+    inner subprob obj: -0.0008422187541065435
+[ Info:     [Inner] Iteration 3
+    inner subprob obj: 1.0380153849859115
+[ Info:     [Inner] Iteration 4
+    inner subprob obj: 0.769715543841953
+[ Info:     [Inner] Iteration 5
+    inner subprob obj: 0.9823385669017015
+[ Info:     [Inner] Iteration 6
+    inner subprob obj: 1.121105560207951
+[ Info:     [Inner] Iteration 7
+    inner subprob obj: 0.9589484424396277
+[ Info:     [Inner] Iteration 8
+[ Info:     Inner convergence reached (gap=2.5e-5, LB=1.1251155739395493)
+[ Info: [Scenario-Decomposed] Termination condition met (gap=9.7e-5, LB=1.125, UB=1.1251)
+t_0_sol: 1.1250061872050807, subprob_obj: 1.1251155739395498
+
+  SD LB = 1.125006, UB = 1.125116
+  UB history: [4.984279, 3.376915, 3.376915, 2.480004, 2.480004, 1.876507, 1.50151, 1.50151, 1.501502, 1.501502, 1.501502, 1.501502, 1.501502, 1.501502, 1.501502, 1.501502, 1.126136, 1.126136, 1.126136, 1.126132, 1.126132, 1.126132, 1.126132, 1.126132, 1.126132, 1.126132, 1.126132, 1.126132, 1.126132, 1.126132, 1.126132, 1.126132, 1.126132, 1.126132, 1.126132, 1.126132, 1.126132, 1.126132, 1.126131, 1.126131, 1.126131, 1.126131, 1.126131, 1.126131, 1.126131, 1.126131, 1.126131, 1.126131, 1.126131, 1.126131, 1.126131, 1.126131, 1.126131, 1.126131, 1.126131, 1.126131, 1.126131, 1.126131, 1.125568, 1.125229, 1.125116]
+  Inner iters: Any[5, 3, 3, 5, 9, 8, 8, 16, 6, 6, 8, 9, 7, 9, 8, 6, 10, 8, 8, 10, 6, 13, 7, 18, 9, 7, 8, 8, 8, 6, 13, 16, 8, 10, 7, 8, 13, 6, 6, 6, 8, 7, 8, 7, 8, 13, 6, 10, 8, 8, 9, 15, 6, 11, 8, 7, 10, 8, 7, 13, 8]
+
+================================================================================
+SUMMARY
+================================================================================
+Strict Benders UB: 1.1250970192069125
+Joint OSP obj:     1.1250970192069125
+SD Benders UB:     1.1251155739395498
+SD Benders LB:     1.1250061872050807

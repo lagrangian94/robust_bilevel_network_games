@@ -149,38 +149,38 @@ network, uncertainty_set, params = setup_instance(instance_key; S=S)
 results = Dict{String, Any}()
 
 
-# ===== 0. Full Model (Pajarito) =====
-println("\n" * "="^80)
-println("0. FULL MODEL (Pajarito: MIP + Conic)")
-println("="^80)
+# # ===== 0. Full Model (Pajarito) =====
+# println("\n" * "="^80)
+# println("0. FULL MODEL (Pajarito: MIP + Conic)")
+# println("="^80)
 
-"""
-S=10, 5x5 grid networks에서 이미 한시간넘어도 수렴안함.
-     7    14    0.84251    3   20          -    0.09367      -   0.0  331s
-    27    38    3.73988    5   16   11.28263    1.61417  85.7%   0.0  640s
-    39    44    4.15700    6   16   11.28263    2.27480  79.8%   0.0  855s
-   352    39    8.82591   10    7    9.24680    5.80339  37.2%   0.0 3614s
-"""
+# """
+# S=10, 5x5 grid networks에서 이미 한시간넘어도 수렴안함.
+#      7    14    0.84251    3   20          -    0.09367      -   0.0  331s
+#     27    38    3.73988    5   16   11.28263    1.61417  85.7%   0.0  640s
+#     39    44    4.15700    6   16   11.28263    2.27480  79.8%   0.0  855s
+#    352    39    8.82591   10    7    9.24680    5.80339  37.2%   0.0 3614s
+# """
 
-GC.gc()
-model0, vars0 = build_full_2DRNDP_model(network, S, ϕU, λU, γ, w, v, uncertainty_set,
-    mip_solver=Gurobi.Optimizer, conic_solver=Mosek.Optimizer)
-add_sparsity_constraints!(model0, vars0, network, S)
-t0_start = time()
-optimize!(model0)
-t0_end = time()
-results["full_model"] = t0_end - t0_start
+# GC.gc()
+# model0, vars0 = build_full_2DRNDP_model(network, S, ϕU, λU, γ, w, v, uncertainty_set,
+#     mip_solver=Gurobi.Optimizer, conic_solver=Mosek.Optimizer)
+# add_sparsity_constraints!(model0, vars0, network, S)
+# t0_start = time()
+# optimize!(model0)
+# t0_end = time()
+# results["full_model"] = t0_end - t0_start
 
-t0_status = termination_status(model0)
-if t0_status == MOI.OPTIMAL || t0_status == MOI.ALMOST_OPTIMAL
-    obj0 = objective_value(model0)
-    println("  Optimal objective: $(round(obj0, digits=6))")
-else
-    obj0 = NaN
-    println("  Termination status: $t0_status (no optimal solution)")
-end
-println("\n>> Full Model time: $(results["full_model"]) seconds")
-#9.124764
+# t0_status = termination_status(model0)
+# if t0_status == MOI.OPTIMAL || t0_status == MOI.ALMOST_OPTIMAL
+#     obj0 = objective_value(model0)
+#     println("  Optimal objective: $(round(obj0, digits=6))")
+# else
+#     obj0 = NaN
+#     println("  Termination status: $t0_status (no optimal solution)")
+# end
+# println("\n>> Full Model time: $(results["full_model"]) seconds")
+# #9.124764
 
 # ===== 1. Strict Benders =====
 println("\n" * "="^80)
@@ -227,7 +227,7 @@ model_sd, vars_sd = build_omp(network, ϕU, λU, γ, w; optimizer=Gurobi.Optimiz
 t_sd_start = time()
 result_sd = scenario_benders_optimize!(model_sd, vars_sd, network, ϕU, λU, γ, w, v, uncertainty_set;
     conic_optimizer=Mosek.Optimizer, mip_optimizer=Gurobi.Optimizer, multi_cut_lf=true, multi_cut_scenario=true,
-    πU=πU, yU=yU, ytsU=ytsU, parallel=true, strengthen_cuts=strengthen_cuts)
+    πU=πU, yU=yU, ytsU=ytsU, parallel=true, strengthen_cuts=strengthen_cuts, inner_tr=true)
 t_sd_end = time()
 results["scenario_decomposed"] = t_sd_end - t_sd_start
 println("\n>> Scenario-Decomposed Benders time: $(results["scenario_decomposed"]) seconds")
@@ -259,10 +259,10 @@ println("    S=$S, ε=$epsilon, ϕU=$ϕU, λU=$λU, v=$v, πU=$πU, yU=$yU, ytsU
 println("    γ=$γ (ratio=$γ_ratio), w=$(round(w, digits=4)) (ρ=$ρ)")
 println()
 
-# --- 0. Full Model ---
-# Pajarito B&B → 단일 최적해, bound 개념 없음
-obj0_str = (t0_status == MOI.OPTIMAL || t0_status == MOI.ALMOST_OPTIMAL) ?
-    "$(round(obj0, digits=6))" : "$t0_status"
+# # --- 0. Full Model ---
+# # Pajarito B&B → 단일 최적해, bound 개념 없음
+# obj0_str = (t0_status == MOI.OPTIMAL || t0_status == MOI.ALMOST_OPTIMAL) ?
+#     "$(round(obj0, digits=6))" : "$t0_status"
 
 # --- 1. Strict Benders ---
 # past_obj = OMP objective (lower bound), past_upper_bound = min(subprob_obj) over iters

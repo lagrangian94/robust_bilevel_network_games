@@ -352,7 +352,8 @@ joint OSP(s=1)로 leader+follower를 한 번에 풀어 conic solve 수를 절반
 function scenario_benders_optimize!(omp_model::Model, omp_vars::Dict, network, ϕU, λU, γ, w, v, uncertainty_set;
     conic_optimizer=nothing, multi_cut_lf=true, multi_cut_scenario=true,
     max_iter=1000, tol=1e-4, πU=ϕU, yU=ϕU, ytsU=ϕU, parallel=false,
-    inner_max_iter=100, inner_tol=1e-4, mip_optimizer=nothing, strengthen_cuts=:none)
+    inner_max_iter=100, inner_tol=1e-4, mip_optimizer=nothing, strengthen_cuts=:none,
+    outer_tr=false, inner_tr=false)
     ### --------Begin Initialization--------
     st, λ_sol, x_sol, h_sol, ψ0_sol = initialize_omp(omp_model, omp_vars)
     x, h, λ, ψ0 = omp_vars[:x], omp_vars[:h], omp_vars[:λ], omp_vars[:ψ0]
@@ -370,7 +371,7 @@ function scenario_benders_optimize!(omp_model::Model, omp_vars::Dict, network, �
     # Build IMP (shared α with per-scenario t_1_l, t_1_f)
     imp_model, imp_vars = build_imp(network, S, ϕU, λU, γ, w, v, uncertainty_set; mip_optimizer=mip_opt)
     initialize_imp(imp_model, imp_vars)
-    imp_cuts = Dict{String, Any}()  # inner cuts to delete between outer iterations
+    outer_imp_cuts = Dict{String, Any}()  # inner cuts to delete between outer iterations
 
     # Build S separate single-scenario OSP instances
     osp_instances = Vector{Tuple}(undef, S)
@@ -414,6 +415,37 @@ function scenario_benders_optimize!(omp_model::Model, omp_vars::Dict, network, �
     result[:debug_intercept_l] = []
     result[:debug_intercept_f] = []
     result[:debug_coeff_norms] = []
+
+    ### --------Outer Trust Region Initialization--------
+    if outer_tr
+        num_interdictable = sum(network.interdictable_arcs)
+        max_dist = min(Int(2γ), num_interdictable)
+        B_bin_sequence = unique([1, ceil(Int, max_dist/4), ceil(Int, max_dist/2), max_dist])
+        B_bin_stage = 1
+        B_bin = B_bin_sequence[B_bin_stage]
+        B_con = nothing
+        centers = Dict{Symbol, Any}(
+            :x => copy(x_sol),
+            :h => copy(h_sol),
+            :λ => λ_sol,
+            :ψ0 => copy(ψ0_sol)
+        )
+        β_relative = 1e-4
+        tr_constraints = Dict{Symbol, Any}(
+            :binary => nothing,
+            :continuous => nothing
+        )
+        past_major_subprob_obj = []
+        past_minor_subprob_obj = []
+        major_iter = []
+        bin_B_steps = []
+        past_local_lower_bound = []
+        past_local_optimizer = []
+        lower_bound = -Inf
+        local_upper_bound = Inf
+        past_lower_bound = []
+        result[:tr_info] = Dict()
+    end
     ### --------End Initialization--------
     time_start = time()
     while (st == MOI.DUAL_INFEASIBLE || st == MOI.OPTIMAL)
@@ -422,10 +454,20 @@ function scenario_benders_optimize!(omp_model::Model, omp_vars::Dict, network, �
             @warn "Maximum iterations ($max_iter) reached."
             break
         end
-        @info "[Scenario-Decomposed] Outer Iteration $iter"
+        if outer_tr
+            @info "[Scenario-Decomposed] Outer Iteration $iter (B_bin=$B_bin, Stage=$(B_bin_stage)/$(length(B_bin_sequence)))"
+        else
+            @info "[Scenario-Decomposed] Outer Iteration $iter"
+        end
 
         optimize!(omp_model)
         st = MOI.get(omp_model, MOI.TerminationStatus())
+
+        if outer_tr && st == MOI.INFEASIBLE
+            @info "OMP infeasible (Converged): No search space left due to reverse regions"
+            gap = 0.0
+            # Fall through to convergence check below
+        else
 
         x_sol = round.(value.(omp_vars[:x]))
         h_sol, λ_sol, ψ0_sol = value.(omp_vars[:h]), value(omp_vars[:λ]), value.(omp_vars[:ψ0])
@@ -434,17 +476,34 @@ function scenario_benders_optimize!(omp_model::Model, omp_vars::Dict, network, �
         # ===== Inner loop: IMP → S × OSP(s=1) =====
         # Delete old inner cuts from previous outer iteration
         if iter > 1
-            for (_, cut_ref) in imp_cuts
+            for (_, cut_ref) in outer_imp_cuts
                 delete(imp_model, cut_ref)
             end
-            imp_cuts = Dict{String, Any}()
+            outer_imp_cuts = Dict{String, Any}()
         end
 
-        inner_lower_bound = -Inf
         inner_iter = 0
+        inner_lower_bound = -Inf
         converged_α = nothing
         converged_obj = 0.0
         last_outer_coeffs = Dict{Int, Dict}()
+        best_outer_coeffs = Dict{Int, Dict}()  # best incumbent 추적
+        best_α = nothing
+        best_obj = -Inf
+        inner_cut_log = []  # UB drop 진단용
+
+        # Inner Trust Region initialization
+        inner_imp_cuts = Dict{String, Any}()
+        if inner_tr
+            B_conti_max = w / S
+            B_conti = B_conti_max * 0.01
+            inner_counter = 0
+            inner_β_relative = 1e-4
+            inner_ρ = 0.0
+            inner_centers = Dict(:α => value.(imp_vars[:α]))
+            inner_tr_constraints = Dict(:continuous => nothing)
+            inner_past_major_subprob_obj = []
+        end
 
         for iiter in 1:inner_max_iter
             inner_iter = iiter
@@ -476,17 +535,70 @@ function scenario_benders_optimize!(omp_model::Model, omp_vars::Dict, network, �
             end
             subprob_obj /= S
 
+            # Best incumbent 업데이트
+            if subprob_obj > best_obj
+                best_obj = subprob_obj
+                best_α = copy(α_sol_imp)
+                best_outer_coeffs = deepcopy(last_outer_coeffs)
+            end
+
+            # 수렴 판정: UB (model_estimate) vs LB (inner_lower_bound)
             inner_lower_bound = max(inner_lower_bound, subprob_obj)
             inner_gap = abs(model_estimate - inner_lower_bound) / max(abs(model_estimate), 1e-10)
 
-            if inner_gap <= inner_tol || inner_lower_bound > model_estimate - 1e-4
-                @info "    Inner convergence reached (gap=$(round(inner_gap, digits=6)))"
-                converged_α = α_sol_imp
-                converged_obj = subprob_obj
+            if inner_gap <= inner_tol
+                @info "    Inner convergence reached (gap=$(round(inner_gap, digits=6)), LB=$inner_lower_bound)"
+                converged_α = best_α
+                converged_obj = best_obj
+                last_outer_coeffs = best_outer_coeffs
                 break
             end
 
-            # Add IMP cuts (per-scenario leader/follower)
+            # Inner Trust Region: Serious step test
+            if inner_tr
+                if iiter == 1
+                    push!(inner_past_major_subprob_obj, subprob_obj)
+                end
+                inner_tr_needs_update = false
+                predicted_increase = model_estimate - inner_past_major_subprob_obj[end]
+                inner_β_dynamic = max(1e-8, inner_β_relative * predicted_increase)
+                inner_improvement = subprob_obj - inner_past_major_subprob_obj[end]
+                is_inner_serious = (inner_improvement >= inner_β_dynamic)
+                if is_inner_serious
+                    inner_tr_needs_update = true
+                    distance = norm(α_sol_imp - inner_centers[:α], Inf)
+                    inner_centers[:α] = copy(α_sol_imp)
+                    push!(inner_past_major_subprob_obj, subprob_obj)
+                    if (inner_improvement >= 0.5 * inner_β_dynamic) && (distance >= B_conti - 1e-6)
+                        @info "    Very good improvement: Expanding B_conti"
+                        B_conti = min(B_conti_max, B_conti * 2.0)
+                    else
+                        @info "    Moderate improvement: Keeping B_conti"
+                    end
+                    inner_tr_constraints = update_inner_trust_region_constraints!(imp_model, imp_vars, inner_centers, B_conti, inner_tr_constraints, network)
+                else
+                    @info "    Poor improvement: Reducing B_conti"
+                    inner_ρ = min(1, B_conti) * inner_improvement / inner_β_dynamic
+                    if inner_ρ > 3.0
+                        B_conti = B_conti / min(inner_ρ, 4)
+                        inner_counter = 0
+                        inner_tr_needs_update = true
+                    elseif (1.0 < inner_ρ) && (inner_counter >= 3)
+                        B_conti = B_conti / min(inner_ρ, 4)
+                        inner_counter = 0
+                        inner_tr_needs_update = true
+                    elseif (1.0 < inner_ρ) && (inner_counter < 3)
+                        inner_counter += 1
+                    elseif (0.0 < inner_ρ) && (inner_ρ <= 1.0)
+                        inner_counter += 1
+                    end
+                    if inner_tr_needs_update
+                        inner_tr_constraints = update_inner_trust_region_constraints!(imp_model, imp_vars, inner_centers, B_conti, inner_tr_constraints, network)
+                    end
+                end
+            end
+
+            # Add IMP cuts
             subgradient_l = [dict_cut_l[s][:μhat] for s in 1:S]
             subgradient_f = [dict_cut_f[s][:μtilde] for s in 1:S]
             intercept_l = [dict_cut_l[s][:intercept] for s in 1:S]
@@ -494,17 +606,34 @@ function scenario_benders_optimize!(omp_model::Model, omp_vars::Dict, network, �
 
             cut_added_l = @constraint(imp_model, [s=1:S], imp_vars[:t_1_l][s] <= intercept_l[s] + imp_vars[:α]' * subgradient_l[s])
             cut_added_f = @constraint(imp_model, [s=1:S], imp_vars[:t_1_f][s] <= intercept_f[s] + imp_vars[:α]' * subgradient_f[s])
-            imp_cuts["inner_$(iiter)_l"] = cut_added_l
-            imp_cuts["inner_$(iiter)_f"] = cut_added_f
+            inner_imp_cuts["inner_$(iiter)_l"] = cut_added_l
+            inner_imp_cuts["inner_$(iiter)_f"] = cut_added_f
+
+            # Cut 계수 저장 (UB drop 진단용)
+            push!(inner_cut_log, Dict(
+                :iiter => iiter, :α => copy(α_sol_imp),
+                :subgradient_l => deepcopy(subgradient_l), :intercept_l => copy(intercept_l),
+                :subgradient_f => deepcopy(subgradient_f), :intercept_f => copy(intercept_f),
+                :V_l => [dict_cut_l[s][:obj_val] for s in 1:S],
+                :V_f => [dict_cut_f[s][:obj_val] for s in 1:S],
+            ))
 
             println("    inner subprob obj: ", subprob_obj)
 
             if iiter == inner_max_iter
                 @warn "Inner loop max iterations reached"
-                converged_α = α_sol_imp
-                converged_obj = subprob_obj
+                converged_α = best_α
+                converged_obj = best_obj
+                last_outer_coeffs = best_outer_coeffs
             end
         end
+        # Clean up inner TR constraints for next outer iteration
+        if inner_tr && inner_tr_constraints[:continuous] !== nothing
+            delete.(imp_model, inner_tr_constraints[:continuous][1])
+            delete.(imp_model, inner_tr_constraints[:continuous][2])
+        end
+        # Save inner cuts for deletion at start of next outer iteration
+        outer_imp_cuts = inner_imp_cuts
         push!(result[:inner_iter], inner_iter)
 
         # ===== Assemble outer cut_info from last OSP solutions =====
@@ -519,7 +648,88 @@ function scenario_benders_optimize!(omp_model::Model, omp_vars::Dict, network, �
         cut_info[:α_sol] = converged_α
 
         subprob_obj = cut_info[:obj_val]
+
+        # ===== UB drop 감지 상세 로그 =====
+        if subprob_obj < upper_bound - 1e-3
+            println("\n⚠ UB DROP DETECTED: iter=$iter, prev_UB=$(round(upper_bound, digits=6)) → new_subprob=$(round(subprob_obj, digits=6))")
+            println("  converged_obj (from inner V_l+V_f/S) = $converged_obj")
+            println("  cut_info[:obj_val] (sum of osp objs) = $(cut_info[:obj_val])")
+            println("  inner_iter = $inner_iter")
+            println("  x_sol = $x_sol")
+            println("  λ_sol = $λ_sol, h_norm = $(norm(h_sol)), ψ0_norm = $(norm(ψ0_sol))")
+            println("  converged α_sum = $(sum(converged_α))")
+            println("  per-scenario osp objs: $([last_outer_coeffs[s][:obj_val] for s in 1:S])")
+            println("  per-scenario intercept_l: $(cut_info[:intercept_l])")
+            println("  per-scenario intercept_f: $(cut_info[:intercept_f])")
+
+            # 검증: joint OSP 값과 비교
+            println("  --- Verification: solving joint OSP at same (x,h,λ,ψ0) ---")
+            osp_verify_model, osp_verify_vars, osp_verify_data = build_dualized_outer_subproblem(
+                network, S, ϕU, λU, γ, w, v, uncertainty_set,
+                conic_opt, λ_sol, x_sol, h_sol, ψ0_sol; πU=πU, yU=yU, ytsU=ytsU)
+            (verify_st, verify_cc) = osp_optimize!(osp_verify_model, osp_verify_vars, osp_verify_data,
+                λ_sol, x_sol, h_sol, ψ0_sol)
+            joint_verify_α = verify_cc[:α_sol]
+            println("  joint OSP obj = $(verify_cc[:obj_val]),  α_sum = $(sum(joint_verify_α))")
+            println("  MISMATCH = $(round(verify_cc[:obj_val] - subprob_obj, digits=6))")
+
+            # ===== Cut validity 검증: 각 inner cut을 joint α*에서 평가 =====
+            println("  --- Cut validity check at joint α* ---")
+            # Per-scenario true Q at joint α*
+            true_Q_l = zeros(S)
+            true_Q_f = zeros(S)
+            for s_v in 1:S
+                U_s_v = Dict(:R => Dict(1 => R_us[s_v]), :r_dict => Dict(1 => r_dict_us[s_v]),
+                             :xi_bar => Dict(1 => xi_bar[s_v]), :epsilon => epsilon)
+                osp_v_m, osp_v_v, osp_v_d = build_dualized_outer_subproblem(
+                    network, 1, ϕU, λU, γ, w, v, U_s_v, conic_opt,
+                    λ_sol, x_sol, h_sol, ψ0_sol; πU=πU, yU=yU, ytsU=ytsU, scaling_S=S)
+                (_, ci_l_v, ci_f_v, _) = osp_inner_optimize!(osp_v_m, osp_v_v, osp_v_d,
+                    λ_sol, x_sol, h_sol, ψ0_sol, joint_verify_α)
+                true_Q_l[s_v] = ci_l_v[:obj_val]
+                true_Q_f[s_v] = ci_f_v[:obj_val]
+            end
+            println("  true Q_l at joint α*: $true_Q_l")
+            println("  true Q_f at joint α*: $true_Q_f")
+            println("  true total/S = $((sum(true_Q_l) + sum(true_Q_f)) / S)")
+
+            # 각 inner cut을 joint α*에서 평가
+            for (ci, cl) in enumerate(inner_cut_log)
+                for s_v in 1:S
+                    cut_val_l = cl[:intercept_l][s_v] + cl[:subgradient_l][s_v]' * joint_verify_α
+                    cut_val_f = cl[:intercept_f][s_v] + cl[:subgradient_f][s_v]' * joint_verify_α
+                    overest_l = cut_val_l - true_Q_l[s_v]  # should be >= 0 (overestimator)
+                    overest_f = cut_val_f - true_Q_f[s_v]
+                    if overest_l < -1e-3 || overest_f < -1e-3
+                        println("  ❌ INVALID CUT: inner_iter=$(cl[:iiter]), s=$s_v")
+                        println("     cut_l=$(round(cut_val_l, digits=6)) vs true_Q_l=$(round(true_Q_l[s_v], digits=6))  Δ=$(round(overest_l, digits=6))")
+                        println("     cut_f=$(round(cut_val_f, digits=6)) vs true_Q_f=$(round(true_Q_f[s_v], digits=6))  Δ=$(round(overest_f, digits=6))")
+                        println("     α_k_sum=$(round(sum(cl[:α]), digits=6)), V_l=$(round(cl[:V_l][s_v], digits=6)), V_f=$(round(cl[:V_f][s_v], digits=6))")
+                        println("     μhat_sum=$(round(sum(cl[:subgradient_l][s_v]), digits=4)), μtilde_sum=$(round(sum(cl[:subgradient_f][s_v]), digits=4))")
+                    end
+                end
+            end
+
+            # IMP에서 joint α*가 줄 수 있는 최대 t값 (= 모든 cut의 min)
+            for s_v in 1:S
+                min_cut_l = Inf
+                min_cut_f = Inf
+                for cl in inner_cut_log
+                    cv_l = cl[:intercept_l][s_v] + cl[:subgradient_l][s_v]' * joint_verify_α
+                    cv_f = cl[:intercept_f][s_v] + cl[:subgradient_f][s_v]' * joint_verify_α
+                    min_cut_l = min(min_cut_l, cv_l)
+                    min_cut_f = min(min_cut_f, cv_f)
+                end
+                println("  s=$s_v: IMP feasible t_l=$(round(min_cut_l, digits=6)) (true=$(round(true_Q_l[s_v], digits=6))), " *
+                        "t_f=$(round(min_cut_f, digits=6)) (true=$(round(true_Q_f[s_v], digits=6)))")
+            end
+            println()
+        end
+
         upper_bound = min(upper_bound, subprob_obj)
+        if outer_tr
+            local_upper_bound = min(local_upper_bound, subprob_obj)
+        end
 
         # Debug logging
         push!(result[:debug_α], cut_info[:α_sol])
@@ -535,25 +745,109 @@ function scenario_benders_optimize!(omp_model::Model, omp_vars::Dict, network, �
             :Ztilde1_3 => norm(cut_info[:Ztilde1_3]),
         ))
 
-        gap = abs(upper_bound - t_0_sol) / max(abs(upper_bound), 1e-10)
+        if outer_tr
+            lower_bound = max(lower_bound, t_0_sol)
+            gap = abs(local_upper_bound - lower_bound) / max(abs(local_upper_bound), 1e-10)
+
+            # Serious step test
+            if iter == 1
+                push!(past_major_subprob_obj, subprob_obj)
+            end
+            tr_needs_update = false
+            predicted_decrease = past_major_subprob_obj[end] - t_0_sol
+            β_dynamic = max(1e-8, β_relative * predicted_decrease)
+            improvement = past_major_subprob_obj[end] - subprob_obj
+            is_serious_step = (improvement >= β_dynamic)
+            if is_serious_step
+                centers[:x] = copy(x_sol)
+                centers[:h] = copy(h_sol)
+                centers[:λ] = λ_sol
+                centers[:ψ0] = copy(ψ0_sol)
+                push!(major_iter, iter)
+                push!(past_major_subprob_obj, subprob_obj)
+                tr_needs_update = true
+            end
+        else
+            gap = abs(upper_bound - t_0_sol) / max(abs(upper_bound), 1e-10)
+        end
+
         push!(past_obj, t_0_sol)
         push!(past_subprob_obj, subprob_obj)
         push!(past_upper_bound, upper_bound)
-
-        # Convergence check
-        if gap <= tol || t_0_sol > upper_bound - 1e-4
-            time_end = time()
-            @info "[Scenario-Decomposed] Termination condition met (gap=$(round(gap, digits=6)), LB=$(round(t_0_sol, digits=4)), UB=$(round(upper_bound, digits=4)))"
-            println("t_0_sol: ", t_0_sol, ", subprob_obj: ", subprob_obj)
-            result[:past_obj] = past_obj
-            result[:past_subprob_obj] = past_subprob_obj
-            result[:past_upper_bound] = past_upper_bound
-            result[:solution_time] = time_end - time_start
-            result[:opt_sol] = Dict(:x=>x_sol, :h=>h_sol, :λ=>λ_sol, :ψ0=>ψ0_sol)
-            return result
+        if outer_tr
+            push!(past_minor_subprob_obj, subprob_obj)
+            push!(past_lower_bound, lower_bound)
         end
 
-        @info "Iter $iter: LB=$(round(t_0_sol, digits=4))  UB=$(round(upper_bound, digits=4))  gap=$(round(gap, digits=6))  inner_iter=$(inner_iter)  ($(round(time()-time_start, digits=1))s)"
+        @info "[Scenario-Decomposed] Iter $iter: LB=$(outer_tr ? round(lower_bound, digits=4) : round(t_0_sol, digits=4))  UB=$(outer_tr ? round(local_upper_bound, digits=4) : round(upper_bound, digits=4))  gap=$(round(gap, digits=6))  inner_iter=$(inner_iter)  (globalUB=$(round(upper_bound, digits=4)); $(round(time()-time_start, digits=1))s)"
+
+        end # end of `else` block for outer_tr && INFEASIBLE
+
+        # Pruning: localLB > globalUB → 이 영역은 global best보다 나을 수 없음
+        pruned = outer_tr && (lower_bound > upper_bound + tol * max(abs(upper_bound), 1e-10))
+        if pruned
+            @info "  ✂ Pruned: localLB=$(round(lower_bound, digits=4)) > globalUB=$(round(upper_bound, digits=4)). Skipping to next stage."
+        end
+
+        converged = outer_tr ? (gap <= tol || lower_bound > local_upper_bound - 1e-4) : (gap <= tol || t_0_sol > upper_bound - 1e-4)
+        if converged || pruned
+            if !outer_tr
+                # No outer TR: simple convergence
+                time_end = time()
+                @info "[Scenario-Decomposed] Termination condition met (gap=$(round(gap, digits=6)), LB=$(round(t_0_sol, digits=4)), UB=$(round(upper_bound, digits=4)))"
+                println("t_0_sol: ", t_0_sol, ", subprob_obj: ", subprob_obj)
+                result[:past_obj] = past_obj
+                result[:past_subprob_obj] = past_subprob_obj
+                result[:past_upper_bound] = past_upper_bound
+                result[:solution_time] = time_end - time_start
+                result[:opt_sol] = Dict(:x=>x_sol, :h=>h_sol, :λ=>λ_sol, :ψ0=>ψ0_sol)
+                return result
+            end
+
+            # Outer TR: local optimality reached
+            if B_bin_stage <= length(B_bin_sequence) - 1
+                # Expand trust region
+                B_bin_stage += 1
+                B_bin_old = B_bin
+                B_bin = B_bin_sequence[B_bin_stage]
+                push!(bin_B_steps, iter)
+                push!(past_local_lower_bound, lower_bound)
+                push!(past_local_optimizer, Dict(:x=>copy(x_sol), :h=>copy(h_sol), :λ=>λ_sol, :ψ0=>copy(ψ0_sol)))
+                @info "  ✓ Local optimal reached! Expanding B_bin to $B_bin"
+                tr_constraints = update_outer_trust_region_constraints!(
+                    omp_model, omp_vars, centers, B_bin, B_con, tr_constraints, network)
+                lower_bound = -Inf
+                local_upper_bound = Inf
+                _ = add_reverse_region_constraint!(omp_model, omp_vars[:x], centers[:x], B_bin_old, network)
+            else
+                # Global optimality
+                time_end = time()
+                @info "  ✓✓ GLOBAL OPTIMAL! (B_bin = full region)"
+                push!(past_local_lower_bound, lower_bound)
+                push!(past_local_optimizer, Dict(:x=>copy(x_sol), :h=>copy(h_sol), :λ=>λ_sol, :ψ0=>copy(ψ0_sol)))
+                min_idx = argmin(past_local_lower_bound)
+                global_lower_bound = past_local_lower_bound[min_idx]
+                iter_when_global_optimal = bin_B_steps[min_idx]
+                global_upper_bound = past_upper_bound[iter_when_global_optimal]
+                println("lower_bound: ", global_lower_bound, ", upper_bound: ", global_upper_bound)
+
+                result[:past_obj] = past_obj
+                result[:past_subprob_obj] = past_subprob_obj
+                result[:past_upper_bound] = past_upper_bound
+                result[:past_lower_bound] = past_lower_bound
+                result[:past_local_lower_bound] = past_local_lower_bound
+                result[:past_major_subprob_obj] = past_major_subprob_obj
+                result[:solution_time] = time_end - time_start
+                result[:tr_info][:final_B_bin_stage] = B_bin_stage
+                result[:tr_info][:final_B_bin] = B_bin
+                result[:tr_info][:major_iter] = major_iter
+                result[:tr_info][:bin_B_steps] = bin_B_steps
+                result[:opt_sol] = past_local_optimizer[min_idx]
+                result[:iter_when_global_optimal] = iter_when_global_optimal
+                return result
+            end
+        else
+            # Gap still large → Add cut and continue
 
         opt_cut = add_optimality_cuts!(omp_model, omp_vars, cut_info, diag_x_E, E, diag_λ_ψ, xi_bar, d0, ϕU, λ, h, S, iter;
             multi_cut_lf=multi_cut_lf, multi_cut_scenario=multi_cut_scenario, prefix="opt_cut", result_cuts=result[:cuts])
@@ -626,6 +920,14 @@ function scenario_benders_optimize!(omp_model::Model, omp_vars::Dict, network, �
             end
             @info "  $(length(core_points)) $(strengthen_cuts) strengthening cuts added"
         end
+
+        # Update outer TR constraints if needed
+        if outer_tr && tr_needs_update
+            @info "Updating Trust Region"
+            tr_constraints = update_outer_trust_region_constraints!(
+                omp_model, omp_vars, centers, B_bin, B_con, tr_constraints, network)
+        end
+        end # end of else (gap still large)
     end
     # max_iter reached or while condition false
     time_end = time()
@@ -633,6 +935,10 @@ function scenario_benders_optimize!(omp_model::Model, omp_vars::Dict, network, �
     result[:past_subprob_obj] = past_subprob_obj
     result[:past_upper_bound] = past_upper_bound
     result[:solution_time] = time_end - time_start
+    if outer_tr
+        result[:past_lower_bound] = past_lower_bound
+        result[:opt_sol] = Dict(:x=>x_sol, :h=>h_sol, :λ=>λ_sol, :ψ0=>ψ0_sol)
+    end
     return result
 end
 
@@ -902,25 +1208,29 @@ function strict_benders_optimize!(omp_model::Model, omp_vars::Dict, network, ϕU
                         isp_leader_instances, isp_follower_instances,
                         isp_data_strict, osp_cut_as_info, iter; multi_cut_lf=multi_cut_lf, parallel=parallel)
 
-                    add_optimality_cuts!(omp_model, omp_vars, isp_cut, diag_x_E, osp_data[:E], diag_λ_ψ, xi_bar, osp_data[:d0], ϕU, λ, h, S, iter;
-                        multi_cut_lf=multi_cut_lf, multi_cut_scenario=multi_cut_scenario, prefix="isp_cut", result_cuts=result[:cuts])
-                    @info "  ISP-based cut added (Hybrid: OSP α → ISP coefficients)"
+                    if isp_cut === nothing
+                        @info "  ISP cut skipped (STALL mismatch)"
+                    else
+                        add_optimality_cuts!(omp_model, omp_vars, isp_cut, diag_x_E, osp_data[:E], diag_λ_ψ, xi_bar, osp_data[:d0], ϕU, λ, h, S, iter;
+                            multi_cut_lf=multi_cut_lf, multi_cut_scenario=multi_cut_scenario, prefix="isp_cut", result_cuts=result[:cuts])
+                        @info "  ISP-based cut added (Hybrid: OSP α → ISP coefficients)"
 
-                    # Step B: MW cuts from core points
-                    interdictable_idx = findall(network.interdictable_arcs[1:num_arcs])
-                    core_points = generate_core_points(network, γ, λU, w, v;
-                        interdictable_idx=interdictable_idx, strategy=:interior)
-                    for (cp_idx, cp) in enumerate(core_points)
-                        str_info = evaluate_mw_opt_cut(
-                            isp_leader_instances, isp_follower_instances,
-                            isp_data_strict, osp_cut_as_info, iter;
-                            x_sol=x_sol, λ_sol=λ_sol, h_sol=h_sol, ψ0_sol=ψ0_sol,
-                            x_core=cp.x, λ_core=cp.λ, h_core=cp.h, ψ0_core=cp.ψ0,
-                            multi_cut_lf=multi_cut_lf, parallel=parallel)
-                        add_optimality_cuts!(omp_model, omp_vars, str_info, diag_x_E, osp_data[:E], diag_λ_ψ, xi_bar, osp_data[:d0], ϕU, λ, h, S, iter;
-                            multi_cut_lf=multi_cut_lf, multi_cut_scenario=multi_cut_scenario, prefix="mw_cut_cp$(cp_idx)", result_cuts=result[:cuts])
+                        # Step B: MW cuts from core points (ISP cut 성공 시에만)
+                        interdictable_idx = findall(network.interdictable_arcs[1:num_arcs])
+                        core_points = generate_core_points(network, γ, λU, w, v;
+                            interdictable_idx=interdictable_idx, strategy=:interior)
+                        for (cp_idx, cp) in enumerate(core_points)
+                            str_info = evaluate_mw_opt_cut(
+                                isp_leader_instances, isp_follower_instances,
+                                isp_data_strict, osp_cut_as_info, iter;
+                                x_sol=x_sol, λ_sol=λ_sol, h_sol=h_sol, ψ0_sol=ψ0_sol,
+                                x_core=cp.x, λ_core=cp.λ, h_core=cp.h, ψ0_core=cp.ψ0,
+                                multi_cut_lf=multi_cut_lf, parallel=parallel)
+                            add_optimality_cuts!(omp_model, omp_vars, str_info, diag_x_E, osp_data[:E], diag_λ_ψ, xi_bar, osp_data[:d0], ϕU, λ, h, S, iter;
+                                multi_cut_lf=multi_cut_lf, multi_cut_scenario=multi_cut_scenario, prefix="mw_cut_cp$(cp_idx)", result_cuts=result[:cuts])
+                        end
+                        @info "  $(length(core_points)) mw strengthening cuts added"
                     end
-                    @info "  $(length(core_points)) mw strengthening cuts added"
 
                 elseif strengthen_cuts == :sherali
                     # Sherali: perturbed solve 1회만 → cut 1개 (ISP 원본 solve 생략)
