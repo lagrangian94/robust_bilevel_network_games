@@ -182,18 +182,18 @@ results = Dict{String, Any}()
 # println("\n>> Full Model time: $(results["full_model"]) seconds")
 # #9.124764
 
-# ===== 1. Strict Benders =====
-println("\n" * "="^80)
-println("1. STRICT BENDERS DECOMPOSITION (multi-cut)")
-println("="^80)
+# # ===== 1. Strict Benders =====
+# println("\n" * "="^80)
+# println("1. STRICT BENDERS DECOMPOSITION (multi-cut)")
+# println("="^80)
 
-GC.gc()
-model1, vars1 = build_omp(network, ϕU, λU, γ, w; optimizer=Gurobi.Optimizer, multi_cut_lf=true, S=S)
-t1_start = time()
-result1 = strict_benders_optimize!(model1, vars1, network, ϕU, λU, γ, w, uncertainty_set; optimizer=Gurobi.Optimizer, πU=πU, yU=yU, ytsU=ytsU, strengthen_cuts=strengthen_cuts)
-t1_end = time()
-results["strict_benders"] = t1_end - t1_start
-println("\n>> Strict Benders time: $(results["strict_benders"]) seconds")
+# GC.gc()
+# model1, vars1 = build_omp(network, ϕU, λU, γ, w; optimizer=Gurobi.Optimizer, multi_cut_lf=true, S=S)
+# t1_start = time()
+# result1 = strict_benders_optimize!(model1, vars1, network, ϕU, λU, γ, w, uncertainty_set; optimizer=Gurobi.Optimizer, πU=πU, yU=yU, ytsU=ytsU, strengthen_cuts=strengthen_cuts)
+# t1_end = time()
+# results["strict_benders"] = t1_end - t1_start
+# println("\n>> Strict Benders time: $(results["strict_benders"]) seconds")
 
 # ===== 2. TR Nested Benders — Dual (T,T) =====
 println("\n" * "="^80)
@@ -213,7 +213,7 @@ t2_end = time()
 results["tr_dual"] = t2_end - t2_start
 println("\n>> Dual TR Both time: $(results["tr_dual"]) seconds")
 # # TODO:: solve only subset of scenarios (partial solve; 첫번째에선 다 풀어서 하한 다 찾아놓음) (upper bound eval. = iter N번마다 한번씩 full evaluate)
-
+@infiltrate
 # ===== 2.5. Scenario-Decomposed Benders =====
 println("\n" * "="^80)
 println("2.5. SCENARIO-DECOMPOSED BENDERS (OMP → S × OSP(s=1))")
@@ -264,18 +264,7 @@ println()
 # obj0_str = (t0_status == MOI.OPTIMAL || t0_status == MOI.ALMOST_OPTIMAL) ?
 #     "$(round(obj0, digits=6))" : "$t0_status"
 
-# --- 1. Strict Benders ---
-# past_obj = OMP objective (lower bound), past_upper_bound = min(subprob_obj) over iters
-sb_lb = result1[:past_obj][end]
-sb_ub = minimum(result1[:past_upper_bound])
-sb_gap = abs(sb_ub - sb_lb) / max(abs(sb_ub), 1e-10)
-sb_iters = length(result1[:past_obj])
-
-# --- 2.5. Scenario-Decomposed Benders ---
-sd_lb = result_sd[:past_obj][end]
-sd_ub = minimum(result_sd[:past_upper_bound])
-sd_gap = abs(sd_ub - sd_lb) / max(abs(sd_ub), 1e-10)
-sd_iters = length(result_sd[:past_obj])
+# ㅇ
 
 # --- 2. TR Nested Benders — Dual ---
 # outer_tr=true → past_local_lower_bound 존재, past_upper_bound = min(subprob over all stages)

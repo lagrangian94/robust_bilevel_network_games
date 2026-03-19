@@ -347,7 +347,16 @@ function tr_imp_optimize!(imp_model::Model, imp_vars::Dict, isp_leader_instances
         subprob_obj /= S_total  # average over scenarios
         lower_bound = max(lower_bound, subprob_obj) ## inner master problem은 Maximization이니까 우린 항상 더 높은 값을 추구
         gap = abs(model_estimate - lower_bound) / max(abs(model_estimate), 1e-10)
-        if gap <= tol || lower_bound > model_estimate - 1e-4
+        inner_converged = gap <= tol || lower_bound > model_estimate - 1e-4
+        # inner_tr일 때: TR이 아직 최대가 아니면 확장하고 계속 탐색
+        if inner_converged && inner_tr && B_conti < B_conti_max - 1e-8
+            B_conti = min(B_conti_max, B_conti * 2.0)
+            @info "Inner converged within TR: expanding B_conti to $(round(B_conti, digits=4))/$(round(B_conti_max, digits=4))"
+            centers[:α] = α_sol
+            push!(past_major_subprob_obj, subprob_obj)
+            lower_bound = -Inf  # 확장 후 수렴 판정을 리셋해야 새 영역에서 cut 추가 가능
+            tr_constraints = update_inner_trust_region_constraints!(imp_model, imp_vars, centers, B_conti, tr_constraints, network)
+        elseif inner_converged
             @info "Termination condition met"
             println("model_estimate: ", model_estimate, ", subprob_obj: ", subprob_obj)
             result[:past_obj] = past_obj
@@ -361,9 +370,6 @@ function tr_imp_optimize!(imp_model::Model, imp_vars::Dict, isp_leader_instances
             else
                 result[:tr_constraints] = nothing
             end
-            # if round(result[:obj_val], digits=4) == 5.2495
-            #     @infiltrate
-            # end
             return (:OptimalityCut, result)
         else
             if inner_tr
@@ -1675,8 +1681,9 @@ function build_isp_leader(network, S, ϕU, λU, γ, w, v, uncertainty_set, optim
         Adj_0_Mhat_22 = -xi_bar[s] * Mhat_22
 
         ## Φhat_L constraint
-        lhs_L = Adj_L_Mhat_11+Adj_L_Mhat_12 + Uhat2[s,:,1:num_arcs] - Uhat3[s,:,1:num_arcs]
-        -I_0*Zhat1_1[s,:,:] - Zhat1_3[s,:,:] + Zhat2[s,:,:] + Phat1_Φ[s,:,1:num_arcs] - Phat2_Φ[s,:,1:num_arcs]
+        # NOTE: unary - 파싱 버그 수정 — 연산자를 첫째 줄 끝에 배치
+        lhs_L = Adj_L_Mhat_11+Adj_L_Mhat_12 + Uhat2[s,:,1:num_arcs] - Uhat3[s,:,1:num_arcs] -
+            I_0*Zhat1_1[s,:,:] - Zhat1_3[s,:,:] + Zhat2[s,:,:] + Phat1_Φ[s,:,1:num_arcs] - Phat2_Φ[s,:,1:num_arcs]
 
         for i in 1:num_arcs, j in 1:num_arcs
             if network.arc_adjacency[i,j]
@@ -1685,7 +1692,7 @@ function build_isp_leader(network, S, ϕU, λU, γ, w, v, uncertainty_set, optim
         end
         ## Φhat_0 constraint
         @constraint(model, Adj_0_Mhat_12+Adj_0_Mhat_22 + Uhat2[s,:,end] - Uhat3[s,:,end] + I_0*βhat1_1[s,:] + βhat1_3[s,:] - βhat2[s,:] + Phat1_Φ[s,:,end] - Phat2_Φ[s,:,end] .== 0)
-        
+
         # --- From Ψhat
         Adj_L_Mhat_11 = v*D_s*Mhat_11 #if v=vector -> diagm(v)
         Adj_L_Mhat_12 = v*Mhat_12*adjoint(xi_bar[s])
@@ -1873,8 +1880,9 @@ function build_isp_follower(network, S, ϕU, λU, γ, w, v, uncertainty_set, opt
         Adj_0_Mtilde_12 = -D_s * Mtilde_12
         Adj_0_Mtilde_22 = -xi_bar[s] * Mtilde_22
         # --- Φtilde_L constraint
-        lhs_L = Adj_L_Mtilde_11+Adj_L_Mtilde_12 + Utilde2[s,:,1:num_arcs] - Utilde3[s,:,1:num_arcs]
-        -I_0*Ztilde1_1[s,:,:] - Ztilde1_5[s,:,:] + Ztilde2[s,:,:] + Ptilde1_Φ[s,:,1:num_arcs] - Ptilde2_Φ[s,:,1:num_arcs]
+        # NOTE: unary - 파싱 버그 수정 — 연산자를 첫째 줄 끝에 배치
+        lhs_L = Adj_L_Mtilde_11+Adj_L_Mtilde_12 + Utilde2[s,:,1:num_arcs] - Utilde3[s,:,1:num_arcs] -
+            I_0*Ztilde1_1[s,:,:] - Ztilde1_5[s,:,:] + Ztilde2[s,:,:] + Ptilde1_Φ[s,:,1:num_arcs] - Ptilde2_Φ[s,:,1:num_arcs]
         for i in 1:num_arcs, j in 1:num_arcs
             if network.arc_adjacency[i,j]
                 @constraint(model, lhs_L[i,j] == 0)

@@ -1,6 +1,6 @@
 """
-Debug script: Scenario-Decomposed Benders UB issue on Abilene.
-Strict Benders 결과는 하드코딩 (이미 검증 완료).
+Debug script: x_opt에서 ISP vs Joint OSP 값 직접 비교.
+Nested Benders의 inner loop (IMP → ISP_l + ISP_f)가 joint OSP와 같은 값을 주는지 확인.
 """
 
 using JuMP
@@ -19,8 +19,8 @@ includet("parallel_utils.jl")
 includet("strict_benders.jl")
 includet("nested_benders_trust_region.jl")
 
-using .NetworkGenerator: generate_grid_network, generate_capacity_scenarios_uniform_model, print_network_summary
-using .NetworkGenerator: generate_abilene_network, print_realworld_network_summary
+using .NetworkGenerator: generate_capacity_scenarios_uniform_model
+using .NetworkGenerator: generate_polska_network, print_realworld_network_summary
 
 # ===== Setup (global scope) =====
 S = 2
@@ -29,10 +29,11 @@ epsilon = 0.5
 γ_ratio = 0.10
 ρ = 0.2
 v = 1.0
-
-network = generate_abilene_network()
+multi_cut_lf = true
+network = generate_polska_network()
+print_realworld_network_summary(network)
 num_arcs = length(network.arcs) - 1
-
+strengthen_cuts = :mw
 ϕU = 1/epsilon
 λU = ϕU
 num_interdictable = sum(network.interdictable_arcs[1:num_arcs])
@@ -54,55 +55,135 @@ max_cap = maximum(capacity_scenarios_regular)
 yU = min(max_cap, ϕU)
 ytsU = min(max_flow_ub, ϕU)
 
-sb_ub = 1.1250970192069125
-x_opt = [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0]
-λ_opt = 0.0017868755429410966
-h_opt = [0.0, 0.0, 0.0, 0.0, 0.0009771437203832643, 0.0, 0.0003849029005363326, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.003998580007903694, 0.0, 0.0, 0.0, 0.0]
-ψ0_opt = [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0017868755429410966, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0017868755429410966, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0017868755429410966, 0.0, 0.0, 0.0, 0.0]
-
-# ===== Run =====
-println("Parameters: S=$S, γ=$γ, ϕU=$ϕU, λU=$λU, w=$w, v=$v")
+println("="^80)
+println("Parameters: S=$S, γ=$γ, ϕU=$ϕU, λU=$λU, w=$(round(w, digits=4)), v=$v")
 println("LDR bounds: πU=$πU, yU=$yU, ytsU=$ytsU")
-println("\nHardcoded Strict Benders: UB = $sb_ub")
-println("  x* = $x_opt")
-
-# ===== Step 2: Joint OSP at optimal =====
-println("\n" * "="^80)
-println("STEP 2: Joint OSP value at (x*, h*, λ*, ψ0*)")
 println("="^80)
 
-osp_joint_model, osp_joint_vars, osp_joint_data = build_dualized_outer_subproblem(
+# ===== sd optimal solution (하드코딩) =====
+x_opt = [0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1.0, 1.0, 0.0, 0.0]
+λ_opt = 0.005347647652838779
+h_opt = [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.010963146805888255, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.010784131903911209, 0.0, 0.0, 0.0]
+ψ0_opt = [λ_opt * x_opt[k] for k in 1:num_arcs]
+
+# ===== 1. Joint OSP at x_opt (ground truth) =====
+println("\n" * "="^80)
+println("STEP 1: Joint OSP at x_opt (ground truth)")
+println("="^80)
+
+osp_model, osp_vars, osp_data = build_dualized_outer_subproblem(
     network, S, ϕU, λU, γ, w, v, uncertainty_set, Mosek.Optimizer,
     λ_opt, x_opt, h_opt, ψ0_opt; πU=πU, yU=yU, ytsU=ytsU)
 
-(joint_status, joint_coeff) = osp_optimize!(osp_joint_model, osp_joint_vars, osp_joint_data,
+(osp_status, osp_coeff) = osp_optimize!(osp_model, osp_vars, osp_data,
     λ_opt, x_opt, h_opt, ψ0_opt)
-joint_obj = joint_coeff[:obj_val]
-joint_α = joint_coeff[:α_sol]
-println("Joint OSP obj (= UB): $joint_obj")
-println("Joint α sum: $(sum(joint_α))")
+osp_obj = osp_coeff[:obj_val]
+α_osp = osp_coeff[:α_sol]
+println("  Joint OSP obj: $osp_obj")
+println("  α_osp sum: $(sum(α_osp))")
 
-# ===== Step 6: Full scenario_benders_optimize! with :mw =====
+# ===== 2. ISP_l + ISP_f at x_opt, same α =====
 println("\n" * "="^80)
-println("STEP 6: scenario_benders_optimize! (strengthen_cuts=:mw)")
+println("STEP 2: ISP_l + ISP_f at x_opt with α from joint OSP")
 println("="^80)
 
-GC.gc()
-model_sd, vars_sd = build_omp(network, ϕU, λU, γ, w; optimizer=Gurobi.Optimizer, multi_cut_lf=true, S=S)
-result_sd = scenario_benders_optimize!(model_sd, vars_sd, network, ϕU, λU, γ, w, v, uncertainty_set;
-    conic_optimizer=Mosek.Optimizer, πU=πU, yU=yU, ytsU=ytsU,
-    parallel=false, strengthen_cuts=:mw, mip_optimizer=Gurobi.Optimizer)
+E = ones(num_arcs, num_arcs+1)
+d0 = zeros(num_arcs + 1); d0[end] = 1.0
+isp_data = Dict(:E => E, :network => network, :ϕU => ϕU, :πU => πU, :yU => yU, :ytsU => ytsU, :λU => λU, :γ => γ, :w => w, :v => v, :uncertainty_set => uncertainty_set, :d0 => d0, :S=>S)
 
-sd_ub = minimum(result_sd[:past_upper_bound])
-sd_lb = result_sd[:past_obj][end]
-println("\n  SD LB = $(round(sd_lb, digits=6)), UB = $(round(sd_ub, digits=6))")
-println("  UB history: $(round.(result_sd[:past_upper_bound], digits=6))")
-println("  Inner iters: $(result_sd[:inner_iter])")
+leader_instances, follower_instances = initialize_isp(network, S, ϕU, λU, γ, w, v, uncertainty_set;
+    conic_optimizer=Mosek.Optimizer, λ_sol=λ_opt, x_sol=x_opt, h_sol=h_opt, ψ0_sol=ψ0_opt, α_sol=α_osp,
+    πU=πU, yU=yU, ytsU=ytsU)
+
+total_isp = 0.0
+for s in 1:S
+    U_s = Dict(:R => Dict(:1=>R[s]), :r_dict => Dict(:1=>r_dict[s]), :xi_bar => Dict(:1=>xi_bar[s]), :epsilon => epsilon)
+    (st_l, ci_l) = isp_leader_optimize!(leader_instances[s][1], leader_instances[s][2];
+        isp_data=isp_data, uncertainty_set=U_s, λ_sol=λ_opt, x_sol=x_opt, h_sol=h_opt, ψ0_sol=ψ0_opt, α_sol=α_osp)
+    (st_f, ci_f) = isp_follower_optimize!(follower_instances[s][1], follower_instances[s][2];
+        isp_data=isp_data, uncertainty_set=U_s, λ_sol=λ_opt, x_sol=x_opt, h_sol=h_opt, ψ0_sol=ψ0_opt, α_sol=α_osp)
+    isp_l_obj = ci_l[:obj_val]
+    isp_f_obj = ci_f[:obj_val]
+    println("  s=$s: ISP_l=$(round(isp_l_obj, digits=6)), ISP_f=$(round(isp_f_obj, digits=6)), sum=$(round(isp_l_obj+isp_f_obj, digits=6))")
+    global total_isp += isp_l_obj + isp_f_obj
+end
+avg_isp = total_isp / S
+println("  Total ISP avg (should == Joint OSP): $(round(avg_isp, digits=6))")
+println("  Joint OSP:                           $(round(osp_obj, digits=6))")
+println("  DIFF: $(round(avg_isp - osp_obj, digits=6))")
+
+# ===== 3. IMP inner loop at x_opt (full nested benders inner loop) =====
+println("\n" * "="^80)
+println("STEP 3: Full IMP inner loop at x_opt")
+println("="^80)
+
+imp_model, imp_vars = build_imp(network, S, ϕU, λU, γ, w, v, uncertainty_set; mip_optimizer=Gurobi.Optimizer)
+st_imp, _ = initialize_imp(imp_model, imp_vars)
+
+# Re-initialize ISP for inner loop
+leader_instances2, follower_instances2 = initialize_isp(network, S, ϕU, λU, γ, w, v, uncertainty_set;
+    conic_optimizer=Mosek.Optimizer, λ_sol=λ_opt, x_sol=x_opt, h_sol=h_opt, ψ0_sol=ψ0_opt, α_sol=α_osp,
+    πU=πU, yU=yU, ytsU=ytsU)
+
+imp_cuts = Dict{Symbol, Any}(:old_tr_constraints => nothing)
+status, cut_info = tr_imp_optimize!(imp_model, imp_vars, leader_instances2, follower_instances2;
+    isp_data=isp_data, λ_sol=λ_opt, x_sol=x_opt, h_sol=h_opt, ψ0_sol=ψ0_opt,
+    outer_iter=1, imp_cuts=imp_cuts, inner_tr=true, tol=1e-4, parallel=true)
+
+inner_obj = cut_info[:obj_val]
+inner_α = cut_info[:α_sol]
+println("  IMP converged obj: $(round(inner_obj, digits=6))")
+println("  IMP α sum: $(sum(inner_α))")
+println("  Joint OSP obj:     $(round(osp_obj, digits=6))")
+println("  DIFF: $(round(inner_obj - osp_obj, digits=6))")
+
+# ===== 4. ISP at IMP's converged α (cross-check) =====
+println("\n" * "="^80)
+println("STEP 4: ISP at IMP's α vs Joint OSP at IMP's α")
+println("="^80)
+
+# Joint OSP at IMP's α
+osp_model2, osp_vars2, osp_data2 = build_dualized_outer_subproblem(
+    network, S, ϕU, λU, γ, w, v, uncertainty_set, Mosek.Optimizer,
+    λ_opt, x_opt, h_opt, ψ0_opt; πU=πU, yU=yU, ytsU=ytsU)
+# fix α in joint OSP
+for k in 1:num_arcs
+    fix(osp_vars2[:α][k], inner_α[k]; force=true)
+end
+optimize!(osp_model2)
+joint_at_imp_α = objective_value(osp_model2)
+println("  Joint OSP at IMP α: $(round(joint_at_imp_α, digits=6))")
+println("  IMP obj:            $(round(inner_obj, digits=6))")
+println("  DIFF:               $(round(inner_obj - joint_at_imp_α, digits=6))")
 
 println("\n" * "="^80)
-println("SUMMARY")
+println("DONE")
 println("="^80)
-println("Strict Benders UB: $sb_ub")
-println("Joint OSP obj:     $joint_obj")
-println("SD Benders UB:     $sd_ub")
-println("SD Benders LB:     $sd_lb")
+
+# ===== 로그 파일 저장 =====
+open("debug_sd_benders_log.txt", "w") do io
+    redirect_stdout(io) do
+        println("="^80)
+        println("Parameters: S=$S, γ=$γ, ϕU=$ϕU, λU=$λU, w=$(round(w, digits=4)), v=$v")
+        println("LDR bounds: πU=$πU, yU=$yU, ytsU=$ytsU")
+        println("="^80)
+        println("\nSTEP 1: Joint OSP at x_opt")
+        println("  Joint OSP obj: $osp_obj")
+        println("  α_osp sum: $(sum(α_osp))")
+        println("\nSTEP 2: ISP_l + ISP_f at x_opt with α from joint OSP")
+        println("  Total ISP avg: $(round(avg_isp, digits=6))")
+        println("  Joint OSP:     $(round(osp_obj, digits=6))")
+        println("  DIFF: $(round(avg_isp - osp_obj, digits=6))")
+        println("\nSTEP 3: Full IMP inner loop at x_opt")
+        println("  IMP converged obj: $(round(inner_obj, digits=6))")
+        println("  IMP α sum: $(sum(inner_α))")
+        println("  Joint OSP obj:     $(round(osp_obj, digits=6))")
+        println("  DIFF: $(round(inner_obj - osp_obj, digits=6))")
+        println("\nSTEP 4: Joint OSP at IMP's α")
+        println("  Joint OSP at IMP α: $(round(joint_at_imp_α, digits=6))")
+        println("  IMP obj:            $(round(inner_obj, digits=6))")
+        println("  DIFF:               $(round(inner_obj - joint_at_imp_α, digits=6))")
+        println("\n" * "="^80)
+    end
+end
+println("로그 저장 완료: debug_sd_benders_log.txt")
