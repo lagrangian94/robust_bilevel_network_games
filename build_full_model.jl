@@ -139,7 +139,7 @@ function build_full_2DRNDP_model(network, S, ϕU, λU, γ, w, v, uncertainty_set
     @variable(model, Ytilde[s=1:S, 1:num_arcs, 1:num_arcs+1], lower_bound= -yU, upper_bound = yU)
 
     # Yts: 1 x (|A|+1) matrix (coefficient for dummy arc t->s)
-    @variable(model, Yts_tilde[s=1:S, 1, 1:num_arcs+1], lower_bound= -ytsU, upper_bound = ytsU)
+    @variable(model, Yts_tilde[s=1:S, 1, 1:num_arcs+1], lower_bound= 0.0, upper_bound = ytsU) #TODO:??
 
 
     # 변수 따로 정리
