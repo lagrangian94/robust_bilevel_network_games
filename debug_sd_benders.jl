@@ -160,30 +160,52 @@ println("\n" * "="^80)
 println("DONE")
 println("="^80)
 
-# ===== 로그 파일 저장 =====
-open("debug_sd_benders_log.txt", "w") do io
-    redirect_stdout(io) do
-        println("="^80)
-        println("Parameters: S=$S, γ=$γ, ϕU=$ϕU, λU=$λU, w=$(round(w, digits=4)), v=$v")
-        println("LDR bounds: πU=$πU, yU=$yU, ytsU=$ytsU")
-        println("="^80)
-        println("\nSTEP 1: Joint OSP at x_opt")
-        println("  Joint OSP obj: $osp_obj")
-        println("  α_osp sum: $(sum(α_osp))")
-        println("\nSTEP 2: ISP_l + ISP_f at x_opt with α from joint OSP")
-        println("  Total ISP avg: $(round(avg_isp, digits=6))")
-        println("  Joint OSP:     $(round(osp_obj, digits=6))")
-        println("  DIFF: $(round(avg_isp - osp_obj, digits=6))")
-        println("\nSTEP 3: Full IMP inner loop at x_opt")
-        println("  IMP converged obj: $(round(inner_obj, digits=6))")
-        println("  IMP α sum: $(sum(inner_α))")
-        println("  Joint OSP obj:     $(round(osp_obj, digits=6))")
-        println("  DIFF: $(round(inner_obj - osp_obj, digits=6))")
-        println("\nSTEP 4: Joint OSP at IMP's α")
-        println("  Joint OSP at IMP α: $(round(joint_at_imp_α, digits=6))")
-        println("  IMP obj:            $(round(inner_obj, digits=6))")
-        println("  DIFF:               $(round(inner_obj - joint_at_imp_α, digits=6))")
-        println("\n" * "="^80)
-    end
+# ===== 5. Full Model FREE (Pajarito) =====
+println("\n" * "="^80)
+println("STEP 5: Full Model FREE (all variables optimized)")
+println("="^80)
+
+using Pajarito
+
+model_free, vars_free = build_full_2DRNDP_model(network, S, ϕU, λU, γ, w, v, uncertainty_set,
+    mip_solver=Gurobi.Optimizer, conic_solver=Mosek.Optimizer,
+    πU=πU, yU=yU, ytsU=ytsU)
+add_sparsity_constraints!(model_free, vars_free, network, S)
+
+optimize!(model_free)
+fm_free_status = termination_status(model_free)
+println("  Status: $fm_free_status")
+fm_free_obj = NaN
+if fm_free_status == MOI.OPTIMAL || fm_free_status == MOI.ALMOST_OPTIMAL
+    fm_free_obj = objective_value(model_free)
+    println("  Full model obj (free): $(round(fm_free_obj, digits=6))")
+    println("  x: $(value.(vars_free[:x]))")
+    println("  λ: $(value(vars_free[:λ]))")
+    println("  ηhat: $(value.(vars_free[:ηhat]))")
+    println("  ηtilde: $(value.(vars_free[:ηtilde]))")
+    println("  nu: $(value(vars_free[:nu]))")
+    println("  Yts_tilde_0: $(value.(vars_free[:Yts_tilde][:,1,end]))")
 end
-println("로그 저장 완료: debug_sd_benders_log.txt")
+
+# ===== 6. Cross-check: OSP at full model's free solution =====
+println("\n" * "="^80)
+println("STEP 6: OSP at full model's free optimal")
+println("="^80)
+
+if fm_free_status == MOI.OPTIMAL || fm_free_status == MOI.ALMOST_OPTIMAL
+    λ_free = value(vars_free[:λ])
+    x_free = value.(vars_free[:x])
+    h_free = value.(vars_free[:h])
+    ψ0_free = value.(vars_free[:ψ0])
+
+    osp_model_c, osp_vars_c, osp_data_c = build_dualized_outer_subproblem(
+        network, S, ϕU, λU, γ, w, v, uncertainty_set, Mosek.Optimizer,
+        λ_free, x_free, h_free, ψ0_free; πU=πU, yU=yU, ytsU=ytsU)
+    (osp_status_c, osp_coeff_c) = osp_optimize!(osp_model_c, osp_vars_c, osp_data_c,
+        λ_free, x_free, h_free, ψ0_free)
+    println("  OSP obj at full model's solution: $(osp_coeff_c[:obj_val])")
+    println("  Full model obj (free):            $(round(fm_free_obj, digits=6))")
+    println("  DIFF: $(round(osp_coeff_c[:obj_val] - fm_free_obj, digits=6))")
+end
+
+@infiltrate

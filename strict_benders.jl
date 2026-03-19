@@ -570,7 +570,15 @@ function scenario_benders_optimize!(omp_model::Model, omp_vars::Dict, network, �
             inner_lower_bound = max(inner_lower_bound, subprob_obj)
             inner_gap = abs(model_estimate - inner_lower_bound) / max(abs(model_estimate), 1e-10)
 
-            if inner_gap <= inner_tol
+            if inner_gap <= inner_tol && inner_tr && B_conti < B_conti_max - 1e-8
+                # TR 내 수렴했지만 아직 최대 크기가 아님 → 확장 후 계속
+                B_conti = min(B_conti_max, B_conti * 2.0)
+                @info "    Inner converged within TR: expanding B_conti to $(round(B_conti, digits=4))/$(round(B_conti_max, digits=4))"
+                inner_centers[:α] = copy(α_sol_imp)
+                push!(inner_past_major_subprob_obj, subprob_obj)
+                inner_lower_bound = -Inf  # 확장 후 수렴 판정 리셋
+                inner_tr_constraints = update_inner_trust_region_constraints!(imp_model, imp_vars, inner_centers, B_conti, inner_tr_constraints, network)
+            elseif inner_gap <= inner_tol
                 @info "    Inner convergence reached (gap=$(round(inner_gap, digits=6)), LB=$inner_lower_bound)"
                 converged_α = best_α
                 converged_obj = best_obj
@@ -847,6 +855,7 @@ function scenario_benders_optimize!(omp_model::Model, omp_vars::Dict, network, �
                 # Global optimality
                 time_end = time()
                 @info "  ✓✓ GLOBAL OPTIMAL! (B_bin = full region)"
+                push!(bin_B_steps, iter)
                 push!(past_local_lower_bound, lower_bound)
                 push!(past_local_optimizer, Dict(:x=>copy(x_sol), :h=>copy(h_sol), :λ=>λ_sol, :ψ0=>copy(ψ0_sol)))
                 min_idx = argmin(past_local_lower_bound)
