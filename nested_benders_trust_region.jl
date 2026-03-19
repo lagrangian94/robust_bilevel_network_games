@@ -526,37 +526,13 @@ function evaluate_master_opt_cut(isp_leader_instances::Dict, isp_follower_instan
 
     intercept_l = [value.(isp_leader_instances[s][2][:intercept]) for s in 1:S]
     intercept_f = [value.(isp_follower_instances[s][2][:intercept]) for s in 1:S]
-    # STALL 시 primal variable (intercept) 부정확 → objective_value 기반 역산 보정
-    scaling_S = get(isp_data, :scaling_S, S)
-    for s in 1:S
-        α_s = α_sol isa Vector{<:AbstractVector} ? α_sol[s] : α_sol
-        # Leader intercept 보정
-        model_l = isp_leader_instances[s][1]
-        μhat_s = shadow_price.(vec(model_l[:coupling_cons]))
-        reconstructed_l = intercept_l[s] + α_s' * μhat_s
-        if abs(reconstructed_l - objective_value(model_l)) > 1e-4
-            @warn "evaluate_master_opt_cut: leader s=$s intercept 역산 보정 (gap=$(round(abs(reconstructed_l - objective_value(model_l)), digits=6)))"
-            intercept_l[s] = objective_value(model_l) - α_s' * μhat_s
-        end
-        # Follower intercept 보정
-        model_f = isp_follower_instances[s][1]
-        μtilde_s = shadow_price.(vec(model_f[:coupling_cons]))
-        reconstructed_f = intercept_f[s] + α_s' * μtilde_s
-        if abs(reconstructed_f - objective_value(model_f)) > 1e-4
-            @warn "evaluate_master_opt_cut: follower s=$s intercept 역산 보정 (gap=$(round(abs(reconstructed_f - objective_value(model_f)), digits=6)))"
-            intercept_f[s] = objective_value(model_f) - α_s' * μtilde_s
-        end
-    end
     intercept = sum(intercept_l) + sum(intercept_f)
     leader_obj = sum(objective_value(isp_leader_instances[s][1]) for s in 1:S)
     follower_obj = sum(objective_value(isp_follower_instances[s][1]) for s in 1:S)
     avg_obj = (leader_obj + follower_obj) / S  # average over scenarios
     println("avg of leader and follower objective: ", avg_obj, ", cut_info[:obj_val]: ", cut_info[:obj_val])
     println("Outer loop iteration: ", iter)
-    if abs(avg_obj - cut_info[:obj_val]) > 1e-3
-        @warn "ISP vs OSP obj mismatch: ISP=$(round(avg_obj, digits=4)) vs OSP=$(round(cut_info[:obj_val], digits=4)), Δ=$(round(abs(avg_obj - cut_info[:obj_val]), digits=4)). STALL로 인한 차이 → ISP cut skip."
-        return nothing
-    end
+    @assert abs(avg_obj - cut_info[:obj_val]) < 1e-3
     return Dict(:Uhat1=>Uhat1, :Utilde1=>Utilde1, :Uhat3=>Uhat3, :Utilde3=>Utilde3, :Ztilde1_3=>Ztilde1_3
     ,:βtilde1_1=>βtilde1_1, :βtilde1_3=>βtilde1_3, :intercept=>intercept, :intercept_l=>intercept_l, :intercept_f=>intercept_f)
 end

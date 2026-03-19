@@ -1204,12 +1204,21 @@ function strict_benders_optimize!(omp_model::Model, omp_vars::Dict, network, ϕU
                     end
 
                     # Step A: ISP-based cut (Hybrid: OSP α → ISP coefficients)
-                    isp_cut = evaluate_master_opt_cut(
-                        isp_leader_instances, isp_follower_instances,
-                        isp_data_strict, osp_cut_as_info, iter; multi_cut_lf=multi_cut_lf, parallel=parallel)
+                    isp_cut = try
+                        evaluate_master_opt_cut(
+                            isp_leader_instances, isp_follower_instances,
+                            isp_data_strict, osp_cut_as_info, iter; multi_cut_lf=multi_cut_lf, parallel=parallel)
+                    catch e
+                        if e isa AssertionError
+                            @warn "  ISP vs OSP obj mismatch (STALL) → ISP cut + MW cuts skipped"
+                            nothing
+                        else
+                            rethrow(e)
+                        end
+                    end
 
                     if isp_cut === nothing
-                        @info "  ISP cut skipped (STALL mismatch)"
+                        # skip — assertion 실패 (STALL로 인한 ISP obj 부정확)
                     else
                         add_optimality_cuts!(omp_model, omp_vars, isp_cut, diag_x_E, osp_data[:E], diag_λ_ψ, xi_bar, osp_data[:d0], ϕU, λ, h, S, iter;
                             multi_cut_lf=multi_cut_lf, multi_cut_scenario=multi_cut_scenario, prefix="isp_cut", result_cuts=result[:cuts])
