@@ -311,13 +311,13 @@ println("  " * rpad("2. TR Dual (T,T)", 30) * rpad(round(results["tr_dual"], dig
 println("  " * rpad("2.5. Scenario-Decomposed", 30) * rpad(round(results["scenario_decomposed"], digits=2), 10) *
     rpad(round(sd_lb, digits=6), 12) * rpad(round(sd_ub, digits=6), 12) *
     rpad(round(sd_gap*100, digits=2), 10) * "$sd_iters")
-println("  " * rpad("3. TR Hybrid (T,T)", 30) * rpad(round(results["tr_hybrid"], digits=2), 10) *
-    rpad(round(nh_lb, digits=6), 12) * rpad(round(nh_ub, digits=6), 12) *
-    rpad(round(nh_gap*100, digits=2), 10) * "$nh_iters")
+# println("  " * rpad("3. TR Hybrid (T,T)", 30) * rpad(round(results["tr_hybrid"], digits=2), 10) *
+#     rpad(round(nh_lb, digits=6), 12) * rpad(round(nh_ub, digits=6), 12) *
+#     rpad(round(nh_gap*100, digits=2), 10) * "$nh_iters")
 println("  " * "-"^76)
 
 # UB 일치 확인 (best feasible solution 비교)
-all_ubs = filter(!isnan, [obj0, sb_ub, sd_ub, nd_ub, nh_ub])
+all_ubs = filter(!isnan, [obj0, sb_ub, sd_ub, nd_ub])
 if length(all_ubs) >= 2
     max_ub_gap = maximum(abs(a - b) for a in all_ubs for b in all_ubs)
     if max_ub_gap < 1e-3
@@ -326,4 +326,72 @@ if length(all_ubs) >= 2
         println("  ✗ Upper bound mismatch! (max gap = $(round(max_ub_gap, sigdigits=3)))")
     end
 end
+println("="^80)
+
+# ===== Solution Verification via Dualized Outer Subproblem =====
+includet("build_dualized_outer_subprob.jl")
+
+println("\n" * "="^80)
+println("SOLUTION VERIFICATION (fix 1st-stage → solve dualized outer subproblem)")
+println("="^80)
+
+# 각 method의 (name, opt_sol, reported_obj) 수집
+# opt_sol: Dict(:λ=>val, :x=>val, :h=>val, :ψ0=>val) 또는 nothing (JuMP vars에서 추출)
+methods_to_verify = []
+
+# 0. Full Model — JuMP 변수에서 직접 추출
+if t0_status == MOI.OPTIMAL || t0_status == MOI.ALMOST_OPTIMAL
+    push!(methods_to_verify, ("0. Full Model", nothing, vars0, obj0))
+end
+
+# 1. Strict Benders — result에 opt_sol이 없으므로 JuMP 변수에서 추출
+push!(methods_to_verify, ("1. Strict Benders", nothing, vars1, sb_ub))
+
+# 2. TR Nested Benders — result[:opt_sol]에 best solution 저장되어 있음
+push!(methods_to_verify, ("2. TR Dual (T,T)", get(result2, :opt_sol, nothing), vars2, nd_ub))
+
+# 2.5. Scenario-Decomposed Benders
+push!(methods_to_verify, ("2.5. Scenario-Decomposed", get(result_sd, :opt_sol, nothing), vars_sd, sd_ub))
+
+verify_header = "  " * rpad("Method", 30) * rpad("Reported", 12) * rpad("OSP obj", 12) * "Gap"
+println(verify_header)
+println("  " * "-"^60)
+
+for (name, opt_sol, vrs, reported_obj) in methods_to_verify
+    # 1st-stage solution 추출: opt_sol이 있으면 거기서, 없으면 JuMP 변수에서
+    if opt_sol !== nothing
+        λ_val = opt_sol[:λ] isa Number ? opt_sol[:λ] : value(opt_sol[:λ])
+        x_val = opt_sol[:x] isa AbstractVector{<:Number} ? round.(opt_sol[:x]) : round.(value.(opt_sol[:x]))
+        h_val = opt_sol[:h] isa AbstractVector{<:Number} ? opt_sol[:h] : value.(opt_sol[:h])
+        ψ0_val = opt_sol[:ψ0] isa AbstractVector{<:Number} ? opt_sol[:ψ0] : value.(opt_sol[:ψ0])
+        println("  [using result[:opt_sol]]")
+    else
+        λ_val = value(vrs[:λ])
+        x_val = round.(value.(vrs[:x]))
+        h_val = value.(vrs[:h])
+        ψ0_val = value.(vrs[:ψ0])
+    end
+    GC.gc()
+    # Dualized outer subproblem 구축 및 풀기
+    osp_model, osp_vars, osp_data = build_dualized_outer_subproblem(
+        network, S, ϕU, λU, γ, w, v, uncertainty_set,
+        Mosek.Optimizer, λ_val, x_val, h_val, ψ0_val;
+        πU=πU, yU=yU, ytsU=ytsU)
+
+    optimize!(osp_model)
+    osp_status = termination_status(osp_model)
+
+    if osp_status == MOI.OPTIMAL || osp_status == MOI.ALMOST_OPTIMAL
+        osp_obj = objective_value(osp_model)
+        gap = abs(osp_obj - reported_obj)
+        gap_str = round(gap, sigdigits=3)
+        println("  " * rpad(name, 30) * rpad(round(reported_obj, digits=6), 12) *
+            rpad(round(osp_obj, digits=6), 12) * "$gap_str")
+    else
+        println("  " * rpad(name, 30) * rpad(round(reported_obj, digits=6), 12) *
+            rpad("$osp_status", 12) * "-")
+    end
+end
+println("  " * "-"^60)
+println("  (Gap ≈ 0 → solution is consistent with dualized outer subproblem)")
 println("="^80)
