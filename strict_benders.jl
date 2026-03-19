@@ -242,7 +242,19 @@ function osp_inner_optimize!(osp_model::Model, osp_vars::Dict, osp_data::Dict,
     num_arcs = length(α)
     scaling_S = get(osp_data, :scaling_S, osp_data[:S])
 
-    # Fix α to IMP's solution
+    coupling_hat = osp_model[:coupling_hat]      # [s=1, k=1:num_arcs]
+    coupling_tilde = osp_model[:coupling_tilde]   # [s=1, k=1:num_arcs]
+
+    # Fix α via coupling constraints: α[k]의 계수를 0으로 만들고 RHS에 α_sol[k] 설정
+    # 원래: βhat2[s,k] - α[k] <= 0  →  변경: βhat2[s,k] <= α_sol[k]
+    # 이렇게 하면 shadow price가 fix constraint에 분산되지 않고 coupling에 온전히 귀속됨
+    for k in 1:num_arcs
+        set_normalized_coefficient(coupling_hat[1, k], α[k], 0.0)
+        set_normalized_rhs(coupling_hat[1, k], α_sol[k])
+        set_normalized_coefficient(coupling_tilde[1, k], α[k], 0.0)
+        set_normalized_rhs(coupling_tilde[1, k], α_sol[k])
+    end
+    # α 변수를 free로 두되 objective/다른 constraint에 영향 없도록 fix
     for k in 1:num_arcs
         fix(α[k], α_sol[k]; force=true)
     end
@@ -251,15 +263,18 @@ function osp_inner_optimize!(osp_model::Model, osp_vars::Dict, osp_data::Dict,
     (status, cut_coeff) = osp_optimize!(osp_model, osp_vars, osp_data, λ_sol, x_sol, h_sol, ψ0_sol)
 
     if status != :OptimalityCut
-        for k in 1:num_arcs; unfix(α[k]); set_lower_bound(α[k], 0.0); end
+        # Restore coupling constraints
+        for k in 1:num_arcs
+            unfix(α[k]); set_lower_bound(α[k], 0.0)
+            set_normalized_coefficient(coupling_hat[1, k], α[k], -1.0)
+            set_normalized_rhs(coupling_hat[1, k], 0.0)
+            set_normalized_coefficient(coupling_tilde[1, k], α[k], -1.0)
+            set_normalized_rhs(coupling_tilde[1, k], 0.0)
+        end
         return (status, nothing, nothing, nothing)
     end
 
-    # Extract shadow prices from named coupling constraints
-    coupling_hat = osp_model[:coupling_hat]      # [s=1, k=1:num_arcs]
-    coupling_tilde = osp_model[:coupling_tilde]   # [s=1, k=1:num_arcs]
-
-    # Shadow prices are for /scaling_S-scaled objective → multiply by scaling_S for raw subgradients
+    # Shadow prices: coupling constraint에 온전히 귀속된 subgradient
     μhat = scaling_S .* [shadow_price(coupling_hat[1, k]) for k in 1:num_arcs]
     μtilde = scaling_S .* [shadow_price(coupling_tilde[1, k]) for k in 1:num_arcs]
 
@@ -323,10 +338,14 @@ function osp_inner_optimize!(osp_model::Model, osp_vars::Dict, osp_data::Dict,
     benders_intercept_l = V_l - μhat' * α_sol
     benders_intercept_f = V_f - μtilde' * α_sol
 
-    # Unfix α for next iteration
+    # Restore coupling constraints: α[k] 계수를 -1로 복원, RHS를 0으로 복원
     for k in 1:num_arcs
         unfix(α[k])
         set_lower_bound(α[k], 0.0)
+        set_normalized_coefficient(coupling_hat[1, k], α[k], -1.0)
+        set_normalized_rhs(coupling_hat[1, k], 0.0)
+        set_normalized_coefficient(coupling_tilde[1, k], α[k], -1.0)
+        set_normalized_rhs(coupling_tilde[1, k], 0.0)
     end
 
     cut_info_l = Dict(:μhat => μhat, :intercept => benders_intercept_l, :obj_val => V_l)
@@ -500,7 +519,12 @@ function scenario_benders_optimize!(omp_model::Model, omp_vars::Dict, network, �
             inner_counter = 0
             inner_β_relative = 1e-4
             inner_ρ = 0.0
-            inner_centers = Dict(:α => value.(imp_vars[:α]))
+            # iter>1에서는 cuts 삭제로 model modified → value() 불가. 이전 converged α 사용.
+            α_init = (iter == 1) ? value.(imp_vars[:α]) : converged_α
+            if α_init === nothing
+                α_init = zeros(num_arcs)  # fallback
+            end
+            inner_centers = Dict(:α => copy(α_init))
             inner_tr_constraints = Dict(:continuous => nothing)
             inner_past_major_subprob_obj = []
         end
