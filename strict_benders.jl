@@ -22,7 +22,8 @@ function build_omp(network, ϕU, λU, γ, w; optimizer=nothing, multi_cut_lf=tru
     if multi_cut_scenario && multi_cut_lf
         @variable(model, t_l[1:S] >= 0)
         @variable(model, t_f[1:S] >= 0)
-        @objective(model, Min, (sum(t_l) + sum(t_f)) / S)
+        @objective(model, Min, (sum(t_l) + sum(t_f)
+        ) / S)
     elseif multi_cut_scenario
         @variable(model, t_s[1:S] >= 0)
         @objective(model, Min, sum(t_s) / S)

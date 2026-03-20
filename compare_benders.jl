@@ -149,39 +149,37 @@ network, uncertainty_set, params = setup_instance(instance_key; S=S)
 results = Dict{String, Any}()
 
 
-# ===== 0. Full Model (Pajarito) =====
-println("\n" * "="^80)
-println("0. FULL MODEL (Pajarito: MIP + Conic)")
-println("="^80)
+# # ===== 0. Full Model (Pajarito) =====
+# println("\n" * "="^80)
+# println("0. FULL MODEL (Pajarito: MIP + Conic)")
+# println("="^80)
 
-"""
-S=10, 5x5 grid networks에서 이미 한시간넘어도 수렴안함.
-     7    14    0.84251    3   20          -    0.09367      -   0.0  331s
-    27    38    3.73988    5   16   11.28263    1.61417  85.7%   0.0  640s
-    39    44    4.15700    6   16   11.28263    2.27480  79.8%   0.0  855s
-   352    39    8.82591   10    7    9.24680    5.80339  37.2%   0.0 3614s
-"""
+# """
+# S=10, 5x5 grid networks에서 이미 한시간넘어도 수렴안함.
+#      7    14    0.84251    3   20          -    0.09367      -   0.0  331s
+#     27    38    3.73988    5   16   11.28263    1.61417  85.7%   0.0  640s
+#     39    44    4.15700    6   16   11.28263    2.27480  79.8%   0.0  855s
+#    352    39    8.82591   10    7    9.24680    5.80339  37.2%   0.0 3614s
+# """
 
-GC.gc()
-model0, vars0 = build_full_2DRNDP_model(network, S, ϕU, λU, γ, w, v, uncertainty_set,
-    mip_solver=Gurobi.Optimizer, conic_solver=Mosek.Optimizer)
-add_sparsity_constraints!(model0, vars0, network, S)
-t0_start = time()
-optimize!(model0)
-t0_end = time()
-results["full_model"] = t0_end - t0_start
+# GC.gc()
+# model0, vars0 = build_full_2DRNDP_model(network, S, ϕU, λU, γ, w, v, uncertainty_set,
+#     mip_solver=Gurobi.Optimizer, conic_solver=Mosek.Optimizer)
+# add_sparsity_constraints!(model0, vars0, network, S)
+# t0_start = time()
+# optimize!(model0)
+# t0_end = time()
+# results["full_model"] = t0_end - t0_start
 
-t0_status = termination_status(model0)
-if t0_status == MOI.OPTIMAL || t0_status == MOI.ALMOST_OPTIMAL
-    obj0 = objective_value(model0)
-    println("  Optimal objective: $(round(obj0, digits=6))")
-else
-    obj0 = NaN
-    println("  Termination status: $t0_status (no optimal solution)")
-end
-println("\n>> Full Model time: $(results["full_model"]) seconds")
-# #9.124764
-# @infiltrate
+# t0_status = termination_status(model0)
+# if t0_status == MOI.OPTIMAL || t0_status == MOI.ALMOST_OPTIMAL
+#     obj0 = objective_value(model0)
+#     println("  Optimal objective: $(round(obj0, digits=6))")
+# else
+#     obj0 = NaN
+#     println("  Termination status: $t0_status (no optimal solution)")
+# end
+# println("\n>> Full Model time: $(results["full_model"]) seconds")
 # ===== 1. Strict Benders =====
 println("\n" * "="^80)
 println("1. STRICT BENDERS DECOMPOSITION (multi-cut)")
@@ -203,11 +201,11 @@ println("="^80)
 2700초 걸렸음
 """
 GC.gc()
-model2, vars2 = build_omp(network, ϕU, λU, γ, w; optimizer=Gurobi.Optimizer, S=S)
+model2, vars2 = build_omp(network, ϕU, λU, γ, w; optimizer=Gurobi.Optimizer, multi_cut_lf=true, multi_cut_scenario=true, S=S)
 t2_start = time()
 result2 = tr_nested_benders_optimize!(model2, vars2, network, ϕU, λU, γ, w, uncertainty_set;
     mip_optimizer=Gurobi.Optimizer, conic_optimizer=Mosek.Optimizer,
-     outer_tr=true, inner_tr=true,
+     outer_tr=true, inner_tr=true, multi_cut_lf=true, multi_cut_scenario=true,
     πU=πU, yU=yU, ytsU=ytsU, strengthen_cuts=strengthen_cuts, parallel=true)
 t2_end = time()
 results["tr_dual"] = t2_end - t2_start
@@ -335,23 +333,34 @@ println("\n" * "="^80)
 println("SOLUTION VERIFICATION (fix 1st-stage → solve dualized outer subproblem)")
 println("="^80)
 
-# 각 method의 (name, opt_sol, reported_obj) 수집
+# 각 method의 (name, opt_sol, vars, reported_obj) 수집
 # opt_sol: Dict(:λ=>val, :x=>val, :h=>val, :ψ0=>val) 또는 nothing (JuMP vars에서 추출)
 methods_to_verify = []
 
-# 0. Full Model — JuMP 변수에서 직접 추출
-if t0_status == MOI.OPTIMAL || t0_status == MOI.ALMOST_OPTIMAL
+# 0. Full Model
+if @isdefined(vars0) && (t0_status == MOI.OPTIMAL || t0_status == MOI.ALMOST_OPTIMAL)
     push!(methods_to_verify, ("0. Full Model", nothing, vars0, obj0))
 end
 
-# 1. Strict Benders — result에 opt_sol이 없으므로 JuMP 변수에서 추출
-push!(methods_to_verify, ("1. Strict Benders", nothing, vars1, sb_ub))
+# 1. Strict Benders
+if @isdefined(result1)
+    push!(methods_to_verify, ("1. Strict Benders", get(result1, :opt_sol, nothing), vars1, sb_ub))
+end
 
-# 2. TR Nested Benders — result[:opt_sol]에 best solution 저장되어 있음
-push!(methods_to_verify, ("2. TR Dual (T,T)", get(result2, :opt_sol, nothing), vars2, nd_ub))
+# 2. TR Nested Benders — Dual
+if @isdefined(result2)
+    push!(methods_to_verify, ("2. TR Dual (T,T)", get(result2, :opt_sol, nothing), vars2, nd_ub))
+end
 
 # 2.5. Scenario-Decomposed Benders
-push!(methods_to_verify, ("2.5. Scenario-Decomposed", get(result_sd, :opt_sol, nothing), vars_sd, sd_ub))
+if @isdefined(result_sd)
+    push!(methods_to_verify, ("2.5. Scenario-Decomposed", get(result_sd, :opt_sol, nothing), vars_sd, sd_ub))
+end
+
+# 3. TR Nested Benders — Hybrid
+if @isdefined(result3)
+    push!(methods_to_verify, ("3. TR Hybrid (T,T)", get(result3, :opt_sol, nothing), vars3, nh_ub))
+end
 
 verify_header = "  " * rpad("Method", 30) * rpad("Reported", 12) * rpad("OSP obj", 12) * "Gap"
 println(verify_header)
