@@ -779,7 +779,7 @@ function primal_evaluate_master_opt_cut(
     dual_leader_instances::Dict, dual_follower_instances::Dict,
     isp_data::Dict, cut_info::Dict, iter::Int;
     λ_sol=nothing, x_sol=nothing, h_sol=nothing, ψ0_sol=nothing,
-    multi_cut_lf=false)
+    )
 
     S = isp_data[:S]
     α_sol = cut_info[:α_sol]
@@ -806,7 +806,7 @@ function primal_evaluate_master_opt_cut(
     # Now dual ISP objectives are updated. Call evaluate_master_opt_cut as usual.
     return evaluate_master_opt_cut(
         dual_leader_instances, dual_follower_instances,
-        isp_data, cut_info, iter; multi_cut_lf=multi_cut_lf)
+        isp_data, cut_info, iter)
 end
 
 
@@ -833,7 +833,7 @@ function evaluate_master_opt_cut_from_primal(
     primal_leader_instances::Dict, primal_follower_instances::Dict,
     isp_data::Dict, cut_info::Dict, iter::Int;
     λ_sol=nothing, x_sol=nothing, h_sol=nothing, ψ0_sol=nothing,
-    multi_cut_lf=false)
+    )
 
     S = isp_data[:S]
     α_sol = cut_info[:α_sol]

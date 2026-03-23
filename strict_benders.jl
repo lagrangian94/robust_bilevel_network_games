@@ -14,27 +14,13 @@ includet("build_full_model.jl")
 using .NetworkGenerator
 
 
-function build_omp(network, ϕU, λU, γ, w; optimizer=nothing, multi_cut_lf=true, multi_cut_scenario=true, S=1)
+function build_omp(network, ϕU, λU, γ, w; optimizer=nothing, S=1)
     # Extract network dimensions
     num_arcs = length(network.arcs)-1 #dummy arc 제외
     # Create model
     model = Model(optimizer_with_attributes(optimizer, MOI.Silent() => true))
-    if multi_cut_scenario && multi_cut_lf
-        @variable(model, t_l[1:S] >= 0)
-        @variable(model, t_f[1:S] >= 0)
-        @objective(model, Min, (sum(t_l) + sum(t_f)
-        ) / S)
-    elseif multi_cut_scenario
-        @variable(model, t_s[1:S] >= 0)
-        @objective(model, Min, sum(t_s) / S)
-    elseif multi_cut_lf
-        @variable(model, t_0_l >= 0)
-        @variable(model, t_0_f >= 0)
-        @objective(model, Min, (t_0_l + t_0_f) / S)
-    else
-        @variable(model, t_0 >= 0)
-        @objective(model, Min, t_0 / S)
-    end
+    @variable(model, t_0 >= 0)
+    @objective(model, Min, t_0 / S)
     @variable(model, λ, lower_bound=0.0, upper_bound=λU)  # λ ≤ λU ≤ ϕU: LDR P-bound에서 π̃₀_sink ≤ ϕU이므로 eq(6d) Nts⊺π̃ ≥ λ 만족 필요
     @variable(model, x[1:num_arcs], Bin)
     @variable(model, h[1:num_arcs] >= 0)
@@ -59,24 +45,11 @@ function build_omp(network, ϕU, λU, γ, w; optimizer=nothing, multi_cut_lf=tru
         @constraint(model, ψ0[k] >= 0)
     end
     vars = Dict(:λ => λ, :x => x, :h => h, :ψ0 => ψ0)
-    if multi_cut_scenario && multi_cut_lf
-        vars[:t_l] = t_l
-        vars[:t_f] = t_f
-        vars[:t_0] = sum(t_l) + sum(t_f)
-    elseif multi_cut_scenario
-        vars[:t_s] = t_s
-        vars[:t_0] = sum(t_s)
-    elseif multi_cut_lf
-        vars[:t_0_l] = t_0_l
-        vars[:t_0_f] = t_0_f
-        vars[:t_0] = t_0_l + t_0_f
-    else
-        vars[:t_0] = t_0
-    end
+    vars[:t_0] = t_0
     return model, vars
 end
 
-function osp_optimize!(osp_model::Model, osp_vars::Dict, osp_data::Dict, λ_sol, x_sol, h_sol, ψ0_sol; multi_cut_lf=false)
+function osp_optimize!(osp_model::Model, osp_vars::Dict, osp_data::Dict, λ_sol, x_sol, h_sol, ψ0_sol)
     E = osp_data[:E]
     v = osp_data[:v]
     ϕU = osp_data[:ϕU]
@@ -151,14 +124,13 @@ end
 
 """
     add_optimality_cuts!(omp_model, omp_vars, cut_info, diag_x_E, E, diag_λ_ψ, xi_bar, d0, ϕU, λ_var, h_var, S, iter;
-        multi_cut_lf=false, multi_cut_scenario=false, prefix="opt_cut", result_cuts=nothing)
+        prefix="opt_cut", result_cuts=nothing)
 
 Cut 조립 helper. cut_info에서 coefficient를 읽어 omp_model에 constraint를 추가.
-4가지 모드 지원: (multi_cut_lf × multi_cut_scenario).
 Returns combined AffExpr for tightness check.
 """
 function add_optimality_cuts!(omp_model, omp_vars, cut_info, diag_x_E, E, diag_λ_ψ, xi_bar, d0, ϕU, λ_var, h_var, S, iter;
-    multi_cut_lf=false, multi_cut_scenario=false, prefix="opt_cut", result_cuts=nothing)
+    prefix="opt_cut", result_cuts=nothing)
     # Per-scenario cut terms (always compute leader/follower separately)
     leader_s = Vector{Any}(undef, S)
     follower_s = Vector{Any}(undef, S)
@@ -174,46 +146,12 @@ function add_optimality_cuts!(omp_model, omp_vars, cut_info, diag_x_E, E, diag_�
                         cut_info[:intercept_f][s]
     end
 
-    # Add constraints based on mode
-    if multi_cut_scenario && multi_cut_lf
-        t_l, t_f = omp_vars[:t_l], omp_vars[:t_f]
-        for s in 1:S
-            c_l = @constraint(omp_model, t_l[s] >= leader_s[s])
-            c_f = @constraint(omp_model, t_f[s] >= follower_s[s])
-            set_name(c_l, "$(prefix)_$(iter)_l_s$(s)")
-            set_name(c_f, "$(prefix)_$(iter)_f_s$(s)")
-            if result_cuts !== nothing
-                result_cuts["$(prefix)_$(iter)_l_s$(s)"] = c_l
-                result_cuts["$(prefix)_$(iter)_f_s$(s)"] = c_f
-            end
-        end
-    elseif multi_cut_scenario
-        t_sv = omp_vars[:t_s]
-        for s in 1:S
-            c = @constraint(omp_model, t_sv[s] >= leader_s[s] + follower_s[s])
-            set_name(c, "$(prefix)_$(iter)_s$(s)")
-            if result_cuts !== nothing
-                result_cuts["$(prefix)_$(iter)_s$(s)"] = c
-            end
-        end
-    elseif multi_cut_lf
-        opt_cut_l = sum(leader_s)
-        opt_cut_f = sum(follower_s)
-        c_l = @constraint(omp_model, omp_vars[:t_0_l] >= opt_cut_l)
-        c_f = @constraint(omp_model, omp_vars[:t_0_f] >= opt_cut_f)
-        set_name(c_l, "$(prefix)_$(iter)_l")
-        set_name(c_f, "$(prefix)_$(iter)_f")
-        if result_cuts !== nothing
-            result_cuts["$(prefix)_$(iter)_l"] = c_l
-            result_cuts["$(prefix)_$(iter)_f"] = c_f
-        end
-    else
-        opt_cut = sum(leader_s) + sum(follower_s)
-        c = @constraint(omp_model, omp_vars[:t_0] >= opt_cut)
-        set_name(c, "$(prefix)_$(iter)")
-        if result_cuts !== nothing
-            result_cuts["$(prefix)_$(iter)"] = c
-        end
+    # Add aggregated cut
+    opt_cut = sum(leader_s) + sum(follower_s)
+    c = @constraint(omp_model, omp_vars[:t_0] >= opt_cut)
+    set_name(c, "$(prefix)_$(iter)")
+    if result_cuts !== nothing
+        result_cuts["$(prefix)_$(iter)"] = c
     end
 
     # Return combined expression for tightness check
@@ -370,7 +308,7 @@ joint OSP(s=1)로 leader+follower를 한 번에 풀어 conic solve 수를 절반
 | 병렬화 | 불가 | S개 병렬 | S개 병렬 |
 """
 function scenario_benders_optimize!(omp_model::Model, omp_vars::Dict, network, ϕU, λU, γ, w, v, uncertainty_set;
-    conic_optimizer=nothing, multi_cut_lf=true, multi_cut_scenario=true,
+    conic_optimizer=nothing,
     max_iter=1000, tol=1e-4, πU=ϕU, yU=ϕU, ytsU=ϕU, parallel=false,
     inner_max_iter=100, inner_tol=1e-4, mip_optimizer=nothing, strengthen_cuts=:none,
     outer_tr=false, inner_tr=false)
@@ -682,82 +620,82 @@ function scenario_benders_optimize!(omp_model::Model, omp_vars::Dict, network, �
 
         subprob_obj = cut_info[:obj_val]
 
-        # ===== UB drop 감지 상세 로그 =====
-        if subprob_obj < upper_bound - 1e-3
-            println("\n⚠ UB DROP DETECTED: iter=$iter, prev_UB=$(round(upper_bound, digits=6)) → new_subprob=$(round(subprob_obj, digits=6))")
-            println("  converged_obj (from inner V_l+V_f/S) = $converged_obj")
-            println("  cut_info[:obj_val] (sum of osp objs) = $(cut_info[:obj_val])")
-            println("  inner_iter = $inner_iter")
-            println("  x_sol = $x_sol")
-            println("  λ_sol = $λ_sol, h_norm = $(norm(h_sol)), ψ0_norm = $(norm(ψ0_sol))")
-            println("  converged α_sum = $(sum(converged_α))")
-            println("  per-scenario osp objs: $([last_outer_coeffs[s][:obj_val] for s in 1:S])")
-            println("  per-scenario intercept_l: $(cut_info[:intercept_l])")
-            println("  per-scenario intercept_f: $(cut_info[:intercept_f])")
+        # # ===== UB drop 감지 상세 로그 =====
+        # if subprob_obj < upper_bound - 1e-3
+        #     println("\n⚠ UB DROP DETECTED: iter=$iter, prev_UB=$(round(upper_bound, digits=6)) → new_subprob=$(round(subprob_obj, digits=6))")
+        #     println("  converged_obj (from inner V_l+V_f/S) = $converged_obj")
+        #     println("  cut_info[:obj_val] (sum of osp objs) = $(cut_info[:obj_val])")
+        #     println("  inner_iter = $inner_iter")
+        #     println("  x_sol = $x_sol")
+        #     println("  λ_sol = $λ_sol, h_norm = $(norm(h_sol)), ψ0_norm = $(norm(ψ0_sol))")
+        #     println("  converged α_sum = $(sum(converged_α))")
+        #     println("  per-scenario osp objs: $([last_outer_coeffs[s][:obj_val] for s in 1:S])")
+        #     println("  per-scenario intercept_l: $(cut_info[:intercept_l])")
+        #     println("  per-scenario intercept_f: $(cut_info[:intercept_f])")
 
-            # 검증: joint OSP 값과 비교
-            println("  --- Verification: solving joint OSP at same (x,h,λ,ψ0) ---")
-            osp_verify_model, osp_verify_vars, osp_verify_data = build_dualized_outer_subproblem(
-                network, S, ϕU, λU, γ, w, v, uncertainty_set,
-                conic_opt, λ_sol, x_sol, h_sol, ψ0_sol; πU=πU, yU=yU, ytsU=ytsU)
-            (verify_st, verify_cc) = osp_optimize!(osp_verify_model, osp_verify_vars, osp_verify_data,
-                λ_sol, x_sol, h_sol, ψ0_sol)
-            joint_verify_α = verify_cc[:α_sol]
-            println("  joint OSP obj = $(verify_cc[:obj_val]),  α_sum = $(sum(joint_verify_α))")
-            println("  MISMATCH = $(round(verify_cc[:obj_val] - subprob_obj, digits=6))")
+        #     # 검증: joint OSP 값과 비교
+        #     println("  --- Verification: solving joint OSP at same (x,h,λ,ψ0) ---")
+        #     osp_verify_model, osp_verify_vars, osp_verify_data = build_dualized_outer_subproblem(
+        #         network, S, ϕU, λU, γ, w, v, uncertainty_set,
+        #         conic_opt, λ_sol, x_sol, h_sol, ψ0_sol; πU=πU, yU=yU, ytsU=ytsU)
+        #     (verify_st, verify_cc) = osp_optimize!(osp_verify_model, osp_verify_vars, osp_verify_data,
+        #         λ_sol, x_sol, h_sol, ψ0_sol)
+        #     joint_verify_α = verify_cc[:α_sol]
+        #     println("  joint OSP obj = $(verify_cc[:obj_val]),  α_sum = $(sum(joint_verify_α))")
+        #     println("  MISMATCH = $(round(verify_cc[:obj_val] - subprob_obj, digits=6))")
 
-            # ===== Cut validity 검증: 각 inner cut을 joint α*에서 평가 =====
-            println("  --- Cut validity check at joint α* ---")
-            # Per-scenario true Q at joint α*
-            true_Q_l = zeros(S)
-            true_Q_f = zeros(S)
-            for s_v in 1:S
-                U_s_v = Dict(:R => Dict(1 => R_us[s_v]), :r_dict => Dict(1 => r_dict_us[s_v]),
-                             :xi_bar => Dict(1 => xi_bar[s_v]), :epsilon => epsilon)
-                osp_v_m, osp_v_v, osp_v_d = build_dualized_outer_subproblem(
-                    network, 1, ϕU, λU, γ, w, v, U_s_v, conic_opt,
-                    λ_sol, x_sol, h_sol, ψ0_sol; πU=πU, yU=yU, ytsU=ytsU, scaling_S=S)
-                (_, ci_l_v, ci_f_v, _) = osp_inner_optimize!(osp_v_m, osp_v_v, osp_v_d,
-                    λ_sol, x_sol, h_sol, ψ0_sol, joint_verify_α)
-                true_Q_l[s_v] = ci_l_v[:obj_val]
-                true_Q_f[s_v] = ci_f_v[:obj_val]
-            end
-            println("  true Q_l at joint α*: $true_Q_l")
-            println("  true Q_f at joint α*: $true_Q_f")
-            println("  true total/S = $((sum(true_Q_l) + sum(true_Q_f)) / S)")
+        #     # ===== Cut validity 검증: 각 inner cut을 joint α*에서 평가 =====
+        #     println("  --- Cut validity check at joint α* ---")
+        #     # Per-scenario true Q at joint α*
+        #     true_Q_l = zeros(S)
+        #     true_Q_f = zeros(S)
+        #     for s_v in 1:S
+        #         U_s_v = Dict(:R => Dict(1 => R_us[s_v]), :r_dict => Dict(1 => r_dict_us[s_v]),
+        #                      :xi_bar => Dict(1 => xi_bar[s_v]), :epsilon => epsilon)
+        #         osp_v_m, osp_v_v, osp_v_d = build_dualized_outer_subproblem(
+        #             network, 1, ϕU, λU, γ, w, v, U_s_v, conic_opt,
+        #             λ_sol, x_sol, h_sol, ψ0_sol; πU=πU, yU=yU, ytsU=ytsU, scaling_S=S)
+        #         (_, ci_l_v, ci_f_v, _) = osp_inner_optimize!(osp_v_m, osp_v_v, osp_v_d,
+        #             λ_sol, x_sol, h_sol, ψ0_sol, joint_verify_α)
+        #         true_Q_l[s_v] = ci_l_v[:obj_val]
+        #         true_Q_f[s_v] = ci_f_v[:obj_val]
+        #     end
+        #     println("  true Q_l at joint α*: $true_Q_l")
+        #     println("  true Q_f at joint α*: $true_Q_f")
+        #     println("  true total/S = $((sum(true_Q_l) + sum(true_Q_f)) / S)")
 
-            # 각 inner cut을 joint α*에서 평가
-            for (ci, cl) in enumerate(inner_cut_log)
-                for s_v in 1:S
-                    cut_val_l = cl[:intercept_l][s_v] + cl[:subgradient_l][s_v]' * joint_verify_α
-                    cut_val_f = cl[:intercept_f][s_v] + cl[:subgradient_f][s_v]' * joint_verify_α
-                    overest_l = cut_val_l - true_Q_l[s_v]  # should be >= 0 (overestimator)
-                    overest_f = cut_val_f - true_Q_f[s_v]
-                    if overest_l < -1e-3 || overest_f < -1e-3
-                        println("  ❌ INVALID CUT: inner_iter=$(cl[:iiter]), s=$s_v")
-                        println("     cut_l=$(round(cut_val_l, digits=6)) vs true_Q_l=$(round(true_Q_l[s_v], digits=6))  Δ=$(round(overest_l, digits=6))")
-                        println("     cut_f=$(round(cut_val_f, digits=6)) vs true_Q_f=$(round(true_Q_f[s_v], digits=6))  Δ=$(round(overest_f, digits=6))")
-                        println("     α_k_sum=$(round(sum(cl[:α]), digits=6)), V_l=$(round(cl[:V_l][s_v], digits=6)), V_f=$(round(cl[:V_f][s_v], digits=6))")
-                        println("     μhat_sum=$(round(sum(cl[:subgradient_l][s_v]), digits=4)), μtilde_sum=$(round(sum(cl[:subgradient_f][s_v]), digits=4))")
-                    end
-                end
-            end
+        #     # 각 inner cut을 joint α*에서 평가
+        #     for (ci, cl) in enumerate(inner_cut_log)
+        #         for s_v in 1:S
+        #             cut_val_l = cl[:intercept_l][s_v] + cl[:subgradient_l][s_v]' * joint_verify_α
+        #             cut_val_f = cl[:intercept_f][s_v] + cl[:subgradient_f][s_v]' * joint_verify_α
+        #             overest_l = cut_val_l - true_Q_l[s_v]  # should be >= 0 (overestimator)
+        #             overest_f = cut_val_f - true_Q_f[s_v]
+        #             if overest_l < -1e-3 || overest_f < -1e-3
+        #                 println("  ❌ INVALID CUT: inner_iter=$(cl[:iiter]), s=$s_v")
+        #                 println("     cut_l=$(round(cut_val_l, digits=6)) vs true_Q_l=$(round(true_Q_l[s_v], digits=6))  Δ=$(round(overest_l, digits=6))")
+        #                 println("     cut_f=$(round(cut_val_f, digits=6)) vs true_Q_f=$(round(true_Q_f[s_v], digits=6))  Δ=$(round(overest_f, digits=6))")
+        #                 println("     α_k_sum=$(round(sum(cl[:α]), digits=6)), V_l=$(round(cl[:V_l][s_v], digits=6)), V_f=$(round(cl[:V_f][s_v], digits=6))")
+        #                 println("     μhat_sum=$(round(sum(cl[:subgradient_l][s_v]), digits=4)), μtilde_sum=$(round(sum(cl[:subgradient_f][s_v]), digits=4))")
+        #             end
+        #         end
+        #     end
 
-            # IMP에서 joint α*가 줄 수 있는 최대 t값 (= 모든 cut의 min)
-            for s_v in 1:S
-                min_cut_l = Inf
-                min_cut_f = Inf
-                for cl in inner_cut_log
-                    cv_l = cl[:intercept_l][s_v] + cl[:subgradient_l][s_v]' * joint_verify_α
-                    cv_f = cl[:intercept_f][s_v] + cl[:subgradient_f][s_v]' * joint_verify_α
-                    min_cut_l = min(min_cut_l, cv_l)
-                    min_cut_f = min(min_cut_f, cv_f)
-                end
-                println("  s=$s_v: IMP feasible t_l=$(round(min_cut_l, digits=6)) (true=$(round(true_Q_l[s_v], digits=6))), " *
-                        "t_f=$(round(min_cut_f, digits=6)) (true=$(round(true_Q_f[s_v], digits=6)))")
-            end
-            println()
-        end
+        #     # IMP에서 joint α*가 줄 수 있는 최대 t값 (= 모든 cut의 min)
+        #     for s_v in 1:S
+        #         min_cut_l = Inf
+        #         min_cut_f = Inf
+        #         for cl in inner_cut_log
+        #             cv_l = cl[:intercept_l][s_v] + cl[:subgradient_l][s_v]' * joint_verify_α
+        #             cv_f = cl[:intercept_f][s_v] + cl[:subgradient_f][s_v]' * joint_verify_α
+        #             min_cut_l = min(min_cut_l, cv_l)
+        #             min_cut_f = min(min_cut_f, cv_f)
+        #         end
+        #         println("  s=$s_v: IMP feasible t_l=$(round(min_cut_l, digits=6)) (true=$(round(true_Q_l[s_v], digits=6))), " *
+        #                 "t_f=$(round(min_cut_f, digits=6)) (true=$(round(true_Q_f[s_v], digits=6)))")
+        #     end
+        #     println()
+        # end
 
         upper_bound = min(upper_bound, subprob_obj)
         if outer_tr
@@ -799,6 +737,8 @@ function scenario_benders_optimize!(omp_model::Model, omp_vars::Dict, network, �
                 push!(major_iter, iter)
                 push!(past_major_subprob_obj, subprob_obj)
                 tr_needs_update = true
+                # 논문 Algorithm 3: center가 바뀌면 새 TR에서 LB 재계산 필요
+                lower_bound = -Inf
             end
         else
             gap = abs(upper_bound - t_0_sol) / max(abs(upper_bound), 1e-10)
@@ -822,7 +762,8 @@ function scenario_benders_optimize!(omp_model::Model, omp_vars::Dict, network, �
             @info "  ✂ Pruned: localLB=$(round(lower_bound, digits=4)) > globalUB=$(round(upper_bound, digits=4)). Skipping to next stage."
         end
 
-        converged = outer_tr ? (gap <= tol || lower_bound > local_upper_bound - 1e-4) : (gap <= tol || t_0_sol > upper_bound - 1e-4)
+        is_ss_this_iter = outer_tr && @isdefined(is_serious_step) && is_serious_step
+        converged = outer_tr ? ((gap <= tol || lower_bound > local_upper_bound - 1e-4) && !is_ss_this_iter) : (gap <= tol || t_0_sol > upper_bound - 1e-4)
         if converged || pruned
             if !outer_tr
                 # No outer TR: simple convergence
@@ -884,7 +825,7 @@ function scenario_benders_optimize!(omp_model::Model, omp_vars::Dict, network, �
             # Gap still large → Add cut and continue
 
         opt_cut = add_optimality_cuts!(omp_model, omp_vars, cut_info, diag_x_E, E, diag_λ_ψ, xi_bar, d0, ϕU, λ, h, S, iter;
-            multi_cut_lf=multi_cut_lf, multi_cut_scenario=multi_cut_scenario, prefix="opt_cut", result_cuts=result[:cuts])
+            prefix="opt_cut", result_cuts=result[:cuts])
 
         println("subproblem objective: ", subprob_obj)
         @info "Optimality cut added"
@@ -939,18 +880,18 @@ function scenario_benders_optimize!(omp_model::Model, omp_vars::Dict, network, �
                         isp_data_sd, osp_cut_as_info, iter;
                         x_sol=x_sol, λ_sol=λ_sol, h_sol=h_sol, ψ0_sol=ψ0_sol,
                         x_core=cp.x, λ_core=cp.λ, h_core=cp.h, ψ0_core=cp.ψ0,
-                        multi_cut_lf=multi_cut_lf, parallel=parallel)
+                        parallel=parallel)
                 elseif strengthen_cuts == :sherali
                     str_info = evaluate_sherali_opt_cut(
                         isp_leader_instances, isp_follower_instances,
                         isp_data_sd, osp_cut_as_info, iter;
                         x_sol=x_sol, λ_sol=λ_sol, h_sol=h_sol, ψ0_sol=ψ0_sol,
                         x_core=cp.x, λ_core=cp.λ, h_core=cp.h, ψ0_core=cp.ψ0,
-                        multi_cut_lf=multi_cut_lf, parallel=parallel)
+                        parallel=parallel)
                 end
                 str_label = strengthen_cuts == :mw ? "mw" : "sherali"
                 add_optimality_cuts!(omp_model, omp_vars, str_info, diag_x_E, E, diag_λ_ψ, xi_bar, d0, ϕU, λ, h, S, iter;
-                    multi_cut_lf=multi_cut_lf, multi_cut_scenario=multi_cut_scenario, prefix="$(str_label)_cut_cp$(cp_idx)", result_cuts=result[:cuts])
+                    prefix="$(str_label)_cut_cp$(cp_idx)", result_cuts=result[:cuts])
             end
             @info "  $(length(core_points)) $(strengthen_cuts) strengthening cuts added"
         end
@@ -976,7 +917,7 @@ function scenario_benders_optimize!(omp_model::Model, omp_vars::Dict, network, �
     return result
 end
 
-function strict_benders_optimize!(omp_model::Model, omp_vars::Dict, network, ϕU, λU, γ, w, uncertainty_set; optimizer=nothing, outer_tr=false, multi_cut_lf=true, multi_cut_scenario=true, max_iter=1000, tol=1e-4, πU=ϕU, yU=ϕU, ytsU=ϕU, strengthen_cuts=:none, conic_optimizer=nothing, parallel=false)
+function strict_benders_optimize!(omp_model::Model, omp_vars::Dict, network, ϕU, λU, γ, w, uncertainty_set; optimizer=nothing, outer_tr=false, max_iter=1000, tol=1e-4, πU=ϕU, yU=ϕU, ytsU=ϕU, strengthen_cuts=:none, conic_optimizer=nothing, parallel=false)
     ### --------Begin Initialization--------
     st, λ_sol, x_sol, h_sol, ψ0_sol = initialize_omp(omp_model, omp_vars)
     x, h, λ, ψ0 = omp_vars[:x], omp_vars[:h], omp_vars[:λ], omp_vars[:ψ0]
@@ -1070,7 +1011,7 @@ function strict_benders_optimize!(omp_model::Model, omp_vars::Dict, network, ϕU
             h_sol, λ_sol, ψ0_sol = value.(omp_vars[:h]), value(omp_vars[:λ]), value.(omp_vars[:ψ0])
             t_0_sol = value(omp_vars[:t_0]) / S_total  # average over scenarios
 
-            (status, cut_info) = osp_optimize!(osp_model, osp_vars, osp_data, λ_sol, x_sol, h_sol, ψ0_sol; multi_cut_lf=multi_cut_lf)
+            (status, cut_info) = osp_optimize!(osp_model, osp_vars, osp_data, λ_sol, x_sol, h_sol, ψ0_sol)
             subprob_obj = cut_info[:obj_val]
             upper_bound = min(upper_bound, subprob_obj)
 
@@ -1113,6 +1054,8 @@ function strict_benders_optimize!(omp_model::Model, omp_vars::Dict, network, ϕU
                     push!(major_iter, iter)
                     push!(past_major_subprob_obj, subprob_obj)
                     tr_needs_update = true
+                    # 논문 Algorithm 3: center가 바뀌면 새 TR에서 LB 재계산 필요
+                    lower_bound = -Inf
                 end
             else
                 gap = abs(upper_bound - t_0_sol) / max(abs(upper_bound), 1e-10)
@@ -1128,7 +1071,8 @@ function strict_benders_optimize!(omp_model::Model, omp_vars::Dict, network, ϕU
         end
 
         # Convergence check
-        if gap <= tol || t_0_sol > upper_bound - 1e-4
+        is_ss_this_iter = outer_tr && @isdefined(is_serious_step) && is_serious_step
+        if (gap <= tol || t_0_sol > upper_bound - 1e-4) && !is_ss_this_iter
             if !outer_tr
                 # No outer TR: simple convergence
                 time_end = time()
@@ -1186,7 +1130,7 @@ function strict_benders_optimize!(omp_model::Model, omp_vars::Dict, network, ϕU
             @info "[Strict] Iter $iter: LB=$(outer_tr ? round(lower_bound, digits=4) : round(t_0_sol, digits=4))  UB=$(round(upper_bound, digits=4))  gap=$(round(gap, digits=6))  (globalUB=$(round(upper_bound, digits=4)); $(round(time()-time_start, digits=1))s)"
 
             opt_cut = add_optimality_cuts!(omp_model, omp_vars, cut_info, diag_x_E, osp_data[:E], diag_λ_ψ, xi_bar, osp_data[:d0], ϕU, λ, h, S, iter;
-                multi_cut_lf=multi_cut_lf, multi_cut_scenario=multi_cut_scenario, prefix="opt_cut", result_cuts=result[:cuts])
+                prefix="opt_cut", result_cuts=result[:cuts])
 
             println("subproblem objective: ", subprob_obj)
             @info "Optimality cut added"
@@ -1241,7 +1185,7 @@ function strict_benders_optimize!(omp_model::Model, omp_vars::Dict, network, ϕU
                     isp_cut = try
                         evaluate_master_opt_cut(
                             isp_leader_instances, isp_follower_instances,
-                            isp_data_strict, osp_cut_as_info, iter; multi_cut_lf=multi_cut_lf, parallel=parallel)
+                            isp_data_strict, osp_cut_as_info, iter; parallel=parallel)
                     catch e
                         if e isa AssertionError
                             @warn "  ISP vs OSP obj mismatch (STALL) → ISP cut + MW cuts skipped"
@@ -1255,7 +1199,7 @@ function strict_benders_optimize!(omp_model::Model, omp_vars::Dict, network, ϕU
                         # skip — assertion 실패 (STALL로 인한 ISP obj 부정확)
                     else
                         add_optimality_cuts!(omp_model, omp_vars, isp_cut, diag_x_E, osp_data[:E], diag_λ_ψ, xi_bar, osp_data[:d0], ϕU, λ, h, S, iter;
-                            multi_cut_lf=multi_cut_lf, multi_cut_scenario=multi_cut_scenario, prefix="isp_cut", result_cuts=result[:cuts])
+                            prefix="isp_cut", result_cuts=result[:cuts])
                         @info "  ISP-based cut added (Hybrid: OSP α → ISP coefficients)"
 
                         # Step B: MW cuts from core points (ISP cut 성공 시에만)
@@ -1268,9 +1212,9 @@ function strict_benders_optimize!(omp_model::Model, omp_vars::Dict, network, ϕU
                                 isp_data_strict, osp_cut_as_info, iter;
                                 x_sol=x_sol, λ_sol=λ_sol, h_sol=h_sol, ψ0_sol=ψ0_sol,
                                 x_core=cp.x, λ_core=cp.λ, h_core=cp.h, ψ0_core=cp.ψ0,
-                                multi_cut_lf=multi_cut_lf, parallel=parallel)
+                                parallel=parallel)
                             add_optimality_cuts!(omp_model, omp_vars, str_info, diag_x_E, osp_data[:E], diag_λ_ψ, xi_bar, osp_data[:d0], ϕU, λ, h, S, iter;
-                                multi_cut_lf=multi_cut_lf, multi_cut_scenario=multi_cut_scenario, prefix="mw_cut_cp$(cp_idx)", result_cuts=result[:cuts])
+                                prefix="mw_cut_cp$(cp_idx)", result_cuts=result[:cuts])
                         end
                         @info "  $(length(core_points)) mw strengthening cuts added"
                     end
@@ -1286,9 +1230,9 @@ function strict_benders_optimize!(omp_model::Model, omp_vars::Dict, network, ϕU
                             isp_data_strict, osp_cut_as_info, iter;
                             x_sol=x_sol, λ_sol=λ_sol, h_sol=h_sol, ψ0_sol=ψ0_sol,
                             x_core=cp.x, λ_core=cp.λ, h_core=cp.h, ψ0_core=cp.ψ0,
-                            multi_cut_lf=multi_cut_lf, parallel=parallel)
+                            parallel=parallel)
                         add_optimality_cuts!(omp_model, omp_vars, str_info, diag_x_E, osp_data[:E], diag_λ_ψ, xi_bar, osp_data[:d0], ϕU, λ, h, S, iter;
-                            multi_cut_lf=multi_cut_lf, multi_cut_scenario=multi_cut_scenario, prefix="sherali_cut_cp$(cp_idx)", result_cuts=result[:cuts])
+                            prefix="sherali_cut_cp$(cp_idx)", result_cuts=result[:cuts])
                     end
                     @info "  $(length(core_points)) sherali cuts added (direct, no ISP base solve)"
                 end

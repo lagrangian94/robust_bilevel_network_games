@@ -633,7 +633,7 @@ end
 #    dense 행렬 슬라이싱 (.* diag_x_E 등)을 사용하므로, compact → dense 변환이 필수.
 #    비인접 항목은 0으로 채워지므로 수학적으로 동일한 cut을 생성한다.
 # =============================================================================
-function evaluate_master_opt_cut_compact(isp_leader_instances::Dict, isp_follower_instances::Dict, isp_data::Dict, cut_info::Dict, iter::Int; multi_cut_lf=false)
+function evaluate_master_opt_cut_compact(isp_leader_instances::Dict, isp_follower_instances::Dict, isp_data::Dict, cut_info::Dict, iter::Int)
     S = isp_data[:S]
     α_sol = cut_info[:α_sol]
     num_arcs = length(isp_data[:network].arcs) - 1

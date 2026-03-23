@@ -53,7 +53,6 @@ seed = 42
 epsilon = 0.5
 ϕU = 1/epsilon # valid upper bound?
 λU = ϕU  ## 10.0 -> ϕU로 변경. λ ≤ ϕU: LDR P-bound 조건
-multi_cut_lf = true
 
 # ===== JIT Warm-up (원본만) =====
 # Julia JIT 특성상 첫 실행에서 컴파일 시간 포함.
@@ -74,10 +73,10 @@ w = round(ρ * γ * sum(warm_cap[warm_interd, :]) / (length(warm_interd) * S), d
 R, r_dict, xi_bar = build_robust_counterpart_matrices(warm_cap[1:end-1, :], epsilon)
 warm_uset = Dict(:R => R, :r_dict => r_dict, :xi_bar => xi_bar, :epsilon => epsilon)
 
-wm, wv = build_omp(network, ϕU, λU, γ, w; optimizer=Gurobi.Optimizer, multi_cut_lf=multi_cut_lf)
+wm, wv = build_omp(network, ϕU, λU, γ, w; optimizer=Gurobi.Optimizer)
 tr_nested_benders_optimize!(wm, wv, network, ϕU, λU, γ, w, warm_uset;
     mip_optimizer=Gurobi.Optimizer, conic_optimizer=Mosek.Optimizer,
-    multi_cut_lf=multi_cut_lf, outer_tr=false, inner_tr=true)
+    outer_tr=false, inner_tr=true)
 
 println("Warm-up complete.\n")
 
@@ -111,11 +110,11 @@ for test_S in [1, 2]
     uset = Dict(:R => R, :r_dict => r_dict, :xi_bar => xi_bar, :epsilon => epsilon)
 
     GC.gc()
-    model_o, vars_o = build_omp(network, ϕU, λU, γ, w; optimizer=Gurobi.Optimizer, multi_cut_lf=multi_cut_lf)
+    model_o, vars_o = build_omp(network, ϕU, λU, γ, w; optimizer=Gurobi.Optimizer)
     t_start = time()
     result_o = tr_nested_benders_optimize!(model_o, vars_o, network, ϕU, λU, γ, w, uset;
         mip_optimizer=Gurobi.Optimizer, conic_optimizer=Mosek.Optimizer,
-        multi_cut_lf=multi_cut_lf, outer_tr=false, inner_tr=true)
+        outer_tr=false, inner_tr=true)
     t_orig = time() - t_start
 
     obj_orig = haskey(result_o, :past_upper_bound) ? minimum(result_o[:past_upper_bound]) : NaN
@@ -147,8 +146,8 @@ end
     return $isp_follower_optimize_compact!(isp_follower_model, isp_follower_vars; isp_data=isp_data, uncertainty_set=uncertainty_set, λ_sol=λ_sol, x_sol=x_sol, h_sol=h_sol, ψ0_sol=ψ0_sol, α_sol=α_sol)
 end
 
-@eval Main function evaluate_master_opt_cut(isp_leader_instances::Dict, isp_follower_instances::Dict, isp_data::Dict, cut_info::Dict, iter::Int; multi_cut_lf=false)
-    return $evaluate_master_opt_cut_compact(isp_leader_instances, isp_follower_instances, isp_data, cut_info, iter; multi_cut_lf=multi_cut_lf)
+@eval Main function evaluate_master_opt_cut(isp_leader_instances::Dict, isp_follower_instances::Dict, isp_data::Dict, cut_info::Dict, iter::Int)
+    return $evaluate_master_opt_cut_compact(isp_leader_instances, isp_follower_instances, isp_data, cut_info, iter)
 end
 
 # ===== Phase 3: Compact 전체 실행 =====
@@ -170,11 +169,11 @@ for test_S in [1, 2]
     uset = Dict(:R => R, :r_dict => r_dict, :xi_bar => xi_bar, :epsilon => epsilon)
 
     GC.gc()
-    model_c, vars_c = build_omp(network, ϕU, λU, γ, w; optimizer=Gurobi.Optimizer, multi_cut_lf=multi_cut_lf)
+    model_c, vars_c = build_omp(network, ϕU, λU, γ, w; optimizer=Gurobi.Optimizer)
     t_start = time()
     result_c = tr_nested_benders_optimize!(model_c, vars_c, network, ϕU, λU, γ, w, uset;
         mip_optimizer=Gurobi.Optimizer, conic_optimizer=Mosek.Optimizer,
-        multi_cut_lf=multi_cut_lf, outer_tr=false, inner_tr=true)
+        outer_tr=false, inner_tr=true)
     t_compact = time() - t_start
 
     obj_compact = haskey(result_c, :past_upper_bound) ? minimum(result_c[:past_upper_bound]) : NaN

@@ -347,7 +347,7 @@ end
 4. **All vertices in J must be re-evaluated** when χ changes (not just binding ones).
 
 ### Critical correctness points
-- **Do NOT use `multi_cut_lf` (leader/follower separate epigraph)**. Within each vertex-scenario, the cut is leader + follower combined into one cut for `t_{j,s}`.
+- Within each vertex-scenario, the cut is leader + follower combined into one cut for `t_{j,s}`.
 - **Scenario multi-cut IS valid** here because α is fixed per vertex group.
 - **Re-evaluate all j ∈ J** at each Benders iteration, not just binding vertices.
 - **ISP parameter update**: When χ changes, ISP model parameters (RHS involving x, h, λ, ψ0) must be updated via `set_normalized_rhs` for all vertices in J.

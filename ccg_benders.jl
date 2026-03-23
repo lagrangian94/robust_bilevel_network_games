@@ -249,6 +249,63 @@ end
 
 
 # ──────────────────────────────────────────────────────────────────
+# 5b. MW cut strengthening for a vertex (per-scenario)
+# ──────────────────────────────────────────────────────────────────
+"""
+    add_mw_cuts_for_vertex!(omp_model, omp_vars, vdata, isp_data, iter;
+                            λ_sol, x_sol, h_sol, ψ0_sol, network, γ, λU, w, v_param)
+
+Vertex j의 ISP가 이미 solved 상태에서, MW cut strengthening으로 Pareto-optimal per-scenario cuts 추가.
+각 시나리오의 vertex ISP (S=1)에 대해 evaluate_mw_opt_cut을 호출.
+"""
+function add_mw_cuts_for_vertex!(omp_model, omp_vars, vdata::VertexData, isp_data::Dict, iter::Int;
+                                  λ_sol, x_sol, h_sol, ψ0_sol,
+                                  network, γ, λU, w, v_param)
+    S = isp_data[:S]
+    num_arcs = length(x_sol)
+    uncertainty_set = isp_data[:uncertainty_set]
+
+    interdictable_idx = findall(network.interdictable_arcs[1:num_arcs])
+    core_points = generate_core_points(network, γ, λU, w, v_param;
+        interdictable_idx=interdictable_idx, strategy=:interior)
+
+    for (cp_idx, cp) in enumerate(core_points)
+        mw_cut_coeff_per_s = Dict{Int, Dict}()
+        for s in 1:S
+            # vertex ISP는 S=1로 빌드 → isp_data_s1으로 호출
+            isp_data_s1 = copy(isp_data)
+            isp_data_s1[:S] = 1
+            isp_data_s1[:uncertainty_set] = Dict(
+                :R => Dict(:1 => uncertainty_set[:R][s]),
+                :r_dict => Dict(:1 => uncertainty_set[:r_dict][s]),
+                :xi_bar => Dict(:1 => uncertainty_set[:xi_bar][s]),
+                :epsilon => uncertainty_set[:epsilon])
+            cut_info_s = Dict(:α_sol => vdata.α)
+            leader_insts_s = Dict(1 => vdata.leader_instances[s])
+            follower_insts_s = Dict(1 => vdata.follower_instances[s])
+            mw_info = evaluate_mw_opt_cut(
+                leader_insts_s, follower_insts_s, isp_data_s1, cut_info_s, iter;
+                x_sol=x_sol, λ_sol=λ_sol, h_sol=h_sol, ψ0_sol=ψ0_sol,
+                x_core=cp.x, λ_core=cp.λ, h_core=cp.h, ψ0_core=cp.ψ0)
+            mw_cut_coeff_per_s[s] = Dict(
+                :Uhat1 => mw_info[:Uhat1],
+                :Uhat3 => mw_info[:Uhat3],
+                :Utilde1 => mw_info[:Utilde1],
+                :Utilde3 => mw_info[:Utilde3],
+                :Ztilde1_3 => mw_info[:Ztilde1_3],
+                :βtilde1_1 => mw_info[:βtilde1_1],
+                :βtilde1_3 => mw_info[:βtilde1_3],
+                :intercept_l => mw_info[:intercept_l][1],
+                :intercept_f => mw_info[:intercept_f][1],
+            )
+        end
+        add_scenario_cuts_to_omp!(omp_model, omp_vars, vdata,
+            mw_cut_coeff_per_s, isp_data, iter)
+    end
+end
+
+
+# ──────────────────────────────────────────────────────────────────
 # 6. Pricing phase: find worst-case vertex
 # ──────────────────────────────────────────────────────────────────
 """
@@ -286,7 +343,7 @@ function pricing_solve!(network, S, ϕU, λU, γ, w, v_param, uncertainty_set, i
         isp_data=isp_data,
         λ_sol=λ_sol, x_sol=x_sol, h_sol=h_sol, ψ0_sol=ψ0_sol,
         outer_iter=1, imp_cuts=imp_cuts,
-        inner_tr=inner_tr, tol=tol)
+        inner_tr=inner_tr)
 
     if status != :OptimalityCut
         error("Pricing IMP did not converge: status=$status")
@@ -298,6 +355,42 @@ function pricing_solve!(network, S, ϕU, λU, γ, w, v_param, uncertainty_set, i
     # Vertex optimality: α*는 vertex에 집중. argmax로 식별.
     j_star = argmax(α_sol)
 
+    if α_sol[j_star] < (w / S) - 1e-4
+        @warn "α not concentrated on vertex: α[j*]=$(α_sol[j_star]), w/S=$(w/S). Re-solving with vertex enforcement."
+
+        # Vertex-enforcing constraints: z[k] binary, α[k] ≤ z[k]·(w/S), Σz = 1
+        α_imp = imp_vars[:α]
+        z_vertex = @variable(imp_model, [k=1:num_arcs], Bin, base_name="z_vertex")
+        vertex_link_cons = @constraint(imp_model, [k=1:num_arcs], α_imp[k] <= z_vertex[k] * (w / S))
+        vertex_sum_con = @constraint(imp_model, sum(z_vertex) == 1)
+
+        # 모델 수정 후 optimize! 호출하여 valid 상태로 만듦 (tr_imp_optimize! 진입 시 value query 가능하도록)
+        optimize!(imp_model)
+
+        # Re-solve with vertex enforcement — outer_iter=1 + fresh imp_cuts로 기존 cuts 유지
+        imp_cuts_vertex = Dict{Symbol, Any}(:old_tr_constraints => nothing)
+        status2, result2 = tr_imp_optimize!(
+            imp_model, imp_vars, leader_instances, follower_instances;
+            isp_data=isp_data,
+            λ_sol=λ_sol, x_sol=x_sol, h_sol=h_sol, ψ0_sol=ψ0_sol,
+            outer_iter=1, imp_cuts=imp_cuts_vertex,
+            inner_tr=inner_tr)
+
+        if status2 != :OptimalityCut
+            error("Pricing IMP (vertex-enforced) did not converge: status=$status2")
+        end
+
+        α_sol = result2[:α_sol]
+        obj_val = result2[:obj_val]
+        j_star = argmax(α_sol)
+        @info "  [Pricing] Vertex-enforced: j*=$j_star, α[j*]=$(round(α_sol[j_star], digits=6)), obj=$(round(obj_val, digits=6))"
+
+        # Clean up vertex-enforcing constraints (다음 pricing에서 fresh build하지만 안전하게 정리)
+        delete.(imp_model, vertex_link_cons)
+        delete(imp_model, vertex_sum_con)
+        delete.(imp_model, z_vertex)
+    end
+    
     @info "  [Pricing] α_sol max=$(round(maximum(α_sol), digits=6)), j*=$j_star, " *
           "α[j*]=$(round(α_sol[j_star], digits=6)), w/S=$(round(w/S, digits=6))"
 
@@ -324,9 +417,10 @@ C&CG + Benders 메인 알고리즘.
 function ccg_benders_optimize!(network, ϕU, λU, γ, w, v_param, uncertainty_set;
                                 mip_optimizer=nothing, conic_optimizer=nothing,
                                 ε_benders=1e-4, ε_pricing=1e-4,
-                                max_ccg_iter=50, max_benders_iter=200,
+                                max_ccg_iter=50, max_benders_iter=10000,
                                 πU=ϕU, yU=ϕU, ytsU=ϕU,
-                                inner_tr=true, tol=1e-4)
+                                inner_tr=true, tol=1e-4,
+                                strengthen_cuts=:none)
     S = length(uncertainty_set[:xi_bar])
     num_arcs = length(network.arcs) - 1
     E = ones(num_arcs, num_arcs + 1)
@@ -359,7 +453,7 @@ function ccg_benders_optimize!(network, ϕU, λU, γ, w, v_param, uncertainty_se
 
     # Initial pricing: 첫 번째 vertex 탐색
     @info "===== C&CG Initialization: Pricing for initial vertex ====="
-    j_init, _, _ = pricing_solve!(network, S, ϕU, λU, γ, w, v_param, uncertainty_set, isp_data;
+    j_init, Q_init, _ = pricing_solve!(network, S, ϕU, λU, γ, w, v_param, uncertainty_set, isp_data;
         mip_optimizer=mip_optimizer, conic_optimizer=conic_optimizer,
         λ_sol=λ_sol, x_sol=x_sol, h_sol=h_sol, ψ0_sol=ψ0_sol,
         πU=πU, yU=yU, ytsU=ytsU, inner_tr=inner_tr, tol=tol)
@@ -386,7 +480,7 @@ function ccg_benders_optimize!(network, ϕU, λU, γ, w, v_param, uncertainty_se
     time_start = time()
 
     # ========== Main C&CG Loop ==========
-    upper_bound = Inf
+    upper_bound = Q_init
     t_0_sol = -Inf
 
     for ccg_iter in 1:max_ccg_iter
@@ -396,6 +490,7 @@ function ccg_benders_optimize!(network, ϕU, λU, γ, w, v_param, uncertainty_se
         # -------- Benders Phase --------
         benders_converged = false
         benders_iters = 0
+        benders_ub = Inf  # Benders phase 내 local UB (CCG iteration마다 초기화)
 
         for benders_iter in 1:max_benders_iter
             benders_iters = benders_iter
@@ -432,16 +527,25 @@ function ccg_benders_optimize!(network, ϕU, λU, γ, w, v_param, uncertainty_se
                 max_Q_j = max(max_Q_j, obj_j)
 
                 # 3. Add per-scenario cuts
+                iter_label = benders_iter + (ccg_iter - 1) * max_benders_iter
                 add_scenario_cuts_to_omp!(omp_model, omp_vars, vertex_data[j],
-                    cut_coeff_j, isp_data, benders_iter + (ccg_iter - 1) * max_benders_iter)
+                    cut_coeff_j, isp_data, iter_label)
+
+                # 4. MW cut strengthening
+                if strengthen_cuts == :mw
+                    add_mw_cuts_for_vertex!(omp_model, omp_vars, vertex_data[j], isp_data, iter_label;
+                        λ_sol=λ_sol, x_sol=x_sol, h_sol=h_sol, ψ0_sol=ψ0_sol,
+                        network=network, γ=γ, λU=λU, w=w, v_param=v_param)
+                end
             end
 
-            # 4. Update upper bound
-            upper_bound = min(upper_bound, max_Q_j)
-            gap = (t_0_sol > -Inf) ? abs(upper_bound - t_0_sol) / max(abs(upper_bound), 1e-10) : Inf
-            abs_converged = (t_0_sol > -Inf) && (t_0_sol >= upper_bound - 1e-4)
+            # 4. Benders phase convergence (local UB for this phase)
+            benders_ub = min(benders_ub, max_Q_j)
+            gap = (t_0_sol > -Inf) ? abs(benders_ub - t_0_sol) / max(abs(benders_ub), 1e-10) : Inf
+            abs_converged = (t_0_sol > -Inf) && (t_0_sol >= benders_ub - 1e-4)
 
-            @info "  [Benders] Iter $benders_iter: LB=$(round(t_0_sol, digits=6)), UB=$(round(upper_bound, digits=6)), gap=$(round(gap, digits=8))"
+            global_gap = (t_0_sol > -Inf && upper_bound < Inf) ? abs(upper_bound - t_0_sol) / max(abs(upper_bound), 1e-10) : Inf
+            @info "  [Benders] Iter $benders_iter: LB=$(round(t_0_sol, digits=6)), UB=$(round(benders_ub, digits=6)), gap=$(round(gap, digits=8)) (global LB=$(round(t_0_sol, digits=6)), UB=$(round(upper_bound, digits=6)), gap=$(round(global_gap, digits=8)))"
 
             if gap <= ε_benders || abs_converged
                 @info "  Benders phase converged. (gap=$gap, abs_converged=$abs_converged)"
@@ -467,7 +571,8 @@ function ccg_benders_optimize!(network, ϕU, λU, γ, w, v_param, uncertainty_se
             λ_sol=λ_sol, x_sol=x_sol, h_sol=h_sol, ψ0_sol=ψ0_sol,
             πU=πU, yU=yU, ytsU=ytsU, inner_tr=inner_tr, tol=tol)
 
-        @info "  [Pricing] Best vertex: j=$j_new, Q=$(round(Q_new, digits=6)), current LB=$(round(t_0_sol, digits=6))"
+        upper_bound = min(upper_bound, Q_new)  # global UB: pricing의 Q_new (= full max_α Q(α,χ*))의 minimum
+        @info "  [Pricing] Best vertex: j=$j_new, Q=$(round(Q_new, digits=6)), globalUB=$(round(upper_bound, digits=6)), LB=$(round(t_0_sol, digits=6))"
 
         if j_new in J
             @info "  Worst-case vertex j=$j_new already in J. OPTIMAL."

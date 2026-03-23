@@ -168,8 +168,8 @@ function build_imp(network, S, ϕU, λU, γ, w, v, uncertainty_set; mip_optimize
     model = Model(optimizer_with_attributes(mip_optimizer, MOI.Silent() => true))
     @variable(model, t_1_l[s=1:S], upper_bound= flow_upper)
     @variable(model, t_1_f[s=1:S], upper_bound= flow_upper)
-    @variable(model, α[k=1:num_arcs] >= 0)
-    @constraint(model, sum(α) <= w*(1/S)) # full model에선 자연스럽게 inequality가 equality가 되지만 decomposed된 imp에선 그런다는 보장이 없으므로 명시적으로 equality 유지
+    @variable(model, α[k=1:num_arcs], lower_bound=0.0, upper_bound=w/S)
+    @constraint(model, sum(α) == w*(1/S)) # full model에선 자연스럽게 inequality가 equality가 되지만 decomposed된 imp에선 그런다는 보장이 없으므로 명시적으로 equality 유지
     @objective(model, Max, (sum(t_1_l) + sum(t_1_f)) / S)
 
     vars = Dict(
@@ -281,7 +281,7 @@ function isp_follower_optimize!(isp_follower_model::Model, isp_follower_vars::Di
     end
 end
 
-function tr_imp_optimize!(imp_model::Model, imp_vars::Dict, isp_leader_instances::Dict, isp_follower_instances::Dict; isp_data=nothing, λ_sol=nothing, x_sol=nothing, h_sol=nothing, ψ0_sol=nothing, outer_iter=nothing, imp_cuts=nothing, inner_tr=true, tol=1e-4, parallel=false)
+function tr_imp_optimize!(imp_model::Model, imp_vars::Dict, isp_leader_instances::Dict, isp_follower_instances::Dict; isp_data=nothing, λ_sol=nothing, x_sol=nothing, h_sol=nothing, ψ0_sol=nothing, outer_iter=nothing, imp_cuts=nothing, inner_tr=true, tol=1e-6, parallel=false)
     st = MOI.get(imp_model, MOI.TerminationStatus())
     iter = 0
     uncertainty_set = isp_data[:uncertainty_set]
@@ -494,7 +494,7 @@ function initialize_isp(network, S, ϕU, λU, γ, w, v, uncertainty_set; conic_o
     return leader_instances, follower_instances
 end
 
-function evaluate_master_opt_cut(isp_leader_instances::Dict, isp_follower_instances::Dict, isp_data::Dict, cut_info::Dict, iter::Int; multi_cut_lf=false, parallel=false)
+function evaluate_master_opt_cut(isp_leader_instances::Dict, isp_follower_instances::Dict, isp_data::Dict, cut_info::Dict, iter::Int; parallel=false)
     """
     α를 fix 시키고 outer subproblem의 값을 다시 정확하게 구하는 코드
     """
@@ -604,7 +604,7 @@ function evaluate_mw_opt_cut(
     isp_leader_instances, isp_follower_instances, isp_data, cut_info, iter;
     x_sol, λ_sol, h_sol, ψ0_sol,
     x_core, λ_core, h_core, ψ0_core,
-    multi_cut_lf=false, parallel=false)
+    parallel=false)
 
     S = isp_data[:S]
     ϕU = isp_data[:ϕU]
@@ -772,7 +772,7 @@ function evaluate_sherali_opt_cut(
     isp_leader_instances, isp_follower_instances, isp_data, cut_info, iter;
     x_sol, λ_sol, h_sol, ψ0_sol,
     x_core, λ_core, h_core, ψ0_core,
-    ζ=1e-8, multi_cut_lf=false, parallel=false)  # ζ ≥ 1e-7 → DUAL_INFEASIBLE (see docstring)
+    ζ=1e-8, parallel=false)  # ζ ≥ 1e-7 → DUAL_INFEASIBLE (see docstring)
 
     S = isp_data[:S]
     α_sol = cut_info[:α_sol]
@@ -897,7 +897,7 @@ function evaluate_sherali_opt_cut(
 end
 
 
-function tr_nested_benders_optimize!(omp_model::Model, omp_vars::Dict, network, ϕU, λU, γ, w, uncertainty_set; mip_optimizer=nothing, conic_optimizer=nothing, multi_cut_lf=true, multi_cut_scenario=true, outer_tr=true, inner_tr=true, max_outer_iter=1000, isp_mode=:dual, tol=1e-4, πU=ϕU, yU=ϕU, ytsU=ϕU, strengthen_cuts=:none, parallel=false)
+function tr_nested_benders_optimize!(omp_model::Model, omp_vars::Dict, network, ϕU, λU, γ, w, uncertainty_set; mip_optimizer=nothing, conic_optimizer=nothing, outer_tr=true, inner_tr=true, max_outer_iter=1000, isp_mode=:dual, tol=1e-4, πU=ϕU, yU=ϕU, ytsU=ϕU, strengthen_cuts=:none, parallel=false)
     ### -------- Trust Region 초기화 --------
     if outer_tr
         num_interdictable = sum(network.interdictable_arcs)
@@ -951,6 +951,7 @@ function tr_nested_benders_optimize!(omp_model::Model, omp_vars::Dict, network, 
     past_upper_bound = []
     past_lower_bound = []
     past_local_optimizer = []
+    past_local_center = []
     major_iter = []
     bin_B_steps = [] # B_bin이 몇번째 outer loop에서 바꼈는지 체크
     # null_steps = []
@@ -1007,6 +1008,15 @@ function tr_nested_benders_optimize!(omp_model::Model, omp_vars::Dict, network, 
             h_sol, λ_sol, ψ0_sol = value.(omp_vars[:h]), value(omp_vars[:λ]), value.(omp_vars[:ψ0])
             model_estimate = value(t_0) / S_total  # average over scenarios
             lower_bound = max(lower_bound, model_estimate)
+            # # ===== DEBUG: per-iteration detail =====
+            # if outer_tr
+            #     println("  ┌─ DEBUG iter $iter ─────────────────────────────")
+            #     println("  │ x_sol arcs = $(findall(x_sol .> 0.5)),  λ=$(round(λ_sol, digits=6)),  t_0_raw=$(round(value(t_0), digits=6))")
+            #     println("  │ model_estimate (t_0/S) = $(round(model_estimate, digits=6))")
+            #     if centers[:x] !== nothing
+            #         println("  │ center arcs = $(findall(round.(centers[:x]) .> 0.5)),  ||x-center||₁ = $(Int(sum(abs.(x_sol .- round.(centers[:x])))))")
+            #     end
+            # end
             # Update primal ISP parameters (x,h,λ,ψ0 are in constraint RHS → set_normalized_rhs)
             if isp_mode != :dual
                 update_primal_isp_parameters!(primal_leader_instances, primal_follower_instances;
@@ -1014,9 +1024,9 @@ function tr_nested_benders_optimize!(omp_model::Model, omp_vars::Dict, network, 
             end
             # Outer Subproblem 풀기
             if isp_mode == :dual
-                status, cut_info = tr_imp_optimize!(imp_model, imp_vars, leader_instances, follower_instances; isp_data=isp_data, λ_sol=λ_sol, x_sol=x_sol, h_sol=h_sol, ψ0_sol=ψ0_sol, outer_iter=iter, imp_cuts=imp_cuts, inner_tr=inner_tr, tol=tol, parallel=parallel)
+                status, cut_info = tr_imp_optimize!(imp_model, imp_vars, leader_instances, follower_instances; isp_data=isp_data, λ_sol=λ_sol, x_sol=x_sol, h_sol=h_sol, ψ0_sol=ψ0_sol, outer_iter=iter, imp_cuts=imp_cuts, inner_tr=inner_tr, parallel=parallel)
             else
-                status, cut_info = tr_imp_optimize_hybrid!(imp_model, imp_vars, primal_leader_instances, primal_follower_instances; isp_data=isp_data, λ_sol=λ_sol, x_sol=x_sol, h_sol=h_sol, ψ0_sol=ψ0_sol, outer_iter=iter, imp_cuts=imp_cuts, inner_tr=inner_tr, tol=tol, parallel=parallel)
+                status, cut_info = tr_imp_optimize_hybrid!(imp_model, imp_vars, primal_leader_instances, primal_follower_instances; isp_data=isp_data, λ_sol=λ_sol, x_sol=x_sol, h_sol=h_sol, ψ0_sol=ψ0_sol, outer_iter=iter, imp_cuts=imp_cuts, inner_tr=inner_tr, parallel=parallel)
             end
             if status != :OptimalityCut
                 @warn "Outer Subproblem not optimal"
@@ -1034,6 +1044,10 @@ function tr_nested_benders_optimize!(omp_model::Model, omp_vars::Dict, network, 
             # Measure of progress
             gap = abs(local_upper_bound - lower_bound) / max(abs(local_upper_bound), 1e-10)
             if outer_tr
+                # ===== DEBUG: subprob + bounds =====
+                println("  │ subprob_obj = $(round(subprob_obj, digits=6)),  inner_iters = $(cut_info[:iter])")
+                println("  │ LB = $(round(lower_bound, digits=6)),  localUB = $(round(local_upper_bound, digits=6)),  globalUB = $(round(upper_bound, digits=6)),  gap = $(round(gap, digits=8))")
+
                 if iter==1
                     push!(past_major_subprob_obj, subprob_obj)
                 end
@@ -1053,9 +1067,18 @@ function tr_nested_benders_optimize!(omp_model::Model, omp_vars::Dict, network, 
                     push!(past_major_subprob_obj, subprob_obj)
                     # TR constraint needs an update with new center
                     tr_needs_update = true
+                    # 논문 Algorithm 3: center가 바뀌면 새 TR에서 LB 재계산 필요
+                    lower_bound = -Inf
                 end
+                # ===== DEBUG: serious/null step =====
+                println("  │ past_major_subprob_obj[end] = $(round(past_major_subprob_obj[end], digits=6)),  improvement = $(round(improvement, digits=6)),  β_dynamic = $(round(β_dynamic, digits=8))")
+                println("  │ $(is_serious_step ? "★ SERIOUS STEP" : "  null step")")
             end
-            @info "[Outer-$isp_mode] Iter $iter: localLB=$(round(lower_bound, digits=4))  localUB=$(round(local_upper_bound, digits=4))  localGap=$(round(gap, digits=6))  (globalUB=$(round(upper_bound, digits=4)); $(round(time()-time_start, digits=1))s)"
+            if outer_tr
+                @info "[Outer-$isp_mode] Stage $(B_bin_stage)/$(length(B_bin_sequence)) Iter $iter: localLB=$(round(lower_bound, digits=4))  localUB=$(round(local_upper_bound, digits=4))  localGap=$(round(gap, digits=6))  (globalUB=$(round(upper_bound, digits=4)); $(round(time()-time_start, digits=1))s)"
+            else
+                @info "[Outer-$isp_mode] Iter $iter: LB=$(round(lower_bound, digits=4))  UB=$(round(upper_bound, digits=4))  Gap=$(round(gap, digits=6))  ($(round(time()-time_start, digits=1))s)"
+            end
             # 배열에 history 저장
             push!(past_lower_bound, lower_bound)
             push!(past_model_estimate, model_estimate)
@@ -1067,7 +1090,14 @@ function tr_nested_benders_optimize!(omp_model::Model, omp_vars::Dict, network, 
         if pruned
             @info "  ✂ Pruned: localLB=$(round(lower_bound, digits=4)) > globalUB=$(round(upper_bound, digits=4)). Skipping to next stage."
         end
-        converged = gap <= tol || lower_bound > local_upper_bound - 1e-4
+        # 논문 Algorithm 3: convergence check는 SS 이전 (Step 2 < Step 3)
+        # SS와 convergence 동시 발생 방지: SS 발생 시 새 center 주변 재탐색 필요
+        is_ss_this_iter = outer_tr && @isdefined(is_serious_step) && is_serious_step
+        converged = (gap <= tol || lower_bound > local_upper_bound - 1e-4) && !is_ss_this_iter
+        if outer_tr && (converged || pruned)
+            println("  │ ▶ CONVERGED/PRUNED: gap=$(round(gap, digits=8)), LB=$(round(lower_bound, digits=6)) vs localUB=$(round(local_upper_bound, digits=6))")
+            println("  └──────────────────────────────────────────────")
+        end
         if converged || pruned
             if !outer_tr
                 # No outer TR: simple convergence
@@ -1089,7 +1119,13 @@ function tr_nested_benders_optimize!(omp_model::Model, omp_vars::Dict, network, 
                 push!(bin_B_steps, iter)
                 push!(past_local_lower_bound, lower_bound)
                 push!(past_local_optimizer, Dict(:x=>value.(x_sol), :h=>value.(h_sol), :λ=>value.(λ_sol), :ψ0=>value.(ψ0_sol)))
+                push!(past_local_center, copy(centers[:x]))
                 @info "  ✓ Local optimal reached! Expanding B_bin to $B_bin"
+                println("  ★★ STAGE $(B_bin_stage-1) → $(B_bin_stage) 전환 ★★")
+                println("  localLB = $lower_bound,  localUB = $local_upper_bound,  globalUB = $upper_bound")
+                println("  center = $(findall(round.(centers[:x]) .> 0.5))")
+                println("  past_model_estimate = $(round.(past_model_estimate, digits=4))")
+                println("  past_minor_subprob_obj = $(round.(past_minor_subprob_obj, digits=4))")
                 # TR constraint needs update (B_bin changed)
                 tr_needs_update = true
                 @info "Updating Trust Region"
@@ -1118,6 +1154,11 @@ function tr_nested_benders_optimize!(omp_model::Model, omp_vars::Dict, network, 
                 time_end = time()
                 result[:solution_time] = time_end - time_start
                 @info "  ✓✓ GLOBAL OPTIMAL! (B_bin = full region)"
+                # 마지막 stage 결과도 push
+                push!(bin_B_steps, iter)
+                push!(past_local_lower_bound, lower_bound)
+                push!(past_local_optimizer, Dict(:x=>value.(x_sol), :h=>value.(h_sol), :λ=>value.(λ_sol), :ψ0=>value.(ψ0_sol)))
+                push!(past_local_center, copy(centers[:x]))
                 # past_local_lower_bound 배열에서 최소값의 인덱스를 찾음
                 min_idx = argmin(past_local_lower_bound)
                 global_lower_bound = past_local_lower_bound[min_idx]
@@ -1127,6 +1168,7 @@ function tr_nested_benders_optimize!(omp_model::Model, omp_vars::Dict, network, 
 
                 result[:past_lower_bound] = past_lower_bound
                 result[:past_local_lower_bound] = past_local_lower_bound
+                result[:past_local_center] = past_local_center
                 result[:past_minor_subprob_obj] = past_minor_subprob_obj
                 result[:past_major_subprob_obj] = past_major_subprob_obj
                 result[:past_upper_bound] = past_upper_bound
@@ -1159,14 +1201,14 @@ function tr_nested_benders_optimize!(omp_model::Model, omp_vars::Dict, network, 
                 outer_cut_info = evaluate_master_opt_cut_from_primal(
                     primal_leader_instances, primal_follower_instances,
                     isp_data, cut_info, iter;
-                    λ_sol=λ_sol, x_sol=x_sol, h_sol=h_sol, ψ0_sol=ψ0_sol, multi_cut_lf=multi_cut_lf)
+                    λ_sol=λ_sol, x_sol=x_sol, h_sol=h_sol, ψ0_sol=ψ0_sol)
             elseif isp_mode == :hybrid
                 outer_cut_info = primal_evaluate_master_opt_cut(
                     leader_instances, follower_instances,
                     isp_data, cut_info, iter;
-                    λ_sol=λ_sol, x_sol=x_sol, h_sol=h_sol, ψ0_sol=ψ0_sol, multi_cut_lf=multi_cut_lf)
+                    λ_sol=λ_sol, x_sol=x_sol, h_sol=h_sol, ψ0_sol=ψ0_sol)
             else
-                outer_cut_info = evaluate_master_opt_cut(leader_instances, follower_instances, isp_data, cut_info, iter, multi_cut_lf=multi_cut_lf, parallel=parallel)
+                outer_cut_info = evaluate_master_opt_cut(leader_instances, follower_instances, isp_data, cut_info, iter, parallel=parallel)
             end
             # Debug logging
             push!(result[:debug_α], cut_info[:α_sol])
@@ -1182,7 +1224,7 @@ function tr_nested_benders_optimize!(omp_model::Model, omp_vars::Dict, network, 
                 :Ztilde1_3 => norm(outer_cut_info[:Ztilde1_3]),
             ))
             opt_cut = add_optimality_cuts!(omp_model, omp_vars, outer_cut_info, diag_x_E, isp_data[:E], diag_λ_ψ, xi_bar, isp_data[:d0], ϕU, λ, h, S, iter;
-                multi_cut_lf=multi_cut_lf, multi_cut_scenario=multi_cut_scenario, prefix="opt_cut", result_cuts=result[:cuts])
+                prefix="opt_cut", result_cuts=result[:cuts])
             y = Dict(
                 [omp_vars[:x][k] => x_sol[k] for k in 1:num_arcs]...,
                 [omp_vars[:h][k] => h_sol[k] for k in 1:num_arcs]...,
@@ -1200,9 +1242,13 @@ function tr_nested_benders_optimize!(omp_model::Model, omp_vars::Dict, network, 
                 end
                 return eval_result
             end
-            if abs(subprob_obj * S_total - evaluate_expr(opt_cut, y)) > 1e-3  # opt_cut is raw, subprob_obj is /S
+            opt_cut_val_at_xsol = evaluate_expr(opt_cut, y)
+            if abs(subprob_obj * S_total - opt_cut_val_at_xsol) > 1e-3  # opt_cut is raw, subprob_obj is /S
                 println("something went wrong")
                 @infiltrate
+            end
+            if outer_tr
+                println("  │ opt_cut at x_sol = $(round(opt_cut_val_at_xsol, digits=6)) (should ≈ subprob*S = $(round(subprob_obj * S_total, digits=6)))")
             end
             println("subproblem objective: ", subprob_obj)
             @info "Optimality cut added"
@@ -1218,17 +1264,26 @@ function tr_nested_benders_optimize!(omp_model::Model, omp_vars::Dict, network, 
                             leader_instances, follower_instances, isp_data, cut_info, iter;
                             x_sol=x_sol, λ_sol=λ_sol, h_sol=h_sol, ψ0_sol=ψ0_sol,
                             x_core=cp.x, λ_core=cp.λ, h_core=cp.h, ψ0_core=cp.ψ0,
-                            multi_cut_lf=multi_cut_lf, parallel=parallel)
+                            parallel=parallel)
                     elseif strengthen_cuts == :sherali
                         str_info = evaluate_sherali_opt_cut(
                             leader_instances, follower_instances, isp_data, cut_info, iter;
                             x_sol=x_sol, λ_sol=λ_sol, h_sol=h_sol, ψ0_sol=ψ0_sol,
                             x_core=cp.x, λ_core=cp.λ, h_core=cp.h, ψ0_core=cp.ψ0,
-                            multi_cut_lf=multi_cut_lf, parallel=parallel)
+                            parallel=parallel)
                     end
                     str_label = strengthen_cuts == :mw ? "mw" : "sherali"
-                    add_optimality_cuts!(omp_model, omp_vars, str_info, diag_x_E, isp_data[:E], diag_λ_ψ, xi_bar, isp_data[:d0], ϕU, λ, h, S, iter;
-                        multi_cut_lf=multi_cut_lf, multi_cut_scenario=multi_cut_scenario, prefix="$(str_label)_cut_cp$(cp_idx)", result_cuts=result[:cuts])
+                    str_cut = add_optimality_cuts!(omp_model, omp_vars, str_info, diag_x_E, isp_data[:E], diag_λ_ψ, xi_bar, isp_data[:d0], ϕU, λ, h, S, iter;
+                        prefix="$(str_label)_cut_cp$(cp_idx)", result_cuts=result[:cuts])
+                    # MW/Sherali cut validation: x_sol에서 평가하여 subprob_obj*S 초과 여부 확인
+                    str_cut_val = evaluate_expr(str_cut, y)
+                    if outer_tr
+                        println("  │ $(str_label)_cut_cp$(cp_idx) at x_sol = $(round(str_cut_val, digits=6))  (diff from opt = $(round(str_cut_val - opt_cut_val_at_xsol, digits=6)))")
+                    end
+                    # if str_cut_val > subprob_obj * S_total + 1e-3
+                    #     @warn "  ⚠ INVALID $(str_label) cut cp$(cp_idx) at iter $iter: cut_val=$(round(str_cut_val, digits=6)) > subprob*S=$(round(subprob_obj * S_total, digits=6))  (excess=$(round(str_cut_val - subprob_obj * S_total, digits=6)))"
+                    #     @infiltrate
+                    # end
                 end
                 @info "  $(length(core_points)) $(strengthen_cuts) strengthening cuts added"
             end
@@ -1238,6 +1293,10 @@ function tr_nested_benders_optimize!(omp_model::Model, omp_vars::Dict, network, 
                 @info "Updating Trust Region"
                 tr_constraints = update_outer_trust_region_constraints!(
                     omp_model, omp_vars, centers, B_bin, B_con, tr_constraints, network)
+                println("  │ TR updated: center=$(findall(round.(centers[:x]) .> 0.5)), B_bin=$B_bin")
+            end
+            if outer_tr
+                println("  └──────────────────────────────────────────────")
             end
         end
     end
@@ -1250,7 +1309,7 @@ end
 
 
 function tr_nested_benders_optimize_hybrid!(omp_model::Model, omp_vars::Dict, network, ϕU, λU, γ, w, uncertainty_set;
-    mip_optimizer=nothing, conic_optimizer=nothing, multi_cut_lf=false, multi_cut_scenario=false, outer_tr=true, inner_tr=true, max_outer_iter=1000, full_primal=false, tol=1e-4, πU=ϕU, yU=ϕU, ytsU=ϕU, strengthen_cuts=:none)
+    mip_optimizer=nothing, conic_optimizer=nothing, outer_tr=true, inner_tr=true, max_outer_iter=1000, full_primal=false, tol=1e-4, πU=ϕU, yU=ϕU, ytsU=ϕU, strengthen_cuts=:none)
 
     # full_primal=true is NOT recommended.
     # Outer cut extraction via Mosek IPM shadow prices (evaluate_master_opt_cut_from_primal)
@@ -1312,6 +1371,7 @@ function tr_nested_benders_optimize_hybrid!(omp_model::Model, omp_vars::Dict, ne
     past_upper_bound = []
     past_lower_bound = []
     past_local_optimizer = []
+    past_local_center = []
     major_iter = []
     bin_B_steps = []
     imp_cuts = Dict{Symbol, Any}(:old_tr_constraints => nothing)
@@ -1411,9 +1471,15 @@ function tr_nested_benders_optimize_hybrid!(omp_model::Model, omp_vars::Dict, ne
                     push!(major_iter, iter)
                     push!(past_major_subprob_obj, subprob_obj)
                     tr_needs_update = true
+                    # 논문 Algorithm 3: center가 바뀌면 새 TR에서 LB 재계산 필요
+                    lower_bound = -Inf
                 end
             end
-            @info "[Outer-$(full_primal ? "FullPrimal" : "Hybrid")] Iter $iter: localLB=$(round(lower_bound, digits=4))  localUB=$(round(local_upper_bound, digits=4))  localGap=$(round(gap, digits=6))  (globalUB=$(round(upper_bound, digits=4)); $(round(time()-time_start, digits=1))s)"
+            if outer_tr
+                @info "[Outer-$(full_primal ? "FullPrimal" : "Hybrid")] Stage $(B_bin_stage)/$(length(B_bin_sequence)) Iter $iter: localLB=$(round(lower_bound, digits=4))  localUB=$(round(local_upper_bound, digits=4))  localGap=$(round(gap, digits=6))  (globalUB=$(round(upper_bound, digits=4)); $(round(time()-time_start, digits=1))s)"
+            else
+                @info "[Outer-$(full_primal ? "FullPrimal" : "Hybrid")] Iter $iter: LB=$(round(lower_bound, digits=4))  UB=$(round(upper_bound, digits=4))  Gap=$(round(gap, digits=6))  ($(round(time()-time_start, digits=1))s)"
+            end
             push!(past_lower_bound, lower_bound)
             push!(past_model_estimate, model_estimate)
             push!(past_minor_subprob_obj, subprob_obj)
@@ -1424,7 +1490,9 @@ function tr_nested_benders_optimize_hybrid!(omp_model::Model, omp_vars::Dict, ne
         if pruned
             @info "  ✂ Pruned: localLB=$(round(lower_bound, digits=4)) > globalUB=$(round(upper_bound, digits=4)). Skipping to next stage."
         end
-        converged = gap <= tol || lower_bound > local_upper_bound - 1e-4
+        # 논문 Algorithm 3: SS와 convergence 동시 발생 방지
+        is_ss_this_iter = outer_tr && @isdefined(is_serious_step) && is_serious_step
+        converged = (gap <= tol || lower_bound > local_upper_bound - 1e-4) && !is_ss_this_iter
         if converged || pruned
             if !outer_tr
                 time_end = time()
@@ -1443,6 +1511,7 @@ function tr_nested_benders_optimize_hybrid!(omp_model::Model, omp_vars::Dict, ne
                 push!(bin_B_steps, iter)
                 push!(past_local_lower_bound, lower_bound)
                 push!(past_local_optimizer, Dict(:x=>value.(x_sol), :h=>value.(h_sol), :λ=>value.(λ_sol), :ψ0=>value.(ψ0_sol)))
+                push!(past_local_center, copy(centers[:x]))
                 @info "  ✓ Local optimal reached! Expanding B_bin to $B_bin"
                 tr_needs_update = true
                 @info "Updating Trust Region"
@@ -1455,6 +1524,11 @@ function tr_nested_benders_optimize_hybrid!(omp_model::Model, omp_vars::Dict, ne
                 time_end = time()
                 result[:solution_time] = time_end - time_start
                 @info "  ✓✓ GLOBAL OPTIMAL (hybrid)! (B_bin = full region)"
+                # 마지막 stage 결과도 push
+                push!(bin_B_steps, iter)
+                push!(past_local_lower_bound, lower_bound)
+                push!(past_local_optimizer, Dict(:x=>value.(x_sol), :h=>value.(h_sol), :λ=>value.(λ_sol), :ψ0=>value.(ψ0_sol)))
+                push!(past_local_center, copy(centers[:x]))
                 min_idx = argmin(past_local_lower_bound)
                 global_lower_bound = past_local_lower_bound[min_idx]
                 iter_when_global_optimal = bin_B_steps[min_idx]
@@ -1463,6 +1537,7 @@ function tr_nested_benders_optimize_hybrid!(omp_model::Model, omp_vars::Dict, ne
 
                 result[:past_lower_bound] = past_lower_bound
                 result[:past_local_lower_bound] = past_local_lower_bound
+                result[:past_local_center] = past_local_center
                 result[:past_minor_subprob_obj] = past_minor_subprob_obj
                 result[:past_major_subprob_obj] = past_major_subprob_obj
                 result[:past_upper_bound] = past_upper_bound
@@ -1480,18 +1555,16 @@ function tr_nested_benders_optimize_hybrid!(omp_model::Model, omp_vars::Dict, ne
                 outer_cut_info = evaluate_master_opt_cut_from_primal(
                     primal_leader_instances, primal_follower_instances,
                     isp_data, cut_info, iter;
-                    λ_sol=λ_sol, x_sol=x_sol, h_sol=h_sol, ψ0_sol=ψ0_sol,
-                    multi_cut_lf=multi_cut_lf)
+                    λ_sol=λ_sol, x_sol=x_sol, h_sol=h_sol, ψ0_sol=ψ0_sol)
             else
                 outer_cut_info = primal_evaluate_master_opt_cut(
                     dual_leader_instances, dual_follower_instances,
                     isp_data, cut_info, iter;
-                    λ_sol=λ_sol, x_sol=x_sol, h_sol=h_sol, ψ0_sol=ψ0_sol,
-                    multi_cut_lf=multi_cut_lf)
+                    λ_sol=λ_sol, x_sol=x_sol, h_sol=h_sol, ψ0_sol=ψ0_sol)
             end
 
             opt_cut = add_optimality_cuts!(omp_model, omp_vars, outer_cut_info, diag_x_E, isp_data[:E], diag_λ_ψ, xi_bar_local, isp_data[:d0], ϕU, λ, h, S, iter;
-                multi_cut_lf=multi_cut_lf, multi_cut_scenario=multi_cut_scenario, prefix="opt_cut", result_cuts=result[:cuts])
+                prefix="opt_cut", result_cuts=result[:cuts])
 
             y = Dict(
                 [omp_vars[:x][k] => x_sol[k] for k in 1:num_arcs]...,
@@ -1528,17 +1601,17 @@ function tr_nested_benders_optimize_hybrid!(omp_model::Model, omp_vars::Dict, ne
                             dual_leader_instances, dual_follower_instances, isp_data, cut_info, iter;
                             x_sol=x_sol, λ_sol=λ_sol, h_sol=h_sol, ψ0_sol=ψ0_sol,
                             x_core=cp.x, λ_core=cp.λ, h_core=cp.h, ψ0_core=cp.ψ0,
-                            multi_cut_lf=multi_cut_lf, parallel=parallel)
+                            parallel=parallel)
                     elseif strengthen_cuts == :sherali
                         str_info = evaluate_sherali_opt_cut(
                             dual_leader_instances, dual_follower_instances, isp_data, cut_info, iter;
                             x_sol=x_sol, λ_sol=λ_sol, h_sol=h_sol, ψ0_sol=ψ0_sol,
                             x_core=cp.x, λ_core=cp.λ, h_core=cp.h, ψ0_core=cp.ψ0,
-                            multi_cut_lf=multi_cut_lf, parallel=parallel)
+                            parallel=parallel)
                     end
                     str_label = strengthen_cuts == :mw ? "mw" : "sherali"
                     add_optimality_cuts!(omp_model, omp_vars, str_info, diag_x_E, isp_data[:E], diag_λ_ψ, xi_bar_local, isp_data[:d0], ϕU, λ, h, S, iter;
-                        multi_cut_lf=multi_cut_lf, multi_cut_scenario=multi_cut_scenario, prefix="$(str_label)_cut_cp$(cp_idx)", result_cuts=result[:cuts])
+                        prefix="$(str_label)_cut_cp$(cp_idx)", result_cuts=result[:cuts])
                 end
                 @info "  $(length(core_points)) $(strengthen_cuts) strengthening cuts added (hybrid)"
             end

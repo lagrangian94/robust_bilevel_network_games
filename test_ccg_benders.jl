@@ -67,7 +67,7 @@ println("1. STRICT BENDERS (baseline)")
 println("=" ^ 60)
 
 GC.gc()
-model1, vars1 = build_omp(network, ϕU, λU, γ, w; optimizer=Gurobi.Optimizer, multi_cut_lf=true, S=S)
+model1, vars1 = build_omp(network, ϕU, λU, γ, w; optimizer=Gurobi.Optimizer, S=S)
 t1_start = time()
 result1 = strict_benders_optimize!(model1, vars1, network, ϕU, λU, γ, w, uncertainty_set;
     optimizer=Gurobi.Optimizer, πU=πU, yU=yU, ytsU=ytsU)

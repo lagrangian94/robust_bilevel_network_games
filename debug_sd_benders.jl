@@ -29,7 +29,6 @@ epsilon = 0.5
 γ_ratio = 0.10
 ρ = 0.2
 v = 1.0
-multi_cut_lf = true
 network = generate_polska_network()
 print_realworld_network_summary(network)
 num_arcs = length(network.arcs) - 1
