@@ -181,18 +181,18 @@ results = Dict{String, Any}()
 #     println("  Termination status: $t0_status (no optimal solution)")
 # end
 # println("\n>> Full Model time: $(results["full_model"]) seconds")
-# ===== 1. Strict Benders =====
-println("\n" * "="^80)
-println("1. STRICT BENDERS DECOMPOSITION (multi-cut)")
-println("="^80)
+# # ===== 1. Strict Benders =====
+# println("\n" * "="^80)
+# println("1. STRICT BENDERS DECOMPOSITION (multi-cut)")
+# println("="^80)
 
-GC.gc()
-model1, vars1 = build_omp(network, ϕU, λU, γ, w; optimizer=Gurobi.Optimizer, S=S)
-t1_start = time()
-result1 = strict_benders_optimize!(model1, vars1, network, ϕU, λU, γ, w, uncertainty_set; optimizer=Gurobi.Optimizer, πU=πU, yU=yU, ytsU=ytsU, strengthen_cuts=strengthen_cuts)
-t1_end = time()
-results["strict_benders"] = t1_end - t1_start
-println("\n>> Strict Benders time: $(results["strict_benders"]) seconds")
+# GC.gc()
+# model1, vars1 = build_omp(network, ϕU, λU, γ, w; optimizer=Gurobi.Optimizer, S=S)
+# t1_start = time()
+# result1 = strict_benders_optimize!(model1, vars1, network, ϕU, λU, γ, w, uncertainty_set; optimizer=Gurobi.Optimizer, πU=πU, yU=yU, ytsU=ytsU, strengthen_cuts=strengthen_cuts)
+# t1_end = time()
+# results["strict_benders"] = t1_end - t1_start
+# println("\n>> Strict Benders time: $(results["strict_benders"]) seconds")
 # @infiltrate
 # # ===== 2. TR Nested Benders — Dual (T,T) =====
 # println("\n" * "="^80)
@@ -214,23 +214,23 @@ println("\n>> Strict Benders time: $(results["strict_benders"]) seconds")
 # @infiltrate
 # # # TODO:: solve only subset of scenarios (partial solve; 첫번째에선 다 풀어서 하한 다 찾아놓음) (upper bound eval. = iter N번마다 한번씩 full evaluate)
 # ===== 2.5. Scenario-Decomposed Benders =====
-println("\n" * "="^80)
-println("2.5. SCENARIO-DECOMPOSED BENDERS (OMP → S × OSP(s=1))")
-println("="^80)
-"""
-# >> Scenario-Decomposed Benders time: 1623.7960000038147 seconds
+# println("\n" * "="^80)
+# println("2.5. SCENARIO-DECOMPOSED BENDERS (OMP → S × OSP(s=1))")
+# println("="^80)
 # """
+# # >> Scenario-Decomposed Benders time: 1623.7960000038147 seconds
+# # """
 
-GC.gc()
-model_sd, vars_sd = build_omp(network, ϕU, λU, γ, w; optimizer=Gurobi.Optimizer, S=S)
-t_sd_start = time()
-result_sd = scenario_benders_optimize!(model_sd, vars_sd, network, ϕU, λU, γ, w, v, uncertainty_set;
-    conic_optimizer=Mosek.Optimizer, mip_optimizer=Gurobi.Optimizer,
-    πU=πU, yU=yU, ytsU=ytsU, parallel=true, strengthen_cuts=strengthen_cuts, outer_tr=true,inner_tr=true)
-t_sd_end = time()
-results["scenario_decomposed"] = t_sd_end - t_sd_start
-println("\n>> Scenario-Decomposed Benders time: $(results["scenario_decomposed"]) seconds")
-@infiltrate
+# GC.gc()
+# model_sd, vars_sd = build_omp(network, ϕU, λU, γ, w; optimizer=Gurobi.Optimizer, S=S)
+# t_sd_start = time()
+# result_sd = scenario_benders_optimize!(model_sd, vars_sd, network, ϕU, λU, γ, w, v, uncertainty_set;
+#     conic_optimizer=Mosek.Optimizer, mip_optimizer=Gurobi.Optimizer,
+#     πU=πU, yU=yU, ytsU=ytsU, parallel=true, strengthen_cuts=strengthen_cuts, outer_tr=true,inner_tr=true)
+# t_sd_end = time()
+# results["scenario_decomposed"] = t_sd_end - t_sd_start
+# println("\n>> Scenario-Decomposed Benders time: $(results["scenario_decomposed"]) seconds")
+# @infiltrate
 # ===== 3. C&CG Benders =====
 println("\n" * "="^80)
 println("3. C&CG BENDERS (vertex enumeration + per-scenario Benders)")
@@ -240,11 +240,11 @@ GC.gc()
 t3_start = time()
 result3 = ccg_benders_optimize!(network, ϕU, λU, γ, w, v, uncertainty_set;
     mip_optimizer=Gurobi.Optimizer, conic_optimizer=Mosek.Optimizer,
-    πU=πU, yU=yU, ytsU=ytsU, inner_tr=true, strengthen_cuts=strengthen_cuts)
+    πU=πU, yU=yU, ytsU=ytsU, inner_tr=true, strengthen_cuts=strengthen_cuts, warm_start_cuts=true)
 t3_end = time()
 results["ccg_benders"] = t3_end - t3_start
 println("\n>> C&CG Benders time: $(results["ccg_benders"]) seconds")
-
+@infiltrate
 # # ===== Summary =====
 # println("\n" * "="^80)
 # println("COMPARISON SUMMARY")

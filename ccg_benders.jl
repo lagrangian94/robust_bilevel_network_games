@@ -249,6 +249,34 @@ end
 
 
 # ──────────────────────────────────────────────────────────────────
+# 5a-2. Convert evaluate_master_opt_cut format → per-scenario dict
+# ──────────────────────────────────────────────────────────────────
+"""
+    convert_to_per_scenario_cuts(master_cut_info, S)
+
+evaluate_master_opt_cut 반환값 (concatenated [S x ...]) → per-scenario Dict{Int, Dict} 변환.
+add_scenario_cuts_to_omp!에서 사용 가능한 형식으로 변환.
+"""
+function convert_to_per_scenario_cuts(info::Dict, S::Int)
+    per_s = Dict{Int, Dict}()
+    for s in 1:S
+        per_s[s] = Dict(
+            :Uhat1 => info[:Uhat1][s:s, :, :],
+            :Uhat3 => info[:Uhat3][s:s, :, :],
+            :Utilde1 => info[:Utilde1][s:s, :, :],
+            :Utilde3 => info[:Utilde3][s:s, :, :],
+            :Ztilde1_3 => info[:Ztilde1_3][s:s, :, :],
+            :βtilde1_1 => info[:βtilde1_1][s:s, :],
+            :βtilde1_3 => info[:βtilde1_3][s:s, :],
+            :intercept_l => info[:intercept_l][s],
+            :intercept_f => info[:intercept_f][s],
+        )
+    end
+    return per_s
+end
+
+
+# ──────────────────────────────────────────────────────────────────
 # 5b. MW cut strengthening for a vertex (per-scenario)
 # ──────────────────────────────────────────────────────────────────
 """
@@ -322,7 +350,8 @@ function pricing_solve!(network, S, ϕU, λU, γ, w, v_param, uncertainty_set, i
                         mip_optimizer=nothing, conic_optimizer=nothing,
                         λ_sol=nothing, x_sol=nothing, h_sol=nothing, ψ0_sol=nothing,
                         πU=ϕU, yU=ϕU, ytsU=ϕU,
-                        inner_tr=true, tol=1e-4)
+                        inner_tr=true, tol=1e-4,
+                        warm_start_cuts=false)
     num_arcs = length(network.arcs) - 1
 
     # Build fresh IMP + ISP instances
@@ -394,7 +423,32 @@ function pricing_solve!(network, S, ϕU, λU, γ, w, v_param, uncertainty_set, i
     @info "  [Pricing] α_sol max=$(round(maximum(α_sol), digits=6)), j*=$j_star, " *
           "α[j*]=$(round(α_sol[j_star], digits=6)), w/S=$(round(w/S, digits=6))"
 
-    return j_star, obj_val, α_sol
+    # Warm-start cuts: evaluate_master_opt_cut + MW strengthening
+    pricing_cuts = nothing
+    pricing_mw_cuts = nothing
+    if warm_start_cuts
+        α_vertex = zeros(num_arcs)
+        α_vertex[j_star] = w / S
+        cut_info_for_eval = Dict(:α_sol => α_vertex, :obj_val => obj_val)
+        pricing_cuts = evaluate_master_opt_cut(
+            leader_instances, follower_instances, isp_data, cut_info_for_eval, 0)
+
+        # MW strengthening (ISP가 이미 solved 상태)
+        interdictable_idx = findall(network.interdictable_arcs[1:num_arcs])
+        core_points = generate_core_points(network, γ, λU, w, v_param;
+            interdictable_idx=interdictable_idx, strategy=:interior)
+        pricing_mw_cuts = []
+        for (cp_idx, cp) in enumerate(core_points)
+            mw_info = evaluate_mw_opt_cut(
+                leader_instances, follower_instances, isp_data, cut_info_for_eval, 0;
+                x_sol=x_sol, λ_sol=λ_sol, h_sol=h_sol, ψ0_sol=ψ0_sol,
+                x_core=cp.x, λ_core=cp.λ, h_core=cp.h, ψ0_core=cp.ψ0)
+            push!(pricing_mw_cuts, mw_info)
+        end
+        @info "  [Pricing] Warm-start cuts + $(length(pricing_mw_cuts)) MW cuts extracted for vertex j=$j_star"
+    end
+
+    return j_star, obj_val, α_sol, pricing_cuts, pricing_mw_cuts
 end
 
 
@@ -420,7 +474,8 @@ function ccg_benders_optimize!(network, ϕU, λU, γ, w, v_param, uncertainty_se
                                 max_ccg_iter=50, max_benders_iter=10000,
                                 πU=ϕU, yU=ϕU, ytsU=ϕU,
                                 inner_tr=true, tol=1e-4,
-                                strengthen_cuts=:none)
+                                strengthen_cuts=:none,
+                                warm_start_cuts=false)
     S = length(uncertainty_set[:xi_bar])
     num_arcs = length(network.arcs) - 1
     E = ones(num_arcs, num_arcs + 1)
@@ -453,10 +508,11 @@ function ccg_benders_optimize!(network, ϕU, λU, γ, w, v_param, uncertainty_se
 
     # Initial pricing: 첫 번째 vertex 탐색
     @info "===== C&CG Initialization: Pricing for initial vertex ====="
-    j_init, Q_init, _ = pricing_solve!(network, S, ϕU, λU, γ, w, v_param, uncertainty_set, isp_data;
+    j_init, Q_init, _, init_pricing_cuts, init_mw_cuts = pricing_solve!(network, S, ϕU, λU, γ, w, v_param, uncertainty_set, isp_data;
         mip_optimizer=mip_optimizer, conic_optimizer=conic_optimizer,
         λ_sol=λ_sol, x_sol=x_sol, h_sol=h_sol, ψ0_sol=ψ0_sol,
-        πU=πU, yU=yU, ytsU=ytsU, inner_tr=inner_tr, tol=tol)
+        πU=πU, yU=yU, ytsU=ytsU, inner_tr=inner_tr, tol=tol,
+        warm_start_cuts=warm_start_cuts)
 
     # Active vertex set
     J = Set{Int}()
@@ -467,6 +523,21 @@ function ccg_benders_optimize!(network, ϕU, λU, γ, w, v_param, uncertainty_se
     vertex_data[j_init] = build_vertex_isps(j_init, network, S, ϕU, λU, γ, w, v_param, uncertainty_set;
         conic_optimizer=conic_optimizer, λ_sol=λ_sol, x_sol=x_sol, h_sol=h_sol, ψ0_sol=ψ0_sol,
         πU=πU, yU=yU, ytsU=ytsU)
+
+    # Warm-start: pricing에서 추출한 cuts + MW cuts를 OMP에 즉시 추가
+    if warm_start_cuts && init_pricing_cuts !== nothing
+        init_per_s = convert_to_per_scenario_cuts(init_pricing_cuts, S)
+        add_scenario_cuts_to_omp!(omp_model, omp_vars, vertex_data[j_init],
+            init_per_s, isp_data, 0)
+        if init_mw_cuts !== nothing
+            for mw_info in init_mw_cuts
+                mw_per_s = convert_to_per_scenario_cuts(mw_info, S)
+                add_scenario_cuts_to_omp!(omp_model, omp_vars, vertex_data[j_init],
+                    mw_per_s, isp_data, 0)
+            end
+        end
+        @info "  [Warm-start] Initial pricing cuts + MW added for vertex j=$j_init"
+    end
 
     # ========== History ==========
     history = Dict(
@@ -566,10 +637,11 @@ function ccg_benders_optimize!(network, ϕU, λU, γ, w, v_param, uncertainty_se
 
         # -------- Pricing Phase --------
         @info "  [Pricing] Searching for worst-case vertex..."
-        j_new, Q_new, α_new = pricing_solve!(network, S, ϕU, λU, γ, w, v_param, uncertainty_set, isp_data;
+        j_new, Q_new, α_new, new_pricing_cuts, new_mw_cuts = pricing_solve!(network, S, ϕU, λU, γ, w, v_param, uncertainty_set, isp_data;
             mip_optimizer=mip_optimizer, conic_optimizer=conic_optimizer,
             λ_sol=λ_sol, x_sol=x_sol, h_sol=h_sol, ψ0_sol=ψ0_sol,
-            πU=πU, yU=yU, ytsU=ytsU, inner_tr=inner_tr, tol=tol)
+            πU=πU, yU=yU, ytsU=ytsU, inner_tr=inner_tr, tol=tol,
+            warm_start_cuts=warm_start_cuts)
 
         upper_bound = min(upper_bound, Q_new)  # global UB: pricing의 Q_new (= full max_α Q(α,χ*))의 minimum
         @info "  [Pricing] Best vertex: j=$j_new, Q=$(round(Q_new, digits=6)), globalUB=$(round(upper_bound, digits=6)), LB=$(round(t_0_sol, digits=6))"
@@ -589,8 +661,21 @@ function ccg_benders_optimize!(network, ϕU, λU, γ, w, v_param, uncertainty_se
             vertex_data[j_new] = build_vertex_isps(j_new, network, S, ϕU, λU, γ, w, v_param, uncertainty_set;
                 conic_optimizer=conic_optimizer, λ_sol=λ_sol, x_sol=x_sol, h_sol=h_sol, ψ0_sol=ψ0_sol,
                 πU=πU, yU=yU, ytsU=ytsU)
+            # Warm-start: pricing에서 추출한 cuts + MW cuts를 새 vertex의 OMP에 즉시 추가
+            if warm_start_cuts && new_pricing_cuts !== nothing
+                new_per_s = convert_to_per_scenario_cuts(new_pricing_cuts, S)
+                add_scenario_cuts_to_omp!(omp_model, omp_vars, vertex_data[j_new],
+                    new_per_s, isp_data, 0)
+                if new_mw_cuts !== nothing
+                    for mw_info in new_mw_cuts
+                        mw_per_s = convert_to_per_scenario_cuts(mw_info, S)
+                        add_scenario_cuts_to_omp!(omp_model, omp_vars, vertex_data[j_new],
+                            mw_per_s, isp_data, 0)
+                    end
+                end
+                @info "  [Warm-start] Pricing cuts + MW added for new vertex j=$j_new"
+            end
             push!(history[:vertices_added], j_new)
-            # New vertex 추가 시 UB 갱신 불필요 (다음 Benders phase에서 자연스럽게 반영)
         end
     end
 

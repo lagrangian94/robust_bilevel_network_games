@@ -752,6 +752,133 @@ end
 
 
 """
+    evaluate_joint_mw_opt_cut(isp_data, cut_info, iter; ...)
+
+Joint MW cut strengthening: leader+follower를 하나의 OSP 모델에서 동시 최적화.
+Separate MW와 달리 z_l + z_f ≥ z*_total만 요구하므로 더 큰 자유도 → tighter cut.
+OSP(build_dualized_outer_subproblem)를 재활용하여 α 고정 후 MW 수행.
+"""
+function evaluate_joint_mw_opt_cut(
+    isp_data, cut_info, iter;
+    x_sol, λ_sol, h_sol, ψ0_sol,
+    x_core, λ_core, h_core, ψ0_core,
+    conic_optimizer)
+
+    S = isp_data[:S]
+    ϕU = isp_data[:ϕU]
+    πU = isp_data[:πU]
+    yU = isp_data[:yU]
+    ytsU = isp_data[:ytsU]
+    λU = isp_data[:λU]
+    γ_param = isp_data[:γ]
+    w_param = isp_data[:w]
+    v_param = isp_data[:v]
+    network = isp_data[:network]
+    uncertainty_set = isp_data[:uncertainty_set]
+    E = isp_data[:E]
+    d0 = isp_data[:d0]
+    α_sol = cut_info[:α_sol]
+    num_arcs = length(x_sol)
+    xi_bar = uncertainty_set[:xi_bar]
+
+    # Step 1: Build joint OSP model (fresh each call)
+    osp_model, osp_vars, osp_data = build_dualized_outer_subproblem(
+        network, S, ϕU, λU, γ_param, w_param, v_param, uncertainty_set, conic_optimizer,
+        λ_sol, x_sol, h_sol, ψ0_sol;
+        πU=πU, yU=yU, ytsU=ytsU, scaling_S=S)
+
+    # Step 2: Fix α to IMP solution
+    for k in 1:num_arcs
+        fix(osp_vars[:α][k], α_sol[k]; force=true)
+    end
+
+    # Step 3: Solve at x_sol to get z*_total
+    _, orig_cut_coeff = osp_optimize!(osp_model, osp_vars, osp_data, λ_sol, x_sol, h_sol, ψ0_sol)
+    z_star_total = orig_cut_coeff[:obj_val]
+
+    # Step 4: Add optimality constraint (original obj >= z*_total)
+    # Reconstruct original objective expression (same as osp_optimize!)
+    scaling_S_val = get(osp_data, :scaling_S, S)
+    Uhat1 = osp_vars[:Uhat1]; Uhat3 = osp_vars[:Uhat3]
+    Utilde1 = osp_vars[:Utilde1]; Utilde3 = osp_vars[:Utilde3]
+    βhat1_1 = osp_vars[:βhat1_1]; βtilde1_1 = osp_vars[:βtilde1_1]; βtilde1_3 = osp_vars[:βtilde1_3]
+    Ztilde1_3 = osp_vars[:Ztilde1_3]
+    Phat1_Φ = osp_vars[:Phat1_Φ]; Phat1_Π = osp_vars[:Phat1_Π]
+    Phat2_Φ = osp_vars[:Phat2_Φ]; Phat2_Π = osp_vars[:Phat2_Π]
+    Ptilde1_Φ = osp_vars[:Ptilde1_Φ]; Ptilde1_Π = osp_vars[:Ptilde1_Π]
+    Ptilde2_Φ = osp_vars[:Ptilde2_Φ]; Ptilde2_Π = osp_vars[:Ptilde2_Π]
+    Ptilde1_Y = osp_vars[:Ptilde1_Y]; Ptilde1_Yts = osp_vars[:Ptilde1_Yts]
+    Ptilde2_Y = osp_vars[:Ptilde2_Y]; Ptilde2_Yts = osp_vars[:Ptilde2_Yts]
+
+    diag_x_sol_E = Diagonal(x_sol) * E
+    diag_λ_ψ_sol = Diagonal(λ_sol * ones(num_arcs) - v_param .* ψ0_sol)
+
+    orig_term1 = [-ϕU * sum((Uhat1[s,:,:] + Utilde1[s,:,:]) .* diag_x_sol_E) for s=1:S]
+    orig_term2 = [-ϕU * sum((Uhat3[s,:,:] + Utilde3[s,:,:]) .* (E - diag_x_sol_E)) for s=1:S]
+    orig_term3 = [(d0') * βhat1_1[s,:] for s=1:S]
+    orig_term4 = [sum(Ztilde1_3[s,:,:] .* (diag_λ_ψ_sol * diagm(xi_bar[s]))) for s=1:S]
+    orig_term5 = [(λ_sol * d0') * βtilde1_1[s,:] for s=1:S]
+    orig_term6 = [-(h_sol + diag_λ_ψ_sol * xi_bar[s])' * βtilde1_3[s,:] for s=1:S]
+    orig_term_ub_hat = [-ϕU * sum(Phat1_Φ[s,:,:]) - πU * sum(Phat1_Π[s,:,:]) for s=1:S]
+    orig_term_lb_hat = [-ϕU * sum(Phat2_Φ[s,:,:]) - πU * sum(Phat2_Π[s,:,:]) for s=1:S]
+    orig_term_ub_tilde = [-ϕU * sum(Ptilde1_Φ[s,:,:]) - πU * sum(Ptilde1_Π[s,:,:]) - yU * sum(Ptilde1_Y[s,:,:]) - ytsU * sum(Ptilde1_Yts[s,:]) for s=1:S]
+    orig_term_lb_tilde = [-ϕU * sum(Ptilde2_Φ[s,:,:]) - πU * sum(Ptilde2_Π[s,:,:]) - yU * sum(Ptilde2_Y[s,:,:]) - ytsU * sum(Ptilde2_Yts[s,:]) for s=1:S]
+
+    orig_obj_expr = (sum(orig_term1) + sum(orig_term2) + sum(orig_term3) + sum(orig_term4) +
+        sum(orig_term5) + sum(orig_term6) + sum(orig_term_ub_hat) + sum(orig_term_lb_hat) +
+        sum(orig_term_ub_tilde) + sum(orig_term_lb_tilde)) / scaling_S_val
+
+    @constraint(osp_model, orig_obj_expr >= z_star_total - 1e-6)
+
+    # Step 5: Set core-point objective
+    diag_x_core_E = Diagonal(x_core) * E
+    diag_λ_ψ_core = Diagonal(λ_core * ones(num_arcs) - v_param .* ψ0_core)
+
+    core_term1 = [-ϕU * sum((Uhat1[s,:,:] + Utilde1[s,:,:]) .* diag_x_core_E) for s=1:S]
+    core_term2 = [-ϕU * sum((Uhat3[s,:,:] + Utilde3[s,:,:]) .* (E - diag_x_core_E)) for s=1:S]
+    core_term3 = orig_term3  # d0'*βhat1_1 — independent of master vars
+    core_term4 = [sum(Ztilde1_3[s,:,:] .* (diag_λ_ψ_core * diagm(xi_bar[s]))) for s=1:S]
+    core_term5 = [(λ_core * d0') * βtilde1_1[s,:] for s=1:S]
+    core_term6 = [-(h_core + diag_λ_ψ_core * xi_bar[s])' * βtilde1_3[s,:] for s=1:S]
+
+    @objective(osp_model, Max, (sum(core_term1) + sum(core_term2) + sum(core_term3) + sum(core_term4) +
+        sum(core_term5) + sum(core_term6) + sum(orig_term_ub_hat) + sum(orig_term_lb_hat) +
+        sum(orig_term_ub_tilde) + sum(orig_term_lb_tilde)) / scaling_S_val)
+
+    # Step 6: Solve MW model
+    optimize!(osp_model)
+    st = termination_status(osp_model)
+    if !(st == MOI.OPTIMAL || st == MOI.SLOW_PROGRESS)
+        @warn "Joint MW OSP solve failed: $st, falling back to z*_total solution"
+        # Return the original (non-strengthened) coefficients
+        return Dict(:Uhat1=>orig_cut_coeff[:Uhat1], :Utilde1=>orig_cut_coeff[:Utilde1],
+            :Uhat3=>orig_cut_coeff[:Uhat3], :Utilde3=>orig_cut_coeff[:Utilde3],
+            :Ztilde1_3=>orig_cut_coeff[:Ztilde1_3],
+            :βtilde1_1=>orig_cut_coeff[:βtilde1_1], :βtilde1_3=>orig_cut_coeff[:βtilde1_3],
+            :intercept=>orig_cut_coeff[:intercept],
+            :intercept_l=>orig_cut_coeff[:intercept_l], :intercept_f=>orig_cut_coeff[:intercept_f])
+    end
+
+    # Step 7: Extract coefficients (same format as osp_optimize! output)
+    Uhat1_out = value.(Uhat1)
+    Utilde1_out = value.(Utilde1)
+    Uhat3_out = value.(Uhat3)
+    Utilde3_out = value.(Utilde3)
+    Ztilde1_3_out = value.(Ztilde1_3)
+    βtilde1_1_out = value.(βtilde1_1)
+    βtilde1_3_out = value.(βtilde1_3)
+
+    intercept_l = value.(orig_term3) .+ value.(orig_term_ub_hat) .+ value.(orig_term_lb_hat)
+    intercept_f = value.(orig_term_ub_tilde) .+ value.(orig_term_lb_tilde)
+    intercept = sum(intercept_l) + sum(intercept_f)
+
+    return Dict(:Uhat1=>Uhat1_out, :Utilde1=>Utilde1_out, :Uhat3=>Uhat3_out, :Utilde3=>Utilde3_out,
+        :Ztilde1_3=>Ztilde1_3_out, :βtilde1_1=>βtilde1_1_out, :βtilde1_3=>βtilde1_3_out,
+        :intercept=>intercept, :intercept_l=>intercept_l, :intercept_f=>intercept_f)
+end
+
+
+"""
     evaluate_sherali_opt_cut(...)
 
 Sherali & Lunday (2011) ζ-perturbation cut 생성.
@@ -1265,6 +1392,12 @@ function tr_nested_benders_optimize!(omp_model::Model, omp_vars::Dict, network, 
                             x_sol=x_sol, λ_sol=λ_sol, h_sol=h_sol, ψ0_sol=ψ0_sol,
                             x_core=cp.x, λ_core=cp.λ, h_core=cp.h, ψ0_core=cp.ψ0,
                             parallel=parallel)
+                    elseif strengthen_cuts == :mw_joint
+                        str_info = evaluate_joint_mw_opt_cut(
+                            isp_data, cut_info, iter;
+                            x_sol=x_sol, λ_sol=λ_sol, h_sol=h_sol, ψ0_sol=ψ0_sol,
+                            x_core=cp.x, λ_core=cp.λ, h_core=cp.h, ψ0_core=cp.ψ0,
+                            conic_optimizer=conic_optimizer)
                     elseif strengthen_cuts == :sherali
                         str_info = evaluate_sherali_opt_cut(
                             leader_instances, follower_instances, isp_data, cut_info, iter;
@@ -1272,7 +1405,7 @@ function tr_nested_benders_optimize!(omp_model::Model, omp_vars::Dict, network, 
                             x_core=cp.x, λ_core=cp.λ, h_core=cp.h, ψ0_core=cp.ψ0,
                             parallel=parallel)
                     end
-                    str_label = strengthen_cuts == :mw ? "mw" : "sherali"
+                    str_label = strengthen_cuts in (:mw, :mw_joint) ? "mw" : "sherali"
                     str_cut = add_optimality_cuts!(omp_model, omp_vars, str_info, diag_x_E, isp_data[:E], diag_λ_ψ, xi_bar, isp_data[:d0], ϕU, λ, h, S, iter;
                         prefix="$(str_label)_cut_cp$(cp_idx)", result_cuts=result[:cuts])
                     # MW/Sherali cut validation: x_sol에서 평가하여 subprob_obj*S 초과 여부 확인
@@ -1602,6 +1735,12 @@ function tr_nested_benders_optimize_hybrid!(omp_model::Model, omp_vars::Dict, ne
                             x_sol=x_sol, λ_sol=λ_sol, h_sol=h_sol, ψ0_sol=ψ0_sol,
                             x_core=cp.x, λ_core=cp.λ, h_core=cp.h, ψ0_core=cp.ψ0,
                             parallel=parallel)
+                    elseif strengthen_cuts == :mw_joint
+                        str_info = evaluate_joint_mw_opt_cut(
+                            isp_data, cut_info, iter;
+                            x_sol=x_sol, λ_sol=λ_sol, h_sol=h_sol, ψ0_sol=ψ0_sol,
+                            x_core=cp.x, λ_core=cp.λ, h_core=cp.h, ψ0_core=cp.ψ0,
+                            conic_optimizer=conic_optimizer)
                     elseif strengthen_cuts == :sherali
                         str_info = evaluate_sherali_opt_cut(
                             dual_leader_instances, dual_follower_instances, isp_data, cut_info, iter;
@@ -1609,7 +1748,7 @@ function tr_nested_benders_optimize_hybrid!(omp_model::Model, omp_vars::Dict, ne
                             x_core=cp.x, λ_core=cp.λ, h_core=cp.h, ψ0_core=cp.ψ0,
                             parallel=parallel)
                     end
-                    str_label = strengthen_cuts == :mw ? "mw" : "sherali"
+                    str_label = strengthen_cuts in (:mw, :mw_joint) ? "mw" : "sherali"
                     add_optimality_cuts!(omp_model, omp_vars, str_info, diag_x_E, isp_data[:E], diag_λ_ψ, xi_bar_local, isp_data[:d0], ϕU, λ, h, S, iter;
                         prefix="$(str_label)_cut_cp$(cp_idx)", result_cuts=result[:cuts])
                 end
