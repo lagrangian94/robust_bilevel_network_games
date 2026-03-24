@@ -1024,7 +1024,167 @@ function evaluate_sherali_opt_cut(
 end
 
 
-function tr_nested_benders_optimize!(omp_model::Model, omp_vars::Dict, network, ϕU, λU, γ, w, uncertainty_set; mip_optimizer=nothing, conic_optimizer=nothing, outer_tr=true, inner_tr=true, max_outer_iter=1000, isp_mode=:dual, tol=1e-4, πU=ϕU, yU=ϕU, ytsU=ϕU, strengthen_cuts=:none, parallel=false)
+"""
+    alpha_fixed_benders_phase!(omp_model, omp_vars, α_sol_fixed,
+        leader_instances, follower_instances, isp_data; kwargs...)
+
+α를 고정시킨 상태에서 mini-Benders loop을 돌려 OMP에 추가 cuts를 생성.
+tr_imp_optimize!에서 찾은 optimal α에 대해, 여러 χ 방향의 valid cuts를 한꺼번에 수집하여
+lower bound tightening을 가속시킴.
+
+Validity: OMP는 min_χ t_0 s.t. t_0 ≥ max_α Q(α, χ) 이므로,
+고정 α에서의 cut t_0 ≥ Q(α_fixed, χ)는 항상 valid.
+"""
+function alpha_fixed_benders_phase!(
+    omp_model, omp_vars, α_sol_fixed,
+    leader_instances, follower_instances,
+    isp_data;
+    max_iter=5,
+    strengthen_cuts=:none,
+    conic_optimizer=nothing,
+    outer_iter=0,
+    result_cuts=nothing,
+    parallel=false)
+
+    S = isp_data[:S]
+    ϕU = isp_data[:ϕU]
+    network = isp_data[:network]
+    v_param = isp_data[:v]
+    num_arcs = length(network.arcs) - 1
+    E = isp_data[:E]
+    d0 = isp_data[:d0]
+    uncertainty_set = isp_data[:uncertainty_set]
+    xi_bar = uncertainty_set[:xi_bar]
+    R = uncertainty_set[:R]
+    r_dict = uncertainty_set[:r_dict]
+    S_total = S
+
+    x = omp_vars[:x]
+    h = omp_vars[:h]
+    λ_var = omp_vars[:λ]
+    ψ0 = omp_vars[:ψ0]
+    t_0 = omp_vars[:t_0]
+
+    # JuMP expression matrices for cut construction
+    diag_x_E = Diagonal(x) * E
+    diag_λ_ψ = Diagonal(λ_var * ones(num_arcs) - v_param .* ψ0)
+
+    # Core points for MW strengthening (generate once)
+    core_points = nothing
+    if strengthen_cuts != :none
+        interdictable_idx = findall(network.interdictable_arcs[1:num_arcs])
+        core_points = generate_core_points(network, isp_data[:γ], isp_data[:λU], isp_data[:w], v_param;
+            interdictable_idx=interdictable_idx, strategy=:interior)
+    end
+
+    mini_cuts_added = 0
+    mini_lb_history = Float64[]
+
+    for j in 1:max_iter
+        # 1. Re-solve OMP with accumulated cuts
+        optimize!(omp_model)
+        st = MOI.get(omp_model, MOI.TerminationStatus())
+        if st != MOI.OPTIMAL
+            @info "  [Mini-Benders] OMP status $st at iter $j, stopping."
+            break
+        end
+
+        x_sol_j = round.(value.(x))
+        h_sol_j = value.(h)
+        λ_sol_j = value(λ_var)
+        ψ0_sol_j = value.(ψ0)
+        mini_lb = value(t_0) / S_total
+        push!(mini_lb_history, mini_lb)
+
+        # Check LB stagnation (2-iter window)
+        if length(mini_lb_history) >= 3 && abs(mini_lb_history[end] - mini_lb_history[end-2]) < 1e-6
+            @info "  [Mini-Benders] LB stagnated at iter $j (LB=$(round(mini_lb, digits=6)), history=$(round.(mini_lb_history, digits=6))), stopping."
+            break
+        end
+
+        # 2. Evaluate ISP at (α_fixed, χ_new) — updates objective + coupling + solves
+        _, _ = solve_scenarios(S; parallel=parallel) do s
+            U_s = Dict(:R => Dict(:1=>R[s]), :r_dict => Dict(:1=>r_dict[s]),
+                       :xi_bar => Dict(:1=>xi_bar[s]), :epsilon => uncertainty_set[:epsilon])
+            (status_l, _) = isp_leader_optimize!(leader_instances[s][1], leader_instances[s][2];
+                isp_data=isp_data, uncertainty_set=U_s,
+                λ_sol=λ_sol_j, x_sol=x_sol_j, h_sol=h_sol_j, ψ0_sol=ψ0_sol_j, α_sol=α_sol_fixed)
+            (status_f, _) = isp_follower_optimize!(follower_instances[s][1], follower_instances[s][2];
+                isp_data=isp_data, uncertainty_set=U_s,
+                λ_sol=λ_sol_j, x_sol=x_sol_j, h_sol=h_sol_j, ψ0_sol=ψ0_sol_j, α_sol=α_sol_fixed)
+            ok = (status_l == :OptimalityCut) && (status_f == :OptimalityCut)
+            return (ok, nothing)
+        end
+
+        # 3. Extract cut coefficients (same pattern as evaluate_master_opt_cut)
+        Uhat1 = cat([value.(leader_instances[s][2][:Uhat1]) for s in 1:S]...; dims=1)
+        Utilde1 = cat([value.(follower_instances[s][2][:Utilde1]) for s in 1:S]...; dims=1)
+        Uhat3 = cat([value.(leader_instances[s][2][:Uhat3]) for s in 1:S]...; dims=1)
+        Utilde3 = cat([value.(follower_instances[s][2][:Utilde3]) for s in 1:S]...; dims=1)
+        Ztilde1_3 = cat([value.(follower_instances[s][2][:Ztilde1_3]) for s in 1:S]...; dims=1)
+        βtilde1_1 = cat([value.(follower_instances[s][2][:βtilde1_1]) for s in 1:S]...; dims=1)
+        βtilde1_3 = cat([value.(follower_instances[s][2][:βtilde1_3]) for s in 1:S]...; dims=1)
+        intercept_l = [value.(leader_instances[s][2][:intercept]) for s in 1:S]
+        intercept_f = [value.(follower_instances[s][2][:intercept]) for s in 1:S]
+        intercept = sum(intercept_l) + sum(intercept_f)
+
+        mini_ub = (sum(objective_value(leader_instances[s][1]) for s in 1:S) +
+                   sum(objective_value(follower_instances[s][1]) for s in 1:S)) / S
+
+        outer_cut_info = Dict(
+            :Uhat1=>Uhat1, :Utilde1=>Utilde1, :Uhat3=>Uhat3, :Utilde3=>Utilde3,
+            :Ztilde1_3=>Ztilde1_3, :βtilde1_1=>βtilde1_1, :βtilde1_3=>βtilde1_3,
+            :intercept=>intercept, :intercept_l=>intercept_l, :intercept_f=>intercept_f)
+
+        # 4. Add cut to OMP
+        add_optimality_cuts!(omp_model, omp_vars, outer_cut_info, diag_x_E, E, diag_λ_ψ, xi_bar, d0, ϕU, λ_var, h, S, outer_iter;
+            prefix="mini_bd_$(j)", result_cuts=result_cuts)
+        mini_cuts_added += 1
+
+        # 5. MW strengthening with α-fixed
+        if strengthen_cuts != :none && core_points !== nothing
+            mini_cut_info = Dict(:α_sol => α_sol_fixed)
+            for (cp_idx, cp) in enumerate(core_points)
+                if strengthen_cuts == :mw
+                    str_info = evaluate_mw_opt_cut(
+                        leader_instances, follower_instances, isp_data, mini_cut_info, outer_iter;
+                        x_sol=x_sol_j, λ_sol=λ_sol_j, h_sol=h_sol_j, ψ0_sol=ψ0_sol_j,
+                        x_core=cp.x, λ_core=cp.λ, h_core=cp.h, ψ0_core=cp.ψ0,
+                        parallel=parallel)
+                elseif strengthen_cuts == :mw_joint
+                    str_info = evaluate_joint_mw_opt_cut(
+                        isp_data, mini_cut_info, outer_iter;
+                        x_sol=x_sol_j, λ_sol=λ_sol_j, h_sol=h_sol_j, ψ0_sol=ψ0_sol_j,
+                        x_core=cp.x, λ_core=cp.λ, h_core=cp.h, ψ0_core=cp.ψ0,
+                        conic_optimizer=conic_optimizer)
+                elseif strengthen_cuts == :sherali
+                    str_info = evaluate_sherali_opt_cut(
+                        leader_instances, follower_instances, isp_data, mini_cut_info, outer_iter;
+                        x_sol=x_sol_j, λ_sol=λ_sol_j, h_sol=h_sol_j, ψ0_sol=ψ0_sol_j,
+                        x_core=cp.x, λ_core=cp.λ, h_core=cp.h, ψ0_core=cp.ψ0,
+                        parallel=parallel)
+                end
+                str_label = strengthen_cuts in (:mw, :mw_joint) ? "mw" : "sherali"
+                add_optimality_cuts!(omp_model, omp_vars, str_info, diag_x_E, E, diag_λ_ψ, xi_bar, d0, ϕU, λ_var, h, S, outer_iter;
+                    prefix="mini_bd_$(j)_$(str_label)_cp$(cp_idx)", result_cuts=result_cuts)
+                mini_cuts_added += 1
+            end
+        end
+
+        mini_gap = abs(mini_ub - mini_lb) / max(abs(mini_ub), 1e-10)
+        @info "  [Mini-Benders] iter $j: LB=$(round(mini_lb, digits=6)), α-fixed UB=$(round(mini_ub, digits=6)), gap=$(round(mini_gap, digits=8))"
+
+        if mini_gap <= 1e-4
+            @info "  [Mini-Benders] Converged at iter $j"
+            break
+        end
+    end
+
+    return mini_cuts_added
+end
+
+
+function tr_nested_benders_optimize!(omp_model::Model, omp_vars::Dict, network, ϕU, λU, γ, w, uncertainty_set; mip_optimizer=nothing, conic_optimizer=nothing, outer_tr=true, inner_tr=true, max_outer_iter=1000, isp_mode=:dual, tol=1e-4, πU=ϕU, yU=ϕU, ytsU=ϕU, strengthen_cuts=:none, parallel=false, mini_benders=false, max_mini_benders_iter=5)
     ### -------- Trust Region 초기화 --------
     if outer_tr
         num_interdictable = sum(network.interdictable_arcs)
@@ -1428,6 +1588,26 @@ function tr_nested_benders_optimize!(omp_model::Model, omp_vars::Dict, network, 
                     omp_model, omp_vars, centers, B_bin, B_con, tr_constraints, network)
                 println("  │ TR updated: center=$(findall(round.(centers[:x]) .> 0.5)), B_bin=$B_bin")
             end
+
+            # ===== Mini-Benders phase (α-fixed) =====
+            if mini_benders && leader_instances !== nothing
+                n_mini = alpha_fixed_benders_phase!(
+                    omp_model, omp_vars, cut_info[:α_sol],
+                    leader_instances, follower_instances,
+                    isp_data;
+                    max_iter=max_mini_benders_iter,
+                    strengthen_cuts=strengthen_cuts,
+                    conic_optimizer=conic_optimizer,
+                    outer_iter=iter,
+                    result_cuts=result[:cuts],
+                    parallel=parallel)
+                if outer_tr
+                    println("  │ [Mini-Benders] $n_mini extra cuts added (α-fixed, max_iter=$max_mini_benders_iter)")
+                else
+                    @info "[Mini-Benders] $n_mini extra cuts added (α-fixed)"
+                end
+            end
+
             if outer_tr
                 println("  └──────────────────────────────────────────────")
             end

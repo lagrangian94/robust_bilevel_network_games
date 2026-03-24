@@ -194,25 +194,25 @@ results = Dict{String, Any}()
 # results["strict_benders"] = t1_end - t1_start
 # println("\n>> Strict Benders time: $(results["strict_benders"]) seconds")
 # @infiltrate
-# # ===== 2. TR Nested Benders — Dual (T,T) =====
-# println("\n" * "="^80)
-# println("2. TR NESTED BENDERS — DUAL (outer=true, inner=true)")
-# println("="^80)
-# """
-# 2700초 걸렸음
-# """
-# GC.gc()
-# model2, vars2 = build_omp(network, ϕU, λU, γ, w; optimizer=Gurobi.Optimizer, S=S)
-# t2_start = time()
-# result2 = tr_nested_benders_optimize!(model2, vars2, network, ϕU, λU, γ, w, uncertainty_set;
-#     mip_optimizer=Gurobi.Optimizer, conic_optimizer=Mosek.Optimizer,
-#      outer_tr=true, inner_tr=true,
-#     πU=πU, yU=yU, ytsU=ytsU, strengthen_cuts=strengthen_cuts, parallel=true)
-# t2_end = time()
-# results["tr_dual"] = t2_end - t2_start
-# println("\n>> Dual TR Both time: $(results["tr_dual"]) seconds")
-# @infiltrate
-# # # TODO:: solve only subset of scenarios (partial solve; 첫번째에선 다 풀어서 하한 다 찾아놓음) (upper bound eval. = iter N번마다 한번씩 full evaluate)
+# ===== 2. TR Nested Benders — Dual (T,T) =====
+println("\n" * "="^80)
+println("2. TR NESTED BENDERS — DUAL (outer=true, inner=true)")
+println("="^80)
+"""
+2700초 걸렸음
+"""
+GC.gc()
+model2, vars2 = build_omp(network, ϕU, λU, γ, w; optimizer=Gurobi.Optimizer, S=S)
+t2_start = time()
+result2 = tr_nested_benders_optimize!(model2, vars2, network, ϕU, λU, γ, w, uncertainty_set;
+    mip_optimizer=Gurobi.Optimizer, conic_optimizer=Mosek.Optimizer,
+     outer_tr=true, inner_tr=true,
+    πU=πU, yU=yU, ytsU=ytsU, strengthen_cuts=strengthen_cuts, parallel=true, mini_benders=true, max_mini_benders_iter=5)
+t2_end = time()
+results["tr_dual"] = t2_end - t2_start
+println("\n>> Dual TR Both time: $(results["tr_dual"]) seconds")
+@infiltrate
+# # TODO:: solve only subset of scenarios (partial solve; 첫번째에선 다 풀어서 하한 다 찾아놓음) (upper bound eval. = iter N번마다 한번씩 full evaluate)
 # ===== 2.5. Scenario-Decomposed Benders =====
 # println("\n" * "="^80)
 # println("2.5. SCENARIO-DECOMPOSED BENDERS (OMP → S × OSP(s=1))")
@@ -231,20 +231,20 @@ results = Dict{String, Any}()
 # results["scenario_decomposed"] = t_sd_end - t_sd_start
 # println("\n>> Scenario-Decomposed Benders time: $(results["scenario_decomposed"]) seconds")
 # @infiltrate
-# ===== 3. C&CG Benders =====
-println("\n" * "="^80)
-println("3. C&CG BENDERS (vertex enumeration + per-scenario Benders)")
-println("="^80)
+# # ===== 3. C&CG Benders =====
+# println("\n" * "="^80)
+# println("3. C&CG BENDERS (vertex enumeration + per-scenario Benders)")
+# println("="^80)
 
-GC.gc()
-t3_start = time()
-result3 = ccg_benders_optimize!(network, ϕU, λU, γ, w, v, uncertainty_set;
-    mip_optimizer=Gurobi.Optimizer, conic_optimizer=Mosek.Optimizer,
-    πU=πU, yU=yU, ytsU=ytsU, inner_tr=true, strengthen_cuts=strengthen_cuts, warm_start_cuts=true)
-t3_end = time()
-results["ccg_benders"] = t3_end - t3_start
-println("\n>> C&CG Benders time: $(results["ccg_benders"]) seconds")
-@infiltrate
+# GC.gc()
+# t3_start = time()
+# result3 = ccg_benders_optimize!(network, ϕU, λU, γ, w, v, uncertainty_set;
+#     mip_optimizer=Gurobi.Optimizer, conic_optimizer=Mosek.Optimizer,
+#     πU=πU, yU=yU, ytsU=ytsU, inner_tr=true, strengthen_cuts=strengthen_cuts, warm_start_cuts=true)
+# t3_end = time()
+# results["ccg_benders"] = t3_end - t3_start
+# println("\n>> C&CG Benders time: $(results["ccg_benders"]) seconds")
+# @infiltrate
 # # ===== Summary =====
 # println("\n" * "="^80)
 # println("COMPARISON SUMMARY")

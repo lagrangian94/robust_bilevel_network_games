@@ -99,28 +99,45 @@ end
 
 
 # ──────────────────────────────────────────────────────────────────
-# 3. Build ISP instances for a vertex
+# 3. Build ISP instances for a vertex (legacy, vertex property 불성립으로 미사용)
+# ──────────────────────────────────────────────────────────────────
+# """
+#     build_vertex_isps(j, network, S, ϕU, λU, γ, w, v, uncertainty_set; ...)
+# Vertex j에 대해 α_j = (w/S)·e_j로 고정된 ISP leader/follower 인스턴스를 모든 시나리오에 대해 생성.
+# """
+# function build_vertex_isps(j::Int, network, S, ϕU, λU, γ, w, v_param, uncertainty_set;
+#                            conic_optimizer=nothing, λ_sol=nothing, x_sol=nothing,
+#                            h_sol=nothing, ψ0_sol=nothing, πU=ϕU, yU=ϕU, ytsU=ϕU)
+#     num_arcs = length(network.arcs) - 1
+#     α_j = zeros(num_arcs)
+#     α_j[j] = w / S
+#     leader_instances, follower_instances = initialize_isp(
+#         network, S, ϕU, λU, γ, w, v_param, uncertainty_set;
+#         conic_optimizer=conic_optimizer,
+#         λ_sol=λ_sol, x_sol=x_sol, h_sol=h_sol, ψ0_sol=ψ0_sol,
+#         α_sol=α_j, πU=πU, yU=yU, ytsU=ytsU)
+#     return VertexData(j, α_j, leader_instances, follower_instances)
+# end
+
+# ──────────────────────────────────────────────────────────────────
+# 3a. Build ISP instances for arbitrary α_sol
 # ──────────────────────────────────────────────────────────────────
 """
-    build_vertex_isps(j, network, S, ϕU, λU, γ, w, v, uncertainty_set;
-                      conic_optimizer, λ_sol, x_sol, h_sol, ψ0_sol, πU, yU, ytsU)
+    build_alpha_isps(id, α_sol, network, S, ϕU, λU, γ, w, v, uncertainty_set; ...)
 
-Vertex j에 대해 α_j = (w/S)·e_j로 고정된 ISP leader/follower 인스턴스를 모든 시나리오에 대해 생성.
+임의 α_sol에 대해 ISP leader/follower 인스턴스를 모든 시나리오에 대해 생성.
+VertexData struct 재활용 (j → id로 사용).
 """
-function build_vertex_isps(j::Int, network, S, ϕU, λU, γ, w, v_param, uncertainty_set;
-                           conic_optimizer=nothing, λ_sol=nothing, x_sol=nothing,
-                           h_sol=nothing, ψ0_sol=nothing, πU=ϕU, yU=ϕU, ytsU=ϕU)
-    num_arcs = length(network.arcs) - 1
-    α_j = zeros(num_arcs)
-    α_j[j] = w / S
-
+function build_alpha_isps(id::Int, α_sol::Vector{Float64}, network, S, ϕU, λU, γ, w, v_param, uncertainty_set;
+                          conic_optimizer=nothing, λ_sol=nothing, x_sol=nothing,
+                          h_sol=nothing, ψ0_sol=nothing, πU=ϕU, yU=ϕU, ytsU=ϕU)
     leader_instances, follower_instances = initialize_isp(
         network, S, ϕU, λU, γ, w, v_param, uncertainty_set;
         conic_optimizer=conic_optimizer,
         λ_sol=λ_sol, x_sol=x_sol, h_sol=h_sol, ψ0_sol=ψ0_sol,
-        α_sol=α_j, πU=πU, yU=yU, ytsU=ytsU)
+        α_sol=α_sol, πU=πU, yU=yU, ytsU=ytsU)
 
-    return VertexData(j, α_j, leader_instances, follower_instances)
+    return VertexData(id, α_sol, leader_instances, follower_instances)
 end
 
 
@@ -384,41 +401,41 @@ function pricing_solve!(network, S, ϕU, λU, γ, w, v_param, uncertainty_set, i
     # Vertex optimality: α*는 vertex에 집중. argmax로 식별.
     j_star = argmax(α_sol)
 
-    if α_sol[j_star] < (w / S) - 1e-4
-        @warn "α not concentrated on vertex: α[j*]=$(α_sol[j_star]), w/S=$(w/S). Re-solving with vertex enforcement."
+    # if α_sol[j_star] < (w / S) - 1e-4
+    #     @warn "α not concentrated on vertex: α[j*]=$(α_sol[j_star]), w/S=$(w/S). Re-solving with vertex enforcement."
 
-        # Vertex-enforcing constraints: z[k] binary, α[k] ≤ z[k]·(w/S), Σz = 1
-        α_imp = imp_vars[:α]
-        z_vertex = @variable(imp_model, [k=1:num_arcs], Bin, base_name="z_vertex")
-        vertex_link_cons = @constraint(imp_model, [k=1:num_arcs], α_imp[k] <= z_vertex[k] * (w / S))
-        vertex_sum_con = @constraint(imp_model, sum(z_vertex) == 1)
+    #     # Vertex-enforcing constraints: z[k] binary, α[k] ≤ z[k]·(w/S), Σz = 1
+    #     α_imp = imp_vars[:α]
+    #     z_vertex = @variable(imp_model, [k=1:num_arcs], Bin, base_name="z_vertex")
+    #     vertex_link_cons = @constraint(imp_model, [k=1:num_arcs], α_imp[k] <= z_vertex[k] * (w / S))
+    #     vertex_sum_con = @constraint(imp_model, sum(z_vertex) == 1)
 
-        # 모델 수정 후 optimize! 호출하여 valid 상태로 만듦 (tr_imp_optimize! 진입 시 value query 가능하도록)
-        optimize!(imp_model)
+    #     # 모델 수정 후 optimize! 호출하여 valid 상태로 만듦 (tr_imp_optimize! 진입 시 value query 가능하도록)
+    #     optimize!(imp_model)
 
-        # Re-solve with vertex enforcement — outer_iter=1 + fresh imp_cuts로 기존 cuts 유지
-        imp_cuts_vertex = Dict{Symbol, Any}(:old_tr_constraints => nothing)
-        status2, result2 = tr_imp_optimize!(
-            imp_model, imp_vars, leader_instances, follower_instances;
-            isp_data=isp_data,
-            λ_sol=λ_sol, x_sol=x_sol, h_sol=h_sol, ψ0_sol=ψ0_sol,
-            outer_iter=1, imp_cuts=imp_cuts_vertex,
-            inner_tr=inner_tr)
+    #     # Re-solve with vertex enforcement — outer_iter=1 + fresh imp_cuts로 기존 cuts 유지
+    #     imp_cuts_vertex = Dict{Symbol, Any}(:old_tr_constraints => nothing)
+    #     status2, result2 = tr_imp_optimize!(
+    #         imp_model, imp_vars, leader_instances, follower_instances;
+    #         isp_data=isp_data,
+    #         λ_sol=λ_sol, x_sol=x_sol, h_sol=h_sol, ψ0_sol=ψ0_sol,
+    #         outer_iter=1, imp_cuts=imp_cuts_vertex,
+    #         inner_tr=inner_tr)
 
-        if status2 != :OptimalityCut
-            error("Pricing IMP (vertex-enforced) did not converge: status=$status2")
-        end
+    #     if status2 != :OptimalityCut
+    #         error("Pricing IMP (vertex-enforced) did not converge: status=$status2")
+    #     end
 
-        α_sol = result2[:α_sol]
-        obj_val = result2[:obj_val]
-        j_star = argmax(α_sol)
-        @info "  [Pricing] Vertex-enforced: j*=$j_star, α[j*]=$(round(α_sol[j_star], digits=6)), obj=$(round(obj_val, digits=6))"
+    #     α_sol = result2[:α_sol]
+    #     obj_val = result2[:obj_val]
+    #     j_star = argmax(α_sol)
+    #     @info "  [Pricing] Vertex-enforced: j*=$j_star, α[j*]=$(round(α_sol[j_star], digits=6)), obj=$(round(obj_val, digits=6))"
 
-        # Clean up vertex-enforcing constraints (다음 pricing에서 fresh build하지만 안전하게 정리)
-        delete.(imp_model, vertex_link_cons)
-        delete(imp_model, vertex_sum_con)
-        delete.(imp_model, z_vertex)
-    end
+    #     # Clean up vertex-enforcing constraints (다음 pricing에서 fresh build하지만 안전하게 정리)
+    #     delete.(imp_model, vertex_link_cons)
+    #     delete(imp_model, vertex_sum_con)
+    #     delete.(imp_model, z_vertex)
+    # end
     
     @info "  [Pricing] α_sol max=$(round(maximum(α_sol), digits=6)), j*=$j_star, " *
           "α[j*]=$(round(α_sol[j_star], digits=6)), w/S=$(round(w/S, digits=6))"
@@ -427,9 +444,10 @@ function pricing_solve!(network, S, ϕU, λU, γ, w, v_param, uncertainty_set, i
     pricing_cuts = nothing
     pricing_mw_cuts = nothing
     if warm_start_cuts
-        α_vertex = zeros(num_arcs)
-        α_vertex[j_star] = w / S
-        cut_info_for_eval = Dict(:α_sol => α_vertex, :obj_val => obj_val)
+        # α_vertex 대신 α_sol 사용 (vertex property 불성립)
+        # α_vertex = zeros(num_arcs)
+        # α_vertex[j_star] = w / S
+        cut_info_for_eval = Dict(:α_sol => α_sol, :obj_val => obj_val)
         pricing_cuts = evaluate_master_opt_cut(
             leader_instances, follower_instances, isp_data, cut_info_for_eval, 0)
 
@@ -445,7 +463,7 @@ function pricing_solve!(network, S, ϕU, λU, γ, w, v_param, uncertainty_set, i
                 x_core=cp.x, λ_core=cp.λ, h_core=cp.h, ψ0_core=cp.ψ0)
             push!(pricing_mw_cuts, mw_info)
         end
-        @info "  [Pricing] Warm-start cuts + $(length(pricing_mw_cuts)) MW cuts extracted for vertex j=$j_star"
+        @info "  [Pricing] Warm-start cuts + $(length(pricing_mw_cuts)) MW cuts extracted (α_sol)"
     end
 
     return j_star, obj_val, α_sol, pricing_cuts, pricing_mw_cuts
@@ -506,37 +524,38 @@ function ccg_benders_optimize!(network, ϕU, λU, γ, w, v_param, uncertainty_se
     h_sol = value.(omp_vars[:h])
     ψ0_sol = value.(omp_vars[:ψ0])
 
-    # Initial pricing: 첫 번째 vertex 탐색
-    @info "===== C&CG Initialization: Pricing for initial vertex ====="
-    j_init, Q_init, _, init_pricing_cuts, init_mw_cuts = pricing_solve!(network, S, ϕU, λU, γ, w, v_param, uncertainty_set, isp_data;
+    # Initial pricing: 첫 번째 α 탐색
+    @info "===== C&CG Initialization: Pricing for initial α ====="
+    _, Q_init, α_init, init_pricing_cuts, init_mw_cuts = pricing_solve!(network, S, ϕU, λU, γ, w, v_param, uncertainty_set, isp_data;
         mip_optimizer=mip_optimizer, conic_optimizer=conic_optimizer,
         λ_sol=λ_sol, x_sol=x_sol, h_sol=h_sol, ψ0_sol=ψ0_sol,
         πU=πU, yU=yU, ytsU=ytsU, inner_tr=inner_tr, tol=tol,
         warm_start_cuts=warm_start_cuts)
 
-    # Active vertex set
-    J = Set{Int}()
-    vertex_data = Dict{Int, VertexData}()
+    # Active α set (sequential ID로 관리)
+    alpha_id_counter = 1
+    active_ids = Set{Int}()
+    alpha_data = Dict{Int, VertexData}()  # VertexData 재활용 (j → id)
 
-    push!(J, j_init)
-    add_vertex_to_omp!(omp_model, omp_vars, j_init, S)
-    vertex_data[j_init] = build_vertex_isps(j_init, network, S, ϕU, λU, γ, w, v_param, uncertainty_set;
+    push!(active_ids, alpha_id_counter)
+    add_vertex_to_omp!(omp_model, omp_vars, alpha_id_counter, S)
+    alpha_data[alpha_id_counter] = build_alpha_isps(alpha_id_counter, α_init, network, S, ϕU, λU, γ, w, v_param, uncertainty_set;
         conic_optimizer=conic_optimizer, λ_sol=λ_sol, x_sol=x_sol, h_sol=h_sol, ψ0_sol=ψ0_sol,
         πU=πU, yU=yU, ytsU=ytsU)
 
     # Warm-start: pricing에서 추출한 cuts + MW cuts를 OMP에 즉시 추가
     if warm_start_cuts && init_pricing_cuts !== nothing
         init_per_s = convert_to_per_scenario_cuts(init_pricing_cuts, S)
-        add_scenario_cuts_to_omp!(omp_model, omp_vars, vertex_data[j_init],
+        add_scenario_cuts_to_omp!(omp_model, omp_vars, alpha_data[alpha_id_counter],
             init_per_s, isp_data, 0)
         if init_mw_cuts !== nothing
             for mw_info in init_mw_cuts
                 mw_per_s = convert_to_per_scenario_cuts(mw_info, S)
-                add_scenario_cuts_to_omp!(omp_model, omp_vars, vertex_data[j_init],
+                add_scenario_cuts_to_omp!(omp_model, omp_vars, alpha_data[alpha_id_counter],
                     mw_per_s, isp_data, 0)
             end
         end
-        @info "  [Warm-start] Initial pricing cuts + MW added for vertex j=$j_init"
+        @info "  [Warm-start] Initial pricing cuts + MW added for α #$alpha_id_counter"
     end
 
     # ========== History ==========
@@ -556,7 +575,7 @@ function ccg_benders_optimize!(network, ϕU, λU, γ, w, v_param, uncertainty_se
 
     for ccg_iter in 1:max_ccg_iter
         @info "=" ^ 60
-        @info "===== C&CG Iteration $ccg_iter, |J| = $(length(J)), J = $J ====="
+        @info "===== C&CG Iteration $ccg_iter, |α set| = $(length(active_ids)) ====="
 
         # -------- Benders Phase --------
         benders_converged = false
@@ -572,7 +591,6 @@ function ccg_benders_optimize!(network, ϕU, λU, γ, w, v_param, uncertainty_se
             if st != MOI.OPTIMAL
                 @warn "OMP status: $st"
                 if st == MOI.DUAL_INFEASIBLE || st == MOI.INFEASIBLE_OR_UNBOUNDED
-                    # cuts가 아직 부족 → 계속 진행
                     x_sol = round.(value.(omp_vars[:x]))
                     h_sol = value.(omp_vars[:h])
                     λ_sol = value(omp_vars[:λ])
@@ -589,29 +607,29 @@ function ccg_benders_optimize!(network, ϕU, λU, γ, w, v_param, uncertainty_se
                 t_0_sol = value(omp_vars[:t_0]) / S  # /S for average
             end
 
-            # 2. Evaluate ALL vertices in J
-            max_Q_j = -Inf
-            for j in J
-                obj_j, cut_coeff_j = evaluate_vertex!(vertex_data[j], isp_data;
+            # 2. Evaluate ALL α in active set
+            max_Q = -Inf
+            for id in active_ids
+                obj_id, cut_coeff_id = evaluate_vertex!(alpha_data[id], isp_data;
                     λ_sol=λ_sol, x_sol=x_sol, h_sol=h_sol, ψ0_sol=ψ0_sol)
 
-                max_Q_j = max(max_Q_j, obj_j)
+                max_Q = max(max_Q, obj_id)
 
                 # 3. Add per-scenario cuts
                 iter_label = benders_iter + (ccg_iter - 1) * max_benders_iter
-                add_scenario_cuts_to_omp!(omp_model, omp_vars, vertex_data[j],
-                    cut_coeff_j, isp_data, iter_label)
+                add_scenario_cuts_to_omp!(omp_model, omp_vars, alpha_data[id],
+                    cut_coeff_id, isp_data, iter_label)
 
                 # 4. MW cut strengthening
                 if strengthen_cuts == :mw
-                    add_mw_cuts_for_vertex!(omp_model, omp_vars, vertex_data[j], isp_data, iter_label;
+                    add_mw_cuts_for_vertex!(omp_model, omp_vars, alpha_data[id], isp_data, iter_label;
                         λ_sol=λ_sol, x_sol=x_sol, h_sol=h_sol, ψ0_sol=ψ0_sol,
                         network=network, γ=γ, λU=λU, w=w, v_param=v_param)
                 end
             end
 
             # 4. Benders phase convergence (local UB for this phase)
-            benders_ub = min(benders_ub, max_Q_j)
+            benders_ub = min(benders_ub, max_Q)
             gap = (t_0_sol > -Inf) ? abs(benders_ub - t_0_sol) / max(abs(benders_ub), 1e-10) : Inf
             abs_converged = (t_0_sol > -Inf) && (t_0_sol >= benders_ub - 1e-4)
 
@@ -629,53 +647,50 @@ function ccg_benders_optimize!(network, ϕU, λU, γ, w, v_param, uncertainty_se
         push!(history[:benders_iter], benders_iters)
         push!(history[:lower_bound], t_0_sol)
         push!(history[:upper_bound], upper_bound)
-        push!(history[:J_size], length(J))
+        push!(history[:J_size], length(active_ids))
 
         if !benders_converged
             @warn "  Benders phase did not converge within $max_benders_iter iterations."
         end
 
         # -------- Pricing Phase --------
-        @info "  [Pricing] Searching for worst-case vertex..."
-        j_new, Q_new, α_new, new_pricing_cuts, new_mw_cuts = pricing_solve!(network, S, ϕU, λU, γ, w, v_param, uncertainty_set, isp_data;
+        @info "  [Pricing] Searching for worst-case α..."
+        _, Q_new, α_new, new_pricing_cuts, new_mw_cuts = pricing_solve!(network, S, ϕU, λU, γ, w, v_param, uncertainty_set, isp_data;
             mip_optimizer=mip_optimizer, conic_optimizer=conic_optimizer,
             λ_sol=λ_sol, x_sol=x_sol, h_sol=h_sol, ψ0_sol=ψ0_sol,
             πU=πU, yU=yU, ytsU=ytsU, inner_tr=inner_tr, tol=tol,
             warm_start_cuts=warm_start_cuts)
 
-        upper_bound = min(upper_bound, Q_new)  # global UB: pricing의 Q_new (= full max_α Q(α,χ*))의 minimum
-        @info "  [Pricing] Best vertex: j=$j_new, Q=$(round(Q_new, digits=6)), globalUB=$(round(upper_bound, digits=6)), LB=$(round(t_0_sol, digits=6))"
+        upper_bound = min(upper_bound, Q_new)
+        @info "  [Pricing] Q=$(round(Q_new, digits=6)), globalUB=$(round(upper_bound, digits=6)), LB=$(round(t_0_sol, digits=6))"
 
-        if j_new in J
-            @info "  Worst-case vertex j=$j_new already in J. OPTIMAL."
-            push!(history[:vertices_added], 0)
-            break
-        elseif t_0_sol > -Inf && Q_new <= t_0_sol + ε_pricing * max(abs(t_0_sol), 1.0)
-            @info "  No improving vertex found (Q_new=$Q_new ≤ LB+ε=$(t_0_sol + ε_pricing)). ε-OPTIMAL."
+        if t_0_sol > -Inf && Q_new <= t_0_sol + ε_pricing * max(abs(t_0_sol), 1.0)
+            @info "  No improving α found (Q_new=$Q_new ≤ LB+ε=$(t_0_sol + ε_pricing)). ε-OPTIMAL."
             push!(history[:vertices_added], 0)
             break
         else
-            @info "  Adding vertex j=$j_new to J."
-            push!(J, j_new)
-            add_vertex_to_omp!(omp_model, omp_vars, j_new, S)
-            vertex_data[j_new] = build_vertex_isps(j_new, network, S, ϕU, λU, γ, w, v_param, uncertainty_set;
+            alpha_id_counter += 1
+            @info "  Adding α #$alpha_id_counter to active set."
+            push!(active_ids, alpha_id_counter)
+            add_vertex_to_omp!(omp_model, omp_vars, alpha_id_counter, S)
+            alpha_data[alpha_id_counter] = build_alpha_isps(alpha_id_counter, α_new, network, S, ϕU, λU, γ, w, v_param, uncertainty_set;
                 conic_optimizer=conic_optimizer, λ_sol=λ_sol, x_sol=x_sol, h_sol=h_sol, ψ0_sol=ψ0_sol,
                 πU=πU, yU=yU, ytsU=ytsU)
-            # Warm-start: pricing에서 추출한 cuts + MW cuts를 새 vertex의 OMP에 즉시 추가
+            # Warm-start: pricing에서 추출한 cuts + MW cuts를 새 α의 OMP에 즉시 추가
             if warm_start_cuts && new_pricing_cuts !== nothing
                 new_per_s = convert_to_per_scenario_cuts(new_pricing_cuts, S)
-                add_scenario_cuts_to_omp!(omp_model, omp_vars, vertex_data[j_new],
+                add_scenario_cuts_to_omp!(omp_model, omp_vars, alpha_data[alpha_id_counter],
                     new_per_s, isp_data, 0)
                 if new_mw_cuts !== nothing
                     for mw_info in new_mw_cuts
                         mw_per_s = convert_to_per_scenario_cuts(mw_info, S)
-                        add_scenario_cuts_to_omp!(omp_model, omp_vars, vertex_data[j_new],
+                        add_scenario_cuts_to_omp!(omp_model, omp_vars, alpha_data[alpha_id_counter],
                             mw_per_s, isp_data, 0)
                     end
                 end
-                @info "  [Warm-start] Pricing cuts + MW added for new vertex j=$j_new"
+                @info "  [Warm-start] Pricing cuts + MW added for α #$alpha_id_counter"
             end
-            push!(history[:vertices_added], j_new)
+            push!(history[:vertices_added], alpha_id_counter)
         end
     end
 
@@ -683,14 +698,14 @@ function ccg_benders_optimize!(network, ϕU, λU, γ, w, v_param, uncertainty_se
     @info "=" ^ 60
     @info "C&CG completed in $(round(time_end - time_start, digits=1))s"
     @info "  Final: LB=$(round(t_0_sol, digits=6)), UB=$(round(upper_bound, digits=6))"
-    @info "  |J| = $(length(J)), J = $J"
+    @info "  |α set| = $(length(active_ids))"
 
     return Dict(
         :opt_sol => Dict(:x => x_sol, :h => h_sol, :λ => λ_sol, :ψ0 => ψ0_sol),
         :obj_val => upper_bound,
         :lower_bound => t_0_sol,
-        :active_vertices => J,
-        :vertex_data => vertex_data,
+        :active_alphas => active_ids,
+        :alpha_data => alpha_data,
         :history => history,
         :solution_time => time_end - time_start,
     )
