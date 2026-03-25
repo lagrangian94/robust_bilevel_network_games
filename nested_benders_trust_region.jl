@@ -348,6 +348,11 @@ function tr_imp_optimize!(imp_model::Model, imp_vars::Dict, isp_leader_instances
             subprob_obj += scenario_results[s][1][:obj_val] + scenario_results[s][2][:obj_val]
         end
         subprob_obj /= S_total  # average over scenarios
+        # Best LB 갱신 시 outer cut coefficients 스냅샷 저장
+        if subprob_obj > lower_bound + 1e-8
+            result[:best_lb_outer_cut] = extract_outer_cut_from_current_isp(isp_leader_instances, isp_follower_instances, S)
+            result[:best_lb_α] = copy(α_sol)
+        end
         lower_bound = max(lower_bound, subprob_obj) ## inner master problem은 Maximization이니까 우린 항상 더 높은 값을 추구
         gap = abs(model_estimate - lower_bound) / max(abs(model_estimate), 1e-10)
         inner_converged = gap <= effective_tol || lower_bound > model_estimate - 1e-4 || iter >= effective_max_iter
@@ -557,6 +562,124 @@ function evaluate_master_opt_cut(isp_leader_instances::Dict, isp_follower_instan
     @assert abs(avg_obj - cut_info[:obj_val]) < 1e-3
     return Dict(:Uhat1=>Uhat1, :Utilde1=>Utilde1, :Uhat3=>Uhat3, :Utilde3=>Utilde3, :Ztilde1_3=>Ztilde1_3
     ,:βtilde1_1=>βtilde1_1, :βtilde1_3=>βtilde1_3, :intercept=>intercept, :intercept_l=>intercept_l, :intercept_f=>intercept_f)
+end
+
+
+"""
+    extract_outer_cut_from_current_isp(isp_leader_instances, isp_follower_instances, S)
+
+현재 ISP solution에서 outer cut coefficients를 추출 (re-solve 없이 value.()만 호출).
+Inner loop 중간 iteration에서 outer cut을 수집할 때 사용.
+"""
+function extract_outer_cut_from_current_isp(isp_leader_instances::Dict, isp_follower_instances::Dict, S::Int)
+    Uhat1 = cat([value.(isp_leader_instances[s][2][:Uhat1]) for s in 1:S]...; dims=1)
+    Utilde1 = cat([value.(isp_follower_instances[s][2][:Utilde1]) for s in 1:S]...; dims=1)
+    Uhat3 = cat([value.(isp_leader_instances[s][2][:Uhat3]) for s in 1:S]...; dims=1)
+    Utilde3 = cat([value.(isp_follower_instances[s][2][:Utilde3]) for s in 1:S]...; dims=1)
+    Ztilde1_3 = cat([value.(isp_follower_instances[s][2][:Ztilde1_3]) for s in 1:S]...; dims=1)
+    βtilde1_1 = cat([value.(isp_follower_instances[s][2][:βtilde1_1]) for s in 1:S]...; dims=1)
+    βtilde1_3 = cat([value.(isp_follower_instances[s][2][:βtilde1_3]) for s in 1:S]...; dims=1)
+    intercept_l = [value.(isp_leader_instances[s][2][:intercept]) for s in 1:S]
+    intercept_f = [value.(isp_follower_instances[s][2][:intercept]) for s in 1:S]
+    intercept = sum(intercept_l) + sum(intercept_f)
+    return Dict(:Uhat1=>Uhat1, :Utilde1=>Utilde1, :Uhat3=>Uhat3, :Utilde3=>Utilde3,
+                :Ztilde1_3=>Ztilde1_3, :βtilde1_1=>βtilde1_1, :βtilde1_3=>βtilde1_3,
+                :intercept=>intercept, :intercept_l=>intercept_l, :intercept_f=>intercept_f)
+end
+
+
+# ===== Subgradient Heuristic: IMP 대체 =====
+
+"""
+    project_simplex(z, w)
+
+z를 simplex {α ≥ 0, Σα = w}에 L2 projection.
+"""
+function project_simplex(z::Vector{Float64}, w::Float64)
+    n = length(z)
+    u = sort(z, rev=true)
+    cssv = cumsum(u)
+    rho = findlast(i -> u[i] > (cssv[i] - w) / i, 1:n)
+    theta = (cssv[rho] - w) / rho
+    return max.(z .- theta, 0.0)
+end
+
+"""
+    subgradient_alpha_step!(α_current, isp_leader_instances, isp_follower_instances, isp_data;
+        λ_sol, x_sol, h_sol, ψ0_sol, step_size=0.1, parallel=false)
+
+IMP를 풀지 않고, 현재 α에서 ISP 1라운드(2S회)만 풀어서:
+  1. outer cut coefficients 추출
+  2. μ (supergradient) → projected subgradient step으로 α 업데이트
+기존 tr_imp_optimize!의 inexact phase를 대체.
+
+Returns: (:OptimalityCut, result) — tr_imp_optimize!과 동일한 인터페이스
+"""
+function subgradient_alpha_step!(α_current::Vector{Float64},
+    isp_leader_instances::Dict, isp_follower_instances::Dict, isp_data::Dict;
+    λ_sol=nothing, x_sol=nothing, h_sol=nothing, ψ0_sol=nothing,
+    step_size::Float64=0.1, parallel=false)
+
+    uncertainty_set = isp_data[:uncertainty_set]
+    R = uncertainty_set[:R]
+    r_dict = uncertainty_set[:r_dict]
+    xi_bar = uncertainty_set[:xi_bar]
+    epsilon = uncertainty_set[:epsilon]
+    S = isp_data[:S]
+    w = isp_data[:w]
+
+    # Step 1: ISP 풀기 (2S회) — 현재 α에서
+    α_sol = copy(α_current)
+    scenario_results, status = solve_scenarios(S; parallel=parallel) do s
+        U_s = Dict(:R => Dict(:1=>R[s]), :r_dict => Dict(:1=>r_dict[s]),
+                    :xi_bar => Dict(:1=>xi_bar[s]), :epsilon => epsilon)
+        (status_l, cut_info_l) = isp_leader_optimize!(
+            isp_leader_instances[s][1], isp_leader_instances[s][2];
+            isp_data=isp_data, uncertainty_set=U_s,
+            λ_sol=λ_sol, x_sol=x_sol, h_sol=h_sol, ψ0_sol=ψ0_sol, α_sol=α_sol)
+        (status_f, cut_info_f) = isp_follower_optimize!(
+            isp_follower_instances[s][1], isp_follower_instances[s][2];
+            isp_data=isp_data, uncertainty_set=U_s,
+            λ_sol=λ_sol, x_sol=x_sol, h_sol=h_sol, ψ0_sol=ψ0_sol, α_sol=α_sol)
+        ok = (status_l == :OptimalityCut) && (status_f == :OptimalityCut)
+        return (ok, (cut_info_l, cut_info_f))
+    end
+
+    # Step 2: obj, μ 수집
+    subprob_obj = 0.0
+    μ_total = zeros(length(α_sol))
+    for s in 1:S
+        cut_l, cut_f = scenario_results[s]
+        subprob_obj += cut_l[:obj_val] + cut_f[:obj_val]
+        μ_total .+= cut_l[:μhat] .+ cut_f[:μtilde]
+    end
+    subprob_obj /= S  # average
+
+    # Step 3: outer cut coefficients 추출 (re-solve 없이)
+    outer_cut_info = extract_outer_cut_from_current_isp(isp_leader_instances, isp_follower_instances, S)
+
+    # Step 4: α update — projected subgradient ascent
+    α_new = project_simplex(α_current .+ step_size .* μ_total, w / S)
+
+    # result 구성 (tr_imp_optimize! 호환)
+    result = Dict(
+        :α_sol => α_sol,        # ISP를 풀 때 사용한 α (outer cut용)
+        :α_new => α_new,        # subgradient step 후 새 α (다음 iteration용)
+        :obj_val => subprob_obj,
+        :iter => 1,
+        :cuts => Dict(),
+        :inexact => true,
+        :subgradient => true,   # subgradient heuristic 식별 플래그
+        :outer_cut_info => outer_cut_info,  # ISP 이미 풀었으므로 re-solve 불필요
+        :past_obj => [subprob_obj],
+        :past_subprob_obj => [subprob_obj],
+        :past_lower_bound => [subprob_obj],
+        :tr_constraints => nothing,
+        :μ_total => μ_total,
+    )
+
+    println("  [Subgrad] obj=$(round(subprob_obj, digits=6)), ‖μ‖=$(round(norm(μ_total), digits=4)), step=$step_size")
+    return (:OptimalityCut, result)
 end
 
 
@@ -1215,6 +1338,10 @@ function tr_nested_benders_optimize!(omp_model::Model, omp_vars::Dict, network, 
         n_stages = length(B_bin_sequence)
         # Inexact inner solve 설정: N번에 1번만 exact (UB 업데이트)
         inexact_every_n = 3  # 3번에 1번 exact (1=항상 exact, 0=항상 inexact)
+        use_subgradient = true  # true: inexact phase에서 IMP 대신 subgradient heuristic 사용
+        subgrad_step_size = 0.1  # subgradient step size (γ₀)
+        use_best_lb_cut = true  # inner loop 중 best LB 달성 시 intermediate cut 추가
+        α_persistent = nothing  # subgradient heuristic용 α state (across outer iters 누적)
         ## Stability Centers
         # Stability centers (will be initialized after first solve)
         centers = Dict{Symbol, Any}(
@@ -1335,7 +1462,17 @@ function tr_nested_benders_optimize!(omp_model::Model, omp_vars::Dict, network, 
             # Outer Subproblem 풀기 (inexact: N번에 1번만 exact)
             # 첫 iter과 stage 전환 직후는 항상 exact (v̂ 초기화 필요)
             use_inexact = inexact_every_n > 1 && (iter % inexact_every_n != 0) && iter > 1 && !stage_just_changed
-            if isp_mode == :dual
+            if use_inexact && use_subgradient && isp_mode == :dual
+                # Subgradient heuristic: IMP 없이 ISP 1라운드 + α projection
+                if α_persistent === nothing
+                    α_persistent = fill(isp_data[:w] / isp_data[:S] / (length(network.arcs)-1), length(network.arcs)-1)
+                end
+                status, cut_info = subgradient_alpha_step!(α_persistent,
+                    leader_instances, follower_instances, isp_data;
+                    λ_sol=λ_sol, x_sol=x_sol, h_sol=h_sol, ψ0_sol=ψ0_sol,
+                    step_size=subgrad_step_size, parallel=parallel)
+                α_persistent = cut_info[:α_new]  # 다음 iteration용 α 누적
+            elseif isp_mode == :dual
                 status, cut_info = tr_imp_optimize!(imp_model, imp_vars, leader_instances, follower_instances; isp_data=isp_data, λ_sol=λ_sol, x_sol=x_sol, h_sol=h_sol, ψ0_sol=ψ0_sol, outer_iter=iter, imp_cuts=imp_cuts, inner_tr=inner_tr, parallel=parallel, inexact=use_inexact)
             else
                 status, cut_info = tr_imp_optimize_hybrid!(imp_model, imp_vars, primal_leader_instances, primal_follower_instances; isp_data=isp_data, λ_sol=λ_sol, x_sol=x_sol, h_sol=h_sol, ψ0_sol=ψ0_sol, outer_iter=iter, imp_cuts=imp_cuts, inner_tr=inner_tr, parallel=parallel)
@@ -1345,16 +1482,23 @@ function tr_nested_benders_optimize!(omp_model::Model, omp_vars::Dict, network, 
                 @infiltrate
             end
             push!(result[:inner_iter], cut_info[:iter])
-            imp_cuts[:old_cuts] = cut_info[:cuts] ## 다음 iteration에서 지우기 위해 여기에 저장함
-            if inner_tr && cut_info[:tr_constraints] !== nothing
-                imp_cuts[:old_tr_constraints] = cut_info[:tr_constraints]
-            end
             subprob_obj = cut_info[:obj_val]
             is_inexact = get(cut_info, :inexact, false)
+            is_subgradient = get(cut_info, :subgradient, false)
+            if !is_subgradient
+                imp_cuts[:old_cuts] = cut_info[:cuts] ## 다음 iteration에서 지우기 위해 여기에 저장함
+            end
+            if inner_tr && !is_subgradient && cut_info[:tr_constraints] !== nothing
+                imp_cuts[:old_tr_constraints] = cut_info[:tr_constraints]
+            end
             if !is_inexact
                 # Exact solve만 UB 업데이트 (inexact α는 suboptimal → valid UB 아님)
                 upper_bound = min(upper_bound, subprob_obj)
                 local_upper_bound = min(local_upper_bound, subprob_obj)
+                # Exact IMP 수렴 후 α_persistent 재보정 (subgradient drift 교정)
+                if use_subgradient
+                    α_persistent = copy(cut_info[:α_sol])
+                end
             end
 
             # Measure of progress
@@ -1527,7 +1671,10 @@ function tr_nested_benders_optimize!(omp_model::Model, omp_vars::Dict, network, 
             end
         else
             # Gap still large → Add cut and continue
-            if isp_mode == :full_primal
+            if is_subgradient
+                # Subgradient heuristic: ISP 이미 풀었으므로 re-solve 불필요
+                outer_cut_info = cut_info[:outer_cut_info]
+            elseif isp_mode == :full_primal
                 outer_cut_info = evaluate_master_opt_cut_from_primal(
                     primal_leader_instances, primal_follower_instances,
                     isp_data, cut_info, iter;
@@ -1582,6 +1729,15 @@ function tr_nested_benders_optimize!(omp_model::Model, omp_vars::Dict, network, 
             end
             println("subproblem objective: ", subprob_obj)
             @info "Optimality cut added"
+
+            # ===== Best-LB intermediate cut (inner loop 중 best LB 달성 시의 cut) =====
+            if use_best_lb_cut && haskey(cut_info, :best_lb_outer_cut) && cut_info[:best_lb_outer_cut] !== nothing
+                best_lb_cut_info = cut_info[:best_lb_outer_cut]
+                best_lb_cut = add_optimality_cuts!(omp_model, omp_vars, best_lb_cut_info, diag_x_E, isp_data[:E], diag_λ_ψ, xi_bar, isp_data[:d0], ϕU, λ, h, S, iter;
+                    prefix="best_lb_cut", result_cuts=result[:cuts])
+                best_lb_cut_val = evaluate_expr(best_lb_cut, y)
+                println("  │ [Best-LB cut] val at x_sol = $(round(best_lb_cut_val, digits=6))")
+            end
 
             # ===== Cut Strengthening (:mw or :sherali) =====
             if strengthen_cuts != :none && leader_instances !== nothing
