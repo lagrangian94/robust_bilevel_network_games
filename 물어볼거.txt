@@ -1,0 +1,243 @@
+┌ Warning: The addition operator has been used on JuMP expressions a large number of times. This warning is safe to ignore but may indicate that model generation is slower than necessary. For 
+performance reasons, you should not add expressions in a loop. Instead of x += y, use add_to_expression!(x,y) to modify x in place. If y is a single variable, you may also use add_to_expression!(x, coef, y) for x += coef*y.
+
+
+
+└──────────────────────────────────────────────
+
+[ Info: Optimality cut added
+[ Info:     [Inner] Iteration 12
+[ Info: Inner converged within TR: expanding B_conti to 0.2134/0.3334
+[ Info:     [Inner] Iteration 13
+[ Info: Inner converged within TR: expanding B_conti to 0.3334/0.3334
+[ Info:     [Inner] Iteration 14
+[ Info: Termination condition met
+model_estimate: 1.1396491359752061, subprob_obj: 1.1396149285508375
+  │ subprob_obj = 1.139615,  inner_iters = 14
+  │ LB = 0.906811,  localUB = 0.924825,  globalUB = 0.924678,  gap = 0.01947852
+  │ past_major_subprob_obj[end] = 0.924678,  improvement = -0.214937,  β_dynamic = 1.79e-6
+  │   null step
+[ Info: [Outer-dual] Stage 4/4 Iter 63: localLB=0.9068  localUB=0.9248  localGap=0.019479  (globalUB=0.9247; 6203.4s)
+avg of leader and follower objective: 1.1396149384377425, cut_info[:obj_val]: 1.1396149285508375
+Outer loop iteration: 63
+  │ opt_cut at x_sol = 11.396149 (should ≈ subprob*S = 11.396149)
+subproblem objective: 1.1396149285508375
+[ Info: Optimality cut added
+  │ mw_cut_cp1 at x_sol = 11.396126  (diff from opt = -2.4e-5)
+[ Info:   1 mw strengthening cuts added
+[ Info:   [Mini-Benders] iter 1: LB=0.906823, α-fixed UB=1.40168, gap=0.35304542
+[ Info:   [Mini-Benders] iter 2: LB=0.908642, α-fixed UB=1.417602, gap=0.35902857
+[ Info:   [Mini-Benders] iter 3: LB=0.909166, α-fixed UB=1.179825, gap=0.22940597
+[ Info:   [Mini-Benders] iter 4: LB=0.910904, α-fixed UB=1.339545, gap=0.31998994
+[ Info:   [Mini-Benders] iter 5: LB=0.912469, α-fixed UB=1.440708, gap=0.36665239
+  │ [Mini-Benders] 10 extra cuts added (α-fixed, max_iter=5)
+  └──────────────────────────────────────────────
+[ Info: [Outer-dual] Iteration 64 (B_bin=6, Stage=4/4)
+[ Info:     [Inner] Iteration 1
+[ Info: Poor improvement: Reducing B_conti
+subproblem objective: 1.1167575465199833
+[ Info: Optimality cut added
+[ Info:     [Inner] Iteration 2
+[ Info: Poor improvement: Reducing B_conti
+subproblem objective: 1.116021633305119
+[ Info: Optimality cut added
+[ Info:     [Inner] Iteration 3
+[ Info: Very good improvement: Expanding B_conti
+subproblem objective: 1.4018543423671208
+[ Info: Optimality cut added
+[ Info:     [Inner] Iteration 4
+[ Info: Poor improvement: Reducing B_conti
+subproblem objective: 1.3981972077380092
+[ Info: Optimality cut added
+[ Info:     [Inner] Iteration 5
+[ Info: Very good improvement: Expanding B_conti
+subproblem objective: 1.4031730160619305
+[ Info: Optimality cut added
+[ Info:     [Inner] Iteration 6
+[ Info: Poor improvement: Reducing B_conti
+subproblem objective: 1.4026162372592683
+[ Info: Optimality cut added
+[ Info:     [Inner] Iteration 7
+[ Info: Very good improvement: Expanding B_conti
+subproblem objective: 1.404708095775967
+[ Info: Optimality cut added
+[ Info:     [Inner] Iteration 8
+[ Info: Very good improvement: Expanding B_conti
+subproblem objective: 1.405395685337298
+[ Info: Optimality cut added
+[ Info:     [Inner] Iteration 9
+[ Info: Inner converged within TR: expanding B_conti to 0.1067/0.3334
+[ Info:     [Inner] Iteration 10
+[ Info: Poor improvement: Reducing B_conti
+subproblem objective: 1.405220656284102
+[ Info: Optimality cut added
+[ Info:     [Inner] Iteration 11
+[ Info: Inner converged within TR: expanding B_conti to 0.2134/0.3334
+[ Info:     [Inner] Iteration 12
+[ Info: Inner converged within TR: expanding B_conti to 0.3334/0.3334
+[ Info:     [Inner] Iteration 13
+[ Info: Termination condition met
+model_estimate: 1.4053958248023917, subprob_obj: 1.405354831772265
+  │ subprob_obj = 1.405355,  inner_iters = 13
+  │ LB = 0.912993,  localUB = 0.924825,  globalUB = 0.924678,  gap = 0.01279351
+  │ past_major_subprob_obj[end] = 0.924678,  improvement = -0.480677,  β_dynamic = 1.17e-6
+  │   null step
+[ Info: [Outer-dual] Stage 4/4 Iter 64: localLB=0.913  localUB=0.9248  localGap=0.012794  (globalUB=0.9247; 6319.5s)
+avg of leader and follower objective: 1.4053548418401767, cut_info[:obj_val]: 1.405354831772265
+Outer loop iteration: 64
+  │ opt_cut at x_sol = 14.053548 (should ≈ subprob*S = 14.053548)
+subproblem objective: 1.405354831772265
+[ Info: Optimality cut added
+  │ mw_cut_cp1 at x_sol = 14.053467  (diff from opt = -8.2e-5)
+[ Info:   1 mw strengthening cuts added
+[ Info:   [Mini-Benders] iter 1: LB=0.913588, α-fixed UB=1.300808, gap=0.29767645
+[ Info:   [Mini-Benders] iter 2: LB=0.91389, α-fixed UB=1.085012, gap=0.1577144
+[ Info:   [Mini-Benders] iter 3: LB=0.913984, α-fixed UB=1.160625, gap=0.21250702
+[ Info:   [Mini-Benders] iter 4: LB=0.915528, α-fixed UB=1.140553, gap=0.19729484
+[ Info:   [Mini-Benders] iter 5: LB=0.917268, α-fixed UB=1.216991, gap=0.24628207
+  │ [Mini-Benders] 10 extra cuts added (α-fixed, max_iter=5)
+  └──────────────────────────────────────────────
+[ Info: [Outer-dual] Iteration 65 (B_bin=6, Stage=4/4)
+[ Info:     [Inner] Iteration 1
+[ Info: Poor improvement: Reducing B_conti
+subproblem objective: 1.6888522418958036
+[ Info: Optimality cut added
+[ Info:     [Inner] Iteration 2
+[ Info: Very good improvement: Expanding B_conti
+subproblem objective: 1.952921088791615
+[ Info: Optimality cut added
+[ Info:     [Inner] Iteration 3
+[ Info: Very good improvement: Expanding B_conti
+subproblem objective: 1.9607951429919583
+[ Info: Optimality cut added
+[ Info:     [Inner] Iteration 4
+[ Info: Very good improvement: Expanding B_conti
+subproblem objective: 1.981886390485748
+[ Info: Optimality cut added
+[ Info:     [Inner] Iteration 5
+[ Info: Very good improvement: Expanding B_conti
+subproblem objective: 2.022285864396112
+[ Info: Optimality cut added
+[ Info:     [Inner] Iteration 6
+[ Info: Very good improvement: Expanding B_conti
+subproblem objective: 2.0869968584913963
+[ Info: Optimality cut added
+[ Info:     [Inner] Iteration 7
+[ Info: Poor improvement: Reducing B_conti
+subproblem objective: 2.071757643940514
+[ Info: Optimality cut added
+[ Info:     [Inner] Iteration 8
+[ Info: Very good improvement: Expanding B_conti
+subproblem objective: 2.1251535281521194
+[ Info: Optimality cut added
+[ Info:     [Inner] Iteration 9
+[ Info: Moderate improvement: Keeping B_conti
+subproblem objective: 2.127650388650288
+[ Info: Optimality cut added
+[ Info:     [Inner] Iteration 10
+[ Info: Inner converged within TR: expanding B_conti to 0.3334/0.3334
+[ Info:     [Inner] Iteration 11
+[ Info: Termination condition met
+model_estimate: 2.128433593583569, subprob_obj: 2.1284163852045848
+  │ subprob_obj = 2.128416,  inner_iters = 11
+  │ LB = 0.921202,  localUB = 0.924825,  globalUB = 0.924678,  gap = 0.00391805
+  │ past_major_subprob_obj[end] = 0.924678,  improvement = -1.203739,  β_dynamic = 3.5e-7
+  │   null step
+[ Info: [Outer-dual] Stage 4/4 Iter 65: localLB=0.9212  localUB=0.9248  localGap=0.003918  (globalUB=0.9247; 6424.1s)
+avg of leader and follower objective: 2.1284163903460698, cut_info[:obj_val]: 2.1284163852045848
+Outer loop iteration: 65
+  │ opt_cut at x_sol = 21.284164 (should ≈ subprob*S = 21.284164)
+subproblem objective: 2.1284163852045848
+[ Info: Optimality cut added
+  │ mw_cut_cp1 at x_sol = 21.284066  (diff from opt = -9.8e-5)
+[ Info:   1 mw strengthening cuts added
+[ Info:   [Mini-Benders] iter 1: LB=0.921424, α-fixed UB=0.992783, gap=0.07187723
+[ Info:   [Mini-Benders] iter 2: LB=0.922265, α-fixed UB=1.429188, gap=0.35469287
+[ Info:   [Mini-Benders] iter 3: LB=0.922847, α-fixed UB=1.613942, gap=0.42820331
+[ Info:   [Mini-Benders] iter 4: LB=0.924637, α-fixed UB=0.731859, gap=0.26340995
+[ Info:   [Mini-Benders] iter 5: LB=0.924637, α-fixed UB=0.731859, gap=0.26340929
+  │ [Mini-Benders] 10 extra cuts added (α-fixed, max_iter=5)
+  └──────────────────────────────────────────────
+[ Info: [Outer-dual] Iteration 66 (B_bin=6, Stage=4/4)
+[ Info:     [Inner] Iteration 1
+[ Info: Poor improvement: Reducing B_conti
+subproblem objective: 0.5910072283210139
+[ Info: Optimality cut added
+[ Info:     [Inner] Iteration 2
+[ Info: Very good improvement: Expanding B_conti
+subproblem objective: 0.9118710031436971
+[ Info: Optimality cut added
+[ Info:     [Inner] Iteration 3
+[ Info: Very good improvement: Expanding B_conti
+subproblem objective: 0.9129045600241538
+[ Info: Optimality cut added
+[ Info:     [Inner] Iteration 4
+[ Info: Very good improvement: Expanding B_conti
+subproblem objective: 0.9147135027632661
+[ Info: Optimality cut added
+[ Info:     [Inner] Iteration 5
+[ Info: Very good improvement: Expanding B_conti
+subproblem objective: 0.9175395702945484
+[ Info: Optimality cut added
+[ Info:     [Inner] Iteration 6
+[ Info: Inner converged within TR: expanding B_conti to 0.1067/0.3334
+[ Info:     [Inner] Iteration 7
+[ Info: Very good improvement: Expanding B_conti
+subproblem objective: 0.9247037180387077
+[ Info: Optimality cut added
+[ Info:     [Inner] Iteration 8
+[ Info: Inner converged within TR: expanding B_conti to 0.3334/0.3334
+[ Info:     [Inner] Iteration 9
+[ Info: Poor improvement: Reducing B_conti
+subproblem objective: 0.8698232546402176
+[ Info: Optimality cut added
+[ Info:     [Inner] Iteration 10
+[ Info: Poor improvement: Reducing B_conti
+subproblem objective: 0.8948487676120462
+[ Info: Optimality cut added
+[ Info:     [Inner] Iteration 11
+[ Info: Moderate improvement: Keeping B_conti
+subproblem objective: 0.922149028166427
+[ Info: Optimality cut added
+[ Info:     [Inner] Iteration 12
+[ Info: Moderate improvement: Keeping B_conti
+subproblem objective: 0.9242823851501865
+[ Info: Optimality cut added
+[ Info: Termination condition met
+model_estimate: 0.9247020601981675, subprob_obj: 0.9247020837319921
+  │ subprob_obj = 0.924702,  inner_iters = 13
+  │ LB = 0.924637,  localUB = 0.924702,  globalUB = 0.924678,  gap = 6.989e-5
+  │ past_major_subprob_obj[end] = 0.924678,  improvement = -2.5e-5,  β_dynamic = 1.0e-8
+  │   null step
+[ Info: [Outer-dual] Stage 4/4 Iter 66: localLB=0.9246  localUB=0.9247  localGap=7.0e-5  (globalUB=0.9247; 6534.1s)
+  │ ▶ CONVERGED/PRUNED: gap=6.989e-5, LB=0.924637 vs localUB=0.924702
+  └──────────────────────────────────────────────
+[ Info:   ✓✓ GLOBAL OPTIMAL! (B_bin = full region)
+lower_bound: 0.9246374551261038, upper_bound: 0.9246775238330442
+
+>> Dual TR Both time: 6540.292000055313 seconds
+Infiltrating (on thread 1) top-level scope
+
+
+안넣는게 훨 빠름. stage 바뀔때 초기에 lb=0일때만 (localGap 1가까울때만, 아니면 localLB가 stagnate될 때만) 좀 넣어주면? mini benders도 5개도 많은듯..
+? 그런줄알았는데 Stage 4가 너무 오래 걸림.
+IMP는 지금 컷이 계속 쌓이고있는건가?
+infil> results["tr_dual"]
+13698.194999933243
+
+
+
+
+
+
+CCG
+[ Info:   [Pricing] Warm-start cuts + 1 MW cuts extracted (α_sol)
+[ Info:   [Pricing] Q=0.924761, globalUB=0.924664, LB=0.924709
+[ Info:   No improving α found (Q_new=0.9247611756991384 ≤ LB+ε=0.9248093583533757). ε-OPTIMAL.
+[ Info: ============================================================
+[ Info: C&CG completed in 14564.4s
+[ Info:   Final: LB=0.924709, UB=0.924664
+[ Info:   |α set| = 9
+
+>> C&CG Benders time: 14676.423999786377 seconds
+Infiltrating (on thread 1) top-level scope

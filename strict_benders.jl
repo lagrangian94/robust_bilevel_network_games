@@ -132,30 +132,45 @@ Returns combined AffExpr for tightness check.
 function add_optimality_cuts!(omp_model, omp_vars, cut_info, diag_x_E, E, diag_λ_ψ, xi_bar, d0, ϕU, λ_var, h_var, S, iter;
     prefix="opt_cut", result_cuts=nothing)
     # Per-scenario cut terms (always compute leader/follower separately)
-    leader_s = Vector{Any}(undef, S)
-    follower_s = Vector{Any}(undef, S)
+    # # [Original] sum(.* ) 패턴 — JuMP += performance warning 발생
+    # leader_s = Vector{Any}(undef, S)
+    # follower_s = Vector{Any}(undef, S)
+    # for s in 1:S
+    #     leader_s[s] = -ϕU * sum(cut_info[:Uhat1][s,:,:] .* diag_x_E) +
+    #                   -ϕU * sum(cut_info[:Uhat3][s,:,:] .* (E - diag_x_E)) +
+    #                   cut_info[:intercept_l][s]
+    #     follower_s[s] = -ϕU * sum(cut_info[:Utilde1][s,:,:] .* diag_x_E) +
+    #                     -ϕU * sum(cut_info[:Utilde3][s,:,:] .* (E - diag_x_E)) +
+    #                     sum(cut_info[:Ztilde1_3][s,:,:] .* (diag_λ_ψ * diagm(xi_bar[s]))) +
+    #                     (d0' * cut_info[:βtilde1_1][s,:]) * λ_var +
+    #                     -(h_var + diag_λ_ψ * xi_bar[s])' * cut_info[:βtilde1_3][s,:] +
+    #                     cut_info[:intercept_f][s]
+    # end
+    # opt_cut = sum(leader_s) + sum(follower_s)
+
+    # [Optimized] dot() + add_to_expression!로 in-place 누적
+    opt_cut = AffExpr(0.0)
     for s in 1:S
-        leader_s[s] = -ϕU * sum(cut_info[:Uhat1][s,:,:] .* diag_x_E) +
-                      -ϕU * sum(cut_info[:Uhat3][s,:,:] .* (E - diag_x_E)) +
-                      cut_info[:intercept_l][s]
-        follower_s[s] = -ϕU * sum(cut_info[:Utilde1][s,:,:] .* diag_x_E) +
-                        -ϕU * sum(cut_info[:Utilde3][s,:,:] .* (E - diag_x_E)) +
-                        sum(cut_info[:Ztilde1_3][s,:,:] .* (diag_λ_ψ * diagm(xi_bar[s]))) +
-                        (d0' * cut_info[:βtilde1_1][s,:]) * λ_var +
-                        -(h_var + diag_λ_ψ * xi_bar[s])' * cut_info[:βtilde1_3][s,:] +
-                        cut_info[:intercept_f][s]
+        add_to_expression!(opt_cut, -ϕU, dot(cut_info[:Uhat1][s,:,:], diag_x_E))
+        add_to_expression!(opt_cut, -ϕU, dot(cut_info[:Uhat3][s,:,:], E - diag_x_E))
+        add_to_expression!(opt_cut, cut_info[:intercept_l][s])
+        add_to_expression!(opt_cut, -ϕU, dot(cut_info[:Utilde1][s,:,:], diag_x_E))
+        add_to_expression!(opt_cut, -ϕU, dot(cut_info[:Utilde3][s,:,:], E - diag_x_E))
+        add_to_expression!(opt_cut, dot(cut_info[:Ztilde1_3][s,:,:], diag_λ_ψ * diagm(xi_bar[s])))
+        add_to_expression!(opt_cut, dot(d0, cut_info[:βtilde1_1][s,:]), λ_var)
+        add_to_expression!(opt_cut, -1.0, dot(cut_info[:βtilde1_3][s,:], h_var + diag_λ_ψ * xi_bar[s]))
+        add_to_expression!(opt_cut, cut_info[:intercept_f][s])
     end
 
     # Add aggregated cut
-    opt_cut = sum(leader_s) + sum(follower_s)
     c = @constraint(omp_model, omp_vars[:t_0] >= opt_cut)
     set_name(c, "$(prefix)_$(iter)")
     if result_cuts !== nothing
         result_cuts["$(prefix)_$(iter)"] = c
     end
 
-    # Return combined expression for tightness check
-    return sum(leader_s) + sum(follower_s)
+    # Return expression for tightness check
+    return opt_cut
 end
 
 function initialize_omp(omp_model::Model, omp_vars::Dict)

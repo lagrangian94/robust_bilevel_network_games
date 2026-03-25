@@ -281,7 +281,7 @@ function isp_follower_optimize!(isp_follower_model::Model, isp_follower_vars::Di
     end
 end
 
-function tr_imp_optimize!(imp_model::Model, imp_vars::Dict, isp_leader_instances::Dict, isp_follower_instances::Dict; isp_data=nothing, λ_sol=nothing, x_sol=nothing, h_sol=nothing, ψ0_sol=nothing, outer_iter=nothing, imp_cuts=nothing, inner_tr=true, tol=1e-6, parallel=false)
+function tr_imp_optimize!(imp_model::Model, imp_vars::Dict, isp_leader_instances::Dict, isp_follower_instances::Dict; isp_data=nothing, λ_sol=nothing, x_sol=nothing, h_sol=nothing, ψ0_sol=nothing, outer_iter=nothing, imp_cuts=nothing, inner_tr=true, tol=1e-6, parallel=false, inexact=false, inexact_tol=0.1, max_inexact_iter=5)
     st = MOI.get(imp_model, MOI.TerminationStatus())
     iter = 0
     uncertainty_set = isp_data[:uncertainty_set]
@@ -298,8 +298,11 @@ function tr_imp_optimize!(imp_model::Model, imp_vars::Dict, isp_leader_instances
     past_upper_bound = []
     major_iter = []
     lower_bound = -Inf ## inner master problem은 Maximization이니까 feasible solution은 lower bound를 제공.
+    effective_tol = inexact ? inexact_tol : tol
+    effective_max_iter = inexact ? max_inexact_iter : typemax(Int)
     result = Dict()
     result[:cuts] = Dict()
+    result[:inexact] = inexact  # 호출자에게 inexact 여부 전달
     if inner_tr
         B_conti_max = isp_data[:w]/isp_data[:S]
         B_conti = B_conti_max * 0.01 # 초기값 어떻게?
@@ -347,7 +350,20 @@ function tr_imp_optimize!(imp_model::Model, imp_vars::Dict, isp_leader_instances
         subprob_obj /= S_total  # average over scenarios
         lower_bound = max(lower_bound, subprob_obj) ## inner master problem은 Maximization이니까 우린 항상 더 높은 값을 추구
         gap = abs(model_estimate - lower_bound) / max(abs(model_estimate), 1e-10)
-        inner_converged = gap <= tol || lower_bound > model_estimate - 1e-4
+        inner_converged = gap <= effective_tol || lower_bound > model_estimate - 1e-4 || iter >= effective_max_iter
+        # Inexact: 수렴/iter cap 도달 시 즉시 반환 (B_conti 확장 없이)
+        if inexact && inner_converged
+            @info "Termination condition met (inexact, gap=$(round(gap, digits=4)), iter=$iter)"
+            println("model_estimate: ", model_estimate, ", subprob_obj: ", subprob_obj)
+            result[:past_obj] = past_obj
+            result[:past_subprob_obj] = past_subprob_obj
+            result[:α_sol] = α_sol
+            result[:obj_val] = subprob_obj
+            result[:past_lower_bound] = past_lower_bound
+            result[:iter] = iter
+            result[:tr_constraints] = (inner_tr && tr_constraints[:continuous] !== nothing) ? tr_constraints[:continuous] : nothing
+            return (:OptimalityCut, result)
+        end
         # inner_tr일 때: TR이 아직 최대가 아니면 확장하고 계속 탐색
         if inner_converged && inner_tr && B_conti < B_conti_max - 1e-8
             B_conti = min(B_conti_max, B_conti * 2.0)
@@ -357,7 +373,7 @@ function tr_imp_optimize!(imp_model::Model, imp_vars::Dict, isp_leader_instances
             lower_bound = -Inf  # 확장 후 수렴 판정을 리셋해야 새 영역에서 cut 추가 가능
             tr_constraints = update_inner_trust_region_constraints!(imp_model, imp_vars, centers, B_conti, tr_constraints, network)
         elseif inner_converged
-            @info "Termination condition met"
+            @info "Termination condition met$(inexact ? " (inexact, gap=$(round(gap, digits=4)))" : "")"
             println("model_estimate: ", model_estimate, ", subprob_obj: ", subprob_obj)
             result[:past_obj] = past_obj
             result[:past_subprob_obj] = past_subprob_obj
@@ -1193,6 +1209,12 @@ function tr_nested_benders_optimize!(omp_model::Model, omp_vars::Dict, network, 
         B_bin_stage = 1
         B_bin = B_bin_sequence[B_bin_stage]
         B_con = nothing # 나중에 생각
+        # Mini-Benders 활성화 stage 설정: 마지막 N개 stage에서만 실행
+        # 1 = 마지막 stage만, 2 = 마지막 2개, 0 = 전체 stage
+        mini_benders_last_n = 0
+        n_stages = length(B_bin_sequence)
+        # Inexact inner solve 설정: N번에 1번만 exact (UB 업데이트)
+        inexact_every_n = 3  # 3번에 1번 exact (1=항상 exact, 0=항상 inexact)
         ## Stability Centers
         # Stability centers (will be initialized after first solve)
         centers = Dict{Symbol, Any}(
@@ -1241,6 +1263,7 @@ function tr_nested_benders_optimize!(omp_model::Model, omp_vars::Dict, network, 
     past_local_center = []
     major_iter = []
     bin_B_steps = [] # B_bin이 몇번째 outer loop에서 바꼈는지 체크
+    stage_just_changed = false  # stage 전환 후 첫 iteration에서 v̂ 초기화용
     # null_steps = []
     imp_cuts = Dict{Symbol, Any}(:old_tr_constraints => nothing)
     result = Dict()
@@ -1309,9 +1332,11 @@ function tr_nested_benders_optimize!(omp_model::Model, omp_vars::Dict, network, 
                 update_primal_isp_parameters!(primal_leader_instances, primal_follower_instances;
                     x_sol=x_sol, h_sol=h_sol, λ_sol=λ_sol, ψ0_sol=ψ0_sol, isp_data=isp_data)
             end
-            # Outer Subproblem 풀기
+            # Outer Subproblem 풀기 (inexact: N번에 1번만 exact)
+            # 첫 iter과 stage 전환 직후는 항상 exact (v̂ 초기화 필요)
+            use_inexact = inexact_every_n > 1 && (iter % inexact_every_n != 0) && iter > 1 && !stage_just_changed
             if isp_mode == :dual
-                status, cut_info = tr_imp_optimize!(imp_model, imp_vars, leader_instances, follower_instances; isp_data=isp_data, λ_sol=λ_sol, x_sol=x_sol, h_sol=h_sol, ψ0_sol=ψ0_sol, outer_iter=iter, imp_cuts=imp_cuts, inner_tr=inner_tr, parallel=parallel)
+                status, cut_info = tr_imp_optimize!(imp_model, imp_vars, leader_instances, follower_instances; isp_data=isp_data, λ_sol=λ_sol, x_sol=x_sol, h_sol=h_sol, ψ0_sol=ψ0_sol, outer_iter=iter, imp_cuts=imp_cuts, inner_tr=inner_tr, parallel=parallel, inexact=use_inexact)
             else
                 status, cut_info = tr_imp_optimize_hybrid!(imp_model, imp_vars, primal_leader_instances, primal_follower_instances; isp_data=isp_data, λ_sol=λ_sol, x_sol=x_sol, h_sol=h_sol, ψ0_sol=ψ0_sol, outer_iter=iter, imp_cuts=imp_cuts, inner_tr=inner_tr, parallel=parallel)
             end
@@ -1325,41 +1350,56 @@ function tr_nested_benders_optimize!(omp_model::Model, omp_vars::Dict, network, 
                 imp_cuts[:old_tr_constraints] = cut_info[:tr_constraints]
             end
             subprob_obj = cut_info[:obj_val]
-            upper_bound = min(upper_bound, subprob_obj)
-            local_upper_bound = min(local_upper_bound, subprob_obj)
+            is_inexact = get(cut_info, :inexact, false)
+            if !is_inexact
+                # Exact solve만 UB 업데이트 (inexact α는 suboptimal → valid UB 아님)
+                upper_bound = min(upper_bound, subprob_obj)
+                local_upper_bound = min(local_upper_bound, subprob_obj)
+            end
 
             # Measure of progress
             gap = abs(local_upper_bound - lower_bound) / max(abs(local_upper_bound), 1e-10)
             if outer_tr
                 # ===== DEBUG: subprob + bounds =====
-                println("  │ subprob_obj = $(round(subprob_obj, digits=6)),  inner_iters = $(cut_info[:iter])")
+                println("  │ subprob_obj = $(round(subprob_obj, digits=6)),  inner_iters = $(cut_info[:iter])$(is_inexact ? " (inexact)" : "")")
                 println("  │ LB = $(round(lower_bound, digits=6)),  localUB = $(round(local_upper_bound, digits=6)),  globalUB = $(round(upper_bound, digits=6)),  gap = $(round(gap, digits=8))")
 
-                if iter==1
-                    push!(past_major_subprob_obj, subprob_obj)
+                if !is_inexact
+                    # Exact solve에서만 v̂ 초기화 및 SS 판정
+                    if iter==1 || stage_just_changed
+                        # 첫 iteration 또는 stage 전환 직후: v̂를 현재 subprob_obj로 초기화
+                        # (논문 Algorithm 3의 v̂^1 = ∞ 대신, iter==1과 동일하게 첫 해로 설정)
+                        push!(past_major_subprob_obj, subprob_obj)
+                        stage_just_changed = false
+                    end
+                    # Serious Test
+                    tr_needs_update = false  # Flag for TR constraint update
+                    predicted_decrease = past_major_subprob_obj[end] - model_estimate # serious(major) step 가장 최근 subprob obj와 지금 구한 obj의 차이
+                    β_dynamic = max(1e-8, β_relative * predicted_decrease)  # 최소값 보장
+                    improvement = past_major_subprob_obj[end] - subprob_obj # decrease in the actual objective
+                    is_serious_step = (improvement >= β_dynamic) # decrease in the actual objective is at least some fraction of the decrease predicted by the model
+                    if is_serious_step
+                        # Serious Step: Move stability center
+                        centers[:x] = value.(x_sol)
+                        centers[:h] = value.(h_sol)
+                        centers[:λ] = value.(λ_sol)
+                        centers[:ψ0] = value.(ψ0_sol)
+                        push!(major_iter, iter)
+                        push!(past_major_subprob_obj, subprob_obj)
+                        # TR constraint needs an update with new center
+                        tr_needs_update = true
+                        # 논문 Algorithm 3: center가 바뀌면 새 TR에서 LB 재계산 필요
+                        lower_bound = -Inf
+                    end
+                    # ===== DEBUG: serious/null step =====
+                    println("  │ past_major_subprob_obj[end] = $(round(past_major_subprob_obj[end], digits=6)),  improvement = $(round(improvement, digits=6)),  β_dynamic = $(round(β_dynamic, digits=8))")
+                    println("  │ $(is_serious_step ? "★ SERIOUS STEP" : "  null step")")
+                else
+                    # Inexact solve: SS skip, only add cuts
+                    tr_needs_update = false
+                    is_serious_step = false
+                    println("  │ (inexact solve — SS skip)")
                 end
-                # Serious Test
-                tr_needs_update = false  # Flag for TR constraint update
-                predicted_decrease = past_major_subprob_obj[end] - model_estimate # serious(major) step 가장 최근 subprob obj와 지금 구한 obj의 차이
-                β_dynamic = max(1e-8, β_relative * predicted_decrease)  # 최소값 보장
-                improvement = past_major_subprob_obj[end] - subprob_obj # decrease in the actual objective
-                is_serious_step = (improvement >= β_dynamic) # decrease in the actual objective is at least some fraction of the decrease predicted by the model
-                if is_serious_step
-                    # Serious Step: Move stability center
-                    centers[:x] = value.(x_sol)
-                    centers[:h] = value.(h_sol)
-                    centers[:λ] = value.(λ_sol)
-                    centers[:ψ0] = value.(ψ0_sol)
-                    push!(major_iter, iter)
-                    push!(past_major_subprob_obj, subprob_obj)
-                    # TR constraint needs an update with new center
-                    tr_needs_update = true
-                    # 논문 Algorithm 3: center가 바뀌면 새 TR에서 LB 재계산 필요
-                    lower_bound = -Inf
-                end
-                # ===== DEBUG: serious/null step =====
-                println("  │ past_major_subprob_obj[end] = $(round(past_major_subprob_obj[end], digits=6)),  improvement = $(round(improvement, digits=6)),  β_dynamic = $(round(β_dynamic, digits=8))")
-                println("  │ $(is_serious_step ? "★ SERIOUS STEP" : "  null step")")
             end
             if outer_tr
                 @info "[Outer-$isp_mode] Stage $(B_bin_stage)/$(length(B_bin_sequence)) Iter $iter: localLB=$(round(lower_bound, digits=4))  localUB=$(round(local_upper_bound, digits=4))  localGap=$(round(gap, digits=6))  (globalUB=$(round(upper_bound, digits=4)); $(round(time()-time_start, digits=1))s)"
@@ -1380,7 +1420,9 @@ function tr_nested_benders_optimize!(omp_model::Model, omp_vars::Dict, network, 
         # 논문 Algorithm 3: convergence check는 SS 이전 (Step 2 < Step 3)
         # SS와 convergence 동시 발생 방지: SS 발생 시 새 center 주변 재탐색 필요
         is_ss_this_iter = outer_tr && @isdefined(is_serious_step) && is_serious_step
-        converged = (gap <= tol || lower_bound > local_upper_bound - 1e-4) && !is_ss_this_iter
+        # 이전 stage는 loose tol (1e-3), 마지막 stage만 tight tol
+        local_tol = (outer_tr && B_bin_stage < length(B_bin_sequence)) ? 1e-3 : tol
+        converged = (gap <= local_tol || lower_bound > local_upper_bound - 1e-4) && !is_ss_this_iter
         if outer_tr && (converged || pruned)
             println("  │ ▶ CONVERGED/PRUNED: gap=$(round(gap, digits=8)), LB=$(round(lower_bound, digits=6)) vs localUB=$(round(local_upper_bound, digits=6))")
             println("  └──────────────────────────────────────────────")
@@ -1421,6 +1463,7 @@ function tr_nested_benders_optimize!(omp_model::Model, omp_vars::Dict, network, 
                     omp_model, omp_vars, centers, B_bin, B_con, tr_constraints, network)
                 lower_bound = -Inf # master problem 영역 확장했으니까 다시 초기화
                 local_upper_bound = Inf # local UB도 리셋
+                stage_just_changed = true  # 다음 iteration에서 v̂ 초기화
                 # Reverse region constraint 추가 (선택사항)
                 """
                 Reverse region을 넣으면 B radius를 확장해도 기존 local optimal 주변은 탐색하지 않음.
@@ -1589,8 +1632,13 @@ function tr_nested_benders_optimize!(omp_model::Model, omp_vars::Dict, network, 
                 println("  │ TR updated: center=$(findall(round.(centers[:x]) .> 0.5)), B_bin=$B_bin")
             end
 
-            # ===== Mini-Benders phase (α-fixed) =====
-            if mini_benders && leader_instances !== nothing
+            # ===== Mini-Benders phase (α-fixed, exact solve에서만) =====
+            # inexact_every_n > 1: exact iteration마다 항상 mini-benders (stage 무관)
+            # inexact_every_n = 1: mini_benders_last_n 기준으로 stage 제한
+            mini_benders_stage_ok = inexact_every_n > 1 ||
+                !outer_tr || mini_benders_last_n == 0 || B_bin_stage > n_stages - mini_benders_last_n
+            mini_benders_active = mini_benders && !is_inexact && leader_instances !== nothing && mini_benders_stage_ok
+            if mini_benders_active
                 n_mini = alpha_fixed_benders_phase!(
                     omp_model, omp_vars, cut_info[:α_sol],
                     leader_instances, follower_instances,
@@ -1687,6 +1735,7 @@ function tr_nested_benders_optimize_hybrid!(omp_model::Model, omp_vars::Dict, ne
     past_local_center = []
     major_iter = []
     bin_B_steps = []
+    stage_just_changed = false  # stage 전환 후 첫 iteration에서 v̂ 초기화용
     imp_cuts = Dict{Symbol, Any}(:old_tr_constraints => nothing)
     result = Dict()
     result[:cuts] = Dict()
@@ -1768,8 +1817,9 @@ function tr_nested_benders_optimize_hybrid!(omp_model::Model, omp_vars::Dict, ne
 
             gap = abs(local_upper_bound - lower_bound) / max(abs(local_upper_bound), 1e-10)
             if outer_tr
-                if iter==1
+                if iter==1 || stage_just_changed
                     push!(past_major_subprob_obj, subprob_obj)
+                    stage_just_changed = false
                 end
                 tr_needs_update = false
                 predicted_decrease = past_major_subprob_obj[end] - model_estimate
@@ -1805,7 +1855,8 @@ function tr_nested_benders_optimize_hybrid!(omp_model::Model, omp_vars::Dict, ne
         end
         # 논문 Algorithm 3: SS와 convergence 동시 발생 방지
         is_ss_this_iter = outer_tr && @isdefined(is_serious_step) && is_serious_step
-        converged = (gap <= tol || lower_bound > local_upper_bound - 1e-4) && !is_ss_this_iter
+        local_tol = (outer_tr && B_bin_stage < length(B_bin_sequence)) ? 1e-3 : tol
+        converged = (gap <= local_tol || lower_bound > local_upper_bound - 1e-4) && !is_ss_this_iter
         if converged || pruned
             if !outer_tr
                 time_end = time()
@@ -1832,6 +1883,7 @@ function tr_nested_benders_optimize_hybrid!(omp_model::Model, omp_vars::Dict, ne
                     omp_model, omp_vars, centers, B_bin, B_con, tr_constraints, network)
                 lower_bound = -Inf
                 local_upper_bound = Inf  # local UB도 리셋
+                stage_just_changed = true  # 다음 iteration에서 v̂ 초기화
                 _ = add_reverse_region_constraint!(omp_model, omp_vars[:x], centers[:x], B_bin_old, network)
             else
                 time_end = time()

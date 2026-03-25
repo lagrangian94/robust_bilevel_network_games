@@ -6,6 +6,8 @@
 
 **Motivation:** If true, IMP becomes combinatorial (|A| candidates), enables scenario-wise multi-cut at OMP level, and opens C&CG approach.
 
+**Final verdict: FALSE.** See Section 7.
+
 ---
 
 ## 2. Proof Attempt via Sion's Minimax Theorem
@@ -23,34 +25,38 @@ where H(α, p) = Σ_s [1/S(η̂_s + η̃_s) + α⊤(μ̂ˢ + μ̃ˢ)] is **bilin
 - H quasi-concave/usc in α ✓ (linear)
 - H quasi-convex/lsc in p ✓ (linear)
 
-### 2.3 Compactness Argument (FLAWED)
+### 2.3 Compactness of ∏F_s
 
-Initial argument: LDR coefficient bounds (ϕ_U, π_U, y_U) make F_s compact.
-
-**Problem:** These bounds only cover a subset of variables. The ISP dual (= original primal) contains **free/unbounded variables**:
+The ISP (Min problem, `build_primal_isp.jl`) variables and their bounds:
 
 | Variable | Role | Lower bound | Upper bound | Status |
 |----------|------|-------------|-------------|--------|
 | Φ̂, Π̂, Φ̃, Π̃ | LDR coefficients | -ϕ_U, -π_U | +ϕ_U, +π_U | ✅ bounded |
 | Ỹ, ỹ_ts | LDR coefficients | -y_U | +y_U | ✅ bounded |
+| Ψ̂, Ψ̃ | LDR (interdiction) | 0 | ϕ_U (Big-M) | ✅ bounded |
 | μ̂_k, μ̃_k | coupling dual | ≥ 0 | **none** | ❌ unbounded |
 | η̂_s | Wasserstein dual | ≥ 0 (leader) | **none** | ❌ unbounded |
 | η̃_s | Wasserstein dual | free | **none** | ❌ unbounded |
 | ϑ̂_s, ϑ̃_s | trace constraint | ≥ 0 | **none** | ❌ unbounded |
-| β̂₁, β̂₂, β̃₁, β̃₂ | uncertainty set | ≥ 0 | **none** | ❌ unbounded |
-| Ẑ₁, Ẑ₂, Z̃₁, Z̃₂ | equality duals | free | **none** | ❌ unbounded |
+| M̂, M̃ | PSD matrix | PSD cone | **none** | ❌ unbounded |
 | Λ̂, Λ̃ | SOC vars | SOC cone | **none** | ❌ unbounded |
-| Γ̂, Γ̃ | SOC vars | SOC cone | **none** | ❌ unbounded |
 
-Note: Some variables (Z, Λ) are determined as affine functions of others via equality constraints (manuscript eqs 31-44), so they inherit bounds if their "parents" are bounded. But the chain of dependencies needs to be fully traced.
+Note: In `build_primal_isp.jl`, the Λ (SOC) variables encode what the OSP formulation (`build_dualized_outer_subprob.jl`) represents as separate (β, Z, Γ) variables. Bounding Λ implicitly bounds all of these.
+
+### 2.4 Why Sion Doesn't Help Even With Compactness
+
+Even if ∏F_s is made compact (Test I, Section 4.5), Sion gives a saddle point (α*, p*) with:
+- α* ∈ argmax_α H(α, p*) → can choose vertex α̃ with H(α̃, p*) = H(α*, p*)
+- **But** (α̃, p*) is NOT a saddle point: p* ≠ argmin_p H(α̃, p)
+- So Q₁(α̃) = min_p H(α̃, p) < H(α̃, p*) = Q₁(α*) = V
+
+The vertex gets "punished" when p is re-optimized. This is because Q₁(α) is concave (Section 5).
 
 ---
 
 ## 3. Alternative Proof Attempt (Without Sion)
 
 ### 3.1 Argument via SDP Strong Duality
-
-The argument does NOT require Sion:
 
 **Step 1:** Joint SDP strong duality (Slater):
 $$\max_{\alpha \in \Delta, z \in C} \text{obj} = \min_{p, \nu} \text{dual obj}$$
@@ -112,7 +118,7 @@ So (α̃_vertex, p*) is NOT a saddle point. The interior (α*, p*) IS a saddle p
 
 **Conclusion:** μ bound alone is insufficient. Other unbounded variables also contribute.
 
-### 4.4 Test H: Fix-and-Re-optimize
+### 4.4 Test H: Fix-and-Re-optimize (Definitive Diagnostic)
 
 | Step | What | Result |
 |------|------|--------|
@@ -122,9 +128,31 @@ So (α̃_vertex, p*) is NOT a saddle point. The interior (α*, p*) IS a saddle p
 | 4 | Fix α̃, re-optimize primal ISP | obj = -2.0 ✗ |
 | 5 | Full vertex sweep (primal ISP) | all -2.0 |
 
-**This is the definitive diagnostic:**
 - Saddle point condition 1: α̃ = argmax H(α, p*) → vertex ✓
 - Saddle point condition 2: p* = argmin H(α̃, p) → 5.137 ≠ -2.0 ✗
+
+### 4.5 Test I: M=1000 Bounds on ALL Unbounded Variables
+
+**Purpose:** Section 6.1 compactness check — if making ∏F_s compact recovers vertex property, Sion's path is viable.
+
+**Setup:** Added M=1000 box bounds to ALL unbounded variables in `build_primal_isp.jl`:
+- Leader: ηhat ≤ M, μhat ≤ M, ϑhat ≤ M, Mhat ∈ [-M,M], Λhat1/2 ∈ [-M,M]
+- Follower: ηtilde ∈ [-M,M], μtilde ≤ M, ϑtilde ≤ M, Mtilde ∈ [-M,M], Λtilde1/2 ∈ [-M,M]
+
+Note: Λ in `build_primal_isp.jl` encodes (β, Z, Γ) from the OSP formulation. Bounding Λ implicitly bounds all of them.
+
+**Implementation verification:** α appears ONLY in the primal ISP objective (as μhat/μtilde coefficient via `set_objective_coefficient`). α is NOT a function argument of `build_primal_isp_leader/follower` and does NOT appear in any constraints. This is correct: the primal ISP is the dual of the dual ISP, where the coupling constraint `βhat2[s,k] ≤ α[k]` dualizes to `α[k]` becoming the objective coefficient of `μhat[s,k]`.
+
+**Results (Polska S=1):**
+
+| Setting | obj |
+|---------|-----|
+| α* (free, no bound) | 3.567 |
+| α* (free, M=1000) | 3.567 (bound non-binding ✓) |
+| All 36 vertices (M=1000) | **-2.0** uniformly |
+| Gap | **-5.567** |
+
+**Conclusion:** Compactification does NOT recover vertex property. Even with compact ∏F_s and Sion's theorem giving a saddle point, vertex optimality still fails.
 
 ---
 
@@ -138,114 +166,77 @@ The outer problem is: max of concave function on simplex → **interior optimal 
 
 This is fundamentally different from: max of convex/linear function on polytope → vertex optimal.
 
-No amount of bounding can change concavity. The question is whether making ∏F compact can force saddle point existence, which would then imply vertex optimality via a different route.
+**Why vertex α fails mechanically:** At vertex α_j = (w/S)·e_j, only μhat[j] and μtilde[j] have nonzero objective coefficients. The minimizer can freely choose μhat[k≠j], μtilde[k≠j] (zero cost) and exploit the constraint system to reduce η (and thus the total objective) down to -λ_sol = -2.0.
+
+**Why Sion + compactness doesn't help:** Sion guarantees a saddle point (α*, p*) where α* can be chosen as a vertex for H(·, p*). But Q₁(α_vertex) = min_p H(α_vertex, p) ≤ H(α_vertex, p*) — the vertex value after re-optimization is generically lower because the minimizer adapts to the vertex.
 
 ---
 
-## 6. Open Question: Can ∏F Be Made Compact?
+## 6. Formulation Notes
 
-### 6.1 Why It Might Work
+### 6.1 Primal ISP vs OSP Variable Correspondence
 
-If ∏F is compact → Sion applies → saddle point exists → α* at vertex.
+The two formulations are duals of each other (both include M as shared PSD variable):
 
-The key insight: **if a valid bound on every unbounded variable can be derived from problem structure without changing the optimal value**, then the compactified problem is equivalent to the original, and vertex optimality holds.
+| Primal ISP (Min, `build_primal_isp.jl`) | OSP (Max, `build_dualized_outer_subprob.jl`) |
+|---|---|
+| ηhat, ηtilde | (dual of SDP linking) |
+| μhat, μtilde | (dual of coupling) → α in objective |
+| Φhat, Ψhat, Πhat | (dual of Big-M, SOC) → Uhat, Phat |
+| ϑhat, ϑtilde | (dual of trace) |
+| Mhat, Mtilde (PSD) | Mhat, Mtilde (PSD) — shared |
+| **Λhat1/2, Λtilde1/2 (SOC)** | **βhat1/2, Zhat1/2, Γhat1/2** |
 
-### 6.2 What Needs to Be Bounded
+Key: Primal ISP's Λ encodes OSP's (β, Z, Γ). They are NOT separate variables in the primal ISP.
 
-Every variable in F_s that lacks an upper bound. From Section 2.5.1:
+### 6.2 Why α Is Only in Objective
 
-**Tier 1 — appear in H directly:**
-- μ̂_k, μ̃_k: coefficient = α_k in objective
-- η̂_s, η̃_s: coefficient = 1/S in objective
+In the dual ISP (Max), the coupling constraint is: `βhat2[s,k] ≤ α[k]` with shadow price μhat.
 
-**Tier 2 — appear only in constraints (but can be unbounded):**
-- ϑ̂_s, ϑ̃_s (trace constraint related)
-- β̂₁, β̂₂, β̃₁, β̃₂ (uncertainty set related)
-- Ẑ₁, Ẑ₂, Z̃₁, Z̃₂ (equality constraint duals, free)
-- Λ̂, Λ̃, Γ̂, Γ̃ (SOC variables)
+Dualizing to the primal ISP (Min):
+- μhat becomes a variable (≥ 0)
+- α[k] (the RHS) becomes the objective coefficient of μhat[k]
+- No coupling constraint with α in the primal ISP
 
-### 6.3 Possible Sources of Valid Bounds
-
-**μ̂, μ̃:** Dual of β̂_{2,k} = α_k. In network interdiction, μ represents marginal value of Wasserstein budget per arc. Potential bound from max-flow duality: ϕ ∈ [0,1] → μ̂ + μ̃ ≤ 2. (Tested with M_μ = 2.0, insufficient alone.)
-
-**η̂, η̃:** Dual of probability normalization. Bounded by problem's objective range?
-
-**ϑ̂, ϑ̃:** Related to tr(M_{11}) - M_{22}ε² ≤ 0. May be bounded by ε and matrix dimensions.
-
-**β̂, β̃:** Uncertainty set duals. May be bounded by uncertainty set geometry (R, r bounds).
-
-**Z variables:** Determined by equality constraints as affine functions of Φ, Π, Λ, β. If all "parent" variables are bounded, Z is automatically bounded.
-
-**Λ, Γ (SOC):** SOC cone variables. If they appear in equalities with bounded RHS, they may be bounded.
-
-### 6.4 Strategy: Dependency Chain Analysis
-
-Many variables are linked by equality constraints:
-```
-Φ, Π, Y (bounded by ±ϕ_U, ±π_U, ±y_U)
-    ↓ (equalities 31-34)
-Z₁, Z₂ = affine(Φ, Π, U, β, Λ)
-    ↓ (equalities 41-44)  
-Λ = affine(Z, Γ)
-    ↓ (SOC constraints)
-Γ ∈ SOC
-```
-
-If the chain can be traced to show all variables are bounded functions of the already-bounded LDR coefficients, then ∏F is compact **without any additional constraints**.
-
-The key unknowns are:
-1. Are the equality constraints sufficient to express ALL unbounded variables as functions of bounded ones?
-2. Or do some variables (μ, η, ϑ, β) have genuine degrees of freedom that are unbounded?
-
-### 6.5 Recommended Next Steps
-
-1. **Enumerate all unbounded variables** in ISP primal code (build_primal_isp.jl or equivalent)
-2. **Trace equality constraint dependencies** to identify which unbounded variables are determined by bounded ones
-3. **For remaining free variables**, attempt to derive valid bounds from problem structure
-4. **Add ALL valid bounds** simultaneously and re-run vertex sweep
-5. If vertex optimality is restored → Proposition is valid under explicit compactness conditions
-6. If still fails → investigate whether some bounds are inherently impossible
-
-### 6.6 Quick Experimental Check
-
-Before doing full analysis, a simple diagnostic: add **arbitrary large bounds** (e.g., M = 1000) on ALL unbounded variables and re-run vertex sweep. If vertex optimality appears → valid tight bounds exist. If still -2.0 → the issue is deeper than compactness.
-
-```julia
-# In ISP primal builder, add to ALL unbounded variables:
-M_big = 1000.0
-@constraint(model, μhat .<= M_big)
-@constraint(model, μtilde .<= M_big)
-@constraint(model, ηhat .<= M_big)
-# η̃ is free, so both directions:
-@constraint(model, ηtilde .<= M_big)
-@constraint(model, ηtilde .>= -M_big)
-@constraint(model, ϑhat .<= M_big)
-@constraint(model, ϑtilde .<= M_big)
-@constraint(model, βhat1 .<= M_big)
-@constraint(model, βhat2 .<= M_big)
-@constraint(model, βtilde1 .<= M_big)
-@constraint(model, βtilde2 .<= M_big)
-# Z variables (free):
-@constraint(model, Zhat1 .<= M_big)
-@constraint(model, Zhat1 .>= -M_big)
-# ... etc for all Z, Λ, Γ
-```
-
-If this recovers vertex optimality with M=1000, progressively tighten bounds to find which variables are the binding ones.
+This is why `set_objective_coefficient(model, μhat[k], α_sol[k])` is sufficient.
 
 ---
 
-## 7. Summary of Current Status
+## 7. Final Conclusion
+
+**Vertex optimality of α is FALSE for this conic formulation.**
+
+### Root Cause
+Q₁(α, χ) = min_p H(α,p) is the infimum of affine functions in α → **concave** in α.
+Max of concave on simplex → **interior optimal is generic**.
+
+### What Was Tested
+
+| Test | What | Result |
+|------|------|--------|
+| A-E | OSP vertex sweep (various ϕU, λU) | All vertices = -2.0 |
+| F | Shadow prices μ at interior vs vertex | μ explodes at vertex (α_k=0 frees μ_k) |
+| G | μ ≤ 2.0 bound (slack+penalty) | Still -2.0 |
+| H | Primal ISP → fix vars → LP on simplex → re-optimize | LP gives vertex, re-optimize gives -2.0 (saddle point condition 2 fails) |
+| I | M=1000 bounds on ALL unbounded primal ISP vars (incl. Λ = β,Z,Γ) | Still -2.0 (compact ∏F_s doesn't help) |
+
+### Implementation Verification (Test I)
+
+- α is NOT in primal ISP constraints (verified: not a function argument, no grep hits in constraints)
+- α is ONLY in objective via `set_objective_coefficient` on μhat/μtilde
+- This is correct by duality: coupling `βhat2 ≤ α` → objective coefficient α·μhat
+- M=1000 bounds are non-binding at free α* (obj unchanged at 3.567)
+- Primal ISP Λ encodes OSP's (β, Z, Γ) → all implicitly bounded
+
+### Implications
 
 | Item | Status |
 |------|--------|
 | Minimax value equality | ✅ Holds (strong duality) |
-| Saddle point existence (general) | ❌ Not guaranteed (∏F non-compact) |
-| Vertex optimality | ❌ Experimentally disproved (all vertices = -2.0) |
-| Proposition | ⏸ Withdrawn pending compactness resolution |
-| C&CG approach | ⏸ Withdrawn pending vertex optimality |
-| Scenario multi-cut at OMP | ❌ Invalid (α coupling, independent of vertex question) |
+| Vertex optimality of α | ❌ **Definitively disproved** (concavity + Tests H,I) |
+| Sion/compactness path | ❌ **Closed** (Test I: compact ∏F_s doesn't help) |
+| C&CG with vertex α | ❌ Invalid |
+| C&CG with free α (IMP pricing) | ✅ Valid (refactored in `ccg_benders.jl`) |
 | Nested Benders (IMP+ISP) | ✅ Valid, current working approach |
 | Partial inner solve | ✅ Valid (any feasible α gives valid underestimator) |
-| Best incumbent tracking | ✅ Valid, should implement |
 | multi_cut_lf invalid | ✅ Confirmed (α couples L and F) |

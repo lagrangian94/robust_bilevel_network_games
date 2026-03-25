@@ -207,7 +207,7 @@ t2_start = time()
 result2 = tr_nested_benders_optimize!(model2, vars2, network, ϕU, λU, γ, w, uncertainty_set;
     mip_optimizer=Gurobi.Optimizer, conic_optimizer=Mosek.Optimizer,
      outer_tr=true, inner_tr=true,
-    πU=πU, yU=yU, ytsU=ytsU, strengthen_cuts=strengthen_cuts, parallel=true, mini_benders=true, max_mini_benders_iter=5)
+    πU=πU, yU=yU, ytsU=ytsU, strengthen_cuts=strengthen_cuts, parallel=true, mini_benders=true, max_mini_benders_iter=3)
 t2_end = time()
 results["tr_dual"] = t2_end - t2_start
 println("\n>> Dual TR Both time: $(results["tr_dual"]) seconds")
@@ -231,7 +231,7 @@ println("\n>> Dual TR Both time: $(results["tr_dual"]) seconds")
 # results["scenario_decomposed"] = t_sd_end - t_sd_start
 # println("\n>> Scenario-Decomposed Benders time: $(results["scenario_decomposed"]) seconds")
 # @infiltrate
-# # ===== 3. C&CG Benders =====
+# ===== 3. C&CG Benders =====
 # println("\n" * "="^80)
 # println("3. C&CG BENDERS (vertex enumeration + per-scenario Benders)")
 # println("="^80)
