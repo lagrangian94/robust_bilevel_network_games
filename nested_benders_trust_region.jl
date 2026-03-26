@@ -1235,8 +1235,8 @@ function alpha_fixed_benders_phase!(
         mini_lb = value(t_0) / S_total
         push!(mini_lb_history, mini_lb)
 
-        # Check LB stagnation (2-iter window)
-        if length(mini_lb_history) >= 3 && abs(mini_lb_history[end] - mini_lb_history[end-2]) < 1e-6
+        # Check LB stagnation (2-iter window, relative improvement)
+        if length(mini_lb_history) >= 3 && abs(mini_lb_history[end] - mini_lb_history[end-2]) / max(abs(mini_lb_history[end-2]), 1e-10) < 1e-4
             @info "  [Mini-Benders] LB stagnated at iter $j (LB=$(round(mini_lb, digits=6)), history=$(round.(mini_lb_history, digits=6))), stopping."
             break
         end
@@ -1508,8 +1508,9 @@ function tr_nested_benders_optimize!(omp_model::Model, omp_vars::Dict, network, 
                 println("  │ subprob_obj = $(round(subprob_obj, digits=6)),  inner_iters = $(cut_info[:iter])$(is_inexact ? " (inexact)" : "")")
                 println("  │ LB = $(round(lower_bound, digits=6)),  localUB = $(round(local_upper_bound, digits=6)),  globalUB = $(round(upper_bound, digits=6)),  gap = $(round(gap, digits=8))")
 
-                if !is_inexact
-                    # Exact solve에서만 v̂ 초기화 및 SS 판정
+                is_last_stage = (B_bin_stage == length(B_bin_sequence))
+                if !is_inexact && !is_last_stage
+                    # Exact solve에서만 v̂ 초기화 및 SS 판정 (마지막 stage 제외: B_bin이 전체 도메인 포함)
                     if iter==1 || stage_just_changed
                         # 첫 iteration 또는 stage 전환 직후: v̂를 현재 subprob_obj로 초기화
                         # (논문 Algorithm 3의 v̂^1 = ∞ 대신, iter==1과 동일하게 첫 해로 설정)
@@ -1539,10 +1540,14 @@ function tr_nested_benders_optimize!(omp_model::Model, omp_vars::Dict, network, 
                     println("  │ past_major_subprob_obj[end] = $(round(past_major_subprob_obj[end], digits=6)),  improvement = $(round(improvement, digits=6)),  β_dynamic = $(round(β_dynamic, digits=8))")
                     println("  │ $(is_serious_step ? "★ SERIOUS STEP" : "  null step")")
                 else
-                    # Inexact solve: SS skip, only add cuts
+                    # Inexact solve or last stage: SS skip, only add cuts
                     tr_needs_update = false
                     is_serious_step = false
-                    println("  │ (inexact solve — SS skip)")
+                    if is_inexact
+                        println("  │ (inexact solve — SS skip)")
+                    elseif is_last_stage
+                        println("  │ (last stage — SS skip)")
+                    end
                 end
             end
             if outer_tr
