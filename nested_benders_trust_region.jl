@@ -1183,6 +1183,7 @@ function alpha_fixed_benders_phase!(
     conic_optimizer=nothing,
     outer_iter=0,
     result_cuts=nothing,
+    cut_pool=nothing,
     parallel=false)
 
     S = isp_data[:S]
@@ -1278,6 +1279,13 @@ function alpha_fixed_benders_phase!(
         # 4. Add cut to OMP
         add_optimality_cuts!(omp_model, omp_vars, outer_cut_info, diag_x_E, E, diag_λ_ψ, xi_bar, d0, ϕU, λ_var, h, S, outer_iter;
             prefix="mini_bd_$(j)", result_cuts=result_cuts)
+        if cut_pool !== nothing
+            push!(cut_pool, Dict{Symbol,Any}(
+                :type => :mini_benders, :iter => outer_iter, :mini_iter => j,
+                :cut_info => deepcopy(outer_cut_info),
+                :x_sol => copy(x_sol_j), :λ_sol => λ_sol_j, :h_sol => copy(h_sol_j), :ψ0_sol => copy(ψ0_sol_j),
+                :α_sol => copy(α_sol_fixed), :subprob_obj => mini_ub))
+        end
         mini_cuts_added += 1
 
         # 5. MW strengthening with α-fixed
@@ -1306,6 +1314,13 @@ function alpha_fixed_benders_phase!(
                 str_label = strengthen_cuts in (:mw, :mw_joint) ? "mw" : "sherali"
                 add_optimality_cuts!(omp_model, omp_vars, str_info, diag_x_E, E, diag_λ_ψ, xi_bar, d0, ϕU, λ_var, h, S, outer_iter;
                     prefix="mini_bd_$(j)_$(str_label)_cp$(cp_idx)", result_cuts=result_cuts)
+                if cut_pool !== nothing
+                    push!(cut_pool, Dict{Symbol,Any}(
+                        :type => Symbol("mini_benders_$(str_label)"), :iter => outer_iter, :mini_iter => j,
+                        :cut_info => deepcopy(str_info),
+                        :x_sol => copy(x_sol_j), :λ_sol => λ_sol_j, :h_sol => copy(h_sol_j), :ψ0_sol => copy(ψ0_sol_j),
+                        :core_point => cp_idx))
+                end
                 mini_cuts_added += 1
             end
         end
@@ -1324,6 +1339,17 @@ end
 
 
 function tr_nested_benders_optimize!(omp_model::Model, omp_vars::Dict, network, ϕU, λU, γ, w, uncertainty_set; mip_optimizer=nothing, conic_optimizer=nothing, outer_tr=true, inner_tr=true, max_outer_iter=1000, isp_mode=:dual, tol=1e-4, πU=ϕU, yU=ϕU, ytsU=ϕU, strengthen_cuts=:none, parallel=false, mini_benders=false, max_mini_benders_iter=5)
+    ### -------- 공통 설정 --------
+    # Inexact inner solve 설정: N번에 1번만 exact (UB 업데이트), 1=항상 exact
+    inexact_every_n = 3
+    use_subgradient = true  # true: inexact phase에서 IMP 대신 subgradient heuristic 사용
+    subgrad_step_size = 0.1  # subgradient step size (γ₀)
+    use_best_lb_cut = true  # inner loop 중 best LB 달성 시 intermediate cut 추가
+    α_persistent = nothing  # subgradient heuristic용 α state (across outer iters 누적)
+    # Mini-Benders 활성화 stage 설정: 마지막 N개 stage에서만 실행
+    # 1 = 마지막 stage만, 2 = 마지막 2개, 0 = 전체 stage
+    mini_benders_last_n = 0
+
     ### -------- Trust Region 초기화 --------
     if outer_tr
         num_interdictable = sum(network.interdictable_arcs)
@@ -1332,16 +1358,7 @@ function tr_nested_benders_optimize!(omp_model::Model, omp_vars::Dict, network, 
         B_bin_stage = 1
         B_bin = B_bin_sequence[B_bin_stage]
         B_con = nothing # 나중에 생각
-        # Mini-Benders 활성화 stage 설정: 마지막 N개 stage에서만 실행
-        # 1 = 마지막 stage만, 2 = 마지막 2개, 0 = 전체 stage
-        mini_benders_last_n = 0
         n_stages = length(B_bin_sequence)
-        # Inexact inner solve 설정: N번에 1번만 exact (UB 업데이트)
-        inexact_every_n = 3  # 3번에 1번 exact (1=항상 exact, 0=항상 inexact)
-        use_subgradient = true  # true: inexact phase에서 IMP 대신 subgradient heuristic 사용
-        subgrad_step_size = 0.1  # subgradient step size (γ₀)
-        use_best_lb_cut = true  # inner loop 중 best LB 달성 시 intermediate cut 추가
-        α_persistent = nothing  # subgradient heuristic용 α state (across outer iters 누적)
         ## Stability Centers
         # Stability centers (will be initialized after first solve)
         centers = Dict{Symbol, Any}(
@@ -1356,6 +1373,8 @@ function tr_nested_benders_optimize!(omp_model::Model, omp_vars::Dict, network, 
             :binary => nothing,
             :continuous => nothing
         )
+    else
+        n_stages = 1
     end
     upper_bound = Inf # Will be updated after first subproblem solve
     ### --------Begin Outer Master problemInitialization--------
@@ -1395,6 +1414,7 @@ function tr_nested_benders_optimize!(omp_model::Model, omp_vars::Dict, network, 
     imp_cuts = Dict{Symbol, Any}(:old_tr_constraints => nothing)
     result = Dict()
     result[:cuts] = Dict()
+    result[:cut_pool] = Vector{Dict{Symbol,Any}}()
     result[:tr_info] = Dict()
     result[:inner_iter] = []
     # Debug logging arrays
@@ -1707,6 +1727,11 @@ function tr_nested_benders_optimize!(omp_model::Model, omp_vars::Dict, network, 
             ))
             opt_cut = add_optimality_cuts!(omp_model, omp_vars, outer_cut_info, diag_x_E, isp_data[:E], diag_λ_ψ, xi_bar, isp_data[:d0], ϕU, λ, h, S, iter;
                 prefix="opt_cut", result_cuts=result[:cuts])
+            push!(result[:cut_pool], Dict{Symbol,Any}(
+                :type => :opt_cut, :iter => iter, :cut_info => deepcopy(outer_cut_info),
+                :x_sol => copy(x_sol), :λ_sol => λ_sol, :h_sol => copy(h_sol), :ψ0_sol => copy(ψ0_sol),
+                :α_sol => haskey(cut_info, :α_sol) ? copy(cut_info[:α_sol]) : nothing,
+                :subprob_obj => subprob_obj))
             y = Dict(
                 [omp_vars[:x][k] => x_sol[k] for k in 1:num_arcs]...,
                 [omp_vars[:h][k] => h_sol[k] for k in 1:num_arcs]...,
@@ -1740,6 +1765,9 @@ function tr_nested_benders_optimize!(omp_model::Model, omp_vars::Dict, network, 
                 best_lb_cut_info = cut_info[:best_lb_outer_cut]
                 best_lb_cut = add_optimality_cuts!(omp_model, omp_vars, best_lb_cut_info, diag_x_E, isp_data[:E], diag_λ_ψ, xi_bar, isp_data[:d0], ϕU, λ, h, S, iter;
                     prefix="best_lb_cut", result_cuts=result[:cuts])
+                push!(result[:cut_pool], Dict{Symbol,Any}(
+                    :type => :best_lb_cut, :iter => iter, :cut_info => deepcopy(best_lb_cut_info),
+                    :x_sol => copy(x_sol), :λ_sol => λ_sol, :h_sol => copy(h_sol), :ψ0_sol => copy(ψ0_sol)))
                 best_lb_cut_val = evaluate_expr(best_lb_cut, y)
                 println("  │ [Best-LB cut] val at x_sol = $(round(best_lb_cut_val, digits=6))")
             end
@@ -1772,6 +1800,10 @@ function tr_nested_benders_optimize!(omp_model::Model, omp_vars::Dict, network, 
                     str_label = strengthen_cuts in (:mw, :mw_joint) ? "mw" : "sherali"
                     str_cut = add_optimality_cuts!(omp_model, omp_vars, str_info, diag_x_E, isp_data[:E], diag_λ_ψ, xi_bar, isp_data[:d0], ϕU, λ, h, S, iter;
                         prefix="$(str_label)_cut_cp$(cp_idx)", result_cuts=result[:cuts])
+                    push!(result[:cut_pool], Dict{Symbol,Any}(
+                        :type => Symbol(str_label), :iter => iter, :cut_info => deepcopy(str_info),
+                        :x_sol => copy(x_sol), :λ_sol => λ_sol, :h_sol => copy(h_sol), :ψ0_sol => copy(ψ0_sol),
+                        :core_point => cp_idx))
                     # MW/Sherali cut validation: x_sol에서 평가하여 subprob_obj*S 초과 여부 확인
                     str_cut_val = evaluate_expr(str_cut, y)
                     if outer_tr
@@ -1809,6 +1841,7 @@ function tr_nested_benders_optimize!(omp_model::Model, omp_vars::Dict, network, 
                     conic_optimizer=conic_optimizer,
                     outer_iter=iter,
                     result_cuts=result[:cuts],
+                    cut_pool=result[:cut_pool],
                     parallel=parallel)
                 if outer_tr
                     println("  │ [Mini-Benders] $n_mini extra cuts added (α-fixed, max_iter=$max_mini_benders_iter)")

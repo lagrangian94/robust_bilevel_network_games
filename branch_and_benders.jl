@@ -95,10 +95,13 @@ function branch_and_benders_optimize!(
     inexact_every_n::Int=1,         # 1=항상exact, 3=3번에1번exact
     use_subgradient::Bool=false,    # inexact phase에서 subgradient 사용
     subgrad_step_size::Float64=0.1,
-    lp_warmup_iters::Int=0,         # Phase 1 LP warming iterations (0=skip)
+    lp_warmup_iters::Int=1,         # Phase 1 LP warming iterations (≥1)
+    mipnode_freq::Int=0,            # MIPNODE user cut frequency (0=off, N=every N-th call)
     tol::Float64=1e-4,
     πU=ϕU, yU=ϕU, ytsU=ϕU,
     parallel::Bool=false)
+
+    lp_warmup_iters >= 1 || error("lp_warmup_iters must be ≥ 1 (Gurobi lazy callback requires at least one regular cut on epigraph)")
 
     # ====================================================================
     # 초기화 (기존 tr_nested_benders_optimize! 패턴)
@@ -136,7 +139,7 @@ function branch_and_benders_optimize!(
         πU=πU, yU=yU, ytsU=ytsU)
 
     # IMP cuts 상태 (callback 간 유지)
-    imp_cuts = Dict{Symbol, Any}(:old_tr_constraints => nothing)
+    imp_cuts = Dict{Symbol, Any}(:old_tr_constraints => nothing, :old_cuts => Dict())
 
     # MW core points (pre-compute)
     core_points = nothing
@@ -147,12 +150,16 @@ function branch_and_benders_optimize!(
     end
 
     # 결과 dict
+    cut_pool = Vector{Dict{Symbol,Any}}()
     result = Dict(
         :cuts => Dict(),
+        :cut_pool => cut_pool,
         :inner_iter => Int[],
         :lazy_cut_count => 0,
         :callback_count => 0,
         :pass1_rejections => 0,
+        :usercut_count => 0,
+        :mipnode_calls => 0,
     )
 
     time_start = time()
@@ -190,6 +197,11 @@ function branch_and_benders_optimize!(
                 add_optimality_cuts!(omp_model, omp_vars, outer_cut_info_k,
                     diag_x_E, E, diag_λ_ψ, xi_bar, d0, ϕU, λ_var, h, S, k;
                     prefix="warmup", result_cuts=result[:cuts])
+                push!(cut_pool, Dict{Symbol,Any}(
+                    :type => :warmup, :iter => k, :cut_info => deepcopy(outer_cut_info_k),
+                    :x_sol => copy(x_lp), :λ_sol => λ_lp, :h_sol => copy(h_lp), :ψ0_sol => copy(ψ0_lp),
+                    :α_sol => haskey(cut_info_k, :α_sol) ? copy(cut_info_k[:α_sol]) : nothing,
+                    :subprob_obj => cut_info_k[:obj_val]))
 
                 # IMP cuts 업데이트
                 if !get(cut_info_k, :subgradient, false)
@@ -215,6 +227,11 @@ function branch_and_benders_optimize!(
     # Closure 공유 상태
     cut_count = Ref(0)
     callback_count = Ref(0)
+    usercut_count = Ref(0)
+    mipnode_call_count = Ref(0)
+    # outer_iter는 warmup 이후부터 연속 번호: tr_imp_optimize!에서 outer_iter>1일 때
+    # old IMP cuts를 삭제하므로, 항상 >1이어야 warmup의 stale cuts가 삭제됨.
+    imp_call_count = Ref(lp_warmup_iters + 1)
     ub_tracker = Ref(Inf)
     α_history = Vector{Vector{Float64}}()
     α_persistent = nothing  # subgradient heuristic α state
@@ -256,11 +273,12 @@ function branch_and_benders_optimize!(
                 α_persistent = sg_result[:α_new]  # update persistent state
             else
                 # Inexact IMP
+                imp_call_count[] += 1
                 status_inex, inex_result = tr_imp_optimize!(
                     imp_model, imp_vars, leader_instances, follower_instances;
                     isp_data=isp_data,
                     λ_sol=λ_k, x_sol=x_k, h_sol=h_k, ψ0_sol=ψ0_k,
-                    outer_iter=cut_count[] + 1,
+                    outer_iter=imp_call_count[],
                     imp_cuts=imp_cuts, inner_tr=inner_tr,
                     parallel=parallel, inexact=true)
 
@@ -291,6 +309,10 @@ function branch_and_benders_optimize!(
                 con = @build_constraint(t_0 >= opt_expr)
                 MOI.submit(omp_model, MOI.LazyConstraint(cb_data), con)
                 cut_count[] += 1
+                push!(cut_pool, Dict{Symbol,Any}(
+                    :type => :pass1_lazy, :cb => cb_idx, :cut_info => deepcopy(pass1_outer_cut_info),
+                    :x_sol => copy(x_k), :λ_sol => λ_k, :h_sol => copy(h_k), :ψ0_sol => copy(ψ0_k),
+                    :Q => Q_lower))
                 result[:pass1_rejections] += 1
                 push!(result[:inner_iter], pass1_inner_iter)
                 @info "  [CB $cb_idx] Pass 1 rejection: Q_lower=$(round(Q_lower, digits=6)), t_0/S=$(round(t_0_k/S, digits=6))"
@@ -329,15 +351,55 @@ function branch_and_benders_optimize!(
                 α_con = @build_constraint(t_0 >= α_expr)
                 MOI.submit(omp_model, MOI.LazyConstraint(cb_data), α_con)
                 cut_count[] += 1
+                push!(cut_pool, Dict{Symbol,Any}(
+                    :type => :α_history_lazy, :cb => cb_idx, :cut_info => deepcopy(α_fixed_cut_info),
+                    :x_sol => copy(x_k), :λ_sol => λ_k, :h_sol => copy(h_k), :ψ0_sol => copy(ψ0_k),
+                    :α_sol => copy(α_old)))
+
+                # MW strengthening for α-history cut (기존 alpha_fixed_benders_phase! 패턴)
+                if strengthen_cuts != :none && core_points !== nothing
+                    α_hist_cut_info = Dict(:α_sol => α_old)
+                    for (cp_idx, cp) in enumerate(core_points)
+                        local str_info
+                        if strengthen_cuts == :mw
+                            str_info = evaluate_mw_opt_cut(
+                                leader_instances, follower_instances,
+                                isp_data, α_hist_cut_info, cut_count[];
+                                x_sol=x_k, λ_sol=λ_k, h_sol=h_k, ψ0_sol=ψ0_k,
+                                x_core=cp.x, λ_core=cp.λ,
+                                h_core=cp.h, ψ0_core=cp.ψ0,
+                                parallel=parallel)
+                        elseif strengthen_cuts == :sherali
+                            str_info = evaluate_sherali_opt_cut(
+                                leader_instances, follower_instances,
+                                isp_data, α_hist_cut_info, cut_count[];
+                                x_sol=x_k, λ_sol=λ_k, h_sol=h_k, ψ0_sol=ψ0_k,
+                                x_core=cp.x, λ_core=cp.λ,
+                                h_core=cp.h, ψ0_core=cp.ψ0,
+                                parallel=parallel)
+                        end
+                        str_expr = build_optimality_cut_expr(
+                            omp_vars, str_info,
+                            diag_x_E, E, diag_λ_ψ, xi_bar, d0, ϕU, λ_var, h, S)
+                        str_con = @build_constraint(t_0 >= str_expr)
+                        MOI.submit(omp_model, MOI.LazyConstraint(cb_data), str_con)
+                        cut_count[] += 1
+                        push!(cut_pool, Dict{Symbol,Any}(
+                            :type => :α_history_mw_lazy, :cb => cb_idx, :cut_info => deepcopy(str_info),
+                            :x_sol => copy(x_k), :λ_sol => λ_k, :h_sol => copy(h_k), :ψ0_sol => copy(ψ0_k),
+                            :α_sol => copy(α_old), :core_point => cp_idx))
+                    end
+                end
             end
         end
 
         # ── Pass 2: Exact IMP solve ──
+        imp_call_count[] += 1
         status_imp, cut_info = tr_imp_optimize!(
             imp_model, imp_vars, leader_instances, follower_instances;
             isp_data=isp_data,
             λ_sol=λ_k, x_sol=x_k, h_sol=h_k, ψ0_sol=ψ0_k,
-            outer_iter=cut_count[] + 1,
+            outer_iter=imp_call_count[],
             imp_cuts=imp_cuts, inner_tr=inner_tr,
             parallel=parallel, inexact=false)
 
@@ -382,6 +444,11 @@ function branch_and_benders_optimize!(
             con = @build_constraint(t_0 >= opt_expr)
             MOI.submit(omp_model, MOI.LazyConstraint(cb_data), con)
             cut_count[] += 1
+            push!(cut_pool, Dict{Symbol,Any}(
+                :type => :exact_lazy, :cb => cb_idx, :cut_info => deepcopy(outer_cut_info),
+                :x_sol => copy(x_k), :λ_sol => λ_k, :h_sol => copy(h_k), :ψ0_sol => copy(ψ0_k),
+                :α_sol => haskey(cut_info, :α_sol) ? copy(cut_info[:α_sol]) : nothing,
+                :Q => Q_k, :inner_iter => cut_info[:iter]))
 
             @info "  [CB $cb_idx] Exact cut: Q=$(round(Q_k, digits=6)), t_0/S=$(round(t_0_k/S, digits=6)), inner_iter=$(cut_info[:iter])"
 
@@ -412,10 +479,91 @@ function branch_and_benders_optimize!(
                     mw_con = @build_constraint(t_0 >= mw_expr)
                     MOI.submit(omp_model, MOI.LazyConstraint(cb_data), mw_con)
                     cut_count[] += 1
+                    push!(cut_pool, Dict{Symbol,Any}(
+                        :type => :exact_mw_lazy, :cb => cb_idx, :cut_info => deepcopy(mw_info),
+                        :x_sol => copy(x_k), :λ_sol => λ_k, :h_sol => copy(h_k), :ψ0_sol => copy(ψ0_k),
+                        :core_point => cp_idx))
                 end
             end
         else
             @info "  [CB $cb_idx] No violation: Q=$(round(Q_k, digits=6)), t_0/S=$(round(t_0_k/S, digits=6))"
+        end
+    end
+
+    # ====================================================================
+    # MIPNODE User Cut Callback (LP bound 개선용)
+    # ====================================================================
+    if mipnode_freq > 0
+        # MIPNODE용 별도 IMP/ISP 인스턴스 (lazy callback과 공유 불가 — 동시 호출 방지)
+        imp_model_uc, imp_vars_uc = build_imp(network, S, ϕU, λU, γ, w, v, uncertainty_set;
+            mip_optimizer=mip_optimizer)
+        _, _ = initialize_imp(imp_model_uc, imp_vars_uc)
+
+        leader_instances_uc, follower_instances_uc = initialize_isp(
+            network, S, ϕU, λU, γ, w, v, uncertainty_set;
+            conic_optimizer=conic_optimizer,
+            λ_sol=λ_sol, x_sol=x_sol, h_sol=h_sol, ψ0_sol=ψ0_sol, α_sol=α_sol,
+            πU=πU, yU=yU, ytsU=ytsU)
+
+        imp_cuts_uc = Dict{Symbol, Any}(:old_tr_constraints => nothing, :old_cuts => Dict())
+        imp_call_count_uc = Ref(1)
+
+        function benders_usercut_callback(cb_data)
+            mipnode_call_count[] += 1
+            # Frequency gating: mipnode_freq번 중 1번만 실행
+            if mipnode_call_count[] % mipnode_freq != 1 && mipnode_call_count[] != 1
+                return
+            end
+
+            # 현재 LP relaxation 해 추출 (fractional — rounding 하지 않음)
+            x_frac = [callback_value(cb_data, x[i]) for i in 1:num_arcs]
+            h_frac = [callback_value(cb_data, h[i]) for i in 1:num_arcs]
+            λ_frac = callback_value(cb_data, λ_var)
+            ψ0_frac = [callback_value(cb_data, ψ0[i]) for i in 1:num_arcs]
+            t_0_frac = callback_value(cb_data, t_0)
+
+            # IMP+ISP solve (fractional x로)
+            imp_call_count_uc[] += 1
+            status_uc, cut_info_uc = tr_imp_optimize!(
+                imp_model_uc, imp_vars_uc, leader_instances_uc, follower_instances_uc;
+                isp_data=isp_data,
+                λ_sol=λ_frac, x_sol=x_frac, h_sol=h_frac, ψ0_sol=ψ0_frac,
+                outer_iter=imp_call_count_uc[],
+                imp_cuts=imp_cuts_uc, inner_tr=inner_tr,
+                parallel=parallel, inexact=false)
+
+            if status_uc != :OptimalityCut
+                return
+            end
+
+            Q_frac = cut_info_uc[:obj_val]
+
+            # IMP cuts 업데이트
+            imp_cuts_uc[:old_cuts] = cut_info_uc[:cuts]
+            if inner_tr && cut_info_uc[:tr_constraints] !== nothing
+                imp_cuts_uc[:old_tr_constraints] = cut_info_uc[:tr_constraints]
+            end
+
+            # Violation check
+            if t_0_frac < Q_frac * S - tol * S
+                outer_cut_info_uc = evaluate_master_opt_cut(
+                    leader_instances_uc, follower_instances_uc,
+                    isp_data, cut_info_uc, usercut_count[] + 1; parallel=parallel)
+
+                uc_expr = build_optimality_cut_expr(
+                    omp_vars, outer_cut_info_uc,
+                    diag_x_E, E, diag_λ_ψ, xi_bar, d0, ϕU, λ_var, h, S)
+                uc_con = @build_constraint(t_0 >= uc_expr)
+                MOI.submit(omp_model, MOI.UserCut(cb_data), uc_con)
+                usercut_count[] += 1
+                push!(cut_pool, Dict{Symbol,Any}(
+                    :type => :mipnode_usercut, :mipnode => mipnode_call_count[],
+                    :cut_info => deepcopy(outer_cut_info_uc),
+                    :x_sol => copy(x_frac), :λ_sol => λ_frac, :h_sol => copy(h_frac), :ψ0_sol => copy(ψ0_frac),
+                    :α_sol => haskey(cut_info_uc, :α_sol) ? copy(cut_info_uc[:α_sol]) : nothing,
+                    :Q => Q_frac))
+                @info "  [MIPNODE $(mipnode_call_count[])] User cut: Q=$(round(Q_frac, digits=6)), t_0/S=$(round(t_0_frac/S, digits=6))"
+            end
         end
     end
 
@@ -425,7 +573,11 @@ function branch_and_benders_optimize!(
     set_attribute(omp_model, "LazyConstraints", 1)
     set_attribute(omp_model, "Threads", 1)       # Thread safety with Mosek ISP
     set_attribute(omp_model, "PreCrush", 1)      # Presolve가 변수 eliminate 방지
+    set_attribute(omp_model, "OutputFlag", 1)    # Gurobi B&B 로그 출력
     MOI.set(omp_model, MOI.LazyConstraintCallback(), benders_lazy_callback)
+    if mipnode_freq > 0
+        MOI.set(omp_model, MOI.UserCutCallback(), benders_usercut_callback)
+    end
 
     @info "Starting Gurobi B&B solve..."
     optimize!(omp_model)
@@ -435,6 +587,8 @@ function branch_and_benders_optimize!(
     # ====================================================================
     result[:lazy_cut_count] = cut_count[]
     result[:callback_count] = callback_count[]
+    result[:usercut_count] = usercut_count[]
+    result[:mipnode_calls] = mipnode_call_count[]
     result[:upper_bound] = ub_tracker[]
     result[:solution_time] = time() - time_start
 
@@ -448,6 +602,6 @@ function branch_and_benders_optimize!(
         result[:obj_val] = value(t_0) / S
     end
 
-    @info "Branch-and-Benders complete" status=st_final cuts=cut_count[] callbacks=callback_count[] pass1_rejections=result[:pass1_rejections] time=round(result[:solution_time], digits=2)
+    @info "Branch-and-Benders complete" status=st_final lazy_cuts=cut_count[] user_cuts=usercut_count[] callbacks=callback_count[] mipnode_calls=mipnode_call_count[] pass1_rejections=result[:pass1_rejections] time=round(result[:solution_time], digits=2)
     return result
 end
