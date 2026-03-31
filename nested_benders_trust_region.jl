@@ -1339,6 +1339,12 @@ end
 
 
 function tr_nested_benders_optimize!(omp_model::Model, omp_vars::Dict, network, ϕU, λU, γ, w, uncertainty_set; mip_optimizer=nothing, conic_optimizer=nothing, outer_tr=true, inner_tr=true, max_outer_iter=1000, isp_mode=:dual, tol=1e-4, πU=ϕU, yU=ϕU, ytsU=ϕU, strengthen_cuts=:none, parallel=false, mini_benders=false, max_mini_benders_iter=5)
+    ### -------- 병렬 스레드 체크 --------
+    if parallel && Threads.nthreads() == 1
+        @warn "parallel=true인데 Julia 스레드가 1개입니다! 병렬 효과 없음.\n" *
+              "  julia -t 8 로 실행하거나, 환경변수 JULIA_NUM_THREADS=8 설정하세요."
+    end
+
     ### -------- 공통 설정 --------
     # Inexact inner solve 설정: N번에 1번만 exact (UB 업데이트), 1=항상 exact
     inexact_every_n = 3
@@ -1441,9 +1447,10 @@ function tr_nested_benders_optimize!(omp_model::Model, omp_vars::Dict, network, 
     isp_data = Dict(:E => E, :network => network, :ϕU => ϕU, :πU => πU, :yU => yU, :ytsU => ytsU, :λU => λU, :γ => γ, :w => w, :v => v, :uncertainty_set => uncertainty_set, :d0 => d0, :S=>S)
     gap = Inf
     ### --------End Initialization--------
-    time_start = time()    
+    time_start = time()
     while (st == MOI.DUAL_INFEASIBLE || st == MOI.OPTIMAL)
         iter += 1
+        if iter % 5 == 0; GC.gc(); end
         if iter > max_outer_iter
             @warn "Maximum outer iterations ($max_outer_iter) reached. Gap = $gap"
             break
@@ -1964,6 +1971,7 @@ function tr_nested_benders_optimize_hybrid!(omp_model::Model, omp_vars::Dict, ne
     time_start = time()
     while (st == MOI.DUAL_INFEASIBLE || st == MOI.OPTIMAL)
         iter += 1
+        if iter % 5 == 0; GC.gc(); end
         if iter > max_outer_iter
             @warn "Maximum outer iterations ($max_outer_iter) reached. Gap = $gap"
             break
@@ -2213,8 +2221,15 @@ function build_isp_leader(network, S, ϕU, λU, γ, w, v, uncertainty_set, optim
     dummy_arc_idx = findfirst(arc -> arc == ("t", "s"), network.arcs)
     E = ones(num_arcs, num_arcs+1) # num_arcs × num_arcs+1 matrix of ones
     I_0 = [Matrix{Float64}(I, num_arcs, num_arcs) zeros(num_arcs)]
-    # Create model
-    model = Model(optimizer_with_attributes(optimizer, MOI.Silent() => true))
+    # Mosek 내부 스레드 제한 — 병렬 solve 시 스레드 과잉 방지
+    # 기본값 3. 환경변수 MOSEK_NUM_THREADS로 override 가능.
+    # 가이드: 총 OS 스레드(= julia -t N × MOSEK_NUM_THREADS) ≤ CPU 논리코어 수
+    #   -t 8,  MOSEK=3 → 24스레드 (24코어 적합)
+    #   -t 16, MOSEK=1 → 16스레드 (높은 병렬성)
+    #   CMD:  set MOSEK_NUM_THREADS=1 && julia -t 8 ...
+    #   PS :  $env:MOSEK_NUM_THREADS="1"; julia -t 8 ...
+    mosek_threads = parse(Int, get(ENV, "MOSEK_NUM_THREADS", "3"))
+    model = Model(optimizer_with_attributes(optimizer, MOI.Silent() => true, "MSK_IPAR_NUM_THREADS" => mosek_threads))
     d0 = zeros(num_arcs + 1)
     d0[end] = 1.0
     println("Building dualized outer subproblem...")
@@ -2399,8 +2414,15 @@ function build_isp_follower(network, S, ϕU, λU, γ, w, v, uncertainty_set, opt
     dummy_arc_idx = findfirst(arc -> arc == ("t", "s"), network.arcs)
     E = ones(num_arcs, num_arcs+1) # num_arcs × num_arcs+1 matrix of ones
     I_0 = [Matrix{Float64}(I, num_arcs, num_arcs) zeros(num_arcs)]
-    # Create model
-    model = Model(optimizer_with_attributes(optimizer, MOI.Silent() => true))
+    # Mosek 내부 스레드 제한 — 병렬 solve 시 스레드 과잉 방지
+    # 기본값 3. 환경변수 MOSEK_NUM_THREADS로 override 가능.
+    # 가이드: 총 OS 스레드(= julia -t N × MOSEK_NUM_THREADS) ≤ CPU 논리코어 수
+    #   -t 8,  MOSEK=3 → 24스레드 (24코어 적합)
+    #   -t 16, MOSEK=1 → 16스레드 (높은 병렬성)
+    #   CMD:  set MOSEK_NUM_THREADS=1 && julia -t 8 ...
+    #   PS :  $env:MOSEK_NUM_THREADS="1"; julia -t 8 ...
+    mosek_threads = parse(Int, get(ENV, "MOSEK_NUM_THREADS", "3"))
+    model = Model(optimizer_with_attributes(optimizer, MOI.Silent() => true, "MSK_IPAR_NUM_THREADS" => mosek_threads))
     d0 = zeros(num_arcs + 1)
     d0[end] = 1.0
     println("Building dualized outer subproblem...")

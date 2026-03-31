@@ -2,7 +2,17 @@
 Branch-and-Benders (single tree) 테스트 스크립트.
 compare_benders.jl과 동일한 인풋으로 TR Nested Benders vs Branch-and-Benders 비교.
 
-julia -t 4 test_branch_and_benders.jl
+병렬 실행하려면:
+  julia -t 8 test_branch_and_benders.jl
+
+스레드 설정 가이드 (총 OS 스레드 ≤ CPU 논리코어 수 유지):
+  총 OS 스레드 = julia -t N  ×  MOSEK_NUM_THREADS(기본 3)
+  예) -t 8,  MOSEK=3 → 24스레드 (24코어 시스템에 적합)
+  예) -t 16, MOSEK=1 → 16스레드 (높은 병렬성, 개별 solve 느림)
+
+Mosek 내부 스레드 override:
+  CMD:  set MOSEK_NUM_THREADS=1 && julia -t 8 test_branch_and_benders.jl
+  PS :  \$env:MOSEK_NUM_THREADS="1"; julia -t 8 test_branch_and_benders.jl
 """
 
 using JuMP
@@ -23,6 +33,20 @@ includet("branch_and_benders.jl")
 
 using .NetworkGenerator: generate_grid_network, generate_capacity_scenarios_uniform_model, print_network_summary
 using .NetworkGenerator: generate_sioux_falls_network, generate_nobel_us_network, generate_abilene_network, generate_polska_network, print_realworld_network_summary
+
+# 스레드 체크 — -t 1이면 병렬 solve 효과 없음
+if Threads.nthreads() == 1
+    @warn "Julia 스레드가 1개입니다! 병렬 solve 효과 없음.\n" *
+          "  julia -t 8 test_branch_and_benders.jl 로 실행하세요."
+end
+
+# 메모리 모니터 — 별도 CMD 창에서 Available MB + CPU% 표시 (5초 간격, 창 닫기로 종료)
+if Sys.iswindows()
+    monitor_bat = joinpath(@__DIR__, "monitor_memory.bat")
+    if isfile(monitor_bat)
+        run(`cmd /c start "" $monitor_bat`; wait=false)
+    end
+end
 
 # ===== Network Instance Configs =====
 network_configs = Dict(
