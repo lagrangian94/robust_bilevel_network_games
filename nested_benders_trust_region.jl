@@ -53,6 +53,7 @@ includet("build_full_model.jl")
 includet("parallel_utils.jl")
 includet("strict_benders.jl")
 includet("build_primal_isp.jl")
+includet("compact_ldr_utils.jl")
 
 
 using .NetworkGenerator
@@ -502,14 +503,14 @@ function initialize_imp(imp_model::Model, imp_vars::Dict)
     return st, α_sol
 end
 
-function initialize_isp(network, S, ϕU, λU, γ, w, v, uncertainty_set; conic_optimizer=nothing, λ_sol=nothing, x_sol=nothing, h_sol=nothing, ψ0_sol=nothing, α_sol=nothing, πU=ϕU, yU=ϕU, ytsU=ϕU, scaling_S=S)
+function initialize_isp(network, S, ϕU, λU, γ, w, v, uncertainty_set; conic_optimizer=nothing, λ_sol=nothing, x_sol=nothing, h_sol=nothing, ψ0_sol=nothing, α_sol=nothing, πU=ϕU, yU=ϕU, ytsU=ϕU, scaling_S=S, ldr_mode::Symbol=:both)
     R, r_dict, xi_bar, epsilon = uncertainty_set[:R], uncertainty_set[:r_dict], uncertainty_set[:xi_bar], uncertainty_set[:epsilon]
     leader_instances = Dict{Int, Tuple{Model, Dict}}()
     follower_instances = Dict{Int, Tuple{Model, Dict}}()
     for s in 1:S
         U_s = Dict(:R => Dict(:1=>R[s]), :r_dict => Dict(:1=>r_dict[s]), :xi_bar => Dict(:1=>xi_bar[s]), :epsilon => epsilon)
-        leader_instances[s] = build_isp_leader(network, 1, ϕU, λU, γ, w, v, U_s, conic_optimizer, λ_sol, x_sol, h_sol, ψ0_sol, α_sol, scaling_S; πU=πU)
-        follower_instances[s] = build_isp_follower(network, 1, ϕU, λU, γ, w, v, U_s, conic_optimizer, λ_sol, x_sol, h_sol, ψ0_sol, α_sol, scaling_S; πU=πU, yU=yU, ytsU=ytsU)
+        leader_instances[s] = build_isp_leader(network, 1, ϕU, λU, γ, w, v, U_s, conic_optimizer, λ_sol, x_sol, h_sol, ψ0_sol, α_sol, scaling_S; πU=πU, ldr_mode=ldr_mode)
+        follower_instances[s] = build_isp_follower(network, 1, ϕU, λU, γ, w, v, U_s, conic_optimizer, λ_sol, x_sol, h_sol, ψ0_sol, α_sol, scaling_S; πU=πU, yU=yU, ytsU=ytsU, ldr_mode=ldr_mode)
 
     end
     return leader_instances, follower_instances
@@ -1338,7 +1339,7 @@ function alpha_fixed_benders_phase!(
 end
 
 
-function tr_nested_benders_optimize!(omp_model::Model, omp_vars::Dict, network, ϕU, λU, γ, w, uncertainty_set; mip_optimizer=nothing, conic_optimizer=nothing, outer_tr=true, inner_tr=true, max_outer_iter=1000, isp_mode=:dual, tol=1e-4, πU=ϕU, yU=ϕU, ytsU=ϕU, strengthen_cuts=:none, parallel=false, mini_benders=false, max_mini_benders_iter=5)
+function tr_nested_benders_optimize!(omp_model::Model, omp_vars::Dict, network, ϕU, λU, γ, w, uncertainty_set; mip_optimizer=nothing, conic_optimizer=nothing, outer_tr=true, inner_tr=true, max_outer_iter=1000, isp_mode=:dual, tol=1e-4, πU=ϕU, yU=ϕU, ytsU=ϕU, strengthen_cuts=:none, parallel=false, mini_benders=false, max_mini_benders_iter=5, ldr_mode::Symbol=:both)
     ### -------- 병렬 스레드 체크 --------
     if parallel && Threads.nthreads() == 1
         @warn "parallel=true인데 Julia 스레드가 1개입니다! 병렬 효과 없음.\n" *
@@ -1437,7 +1438,7 @@ function tr_nested_benders_optimize!(omp_model::Model, omp_vars::Dict, network, 
     # Dual ISP instances (used for :dual and :hybrid modes)
     leader_instances, follower_instances = nothing, nothing
     if isp_mode != :full_primal
-        leader_instances, follower_instances = initialize_isp(network, S, ϕU, λU, γ, w, v, uncertainty_set; conic_optimizer=conic_optimizer, λ_sol=λ_sol, x_sol=x_sol, h_sol=h_sol, ψ0_sol=ψ0_sol, α_sol=α_sol, πU=πU, yU=yU, ytsU=ytsU)
+        leader_instances, follower_instances = initialize_isp(network, S, ϕU, λU, γ, w, v, uncertainty_set; conic_optimizer=conic_optimizer, λ_sol=λ_sol, x_sol=x_sol, h_sol=h_sol, ψ0_sol=ψ0_sol, α_sol=α_sol, πU=πU, yU=yU, ytsU=ytsU, ldr_mode=ldr_mode)
     end
     # Primal ISP instances (used for :hybrid and :full_primal modes)
     primal_leader_instances, primal_follower_instances = nothing, nothing
@@ -2204,11 +2205,12 @@ function tr_nested_benders_optimize_hybrid!(omp_model::Model, omp_vars::Dict, ne
 end
 
 
-function build_isp_leader(network, S, ϕU, λU, γ, w, v, uncertainty_set, optimizer, λ_sol, x_sol, h_sol, ψ0_sol, α_sol, true_S; πU=ϕU)
+function build_isp_leader(network, S, ϕU, λU, γ, w, v, uncertainty_set, optimizer, λ_sol, x_sol, h_sol, ψ0_sol, α_sol, true_S; πU=ϕU, ldr_mode::Symbol=:both)
     # Extract network dimensions
     num_nodes = length(network.nodes)
     num_arcs = length(network.arcs)-1 #dummy arc 제외
     num_interdictable = sum(network.interdictable_arcs)
+    arc_adj = get_ldr_adjacency(network; ldr_mode=ldr_mode)
 
 
     
@@ -2222,13 +2224,10 @@ function build_isp_leader(network, S, ϕU, λU, γ, w, v, uncertainty_set, optim
     E = ones(num_arcs, num_arcs+1) # num_arcs × num_arcs+1 matrix of ones
     I_0 = [Matrix{Float64}(I, num_arcs, num_arcs) zeros(num_arcs)]
     # Mosek 내부 스레드 제한 — 병렬 solve 시 스레드 과잉 방지
-    # 기본값 3. 환경변수 MOSEK_NUM_THREADS로 override 가능.
-    # 가이드: 총 OS 스레드(= julia -t N × MOSEK_NUM_THREADS) ≤ CPU 논리코어 수
-    #   -t 8,  MOSEK=3 → 24스레드 (24코어 적합)
-    #   -t 16, MOSEK=1 → 16스레드 (높은 병렬성)
-    #   CMD:  set MOSEK_NUM_THREADS=1 && julia -t 8 ...
-    #   PS :  $env:MOSEK_NUM_THREADS="1"; julia -t 8 ...
-    mosek_threads = parse(Int, get(ENV, "MOSEK_NUM_THREADS", "3"))
+    # 기본값: CPU 논리코어 수 ÷ Julia 스레드 수 (최소 1)
+    # 환경변수 MOSEK_NUM_THREADS로 override 가능.
+    mosek_threads_default = max(1, Sys.CPU_THREADS ÷ Threads.nthreads())
+    mosek_threads = parse(Int, get(ENV, "MOSEK_NUM_THREADS", string(mosek_threads_default)))
     model = Model(optimizer_with_attributes(optimizer, MOI.Silent() => true, "MSK_IPAR_NUM_THREADS" => mosek_threads))
     d0 = zeros(num_arcs + 1)
     d0[end] = 1.0
@@ -2339,7 +2338,7 @@ function build_isp_leader(network, S, ϕU, λU, γ, w, v, uncertainty_set, optim
             I_0*Zhat1_1[s,:,:] - Zhat1_3[s,:,:] + Zhat2[s,:,:] + Phat1_Φ[s,:,1:num_arcs] - Phat2_Φ[s,:,1:num_arcs]
 
         for i in 1:num_arcs, j in 1:num_arcs
-            if network.arc_adjacency[i,j]
+            if arc_adj[i,j]
                 @constraint(model, lhs_L[i,j] == 0)
             end
         end
@@ -2355,7 +2354,7 @@ function build_isp_leader(network, S, ϕU, λU, γ, w, v, uncertainty_set, optim
         ## Ψhat_L constraint
         lhs_L = Adj_L_Mhat_11+Adj_L_Mhat_12 -Uhat1[s,:,1:num_arcs] - Uhat2[s,:,1:num_arcs] + Uhat3[s,:,1:num_arcs]
         for i in 1:num_arcs, j in 1:num_arcs
-            if network.arc_adjacency[i,j]
+            if arc_adj[i,j]
                 @constraint(model, lhs_L[i,j] <= 0)
             end
         end
@@ -2399,11 +2398,12 @@ function build_isp_leader(network, S, ϕU, λU, γ, w, v, uncertainty_set, optim
     return model, vars
 end
 
-function build_isp_follower(network, S, ϕU, λU, γ, w, v, uncertainty_set, optimizer, λ_sol, x_sol, h_sol, ψ0_sol, α_sol, true_S; πU=ϕU, yU=ϕU, ytsU=ϕU)
+function build_isp_follower(network, S, ϕU, λU, γ, w, v, uncertainty_set, optimizer, λ_sol, x_sol, h_sol, ψ0_sol, α_sol, true_S; πU=ϕU, yU=ϕU, ytsU=ϕU, ldr_mode::Symbol=:both)
     # Extract network dimensions
     num_nodes = length(network.nodes)
     num_arcs = length(network.arcs)-1 #dummy arc 제외
     num_interdictable = sum(network.interdictable_arcs)
+    arc_adj = get_ldr_adjacency(network; ldr_mode=ldr_mode)
 
     # Node-arc incidence matrix (excluding source row)
     N = network.N
@@ -2415,13 +2415,10 @@ function build_isp_follower(network, S, ϕU, λU, γ, w, v, uncertainty_set, opt
     E = ones(num_arcs, num_arcs+1) # num_arcs × num_arcs+1 matrix of ones
     I_0 = [Matrix{Float64}(I, num_arcs, num_arcs) zeros(num_arcs)]
     # Mosek 내부 스레드 제한 — 병렬 solve 시 스레드 과잉 방지
-    # 기본값 3. 환경변수 MOSEK_NUM_THREADS로 override 가능.
-    # 가이드: 총 OS 스레드(= julia -t N × MOSEK_NUM_THREADS) ≤ CPU 논리코어 수
-    #   -t 8,  MOSEK=3 → 24스레드 (24코어 적합)
-    #   -t 16, MOSEK=1 → 16스레드 (높은 병렬성)
-    #   CMD:  set MOSEK_NUM_THREADS=1 && julia -t 8 ...
-    #   PS :  $env:MOSEK_NUM_THREADS="1"; julia -t 8 ...
-    mosek_threads = parse(Int, get(ENV, "MOSEK_NUM_THREADS", "3"))
+    # 기본값: CPU 논리코어 수 ÷ Julia 스레드 수 (최소 1)
+    # 환경변수 MOSEK_NUM_THREADS로 override 가능.
+    mosek_threads_default = max(1, Sys.CPU_THREADS ÷ Threads.nthreads())
+    mosek_threads = parse(Int, get(ENV, "MOSEK_NUM_THREADS", string(mosek_threads_default)))
     model = Model(optimizer_with_attributes(optimizer, MOI.Silent() => true, "MSK_IPAR_NUM_THREADS" => mosek_threads))
     d0 = zeros(num_arcs + 1)
     d0[end] = 1.0
@@ -2544,13 +2541,13 @@ function build_isp_follower(network, S, ϕU, λU, γ, w, v, uncertainty_set, opt
         lhs_L = Adj_L_Mtilde_11+Adj_L_Mtilde_12 + Utilde2[s,:,1:num_arcs] - Utilde3[s,:,1:num_arcs] -
             I_0*Ztilde1_1[s,:,:] - Ztilde1_5[s,:,:] + Ztilde2[s,:,:] + Ptilde1_Φ[s,:,1:num_arcs] - Ptilde2_Φ[s,:,1:num_arcs]
         for i in 1:num_arcs, j in 1:num_arcs
-            if network.arc_adjacency[i,j]
+            if arc_adj[i,j]
                 @constraint(model, lhs_L[i,j] == 0)
             end
         end
         # --- Φtilde_0 constraint
         @constraint(model, Adj_0_Mtilde_12+Adj_0_Mtilde_22 + Utilde2[s,:,end] - Utilde3[s,:,end] + I_0*βtilde1_1[s,:] + βtilde1_5[s,:] - βtilde2[s,:] + Ptilde1_Φ[s,:,end] - Ptilde2_Φ[s,:,end] .== 0)
-        
+
         # --- From Ψtilde ---
         Adj_L_Mtilde_11 = v*D_s*Mtilde_11
         Adj_L_Mtilde_12 = v*(Mtilde_12*adjoint(xi_bar[s]))
@@ -2560,7 +2557,7 @@ function build_isp_follower(network, S, ϕU, λU, γ, w, v, uncertainty_set, opt
         # --- Ψtilde_L constraint
         lhs_L = Adj_L_Mtilde_11+Adj_L_Mtilde_12 - Utilde1[s,:,1:num_arcs] - Utilde2[s,:,1:num_arcs] + Utilde3[s,:,1:num_arcs]
         for i in 1:num_arcs, j in 1:num_arcs
-            if network.arc_adjacency[i,j]
+            if arc_adj[i,j]
                 @constraint(model, lhs_L[i,j] <= 0.0)
             end
         end
@@ -2590,7 +2587,7 @@ function build_isp_follower(network, S, ϕU, λU, γ, w, v, uncertainty_set, opt
     # --- From Ytilde ---
     # --- From Ytilde_L constraint
     for i in 1:num_arcs, j in 1:num_arcs
-        if network.arc_adjacency[i,j]
+        if arc_adj[i,j]
             @constraint(model, [s=1:S], (N_y' * Ztilde1_2[s,:,:])[i,j]+Ztilde1_3[s,i,j]-Ztilde1_6[s,i,j] + Ptilde1_Y[s,i,j] - Ptilde2_Y[s,i,j] == 0.0)
         end
     end

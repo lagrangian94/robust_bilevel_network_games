@@ -5,12 +5,12 @@ compare_benders.jl과 동일한 인풋으로 TR Nested Benders vs Branch-and-Ben
 병렬 실행하려면:
   julia -t 8 test_branch_and_benders.jl
 
-스레드 설정 가이드 (총 OS 스레드 ≤ CPU 논리코어 수 유지):
-  총 OS 스레드 = julia -t N  ×  MOSEK_NUM_THREADS(기본 3)
-  예) -t 8,  MOSEK=3 → 24스레드 (24코어 시스템에 적합)
-  예) -t 16, MOSEK=1 → 16스레드 (높은 병렬성, 개별 solve 느림)
+스레드 설정:
+  Mosek 내부 스레드 기본값 = CPU 논리코어 수 ÷ Julia 스레드 수 (최소 1)
+  예) 24코어, -t 8 → Mosek 3스레드, 총 24스레드
+  예) 24코어, -t 16 → Mosek 1스레드, 총 16스레드
 
-Mosek 내부 스레드 override:
+  환경변수 MOSEK_NUM_THREADS로 override 가능:
   CMD:  set MOSEK_NUM_THREADS=1 && julia -t 8 test_branch_and_benders.jl
   PS :  \$env:MOSEK_NUM_THREADS="1"; julia -t 8 test_branch_and_benders.jl
 """
@@ -22,6 +22,7 @@ using HiGHS
 using LinearAlgebra
 using Infiltrator
 using Serialization
+using JLD2
 using Revise
 
 includet("network_generator.jl")
@@ -134,9 +135,11 @@ end
 
 print("시나리오 수 S: "); S = parse(Int, readline())
 print("Cut strengthening (none/mw/sherali): "); strengthen_cuts = Symbol(readline())
+print("LDR adjacency mode (both/head/tail/self) [both]: "); ldr_mode_str = strip(readline())
+ldr_mode = isempty(ldr_mode_str) ? :both : Symbol(ldr_mode_str)
 
 println("\n" * "="^80)
-println("INSTANCE: $instance_key (S=$S, cuts=$strengthen_cuts)")
+println("INSTANCE: $instance_key (S=$S, cuts=$strengthen_cuts, ldr_mode=$ldr_mode)")
 println("="^80)
 
 network, uncertainty_set, params = setup_instance(instance_key; S=S)
@@ -157,12 +160,17 @@ result1 = tr_nested_benders_optimize!(model1, vars1, network, ϕU, λU, γ, w, u
     mip_optimizer=Gurobi.Optimizer, conic_optimizer=Mosek.Optimizer,
     outer_tr=true, inner_tr=true,
     πU=πU, yU=yU, ytsU=ytsU, strengthen_cuts=strengthen_cuts,
-    parallel=true, mini_benders=true, max_mini_benders_iter=3)
+    parallel=true, mini_benders=true, max_mini_benders_iter=3, ldr_mode=ldr_mode)
 t1_end = time()
 results["tr_nested"] = t1_end - t1_start
 println("\n>> TR Nested Benders time: $(round(results["tr_nested"], digits=2)) seconds")
 
 # Cut pool 저장
+# result1 전체 저장
+result1_file = "result1_$(instance_key)_S$(S).jld2"
+@save result1_file result1
+println("  → result1 saved to $result1_file")
+
 nb_cut_pool = get(result1, :cut_pool, nothing)
 if nb_cut_pool !== nothing
     serialize("nb_cut_pool_$(instance_key)_S$(S).jls", nb_cut_pool)

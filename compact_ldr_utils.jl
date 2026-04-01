@@ -26,6 +26,58 @@ using JuMP
 
 
 # =============================================================================
+# 0. LDR adjacency 모드별 생성
+#    ldr_mode에 따라 arc adjacency 행렬을 필터링하여 LDR sparsity 제어.
+#    :both — 기존 arc_adjacency (head 또는 tail 공유)
+#    :head — arc i의 head(destination)를 공유하는 arc만
+#    :tail — arc i의 tail(origin)를 공유하는 arc만
+#    :self — 대각선만 (i == j)
+# =============================================================================
+
+"""
+    get_ldr_adjacency(network; ldr_mode=:both) -> Matrix{Bool}
+
+ldr_mode에 따라 arc adjacency 행렬을 생성/필터링.
+- `:both` — 기존 `network.arc_adjacency` 반환 (head 또는 tail 공유)
+- `:head` — arc i의 head(destination)를 공유하는 arc만
+- `:tail` — arc i의 tail(origin)를 공유하는 arc만
+- `:self` — 대각선만 (i == j)
+"""
+function get_ldr_adjacency(network; ldr_mode::Symbol=:both)
+    num_arcs = length(network.arcs) - 1
+    if ldr_mode == :both
+        return network.arc_adjacency
+    elseif ldr_mode == :self
+        adj = falses(num_arcs, num_arcs)
+        for i in 1:num_arcs
+            adj[i,i] = true
+        end
+        return adj
+    elseif ldr_mode == :head
+        adj = falses(num_arcs, num_arcs)
+        for i in 1:num_arcs, j in 1:num_arcs
+            # arc i와 j가 같은 head(destination = arcs[k][2])를 공유
+            if network.arcs[i][2] == network.arcs[j][2]
+                adj[i,j] = true
+            end
+        end
+        return adj
+    elseif ldr_mode == :tail
+        adj = falses(num_arcs, num_arcs)
+        for i in 1:num_arcs, j in 1:num_arcs
+            # arc i와 j가 같은 tail(origin = arcs[k][1])를 공유
+            if network.arcs[i][1] == network.arcs[j][1]
+                adj[i,j] = true
+            end
+        end
+        return adj
+    else
+        error("Unknown ldr_mode: $ldr_mode. Use :both, :head, :tail, or :self")
+    end
+end
+
+
+# =============================================================================
 # 1. 인덱스 셋 생성기
 #    LDR 행렬의 _L 열 (slope 부분)과 intercept 열에 대한 인덱스 쌍을 생성한다.
 #    _L 열: 인접/incident 쌍에 대해서만 변수 생성
@@ -33,7 +85,7 @@ using JuMP
 # =============================================================================
 
 """
-    arc_adj_pairs(network) -> Vector{Tuple{Int,Int}}
+    arc_adj_pairs(network; ldr_mode=:both) -> Vector{Tuple{Int,Int}}
 
 LDR 행렬의 _L 열에 대한 인접 arc 쌍을 반환한다.
 arc_adjacency[i,j] == true인 (i,j) 쌍만 포함.
@@ -41,13 +93,14 @@ arc_adjacency[i,j] == true인 (i,j) 쌍만 포함.
 수학적 의미: Φ̂_L[i,j], Ψ̂_L[i,j] 등의 slope 계수가 0이 아닌 위치.
 arc i의 recourse가 arc j의 불확실성 ξ_j에 의존하려면 i,j가 인접해야 한다.
 """
-function arc_adj_pairs(network)
+function arc_adj_pairs(network; ldr_mode::Symbol=:both)
     num_arcs = length(network.arcs) - 1
-    return [(i,j) for i in 1:num_arcs for j in 1:num_arcs if network.arc_adjacency[i,j]]
+    adj = get_ldr_adjacency(network; ldr_mode=ldr_mode)
+    return [(i,j) for i in 1:num_arcs for j in 1:num_arcs if adj[i,j]]
 end
 
 """
-    arc_full_pairs(network) -> Vector{Tuple{Int,Int}}
+    arc_full_pairs(network; ldr_mode=:both) -> Vector{Tuple{Int,Int}}
 
 인접 arc 쌍 + intercept 열 (j = num_arcs+1)을 포함한 전체 인덱스 셋.
 U, P_Φ, P_Y 변수 인덱싱에 사용된다.
@@ -56,9 +109,9 @@ U, P_Φ, P_Y 변수 인덱싱에 사용된다.
 - aap: arc_adj_pairs (slope 열, 인접 쌍만)
 - intercept: 모든 행 i에 대해 (i, num_arcs+1) 추가
 """
-function arc_full_pairs(network)
+function arc_full_pairs(network; ldr_mode::Symbol=:both)
     num_arcs = length(network.arcs) - 1
-    aap = arc_adj_pairs(network)
+    aap = arc_adj_pairs(network; ldr_mode=ldr_mode)
     # intercept 열: LDR의 상수항으로, 모든 arc에 대해 존재
     intercept_pairs = [(i, num_arcs+1) for i in 1:num_arcs]
     return vcat(aap, intercept_pairs)
@@ -135,25 +188,25 @@ end
 # =============================================================================
 
 """
-    print_compact_ldr_stats(network)
+    print_compact_ldr_stats(network; ldr_mode=:both)
 
 Dictionary-indexed compact LDR의 변수 절감 통계를 출력한다.
 Full dimension 대비 실제 생성되는 변수 수를 비교.
 """
-function print_compact_ldr_stats(network)
+function print_compact_ldr_stats(network; ldr_mode::Symbol=:both)
     num_arcs = length(network.arcs) - 1
     num_nodes = length(network.nodes)
 
-    aap = arc_adj_pairs(network)
+    aap = arc_adj_pairs(network; ldr_mode=ldr_mode)
     nap = node_arc_inc_pairs(network)
-    afp = arc_full_pairs(network)
+    afp = arc_full_pairs(network; ldr_mode=ldr_mode)
     nfp = node_arc_full_pairs(network)
 
     full_arc = num_arcs * (num_arcs + 1)
     full_node = (num_nodes - 1) * (num_arcs + 1)
 
     println("="^80)
-    println("COMPACT LDR STATISTICS (dictionary-indexed)")
+    println("COMPACT LDR STATISTICS (dictionary-indexed, ldr_mode=:$ldr_mode)")
     println("="^80)
     println("Network: $(num_nodes) nodes, $(num_arcs) arcs")
     println()
