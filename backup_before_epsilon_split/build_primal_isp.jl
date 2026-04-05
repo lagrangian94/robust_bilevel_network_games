@@ -410,7 +410,7 @@ function primal_isp_leader_optimize!(model::Model, vars::Dict;
         # with +ε offset on ZERO-COST components only (where α_k ≈ 0).
         # When α_k > 0, μ_k has nonzero objective coefficient → no offset.
         # See memory/ipm_mu_offset.md for detailed explanation.
-        ε = isp_data[:uncertainty_set][:epsilon_hat]
+        ε = isp_data[:uncertainty_set][:epsilon]
         for k in eachindex(subgradient)
             if α_sol[k] < 1e-8
                 subgradient[k] = max(subgradient[k] - ε, 0.0)
@@ -461,7 +461,7 @@ function primal_isp_follower_optimize!(model::Model, vars::Dict;
 
         # IPM artifact correction: subtract ε offset only on zero-cost components (α_k ≈ 0).
         # See memory/ipm_mu_offset.md for detailed explanation.
-        ε = isp_data[:uncertainty_set][:epsilon_tilde]
+        ε = isp_data[:uncertainty_set][:epsilon]
         for k in eachindex(subgradient)
             if α_sol[k] < 1e-8
                 subgradient[k] = max(subgradient[k] - ε, 0.0)
@@ -483,31 +483,22 @@ end
 Build per-scenario primal ISP instances. Same pattern as initialize_isp() in nested_benders.jl.
 Rebuilds models when x, h, λ, ψ0 change (new outer iteration).
 """
-function initialize_primal_isp(network, S, ϕU_hat, ϕU_tilde, λU, γ, w, v, uncertainty_set;
+function initialize_primal_isp(network, S, ϕU, λU, γ, w, v, uncertainty_set;
                                 conic_optimizer=nothing, x_sol=nothing, λ_sol=nothing,
                                 h_sol=nothing, ψ0_sol=nothing)
-    R = uncertainty_set[:R]
-    r_dict_hat = uncertainty_set[:r_dict_hat]
-    r_dict_tilde = uncertainty_set[:r_dict_tilde]
-    xi_bar = uncertainty_set[:xi_bar]
-    epsilon_hat = uncertainty_set[:epsilon_hat]
-    epsilon_tilde = uncertainty_set[:epsilon_tilde]
-
+    R, r_dict, xi_bar, epsilon = uncertainty_set[:R], uncertainty_set[:r_dict],
+                                  uncertainty_set[:xi_bar], uncertainty_set[:epsilon]
     leader_instances = Dict{Int, Tuple{Model, Dict}}()
     follower_instances = Dict{Int, Tuple{Model, Dict}}()
 
     for s in 1:S
-        # Leader uses hat uncertainty set
-        U_s_hat = Dict(:R => Dict(1=>R[s]), :r_dict => Dict(1=>r_dict_hat[s]),
-                        :xi_bar => Dict(1=>xi_bar[s]), :epsilon => epsilon_hat)
-        # Follower uses tilde uncertainty set
-        U_s_tilde = Dict(:R => Dict(1=>R[s]), :r_dict => Dict(1=>r_dict_tilde[s]),
-                          :xi_bar => Dict(1=>xi_bar[s]), :epsilon => epsilon_tilde)
+        U_s = Dict(:R => Dict(1=>R[s]), :r_dict => Dict(1=>r_dict[s]),
+                    :xi_bar => Dict(1=>xi_bar[s]), :epsilon => epsilon)
         leader_instances[s] = build_primal_isp_leader(
-            network, 1, ϕU_hat, λU, γ, w, v, U_s_hat, conic_optimizer,
+            network, 1, ϕU, λU, γ, w, v, U_s, conic_optimizer,
             x_sol, λ_sol, h_sol, ψ0_sol, S)
         follower_instances[s] = build_primal_isp_follower(
-            network, 1, ϕU_tilde, λU, γ, w, v, U_s_tilde, conic_optimizer,
+            network, 1, ϕU, λU, γ, w, v, U_s, conic_optimizer,
             x_sol, λ_sol, h_sol, ψ0_sol, S)
     end
 
@@ -528,8 +519,7 @@ function update_primal_isp_parameters!(
     x_sol, h_sol, λ_sol, ψ0_sol, isp_data)
 
     S = isp_data[:S]
-    ϕU_hat = isp_data[:ϕU_hat]
-    ϕU_tilde = isp_data[:ϕU_tilde]
+    ϕU = isp_data[:ϕU]
     v = isp_data[:v]
     d0 = isp_data[:d0]
     xi_bar = isp_data[:uncertainty_set][:xi_bar]
@@ -540,8 +530,8 @@ function update_primal_isp_parameters!(
         num_arcs = size(vars_l[:con_bigM1_hat], 1)
 
         for i in 1:num_arcs, j in 1:(num_arcs+1)
-            set_normalized_rhs(vars_l[:con_bigM1_hat][i,j], ϕU_hat * x_sol[i])
-            set_normalized_rhs(vars_l[:con_bigM3_hat][i,j], ϕU_hat * (1 - x_sol[i]))
+            set_normalized_rhs(vars_l[:con_bigM1_hat][i,j], ϕU * x_sol[i])
+            set_normalized_rhs(vars_l[:con_bigM3_hat][i,j], ϕU * (1 - x_sol[i]))
         end
 
         # === Follower: update Big-M + SOC constraints ===
@@ -549,8 +539,8 @@ function update_primal_isp_parameters!(
 
         # Big-M (x)
         for i in 1:num_arcs, j in 1:(num_arcs+1)
-            set_normalized_rhs(vars_f[:con_bigM1_tilde][i,j], ϕU_tilde * x_sol[i])
-            set_normalized_rhs(vars_f[:con_bigM3_tilde][i,j], ϕU_tilde * (1 - x_sol[i]))
+            set_normalized_rhs(vars_f[:con_bigM1_tilde][i,j], ϕU * x_sol[i])
+            set_normalized_rhs(vars_f[:con_bigM3_tilde][i,j], ϕU * (1 - x_sol[i]))
         end
 
         # SOC equality block3: (λ-v*ψ0[i]) * xi_bar[s][i] * δ(i,j)
@@ -795,25 +785,21 @@ function primal_evaluate_master_opt_cut(
     α_sol = cut_info[:α_sol]
     uncertainty_set = isp_data[:uncertainty_set]
     R = uncertainty_set[:R]
-    r_dict_hat = uncertainty_set[:r_dict_hat]
-    r_dict_tilde = uncertainty_set[:r_dict_tilde]
+    r_dict = uncertainty_set[:r_dict]
     xi_bar = uncertainty_set[:xi_bar]
-    epsilon_hat = uncertainty_set[:epsilon_hat]
-    epsilon_tilde = uncertainty_set[:epsilon_tilde]
+    epsilon = uncertainty_set[:epsilon]
 
     # First, call dual ISP optimize once per scenario to update objectives with (x,h,λ,ψ0)
     for s in 1:S
-        U_s_hat = Dict(:R => Dict(:1=>R[s]), :r_dict => Dict(:1=>r_dict_hat[s]),
-                    :xi_bar => Dict(:1=>xi_bar[s]), :epsilon => epsilon_hat)
-        U_s_tilde = Dict(:R => Dict(:1=>R[s]), :r_dict => Dict(:1=>r_dict_tilde[s]),
-                    :xi_bar => Dict(:1=>xi_bar[s]), :epsilon => epsilon_tilde)
+        U_s = Dict(:R => Dict(:1=>R[s]), :r_dict => Dict(:1=>r_dict[s]),
+                    :xi_bar => Dict(:1=>xi_bar[s]), :epsilon => epsilon)
         isp_leader_optimize!(
             dual_leader_instances[s][1], dual_leader_instances[s][2];
-            isp_data=isp_data, uncertainty_set=U_s_hat,
+            isp_data=isp_data, uncertainty_set=U_s,
             λ_sol=λ_sol, x_sol=x_sol, h_sol=h_sol, ψ0_sol=ψ0_sol, α_sol=α_sol)
         isp_follower_optimize!(
             dual_follower_instances[s][1], dual_follower_instances[s][2];
-            isp_data=isp_data, uncertainty_set=U_s_tilde,
+            isp_data=isp_data, uncertainty_set=U_s,
             λ_sol=λ_sol, x_sol=x_sol, h_sol=h_sol, ψ0_sol=ψ0_sol, α_sol=α_sol)
     end
 
@@ -853,13 +839,14 @@ function evaluate_master_opt_cut_from_primal(
     α_sol = cut_info[:α_sol]
     uncertainty_set = isp_data[:uncertainty_set]
     R = uncertainty_set[:R]
+    r_dict = uncertainty_set[:r_dict]
     xi_bar = uncertainty_set[:xi_bar]
+    epsilon = uncertainty_set[:epsilon]
     num_arcs = length(α_sol)
     E = isp_data[:E]
     d0 = isp_data[:d0]
     v = isp_data[:v]
-    ϕU_hat = isp_data[:ϕU_hat]
-    ϕU_tilde = isp_data[:ϕU_tilde]
+    ϕU = isp_data[:ϕU]
 
     diag_x_E = Diagonal(x_sol) * E
     diag_λ_ψ = Diagonal(λ_sol * ones(num_arcs) - v .* ψ0_sol)
@@ -928,12 +915,12 @@ function evaluate_master_opt_cut_from_primal(
 
     # Always compute per-scenario intercepts (leader + follower)
     intercept_l = [objective_value(primal_leader_instances[s][1]) -
-        (-ϕU_hat * sum(Uhat1[s,:,:] .* diag_x_E) - ϕU_hat * sum(Uhat3[s,:,:] .* (E - diag_x_E)))
+        (-ϕU * sum(Uhat1[s,:,:] .* diag_x_E) - ϕU * sum(Uhat3[s,:,:] .* (E - diag_x_E)))
         for s in 1:S]
     intercept_f = Float64[]
     for s in 1:S
-        ct1 = -ϕU_tilde * sum(Utilde1[s,:,:] .* diag_x_E)
-        ct2 = -ϕU_tilde * sum(Utilde3[s,:,:] .* (E - diag_x_E))
+        ct1 = -ϕU * sum(Utilde1[s,:,:] .* diag_x_E)
+        ct2 = -ϕU * sum(Utilde3[s,:,:] .* (E - diag_x_E))
         ct3 = sum(Ztilde1_3[s,:,:] .* (diag_λ_ψ * diagm(xi_bar[s])))
         ct4 = (d0' * βtilde1_1[s,:]) * λ_sol
         ct5 = -(h_sol + diag_λ_ψ * xi_bar[s])' * βtilde1_3[s,:]

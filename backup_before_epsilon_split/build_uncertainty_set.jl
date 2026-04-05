@@ -51,36 +51,33 @@ function build_r_vector(num_regular_arcs::Int, xi_hat::Vector{Float64}, epsilon:
 end
 
 """
-    build_robust_counterpart_matrices(capacity_scenarios, epsilon_hat, epsilon_tilde=epsilon_hat)
+    build_robust_counterpart_matrices(capacity_scenarios::Matrix{Float64}, epsilon::Float64)
 
-모든 scenario에 대한 R과 r 생성. Leader(hat)와 Follower(tilde)의 ambiguity set radius를
-독립적으로 설정 가능 (Manuscript Remark 1).
+모든 scenario에 대한 R과 r 생성
 
 Arguments:
 - capacity_scenarios: 각 열이 scenario (크기 |A| × S, dummy arc 제외)
-- epsilon_hat: Leader의 robustness parameter ε̂
-- epsilon_tilde: Follower의 robustness parameter ε̃ (default: epsilon_hat)
+- epsilon: robustness parameter
 
 Returns:
-- R: constraint matrix (모든 scenario 공통, ε 무관)
-- r_dict_hat: Dict{Int, Vector{Float64}} - Leader용 r vector (첫 원소 = -ε̂)
-- r_dict_tilde: Dict{Int, Vector{Float64}} - Follower용 r vector (첫 원소 = -ε̃)
-- xi_bar: Dict{Int, Vector{Float64}} - 각 scenario의 명목 용량
+- R: constraint matrix (모든 scenario 공통)
+- r_dict: Dict{Int, Vector{Float64}} - 각 scenario의 r vector
 
 Example:
-    capacity_scenarios_regular = capacity_scenarios_full[1:end-1, :]
-    R, r_dict_hat, r_dict_tilde, xi_bar = build_robust_counterpart_matrices(cap, 0.5, 0.3)
+    # network_generator.jl에서 생성한 capacity_scenarios에서 dummy arc(마지막 행) 제거
+    capacity_scenarios_full, F, μ = generate_capacity_scenarios(num_arcs, num_scenarios)
+    capacity_scenarios_regular = capacity_scenarios_full[1:end-1, :]  # dummy arc 제외
+    
+    R, r_dict = build_robust_counterpart_matrices(capacity_scenarios_regular, epsilon)
 """
-function build_robust_counterpart_matrices(capacity_scenarios::Matrix{Float64}, epsilon_hat::Float64, epsilon_tilde::Float64=epsilon_hat)
+function build_robust_counterpart_matrices(capacity_scenarios::Matrix{Float64}, epsilon::Float64)
     num_regular_arcs, num_scenarios = size(capacity_scenarios)
-
-    r_dict_hat = Dict{Int, Vector{Float64}}()
-    r_dict_tilde = Dict{Int, Vector{Float64}}()
+    
+    r_dict = Dict{Int, Vector{Float64}}()
     R = Dict{Int, Matrix{Float64}}()
     for s in 1:num_scenarios
-        r_dict_hat[s] = build_r_vector(num_regular_arcs, capacity_scenarios[:, s], epsilon_hat)
-        r_dict_tilde[s] = build_r_vector(num_regular_arcs, capacity_scenarios[:, s], epsilon_tilde)
+        r_dict[s] = build_r_vector(num_regular_arcs, capacity_scenarios[:, s], epsilon)
         R[s] = build_R_matrix(capacity_scenarios[:, s])
     end
-    return R, r_dict_hat, r_dict_tilde, Dict(s => capacity_scenarios[:, s] for s in 1:num_scenarios)
+    return R, r_dict, Dict(s => capacity_scenarios[:, s] for s in 1:num_scenarios)
 end

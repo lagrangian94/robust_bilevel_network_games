@@ -52,12 +52,10 @@ end
 function osp_optimize!(osp_model::Model, osp_vars::Dict, osp_data::Dict, λ_sol, x_sol, h_sol, ψ0_sol)
     E = osp_data[:E]
     v = osp_data[:v]
-    ϕU_hat = osp_data[:ϕU_hat]
-    ϕU_tilde = osp_data[:ϕU_tilde]
-    πU_hat = get(osp_data, :πU_hat, ϕU_hat)
-    πU_tilde = get(osp_data, :πU_tilde, ϕU_tilde)
-    yU = get(osp_data, :yU, ϕU_tilde)
-    ytsU = get(osp_data, :ytsU, ϕU_tilde)
+    ϕU = osp_data[:ϕU]
+    πU = get(osp_data, :πU, ϕU)
+    yU = get(osp_data, :yU, ϕU)
+    ytsU = get(osp_data, :ytsU, ϕU)
     S = osp_data[:S]
     scaling_S = get(osp_data, :scaling_S, S)
     d0 = osp_data[:d0]
@@ -80,17 +78,17 @@ function osp_optimize!(osp_model::Model, osp_vars::Dict, osp_data::Dict, λ_sol,
     diag_λ_ψ = Diagonal(λ_sol*ones(num_arcs) - v.*ψ0_sol)
     # s에 대해 summing이 필요하다면 sum over s 추가
     # matrix inner product: sum(M .* N)
-    obj_term1 = [-ϕU_hat * sum(Uhat1[s, :, :] .* diag_x_E) - ϕU_tilde * sum(Utilde1[s, :, :] .* diag_x_E) for s=1:S]
-    obj_term2 = [-ϕU_hat * sum(Uhat3[s, :, :] .* (E-diag_x_E)) - ϕU_tilde * sum(Utilde3[s, :, :] .* (E-diag_x_E)) for s=1:S]
+    obj_term1 = [-ϕU * sum((Uhat1[s, :, :] + Utilde1[s, :, :]) .* diag_x_E) for s=1:S]
+    obj_term2 = [-ϕU * sum((Uhat3[s, :, :] + Utilde3[s, :, :]) .* (E-diag_x_E)) for s=1:S]
     obj_term3 = [(d0')* βhat1_1[s,:] for s=1:S] #이거만 maximize하면 dual infeasible
     obj_term4 = [sum(Ztilde1_3[s, :, :] .* (diag_λ_ψ * diagm(xi_bar[s]))) for s=1:S]
     obj_term5 = [(λ_sol*d0')* βtilde1_1[s,:] for s=1:S] #이거만 maximize하면 dual infeasible
     obj_term6 = [-(h_sol + diag_λ_ψ * xi_bar[s])'* βtilde1_3[s,:] for s=1:S]
 
-    obj_term_ub_hat = [-ϕU_hat * sum(Phat1_Φ[s,:,:]) - πU_hat * sum(Phat1_Π[s,:,:]) for s=1:S]
-    obj_term_lb_hat = [-ϕU_hat * sum(Phat2_Φ[s,:,:]) - πU_hat * sum(Phat2_Π[s,:,:]) for s=1:S]
-    obj_term_ub_tilde = [-ϕU_tilde * sum(Ptilde1_Φ[s,:,:]) - πU_tilde * sum(Ptilde1_Π[s,:,:]) - yU * sum(Ptilde1_Y[s,:,:]) - ytsU * sum(Ptilde1_Yts[s,:]) for s=1:S]
-    obj_term_lb_tilde = [-ϕU_tilde * sum(Ptilde2_Φ[s,:,:]) - πU_tilde * sum(Ptilde2_Π[s,:,:]) - yU * sum(Ptilde2_Y[s,:,:]) - ytsU * sum(Ptilde2_Yts[s,:]) for s=1:S]
+    obj_term_ub_hat = [-ϕU * sum(Phat1_Φ[s,:,:]) - πU * sum(Phat1_Π[s,:,:]) for s=1:S]
+    obj_term_lb_hat = [-ϕU * sum(Phat2_Φ[s,:,:]) - πU * sum(Phat2_Π[s,:,:]) for s=1:S]
+    obj_term_ub_tilde = [-ϕU * sum(Ptilde1_Φ[s,:,:]) - πU * sum(Ptilde1_Π[s,:,:]) - yU * sum(Ptilde1_Y[s,:,:]) - ytsU * sum(Ptilde1_Yts[s,:]) for s=1:S]
+    obj_term_lb_tilde = [-ϕU * sum(Ptilde2_Φ[s,:,:]) - πU * sum(Ptilde2_Π[s,:,:]) - yU * sum(Ptilde2_Y[s,:,:]) - ytsU * sum(Ptilde2_Yts[s,:]) for s=1:S]
     @objective(osp_model, Max, (sum(obj_term1) + sum(obj_term2) + sum(obj_term3) + sum(obj_term4) + sum(obj_term5) + sum(obj_term6)
     + sum(obj_term_ub_hat) + sum(obj_term_lb_hat) + sum(obj_term_ub_tilde) + sum(obj_term_lb_tilde)) / scaling_S)
 
@@ -131,16 +129,33 @@ end
 Cut 조립 helper. cut_info에서 coefficient를 읽어 omp_model에 constraint를 추가.
 Returns combined AffExpr for tightness check.
 """
-function add_optimality_cuts!(omp_model, omp_vars, cut_info, diag_x_E, E, diag_λ_ψ, xi_bar, d0, ϕU_hat, ϕU_tilde, λ_var, h_var, S, iter;
+function add_optimality_cuts!(omp_model, omp_vars, cut_info, diag_x_E, E, diag_λ_ψ, xi_bar, d0, ϕU, λ_var, h_var, S, iter;
     prefix="opt_cut", result_cuts=nothing)
+    # Per-scenario cut terms (always compute leader/follower separately)
+    # # [Original] sum(.* ) 패턴 — JuMP += performance warning 발생
+    # leader_s = Vector{Any}(undef, S)
+    # follower_s = Vector{Any}(undef, S)
+    # for s in 1:S
+    #     leader_s[s] = -ϕU * sum(cut_info[:Uhat1][s,:,:] .* diag_x_E) +
+    #                   -ϕU * sum(cut_info[:Uhat3][s,:,:] .* (E - diag_x_E)) +
+    #                   cut_info[:intercept_l][s]
+    #     follower_s[s] = -ϕU * sum(cut_info[:Utilde1][s,:,:] .* diag_x_E) +
+    #                     -ϕU * sum(cut_info[:Utilde3][s,:,:] .* (E - diag_x_E)) +
+    #                     sum(cut_info[:Ztilde1_3][s,:,:] .* (diag_λ_ψ * diagm(xi_bar[s]))) +
+    #                     (d0' * cut_info[:βtilde1_1][s,:]) * λ_var +
+    #                     -(h_var + diag_λ_ψ * xi_bar[s])' * cut_info[:βtilde1_3][s,:] +
+    #                     cut_info[:intercept_f][s]
+    # end
+    # opt_cut = sum(leader_s) + sum(follower_s)
+
     # [Optimized] dot() + add_to_expression!로 in-place 누적
     opt_cut = AffExpr(0.0)
     for s in 1:S
-        add_to_expression!(opt_cut, -ϕU_hat, dot(cut_info[:Uhat1][s,:,:], diag_x_E))
-        add_to_expression!(opt_cut, -ϕU_hat, dot(cut_info[:Uhat3][s,:,:], E - diag_x_E))
+        add_to_expression!(opt_cut, -ϕU, dot(cut_info[:Uhat1][s,:,:], diag_x_E))
+        add_to_expression!(opt_cut, -ϕU, dot(cut_info[:Uhat3][s,:,:], E - diag_x_E))
         add_to_expression!(opt_cut, cut_info[:intercept_l][s])
-        add_to_expression!(opt_cut, -ϕU_tilde, dot(cut_info[:Utilde1][s,:,:], diag_x_E))
-        add_to_expression!(opt_cut, -ϕU_tilde, dot(cut_info[:Utilde3][s,:,:], E - diag_x_E))
+        add_to_expression!(opt_cut, -ϕU, dot(cut_info[:Utilde1][s,:,:], diag_x_E))
+        add_to_expression!(opt_cut, -ϕU, dot(cut_info[:Utilde3][s,:,:], E - diag_x_E))
         add_to_expression!(opt_cut, dot(cut_info[:Ztilde1_3][s,:,:], diag_λ_ψ * diagm(xi_bar[s])))
         add_to_expression!(opt_cut, dot(d0, cut_info[:βtilde1_1][s,:]), λ_var)
         add_to_expression!(opt_cut, -1.0, dot(cut_info[:βtilde1_3][s,:], h_var + diag_λ_ψ * xi_bar[s]))
@@ -220,12 +235,10 @@ function osp_inner_optimize!(osp_model::Model, osp_vars::Dict, osp_data::Dict,
     # Compute V_l and V_f: decompose objective into leader (hat) and follower (tilde) portions
     E = osp_data[:E]
     v_param = osp_data[:v]
-    ϕU_hat = osp_data[:ϕU_hat]
-    ϕU_tilde = osp_data[:ϕU_tilde]
-    πU_hat = get(osp_data, :πU_hat, ϕU_hat)
-    πU_tilde = get(osp_data, :πU_tilde, ϕU_tilde)
-    yU = get(osp_data, :yU, ϕU_tilde)
-    ytsU = get(osp_data, :ytsU, ϕU_tilde)
+    ϕU = osp_data[:ϕU]
+    πU = get(osp_data, :πU, ϕU)
+    yU = get(osp_data, :yU, ϕU)
+    ytsU = get(osp_data, :ytsU, ϕU)
     d0 = osp_data[:d0]
     uncertainty_set = osp_data[:uncertainty_set]
     xi_bar_local = uncertainty_set[:xi_bar]
@@ -255,19 +268,19 @@ function osp_inner_optimize!(osp_model::Model, osp_vars::Dict, osp_data::Dict,
     Ptilde2_Yts_val = value.(osp_vars[:Ptilde2_Yts])
 
     s = 1  # single-scenario OSP
-    V_l = -ϕU_hat * sum(Uhat1_val[s,:,:] .* diag_x_E) +
-          -ϕU_hat * sum(Uhat3_val[s,:,:] .* (E - diag_x_E)) +
+    V_l = -ϕU * sum(Uhat1_val[s,:,:] .* diag_x_E) +
+          -ϕU * sum(Uhat3_val[s,:,:] .* (E - diag_x_E)) +
           d0' * βhat1_1_val[s,:] +
-          (-ϕU_hat * sum(Phat1_Φ_val[s,:,:]) - πU_hat * sum(Phat1_Π_val[s,:,:])) +
-          (-ϕU_hat * sum(Phat2_Φ_val[s,:,:]) - πU_hat * sum(Phat2_Π_val[s,:,:]))
+          (-ϕU * sum(Phat1_Φ_val[s,:,:]) - πU * sum(Phat1_Π_val[s,:,:])) +
+          (-ϕU * sum(Phat2_Φ_val[s,:,:]) - πU * sum(Phat2_Π_val[s,:,:]))
 
-    V_f = -ϕU_tilde * sum(Utilde1_val[s,:,:] .* diag_x_E) +
-          -ϕU_tilde * sum(Utilde3_val[s,:,:] .* (E - diag_x_E)) +
+    V_f = -ϕU * sum(Utilde1_val[s,:,:] .* diag_x_E) +
+          -ϕU * sum(Utilde3_val[s,:,:] .* (E - diag_x_E)) +
           sum(Ztilde1_3_val[s,:,:] .* (diag_λ_ψ * diagm(xi_bar_local[1]))) +
           (λ_sol * d0') * βtilde1_1_val[s,:] +
           -(h_sol + diag_λ_ψ * xi_bar_local[1])' * βtilde1_3_val[s,:] +
-          (-ϕU_tilde * sum(Ptilde1_Φ_val[s,:,:]) - πU_tilde * sum(Ptilde1_Π_val[s,:,:]) - yU * sum(Ptilde1_Y_val[s,:,:]) - ytsU * sum(Ptilde1_Yts_val[s,:])) +
-          (-ϕU_tilde * sum(Ptilde2_Φ_val[s,:,:]) - πU_tilde * sum(Ptilde2_Π_val[s,:,:]) - yU * sum(Ptilde2_Y_val[s,:,:]) - ytsU * sum(Ptilde2_Yts_val[s,:]))
+          (-ϕU * sum(Ptilde1_Φ_val[s,:,:]) - πU * sum(Ptilde1_Π_val[s,:,:]) - yU * sum(Ptilde1_Y_val[s,:,:]) - ytsU * sum(Ptilde1_Yts_val[s,:])) +
+          (-ϕU * sum(Ptilde2_Φ_val[s,:,:]) - πU * sum(Ptilde2_Π_val[s,:,:]) - yU * sum(Ptilde2_Y_val[s,:,:]) - ytsU * sum(Ptilde2_Yts_val[s,:]))
 
     # Verify: (V_l + V_f) / scaling_S ≈ objective_value
     obj_check = (V_l + V_f) / scaling_S
@@ -309,9 +322,9 @@ joint OSP(s=1)로 leader+follower를 한 번에 풀어 conic solve 수를 절반
 | Inner conic solves | 없음 | S × 1 | S × 2 |
 | 병렬화 | 불가 | S개 병렬 | S개 병렬 |
 """
-function scenario_benders_optimize!(omp_model::Model, omp_vars::Dict, network, ϕU_hat, ϕU_tilde, λU, γ, w, v, uncertainty_set;
+function scenario_benders_optimize!(omp_model::Model, omp_vars::Dict, network, ϕU, λU, γ, w, v, uncertainty_set;
     conic_optimizer=nothing,
-    max_iter=1000, tol=1e-4, πU_hat=ϕU_hat, πU_tilde=ϕU_tilde, yU=ϕU_tilde, ytsU=ϕU_tilde, parallel=false,
+    max_iter=1000, tol=1e-4, πU=ϕU, yU=ϕU, ytsU=ϕU, parallel=false,
     inner_max_iter=100, inner_tol=1e-4, mip_optimizer=nothing, strengthen_cuts=:none,
     outer_tr=false, inner_tr=false)
     ### --------Begin Initialization--------
@@ -321,30 +334,26 @@ function scenario_benders_optimize!(omp_model::Model, omp_vars::Dict, network, �
     num_arcs = length(network.arcs) - 1
     S = length(uncertainty_set[:xi_bar])
     R_us = uncertainty_set[:R]
-    r_dict_hat = uncertainty_set[:r_dict_hat]
-    r_dict_tilde = uncertainty_set[:r_dict_tilde]
+    r_dict_us = uncertainty_set[:r_dict]
     xi_bar = uncertainty_set[:xi_bar]
-    epsilon_hat = uncertainty_set[:epsilon_hat]
-    epsilon_tilde = uncertainty_set[:epsilon_tilde]
+    epsilon = uncertainty_set[:epsilon]
 
     conic_opt = conic_optimizer !== nothing ? conic_optimizer : Mosek.Optimizer
     mip_opt = mip_optimizer !== nothing ? mip_optimizer : Gurobi.Optimizer
 
     # Build IMP (shared α with per-scenario t_1_l, t_1_f)
-    imp_model, imp_vars = build_imp(network, S, ϕU_hat, λU, γ, w, v, uncertainty_set; mip_optimizer=mip_opt)
+    imp_model, imp_vars = build_imp(network, S, ϕU, λU, γ, w, v, uncertainty_set; mip_optimizer=mip_opt)
     initialize_imp(imp_model, imp_vars)
     outer_imp_cuts = Dict{String, Any}()  # inner cuts to delete between outer iterations
 
     # Build S separate single-scenario OSP instances
     osp_instances = Vector{Tuple}(undef, S)
     for s in 1:S
-        U_s = Dict(:R => Dict(1 => R_us[s]),
-                    :r_dict_hat => Dict(1 => r_dict_hat[s]), :r_dict_tilde => Dict(1 => r_dict_tilde[s]),
-                    :xi_bar => Dict(1 => xi_bar[s]),
-                    :epsilon_hat => epsilon_hat, :epsilon_tilde => epsilon_tilde)
+        U_s = Dict(:R => Dict(1 => R_us[s]), :r_dict => Dict(1 => r_dict_us[s]),
+                    :xi_bar => Dict(1 => xi_bar[s]), :epsilon => epsilon)
         osp_instances[s] = build_dualized_outer_subproblem(
-            network, 1, ϕU_hat, ϕU_tilde, λU, γ, w, v, U_s, conic_opt,
-            λ_sol, x_sol, h_sol, ψ0_sol; πU_hat=πU_hat, πU_tilde=πU_tilde, yU=yU, ytsU=ytsU, scaling_S=S)
+            network, 1, ϕU, λU, γ, w, v, U_s, conic_opt,
+            λ_sol, x_sol, h_sol, ψ0_sol; πU=πU, yU=yU, ytsU=ytsU, scaling_S=S)
     end
 
     # Common data from first instance
@@ -359,11 +368,10 @@ function scenario_benders_optimize!(omp_model::Model, omp_vars::Dict, network, �
     if strengthen_cuts != :none
         α_dummy = zeros(num_arcs)
         isp_leader_instances, isp_follower_instances = initialize_isp(
-            network, S, ϕU_hat, ϕU_tilde, λU, γ, w, v, uncertainty_set;
+            network, S, ϕU, λU, γ, w, v, uncertainty_set;
             conic_optimizer=conic_opt, λ_sol=λ_sol, x_sol=x_sol, h_sol=h_sol, ψ0_sol=ψ0_sol,
-            α_sol=α_dummy, πU_hat=πU_hat, πU_tilde=πU_tilde, yU=yU, ytsU=ytsU, scaling_S=S)
-        isp_data_sd = Dict(:E => E, :network => network, :ϕU_hat => ϕU_hat, :ϕU_tilde => ϕU_tilde,
-            :πU_hat => πU_hat, :πU_tilde => πU_tilde,
+            α_sol=α_dummy, πU=πU, yU=yU, ytsU=ytsU, scaling_S=S)
+        isp_data_sd = Dict(:E => E, :network => network, :ϕU => ϕU, :πU => πU,
             :yU => yU, :ytsU => ytsU, :λU => λU, :γ => γ, :w => w, :v => v,
             :uncertainty_set => uncertainty_set, :d0 => d0, :S => S, :scaling_S => S)
     end
@@ -1173,21 +1181,17 @@ function strict_benders_optimize!(omp_model::Model, omp_vars::Dict, network, ϕU
                 if strengthen_cuts == :mw
                     # MW: ISP solve (원본) → ISP cut + MW cut (2 solves)
                     R_us = uncertainty_set[:R]
-                    r_dict_hat_us = uncertainty_set[:r_dict_hat]
-                    r_dict_tilde_us = uncertainty_set[:r_dict_tilde]
+                    r_dict_us = uncertainty_set[:r_dict]
                     xi_bar_us = uncertainty_set[:xi_bar]
-                    epsilon_hat_us = uncertainty_set[:epsilon_hat]
-                    epsilon_tilde_us = uncertainty_set[:epsilon_tilde]
+                    epsilon_us = uncertainty_set[:epsilon]
                     solve_scenarios(S; parallel=parallel) do s_isp
-                        U_s_hat = Dict(:R => Dict(1=>R_us[s_isp]), :r_dict => Dict(1=>r_dict_hat_us[s_isp]),
-                                   :xi_bar => Dict(1=>xi_bar_us[s_isp]), :epsilon => epsilon_hat_us)
-                        U_s_tilde = Dict(:R => Dict(1=>R_us[s_isp]), :r_dict => Dict(1=>r_dict_tilde_us[s_isp]),
-                                   :xi_bar => Dict(1=>xi_bar_us[s_isp]), :epsilon => epsilon_tilde_us)
+                        U_s = Dict(:R => Dict(1=>R_us[s_isp]), :r_dict => Dict(1=>r_dict_us[s_isp]),
+                                   :xi_bar => Dict(1=>xi_bar_us[s_isp]), :epsilon => epsilon_us)
                         isp_leader_optimize!(isp_leader_instances[s_isp][1], isp_leader_instances[s_isp][2];
-                            isp_data=isp_data_strict, uncertainty_set=U_s_hat,
+                            isp_data=isp_data_strict, uncertainty_set=U_s,
                             λ_sol=λ_sol, x_sol=x_sol, h_sol=h_sol, ψ0_sol=ψ0_sol, α_sol=α_from_osp)
                         isp_follower_optimize!(isp_follower_instances[s_isp][1], isp_follower_instances[s_isp][2];
-                            isp_data=isp_data_strict, uncertainty_set=U_s_tilde,
+                            isp_data=isp_data_strict, uncertainty_set=U_s,
                             λ_sol=λ_sol, x_sol=x_sol, h_sol=h_sol, ψ0_sol=ψ0_sol, α_sol=α_from_osp)
                         return (true, nothing)
                     end

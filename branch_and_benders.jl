@@ -24,21 +24,21 @@ using Mosek, MosekTools
 
 
 """
-    build_optimality_cut_expr(omp_vars, cut_info, diag_x_E, E, diag_λ_ψ, xi_bar, d0, ϕU, λ_var, h_var, S)
+    build_optimality_cut_expr(omp_vars, cut_info, diag_x_E, E, diag_λ_ψ, xi_bar, d0, ϕU_hat, ϕU_tilde, λ_var, h_var, S)
 
-`add_optimality_cuts!` (strict_benders.jl L152-163)의 AffExpr 구성 로직.
+`add_optimality_cuts!` (strict_benders.jl)의 AffExpr 구성 로직.
 `@constraint` 없이 AffExpr만 반환. Callback에서 lazy constraint로 submit하기 위한 용도.
 """
 function build_optimality_cut_expr(omp_vars, cut_info,
-    diag_x_E, E, diag_λ_ψ, xi_bar, d0, ϕU, λ_var, h_var, S)
+    diag_x_E, E, diag_λ_ψ, xi_bar, d0, ϕU_hat, ϕU_tilde, λ_var, h_var, S)
 
     opt_cut = AffExpr(0.0)
     for s in 1:S
-        add_to_expression!(opt_cut, -ϕU, dot(cut_info[:Uhat1][s,:,:], diag_x_E))
-        add_to_expression!(opt_cut, -ϕU, dot(cut_info[:Uhat3][s,:,:], E - diag_x_E))
+        add_to_expression!(opt_cut, -ϕU_hat, dot(cut_info[:Uhat1][s,:,:], diag_x_E))
+        add_to_expression!(opt_cut, -ϕU_hat, dot(cut_info[:Uhat3][s,:,:], E - diag_x_E))
         add_to_expression!(opt_cut, cut_info[:intercept_l][s])
-        add_to_expression!(opt_cut, -ϕU, dot(cut_info[:Utilde1][s,:,:], diag_x_E))
-        add_to_expression!(opt_cut, -ϕU, dot(cut_info[:Utilde3][s,:,:], E - diag_x_E))
+        add_to_expression!(opt_cut, -ϕU_tilde, dot(cut_info[:Utilde1][s,:,:], diag_x_E))
+        add_to_expression!(opt_cut, -ϕU_tilde, dot(cut_info[:Utilde3][s,:,:], E - diag_x_E))
         add_to_expression!(opt_cut, dot(cut_info[:Ztilde1_3][s,:,:], diag_λ_ψ * diagm(xi_bar[s])))
         add_to_expression!(opt_cut, dot(d0, cut_info[:βtilde1_1][s,:]), λ_var)
         add_to_expression!(opt_cut, -1.0, dot(cut_info[:βtilde1_3][s,:], h_var + diag_λ_ψ * xi_bar[s]))
@@ -75,7 +75,7 @@ end
 
 
 """
-    branch_and_benders_optimize!(omp_model, omp_vars, network, ϕU, λU, γ, w, v, uncertainty_set; ...)
+    branch_and_benders_optimize!(omp_model, omp_vars, network, ϕU_hat, ϕU_tilde, λU, γ, w, v, uncertainty_set; ...)
 
 Branch-and-Benders (single tree) 메인 함수.
 Phase 1: LP warming으로 initial cuts 축적 (optional).
@@ -85,7 +85,7 @@ Outer trust region은 B&B tree와 충돌하므로 제거. Inner trust region은 
 """
 function branch_and_benders_optimize!(
     omp_model::Model, omp_vars::Dict,
-    network, ϕU, λU, γ, w, v, uncertainty_set;
+    network, ϕU_hat, ϕU_tilde, λU, γ, w, v, uncertainty_set;
     mip_optimizer=Gurobi.Optimizer,
     conic_optimizer=Mosek.Optimizer,
     inner_tr=true,                  # IMP 내부 α trust region
@@ -98,7 +98,7 @@ function branch_and_benders_optimize!(
     lp_warmup_iters::Int=1,         # Phase 1 LP warming iterations (≥1)
     mipnode_freq::Int=0,            # MIPNODE user cut frequency (0=off, N=every N-th call)
     tol::Float64=1e-4,
-    πU=ϕU, yU=ϕU, ytsU=ϕU,
+    πU_hat=ϕU_hat, πU_tilde=ϕU_tilde, yU=ϕU_tilde, ytsU=ϕU_tilde,
     parallel::Bool=false)
 
     lp_warmup_iters >= 1 || error("lp_warmup_iters must be ≥ 1 (Gurobi lazy callback requires at least one regular cut on epigraph)")
@@ -118,8 +118,8 @@ function branch_and_benders_optimize!(
     diag_λ_ψ = Diagonal(λ_var * ones(num_arcs) - v .* ψ0)
 
     isp_data = Dict(
-        :E => E, :network => network, :ϕU => ϕU,
-        :πU => πU, :yU => yU, :ytsU => ytsU,
+        :E => E, :network => network, :ϕU_hat => ϕU_hat, :ϕU_tilde => ϕU_tilde,
+        :πU_hat => πU_hat, :πU_tilde => πU_tilde, :yU => yU, :ytsU => ytsU,
         :λU => λU, :γ => γ, :w => w, :v => v,
         :uncertainty_set => uncertainty_set, :d0 => d0, :S => S)
 
@@ -127,16 +127,16 @@ function branch_and_benders_optimize!(
     st, λ_sol, x_sol, h_sol, ψ0_sol = initialize_omp(omp_model, omp_vars)
 
     # IMP 구축
-    imp_model, imp_vars = build_imp(network, S, ϕU, λU, γ, w, v, uncertainty_set;
+    imp_model, imp_vars = build_imp(network, S, ϕU_hat, λU, γ, w, v, uncertainty_set;
         mip_optimizer=mip_optimizer)
     _, α_sol = initialize_imp(imp_model, imp_vars)
 
     # ISP 구축
     leader_instances, follower_instances = initialize_isp(
-        network, S, ϕU, λU, γ, w, v, uncertainty_set;
+        network, S, ϕU_hat, ϕU_tilde, λU, γ, w, v, uncertainty_set;
         conic_optimizer=conic_optimizer,
         λ_sol=λ_sol, x_sol=x_sol, h_sol=h_sol, ψ0_sol=ψ0_sol, α_sol=α_sol,
-        πU=πU, yU=yU, ytsU=ytsU)
+        πU_hat=πU_hat, πU_tilde=πU_tilde, yU=yU, ytsU=ytsU)
 
     # IMP cuts 상태 (callback 간 유지)
     imp_cuts = Dict{Symbol, Any}(:old_tr_constraints => nothing, :old_cuts => Dict())
@@ -195,7 +195,7 @@ function branch_and_benders_optimize!(
                     isp_data, cut_info_k, k; parallel=parallel)
 
                 add_optimality_cuts!(omp_model, omp_vars, outer_cut_info_k,
-                    diag_x_E, E, diag_λ_ψ, xi_bar, d0, ϕU, λ_var, h, S, k;
+                    diag_x_E, E, diag_λ_ψ, xi_bar, d0, ϕU_hat, ϕU_tilde, λ_var, h, S, k;
                     prefix="warmup", result_cuts=result[:cuts])
                 push!(cut_pool, Dict{Symbol,Any}(
                     :type => :warmup, :iter => k, :cut_info => deepcopy(outer_cut_info_k),
@@ -305,7 +305,7 @@ function branch_and_benders_optimize!(
                 # Valid cut from inexact/subgradient → reject incumbent
                 opt_expr = build_optimality_cut_expr(
                     omp_vars, pass1_outer_cut_info,
-                    diag_x_E, E, diag_λ_ψ, xi_bar, d0, ϕU, λ_var, h, S)
+                    diag_x_E, E, diag_λ_ψ, xi_bar, d0, ϕU_hat, ϕU_tilde, λ_var, h, S)
                 con = @build_constraint(t_0 >= opt_expr)
                 MOI.submit(omp_model, MOI.LazyConstraint(cb_data), con)
                 cut_count[] += 1
@@ -324,16 +324,20 @@ function branch_and_benders_optimize!(
         # ── α-history cheap cuts (optional: IMP 없이 ISP만 evaluate) ──
         if use_alpha_history && !isempty(α_history)
             R = uncertainty_set[:R]
-            r_dict = uncertainty_set[:r_dict]
-            epsilon = uncertainty_set[:epsilon]
+            r_dict_hat = uncertainty_set[:r_dict_hat]
+            r_dict_tilde = uncertainty_set[:r_dict_tilde]
+            epsilon_hat = uncertainty_set[:epsilon_hat]
+            epsilon_tilde = uncertainty_set[:epsilon_tilde]
 
             recent_αs = α_history[max(1, end-max_alpha_history+1):end]
             for α_old in recent_αs
                 _, _ = solve_scenarios(S; parallel=parallel) do s
                     U_s = Dict(:R => Dict(:1=>R[s]),
-                               :r_dict => Dict(:1=>r_dict[s]),
+                               :r_dict_hat => Dict(:1=>r_dict_hat[s]),
+                               :r_dict_tilde => Dict(:1=>r_dict_tilde[s]),
                                :xi_bar => Dict(:1=>xi_bar[s]),
-                               :epsilon => epsilon)
+                               :epsilon_hat => epsilon_hat,
+                               :epsilon_tilde => epsilon_tilde)
                     isp_leader_optimize!(leader_instances[s][1], leader_instances[s][2];
                         isp_data=isp_data, uncertainty_set=U_s,
                         λ_sol=λ_k, x_sol=x_k, h_sol=h_k, ψ0_sol=ψ0_k, α_sol=α_old)
@@ -347,7 +351,7 @@ function branch_and_benders_optimize!(
 
                 α_expr = build_optimality_cut_expr(
                     omp_vars, α_fixed_cut_info,
-                    diag_x_E, E, diag_λ_ψ, xi_bar, d0, ϕU, λ_var, h, S)
+                    diag_x_E, E, diag_λ_ψ, xi_bar, d0, ϕU_hat, ϕU_tilde, λ_var, h, S)
                 α_con = @build_constraint(t_0 >= α_expr)
                 MOI.submit(omp_model, MOI.LazyConstraint(cb_data), α_con)
                 cut_count[] += 1
@@ -380,7 +384,7 @@ function branch_and_benders_optimize!(
                         end
                         str_expr = build_optimality_cut_expr(
                             omp_vars, str_info,
-                            diag_x_E, E, diag_λ_ψ, xi_bar, d0, ϕU, λ_var, h, S)
+                            diag_x_E, E, diag_λ_ψ, xi_bar, d0, ϕU_hat, ϕU_tilde, λ_var, h, S)
                         str_con = @build_constraint(t_0 >= str_expr)
                         MOI.submit(omp_model, MOI.LazyConstraint(cb_data), str_con)
                         cut_count[] += 1
@@ -475,7 +479,7 @@ function branch_and_benders_optimize!(
                     end
                     mw_expr = build_optimality_cut_expr(
                         omp_vars, mw_info,
-                        diag_x_E, E, diag_λ_ψ, xi_bar, d0, ϕU, λ_var, h, S)
+                        diag_x_E, E, diag_λ_ψ, xi_bar, d0, ϕU_hat, ϕU_tilde, λ_var, h, S)
                     mw_con = @build_constraint(t_0 >= mw_expr)
                     MOI.submit(omp_model, MOI.LazyConstraint(cb_data), mw_con)
                     cut_count[] += 1
@@ -495,15 +499,15 @@ function branch_and_benders_optimize!(
     # ====================================================================
     if mipnode_freq > 0
         # MIPNODE용 별도 IMP/ISP 인스턴스 (lazy callback과 공유 불가 — 동시 호출 방지)
-        imp_model_uc, imp_vars_uc = build_imp(network, S, ϕU, λU, γ, w, v, uncertainty_set;
+        imp_model_uc, imp_vars_uc = build_imp(network, S, ϕU_hat, λU, γ, w, v, uncertainty_set;
             mip_optimizer=mip_optimizer)
         _, _ = initialize_imp(imp_model_uc, imp_vars_uc)
 
         leader_instances_uc, follower_instances_uc = initialize_isp(
-            network, S, ϕU, λU, γ, w, v, uncertainty_set;
+            network, S, ϕU_hat, ϕU_tilde, λU, γ, w, v, uncertainty_set;
             conic_optimizer=conic_optimizer,
             λ_sol=λ_sol, x_sol=x_sol, h_sol=h_sol, ψ0_sol=ψ0_sol, α_sol=α_sol,
-            πU=πU, yU=yU, ytsU=ytsU)
+            πU_hat=πU_hat, πU_tilde=πU_tilde, yU=yU, ytsU=ytsU)
 
         imp_cuts_uc = Dict{Symbol, Any}(:old_tr_constraints => nothing, :old_cuts => Dict())
         imp_call_count_uc = Ref(1)
@@ -552,7 +556,7 @@ function branch_and_benders_optimize!(
 
                 uc_expr = build_optimality_cut_expr(
                     omp_vars, outer_cut_info_uc,
-                    diag_x_E, E, diag_λ_ψ, xi_bar, d0, ϕU, λ_var, h, S)
+                    diag_x_E, E, diag_λ_ψ, xi_bar, d0, ϕU_hat, ϕU_tilde, λ_var, h, S)
                 uc_con = @build_constraint(t_0 >= uc_expr)
                 MOI.submit(omp_model, MOI.UserCut(cb_data), uc_con)
                 usercut_count[] += 1

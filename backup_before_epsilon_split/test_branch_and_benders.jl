@@ -60,14 +60,7 @@ network_configs = Dict(
 )
 
 function setup_instance(config_key::Symbol;
-    S=10, γ_ratio=0.10, ρ=0.2, v=1.0, seed=42, epsilon_hat=0.5, epsilon_tilde=epsilon_hat,
-    epsilon=nothing)  # deprecated: backward compat
-
-    # epsilon= keyword → epsilon_hat=epsilon_tilde=epsilon (하위 호환)
-    if epsilon !== nothing
-        epsilon_hat = epsilon
-        epsilon_tilde = epsilon
-    end
+    S=10, γ_ratio=0.10, ρ=0.2, v=1.0, seed=42, epsilon=0.5)
 
     config = network_configs[config_key]
     if config[:type] == :grid
@@ -79,9 +72,8 @@ function setup_instance(config_key::Symbol;
     end
 
     num_arcs = length(network.arcs) - 1
-    ϕU_hat = 1/epsilon_hat
-    ϕU_tilde = 1/epsilon_tilde
-    λU = ϕU_hat
+    ϕU = 1/epsilon
+    λU = ϕU
     num_interdictable = sum(network.interdictable_arcs[1:num_arcs])
     γ = ceil(Int, γ_ratio * num_interdictable)
     println("  Interdiction budget: γ = ceil($γ_ratio × $num_interdictable) = $γ")
@@ -94,24 +86,20 @@ function setup_instance(config_key::Symbol;
     println("  Recovery budget: w = ρ·γ·c̄ = $ρ × $γ × $(round(c_bar, digits=2)) = $(round(w, digits=4))")
 
     capacity_scenarios_regular = capacities[1:end-1, :]
-    R, r_dict_hat, r_dict_tilde, xi_bar = build_robust_counterpart_matrices(capacity_scenarios_regular, epsilon_hat, epsilon_tilde)
-    uncertainty_set = Dict(
-        :R => R, :r_dict_hat => r_dict_hat, :r_dict_tilde => r_dict_tilde,
-        :xi_bar => xi_bar, :epsilon_hat => epsilon_hat, :epsilon_tilde => epsilon_tilde)
+    R, r_dict, xi_bar = build_robust_counterpart_matrices(capacity_scenarios_regular, epsilon)
+    uncertainty_set = Dict(:R => R, :r_dict => r_dict, :xi_bar => xi_bar, :epsilon => epsilon)
 
     source_arc_idx = findall(a -> a[1] == "s", network.arcs[1:num_arcs])
     max_flow_ub = maximum(sum(capacities[source_arc_idx, s] for s in 1:S) / S)
     max_cap = maximum(capacity_scenarios_regular)
-    πU_hat = ϕU_hat
-    πU_tilde = ϕU_tilde
-    yU = min(max_cap, ϕU_tilde)
-    ytsU = min(max_flow_ub, ϕU_tilde)
-    println("  LDR bounds: ϕU_hat=$ϕU_hat, ϕU_tilde=$ϕU_tilde, πU_hat=$πU_hat, πU_tilde=$πU_tilde, yU=$yU, ytsU=$ytsU")
+    πU = ϕU
+    yU = min(max_cap, ϕU)
+    ytsU = min(max_flow_ub, ϕU)
+    println("  LDR bounds: ϕU=$ϕU, πU=$πU, yU=$yU, ytsU=$ytsU")
 
     params = Dict(
-        :S => S, :γ => γ, :ϕU_hat => ϕU_hat, :ϕU_tilde => ϕU_tilde, :λU => λU, :w => w, :v => v,
-        :πU_hat => πU_hat, :πU_tilde => πU_tilde, :yU => yU, :ytsU => ytsU,
-        :epsilon_hat => epsilon_hat, :epsilon_tilde => epsilon_tilde,
+        :S => S, :γ => γ, :ϕU => ϕU, :λU => λU, :w => w, :v => v,
+        :πU => πU, :yU => yU, :ytsU => ytsU, :epsilon => epsilon,
     )
     return network, uncertainty_set, params
 end
@@ -155,8 +143,8 @@ println("INSTANCE: $instance_key (S=$S, cuts=$strengthen_cuts, ldr_mode=$ldr_mod
 println("="^80)
 
 network, uncertainty_set, params = setup_instance(instance_key; S=S)
-γ, ϕU_hat, ϕU_tilde, λU, w, v = params[:γ], params[:ϕU_hat], params[:ϕU_tilde], params[:λU], params[:w], params[:v]
-πU_hat, πU_tilde, yU, ytsU = params[:πU_hat], params[:πU_tilde], params[:yU], params[:ytsU]
+γ, ϕU, λU, w, v = params[:γ], params[:ϕU], params[:λU], params[:w], params[:v]
+πU, yU, ytsU = params[:πU], params[:yU], params[:ytsU]
 
 results = Dict{String, Any}()
 
@@ -166,12 +154,12 @@ println("1. TR NESTED BENDERS — DUAL (outer=true, inner=true)")
 println("="^80)
 
 GC.gc()
-model1, vars1 = build_omp(network, ϕU_hat, λU, γ, w; optimizer=Gurobi.Optimizer, S=S)
+model1, vars1 = build_omp(network, ϕU, λU, γ, w; optimizer=Gurobi.Optimizer, S=S)
 t1_start = time()
-result1 = tr_nested_benders_optimize!(model1, vars1, network, ϕU_hat, ϕU_tilde, λU, γ, w, uncertainty_set;
+result1 = tr_nested_benders_optimize!(model1, vars1, network, ϕU, λU, γ, w, uncertainty_set;
     mip_optimizer=Gurobi.Optimizer, conic_optimizer=Mosek.Optimizer,
     outer_tr=true, inner_tr=true,
-    πU_hat=πU_hat, πU_tilde=πU_tilde, yU=yU, ytsU=ytsU, strengthen_cuts=strengthen_cuts,
+    πU=πU, yU=yU, ytsU=ytsU, strengthen_cuts=strengthen_cuts,
     parallel=true, mini_benders=true, max_mini_benders_iter=3, ldr_mode=ldr_mode)
 t1_end = time()
 results["tr_nested"] = t1_end - t1_start

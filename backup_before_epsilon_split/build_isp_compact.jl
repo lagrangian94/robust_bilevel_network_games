@@ -501,9 +501,8 @@ end
 # =============================================================================
 function isp_leader_optimize_compact!(isp_leader_model::Model, isp_leader_vars::Dict; isp_data=nothing, uncertainty_set::Dict=nothing, λ_sol=nothing, x_sol=nothing, h_sol=nothing, ψ0_sol=nothing, α_sol=nothing)
     model, vars = isp_leader_model, isp_leader_vars
-    E, d0 = isp_data[:E], isp_data[:d0]
-    ϕU = isp_data[:ϕU_hat]
-    πU = get(isp_data, :πU_hat, ϕU)
+    E, ϕU, d0 = isp_data[:E], isp_data[:ϕU], isp_data[:d0]
+    πU = get(isp_data, :πU, ϕU)
     R, r_dict, xi_bar, epsilon = uncertainty_set[:R], uncertainty_set[:r_dict], uncertainty_set[:xi_bar], uncertainty_set[:epsilon]
     true_S = isp_data[:S]  # 전체 시나리오 수 (ISP는 S=1이지만 true_S로 정규화)
 
@@ -560,9 +559,8 @@ end
 # =============================================================================
 function isp_follower_optimize_compact!(isp_follower_model::Model, isp_follower_vars::Dict; isp_data=nothing, uncertainty_set::Dict=nothing, λ_sol=nothing, x_sol=nothing, h_sol=nothing, ψ0_sol=nothing, α_sol=nothing)
     model, vars = isp_follower_model, isp_follower_vars
-    E, d0 = isp_data[:E], isp_data[:d0]
-    ϕU = isp_data[:ϕU_tilde]
-    πU, yU, ytsU = get(isp_data, :πU_tilde, ϕU), get(isp_data, :yU, ϕU), get(isp_data, :ytsU, ϕU)
+    E, ϕU, d0 = isp_data[:E], isp_data[:ϕU], isp_data[:d0]
+    πU, yU, ytsU = get(isp_data, :πU, ϕU), get(isp_data, :yU, ϕU), get(isp_data, :ytsU, ϕU)
     R, r_dict, xi_bar, epsilon = uncertainty_set[:R], uncertainty_set[:r_dict], uncertainty_set[:xi_bar], uncertainty_set[:epsilon]
     num_arcs = length(x_sol)
     diag_λ_ψ = Diagonal(λ_sol * ones(num_arcs) - v .* ψ0_sol)
@@ -732,18 +730,14 @@ Dictionary-indexed compact ISP 인스턴스를 모든 시나리오에 대해 생
 원본 initialize_isp()의 drop-in replacement.
 compact optimize 함수들과 함께 사용해야 한다.
 """
-function initialize_isp_compact(network, S, ϕU_hat, ϕU_tilde, λU, γ, w, v, uncertainty_set; conic_optimizer=nothing, λ_sol=nothing, x_sol=nothing, h_sol=nothing, ψ0_sol=nothing, α_sol=nothing, πU_hat=ϕU_hat, πU_tilde=ϕU_tilde, yU=ϕU_tilde, ytsU=ϕU_tilde)
-    R = uncertainty_set[:R]
-    r_dict_hat, r_dict_tilde = uncertainty_set[:r_dict_hat], uncertainty_set[:r_dict_tilde]
-    xi_bar = uncertainty_set[:xi_bar]
-    epsilon_hat, epsilon_tilde = uncertainty_set[:epsilon_hat], uncertainty_set[:epsilon_tilde]
+function initialize_isp_compact(network, S, ϕU, λU, γ, w, v, uncertainty_set; conic_optimizer=nothing, λ_sol=nothing, x_sol=nothing, h_sol=nothing, ψ0_sol=nothing, α_sol=nothing, πU=ϕU, yU=ϕU, ytsU=ϕU)
+    R, r_dict, xi_bar, epsilon = uncertainty_set[:R], uncertainty_set[:r_dict], uncertainty_set[:xi_bar], uncertainty_set[:epsilon]
     leader_instances = Dict{Int, Tuple{Model, Dict}}()
     follower_instances = Dict{Int, Tuple{Model, Dict}}()
     for s in 1:S
-        U_s_hat = Dict(:R => Dict(1=>R[s]), :r_dict => Dict(1=>r_dict_hat[s]), :xi_bar => Dict(1=>xi_bar[s]), :epsilon => epsilon_hat)
-        U_s_tilde = Dict(:R => Dict(1=>R[s]), :r_dict => Dict(1=>r_dict_tilde[s]), :xi_bar => Dict(1=>xi_bar[s]), :epsilon => epsilon_tilde)
-        leader_instances[s] = build_isp_leader_compact(network, 1, ϕU_hat, λU, γ, w, v, U_s_hat, conic_optimizer, λ_sol, x_sol, h_sol, ψ0_sol, α_sol, S; πU=πU_hat)
-        follower_instances[s] = build_isp_follower_compact(network, 1, ϕU_tilde, λU, γ, w, v, U_s_tilde, conic_optimizer, λ_sol, x_sol, h_sol, ψ0_sol, α_sol, S; πU=πU_tilde, yU=yU, ytsU=ytsU)
+        U_s = Dict(:R => Dict(1=>R[s]), :r_dict => Dict(1=>r_dict[s]), :xi_bar => Dict(1=>xi_bar[s]), :epsilon => epsilon)
+        leader_instances[s] = build_isp_leader_compact(network, 1, ϕU, λU, γ, w, v, U_s, conic_optimizer, λ_sol, x_sol, h_sol, ψ0_sol, α_sol, S; πU=πU)
+        follower_instances[s] = build_isp_follower_compact(network, 1, ϕU, λU, γ, w, v, U_s, conic_optimizer, λ_sol, x_sol, h_sol, ψ0_sol, α_sol, S; πU=πU, yU=yU, ytsU=ytsU)
     end
     return leader_instances, follower_instances
 end

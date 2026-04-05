@@ -22,7 +22,7 @@ Changes from original:
 
 Same interface as original — drop-in replacement.
 """
-function build_full_2DRNDP_model_compact(network, S, ϕU, λU, γ, w, v, uncertainty_set; mip_solver=nothing, conic_solver=nothing,
+function build_full_2DRNDP_model_compact(network, S, ϕU_hat, ϕU_tilde, λU, γ, w, v, uncertainty_set; mip_solver=nothing, conic_solver=nothing,
     x_fixed=nothing, λ_fixed=nothing, h_fixed=nothing, ψ0_fixed=nothing)
 
     # Extract network dimensions
@@ -32,7 +32,10 @@ function build_full_2DRNDP_model_compact(network, S, ϕU, λU, γ, w, v, uncerta
 
     # Node-arc incidence matrix (excluding source row)
     N = network.N
-    R, r_dict, xi_bar, epsilon = uncertainty_set[:R], uncertainty_set[:r_dict], uncertainty_set[:xi_bar], uncertainty_set[:epsilon]
+    R = uncertainty_set[:R]
+    r_dict_hat, r_dict_tilde = uncertainty_set[:r_dict_hat], uncertainty_set[:r_dict_tilde]
+    xi_bar = uncertainty_set[:xi_bar]
+    epsilon_hat, epsilon_tilde = uncertainty_set[:epsilon_hat], uncertainty_set[:epsilon_tilde]
     # Dummy arc index (t,s)
     dummy_arc_idx = findfirst(arc -> arc == ("t", "s"), network.arcs)
 
@@ -63,7 +66,7 @@ function build_full_2DRNDP_model_compact(network, S, ϕU, λU, γ, w, v, uncerta
     println("  Nodes: $num_nodes, Arcs: $num_arcs, Scenarios: $S")
     println("  Interdictable arcs: $num_interdictable")
     println("  Dummy arc index: $dummy_arc_idx")
-    println("  Parameters: ϕU = $ϕU, γ = $γ, w = $w, v = $v")
+    println("  Parameters: ϕU_hat = $ϕU_hat, ϕU_tilde = $ϕU_tilde, γ = $γ, w = $w, v = $v")
 
     # Print compact LDR statistics
     print_compact_ldr_stats(network)
@@ -75,7 +78,7 @@ function build_full_2DRNDP_model_compact(network, S, ϕU, λU, γ, w, v, uncerta
     # --- Scalar variables ---
     @variable(model, nu>= 0)
     if isnothing(λ_fixed)
-        @variable(model, λ, lower_bound=0.0, upper_bound=ϕU)  # λ ≤ ϕU: LDR P-bound 조건
+        @variable(model, λ, lower_bound=0.0, upper_bound=ϕU_hat)  # λ ≤ ϕU_hat: LDR P-bound 조건 (leader)
     else
         λ=λ_fixed
     end
@@ -104,16 +107,16 @@ function build_full_2DRNDP_model_compact(network, S, ϕU, λU, γ, w, v, uncerta
     @variable(model, μtilde[1:S, 1:num_arcs]>=0)
 
     # --- LDR coefficient matrices ---
-    @variable(model, Φhat[s=1:S, 1:num_arcs, 1:num_arcs+1], lower_bound= -ϕU, upper_bound = ϕU)
+    @variable(model, Φhat[s=1:S, 1:num_arcs, 1:num_arcs+1], lower_bound= -ϕU_hat, upper_bound = ϕU_hat)
     @variable(model, Ψhat[s=1:S, 1:num_arcs, 1:num_arcs+1], lower_bound= 0.0)
-    @variable(model, Φtilde[s=1:S, 1:num_arcs, 1:num_arcs+1], lower_bound= -ϕU, upper_bound = ϕU)
+    @variable(model, Φtilde[s=1:S, 1:num_arcs, 1:num_arcs+1], lower_bound= -ϕU_tilde, upper_bound = ϕU_tilde)
     @variable(model, Ψtilde[s=1:S, 1:num_arcs, 1:num_arcs+1], lower_bound= 0.0)
 
-    @variable(model, Πhat[s=1:S, 1:num_nodes-1, 1:num_arcs+1], lower_bound= -ϕU, upper_bound = ϕU)
-    @variable(model, Πtilde[s=1:S, 1:num_nodes-1, 1:num_arcs+1], lower_bound= -ϕU, upper_bound = ϕU)
+    @variable(model, Πhat[s=1:S, 1:num_nodes-1, 1:num_arcs+1], lower_bound= -ϕU_hat, upper_bound = ϕU_hat)
+    @variable(model, Πtilde[s=1:S, 1:num_nodes-1, 1:num_arcs+1], lower_bound= -ϕU_tilde, upper_bound = ϕU_tilde)
 
-    @variable(model, Ytilde[s=1:S, 1:num_arcs, 1:num_arcs+1], lower_bound= -ϕU, upper_bound = ϕU)
-    @variable(model, Yts_tilde[s=1:S, 1, 1:num_arcs+1], lower_bound= -ϕU, upper_bound = ϕU)
+    @variable(model, Ytilde[s=1:S, 1:num_arcs, 1:num_arcs+1], lower_bound= -ϕU_tilde, upper_bound = ϕU_tilde)
+    @variable(model, Yts_tilde[s=1:S, 1, 1:num_arcs+1], lower_bound= -ϕU_tilde, upper_bound = ϕU_tilde)
 
     # =========================================================================
     # COMPACT LDR: fix() 비인접 항목 → solver presolve에서 제거
@@ -189,14 +192,14 @@ function build_full_2DRNDP_model_compact(network, S, ϕU, λU, γ, w, v, uncerta
         Mhat_22 = Mhat[s, end, end]
         @constraint(model, Mhat_11.== ϑhat[s]*Matrix{Float64}(I, num_arcs, num_arcs) - adjoint(D_s)*(Φhat_L[s,:,:] - v*Ψhat_L[s,:,:]))
         @constraint(model, Mhat_12.== -(1/2)*((Φhat_L[s,:,:]-v*Ψhat_L[s,:,:])*xi_bar[s] + adjoint(D_s)*(Φhat_0[s,:]-v*Ψhat_0[s,:])))
-        @constraint(model, Mhat_22.== ηhat[s] - (Φhat_0[s,:]-v*Ψhat_0[s,:])'*xi_bar[s] - ϑhat[s]*(epsilon^2))
+        @constraint(model, Mhat_22.== ηhat[s] - (Φhat_0[s,:]-v*Ψhat_0[s,:])'*xi_bar[s] - ϑhat[s]*(epsilon_hat^2))
         Mtilde_11 = Mtilde[s, 1:num_arcs, 1:num_arcs]
         Mtilde_12 = Mtilde[s, 1:num_arcs, end]
         Mtilde_21 = Mtilde[s, end, 1:num_arcs]
         Mtilde_22 = Mtilde[s, end, end]
         @constraint(model, Mtilde_11.== ϑtilde[s]*Matrix{Float64}(I, num_arcs, num_arcs) - adjoint(D_s)*(Φtilde_L[s,:,:] - v*Ψtilde_L[s,:,:]))
         @constraint(model, Mtilde_12.== -(1/2)*((Φtilde_L[s,:,:]-v*Ψtilde_L[s,:,:])*xi_bar[s] + adjoint(D_s)*(Φtilde_0[s,:]-v*Ψtilde_0[s,:])-Yts_tilde_L[s,1,:].data))
-        @constraint(model, Mtilde_22.== ηtilde[s] -(Φtilde_0[s,:]-v*Ψtilde_0[s,:])'*xi_bar[s] + Yts_tilde_0[s] - ϑtilde[s]*(epsilon^2))
+        @constraint(model, Mtilde_22.== ηtilde[s] -(Φtilde_0[s,:]-v*Ψtilde_0[s,:])'*xi_bar[s] + Yts_tilde_0[s] - ϑtilde[s]*(epsilon_tilde^2))
     end
 
     @constraint(model, [s=1:S], Mhat[s,:,:] in PSDCone())
@@ -218,15 +221,15 @@ function build_full_2DRNDP_model_compact(network, S, ϕU, λU, γ, w, v, uncerta
                     continue
                 end
 
-                # Leader constraints (14j)
-                @constraint(model, Ψhat[s,i,j] <= ϕU * x[i])
+                # Leader constraints (14j) — ϕU_hat
+                @constraint(model, Ψhat[s,i,j] <= ϕU_hat * x[i])
                 @constraint(model, Ψhat[s,i,j] - Φhat[s,i,j] <= 0)
-                @constraint(model, Φhat[s,i,j] - Ψhat[s,i,j] <= ϕU * (1 - x[i]))
+                @constraint(model, Φhat[s,i,j] - Ψhat[s,i,j] <= ϕU_hat * (1 - x[i]))
 
-                # Follower constraints (14k)
-                @constraint(model, Ψtilde[s,i,j] <= ϕU * x[i])
+                # Follower constraints (14k) — ϕU_tilde
+                @constraint(model, Ψtilde[s,i,j] <= ϕU_tilde * x[i])
                 @constraint(model, Ψtilde[s,i,j] - Φtilde[s,i,j] <= 0)
-                @constraint(model, Φtilde[s,i,j] - Ψtilde[s,i,j] <= ϕU * (1 - x[i]))
+                @constraint(model, Φtilde[s,i,j] - Ψtilde[s,i,j] <= ϕU_tilde * (1 - x[i]))
 
                 num_bigm_created += 6
             end
@@ -260,10 +263,10 @@ function build_full_2DRNDP_model_compact(network, S, ϕU, λU, γ, w, v, uncerta
         @constraint(model, Λhat1[s, :, :] * R[s] - lhs_mat .== 0.0)
         # Leader's Lambda_hat1 constraint 2
         rhs_vec = vcat(d0-adjoint(N)*Πhat_0[s, :]-adjoint(I_0)*Φhat_0[s, :], -Πhat_0[s,:], -Φhat_0[s,:])
-        @constraint(model, Λhat1[s, :, :] * r_dict[s] .>= rhs_vec)
+        @constraint(model, Λhat1[s, :, :] * r_dict_hat[s] .>= rhs_vec)
         # Leader's Lambda_hat2 constraint
         @constraint(model, Λhat2[s, :, :] * R[s] .== -Φhat_L[s, :, :])
-        @constraint(model, Λhat2[s, :, :] * r_dict[s] .- Φhat_0[s, :] .+ μhat[s, :] .>= 0.0)
+        @constraint(model, Λhat2[s, :, :] * r_dict_hat[s] .- Φhat_0[s, :] .+ μhat[s, :] .>= 0.0)
         # Follower's Lambda_tilde1 constraint 1
         Q_tilde_col = adjoint(N) * Πtilde_L[s, :, :] + adjoint(I_0) * Φtilde_L[s, :, :]
         block2 = -N_y * Ytilde_L[s, :, :] - N_ts * Yts_tilde_L[s, :,:]
@@ -281,10 +284,10 @@ function build_full_2DRNDP_model_compact(network, S, ϕU, λU, γ, w, v, uncerta
         rhs_vec_5 = -Φtilde_0[s,:]
         rhs_vec_6 = -Ytilde_0[s,:]
         rhs_vec = vcat(rhs_vec_1, rhs_vec_2, rhs_vec_3, rhs_vec_4, rhs_vec_5, rhs_vec_6)
-        @constraint(model, Λtilde1[s, :, :] * r_dict[s] .>= rhs_vec)
+        @constraint(model, Λtilde1[s, :, :] * r_dict_tilde[s] .>= rhs_vec)
         # Follower's Lambda_tilde2 constraint
         @constraint(model, Λtilde2[s, :, :] * R[s] + Φtilde_L[s, :, :] .== 0.0)
-        @constraint(model, Λtilde2[s, :, :] * r_dict[s] - Φtilde_0[s, :] + μtilde[s, :] .>= 0.0)
+        @constraint(model, Λtilde2[s, :, :] * r_dict_tilde[s] - Φtilde_0[s, :] + μtilde[s, :] .>= 0.0)
     end
     println("  ✓ Dual constraints (14m-14p) added for all scenarios")
 

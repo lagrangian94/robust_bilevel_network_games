@@ -161,9 +161,9 @@ function update_inner_trust_region_constraints!(
 end
 
 
-function build_imp(network, S, ϕU_hat, λU, γ, w, v, uncertainty_set; mip_optimizer=nothing)
+function build_imp(network, S, ϕU, λU, γ, w, v, uncertainty_set; mip_optimizer=nothing)
     num_arcs = length(network.arcs) - 1
-    xi_bar = uncertainty_set[:xi_bar]
+    R, r_dict, xi_bar, epsilon = uncertainty_set[:R], uncertainty_set[:r_dict], uncertainty_set[:xi_bar], uncertainty_set[:epsilon]
     S = length(xi_bar)
     flow_upper = sum(sum(xi_bar[s] for s in 1:S))
     model = Model(optimizer_with_attributes(mip_optimizer, MOI.Silent() => true))
@@ -183,9 +183,8 @@ end
 
 function isp_leader_optimize!(isp_leader_model::Model, isp_leader_vars::Dict; isp_data=nothing, uncertainty_set::Dict=nothing, λ_sol=nothing, x_sol=nothing, h_sol=nothing, ψ0_sol=nothing, α_sol=nothing)
     model, vars = isp_leader_model, isp_leader_vars
-    E, d0 = isp_data[:E], isp_data[:d0]
-    ϕU = isp_data[:ϕU_hat]
-    πU = get(isp_data, :πU_hat, ϕU)
+    E, ϕU, d0 = isp_data[:E], isp_data[:ϕU], isp_data[:d0]
+    πU = get(isp_data, :πU, ϕU)
     R, r_dict, xi_bar, epsilon = uncertainty_set[:R], uncertainty_set[:r_dict], uncertainty_set[:xi_bar], uncertainty_set[:epsilon]
     diag_x_E = Diagonal(x_sol) * E  # diag(x)E
     scaling_S = get(isp_data, :scaling_S, isp_data[:S])
@@ -228,9 +227,8 @@ end
 
 function isp_follower_optimize!(isp_follower_model::Model, isp_follower_vars::Dict; isp_data=nothing, uncertainty_set::Dict=nothing, λ_sol=nothing, x_sol=nothing, h_sol=nothing, ψ0_sol=nothing, α_sol=nothing)
     model, vars = isp_follower_model, isp_follower_vars
-    E, d0 = isp_data[:E], isp_data[:d0]
-    ϕU = isp_data[:ϕU_tilde]
-    πU, yU, ytsU = get(isp_data, :πU_tilde, ϕU), get(isp_data, :yU, ϕU), get(isp_data, :ytsU, ϕU)
+    E, ϕU, d0 = isp_data[:E], isp_data[:ϕU], isp_data[:d0]
+    πU, yU, ytsU = get(isp_data, :πU, ϕU), get(isp_data, :yU, ϕU), get(isp_data, :ytsU, ϕU)
     R, r_dict, xi_bar, epsilon = uncertainty_set[:R], uncertainty_set[:r_dict], uncertainty_set[:xi_bar], uncertainty_set[:epsilon]
     diag_x_E = Diagonal(x_sol) * E  # diag(x)E
     num_arcs = length(x_sol)
@@ -289,11 +287,9 @@ function tr_imp_optimize!(imp_model::Model, imp_vars::Dict, isp_leader_instances
     iter = 0
     uncertainty_set = isp_data[:uncertainty_set]
     R = uncertainty_set[:R]
-    r_dict_hat = uncertainty_set[:r_dict_hat]
-    r_dict_tilde = uncertainty_set[:r_dict_tilde]
+    r_dict = uncertainty_set[:r_dict]
     xi_bar = uncertainty_set[:xi_bar]
-    epsilon_hat = uncertainty_set[:epsilon_hat]
-    epsilon_tilde = uncertainty_set[:epsilon_tilde]
+    epsilon = uncertainty_set[:epsilon]
     S_total = isp_data[:S]  # scenario count for /S averaging
     S = S_total
     past_obj = []
@@ -341,10 +337,9 @@ function tr_imp_optimize!(imp_model::Model, imp_vars::Dict, isp_leader_instances
         subprob_obj = 0
         dict_cut_info_l, dict_cut_info_f = Dict(), Dict()
         scenario_results, status = solve_scenarios(S; parallel=parallel) do s
-            U_s_hat = Dict(:R => Dict(:1=>R[s]), :r_dict => Dict(:1=>r_dict_hat[s]), :xi_bar => Dict(:1=>xi_bar[s]), :epsilon => epsilon_hat)
-            U_s_tilde = Dict(:R => Dict(:1=>R[s]), :r_dict => Dict(:1=>r_dict_tilde[s]), :xi_bar => Dict(:1=>xi_bar[s]), :epsilon => epsilon_tilde)
-            (status_l, cut_info_l) =isp_leader_optimize!(isp_leader_instances[s][1], isp_leader_instances[s][2]; isp_data=isp_data, uncertainty_set=U_s_hat, λ_sol=λ_sol, x_sol=x_sol, h_sol=h_sol, ψ0_sol=ψ0_sol, α_sol=α_sol)
-            (status_f, cut_info_f) =isp_follower_optimize!(isp_follower_instances[s][1], isp_follower_instances[s][2]; isp_data=isp_data, uncertainty_set=U_s_tilde, λ_sol=λ_sol, x_sol=x_sol, h_sol=h_sol, ψ0_sol=ψ0_sol, α_sol=α_sol)
+            U_s = Dict(:R => Dict(:1=>R[s]), :r_dict => Dict(:1=>r_dict[s]), :xi_bar => Dict(:1=>xi_bar[s]), :epsilon => epsilon)
+            (status_l, cut_info_l) =isp_leader_optimize!(isp_leader_instances[s][1], isp_leader_instances[s][2]; isp_data=isp_data, uncertainty_set=U_s, λ_sol=λ_sol, x_sol=x_sol, h_sol=h_sol, ψ0_sol=ψ0_sol, α_sol=α_sol)
+            (status_f, cut_info_f) =isp_follower_optimize!(isp_follower_instances[s][1], isp_follower_instances[s][2]; isp_data=isp_data, uncertainty_set=U_s, λ_sol=λ_sol, x_sol=x_sol, h_sol=h_sol, ψ0_sol=ψ0_sol, α_sol=α_sol)
             ok = (status_l == :OptimalityCut) && (status_f == :OptimalityCut)
             return (ok, (cut_info_l, cut_info_f))
         end
@@ -508,18 +503,15 @@ function initialize_imp(imp_model::Model, imp_vars::Dict)
     return st, α_sol
 end
 
-function initialize_isp(network, S, ϕU_hat, ϕU_tilde, λU, γ, w, v, uncertainty_set; conic_optimizer=nothing, λ_sol=nothing, x_sol=nothing, h_sol=nothing, ψ0_sol=nothing, α_sol=nothing, πU_hat=ϕU_hat, πU_tilde=ϕU_tilde, yU=ϕU_tilde, ytsU=ϕU_tilde, scaling_S=S, ldr_mode::Symbol=:both)
-    R = uncertainty_set[:R]
-    r_dict_hat, r_dict_tilde = uncertainty_set[:r_dict_hat], uncertainty_set[:r_dict_tilde]
-    xi_bar = uncertainty_set[:xi_bar]
-    epsilon_hat, epsilon_tilde = uncertainty_set[:epsilon_hat], uncertainty_set[:epsilon_tilde]
+function initialize_isp(network, S, ϕU, λU, γ, w, v, uncertainty_set; conic_optimizer=nothing, λ_sol=nothing, x_sol=nothing, h_sol=nothing, ψ0_sol=nothing, α_sol=nothing, πU=ϕU, yU=ϕU, ytsU=ϕU, scaling_S=S, ldr_mode::Symbol=:both)
+    R, r_dict, xi_bar, epsilon = uncertainty_set[:R], uncertainty_set[:r_dict], uncertainty_set[:xi_bar], uncertainty_set[:epsilon]
     leader_instances = Dict{Int, Tuple{Model, Dict}}()
     follower_instances = Dict{Int, Tuple{Model, Dict}}()
     for s in 1:S
-        U_s_hat = Dict(:R => Dict(:1=>R[s]), :r_dict => Dict(:1=>r_dict_hat[s]), :xi_bar => Dict(:1=>xi_bar[s]), :epsilon => epsilon_hat)
-        U_s_tilde = Dict(:R => Dict(:1=>R[s]), :r_dict => Dict(:1=>r_dict_tilde[s]), :xi_bar => Dict(:1=>xi_bar[s]), :epsilon => epsilon_tilde)
-        leader_instances[s] = build_isp_leader(network, 1, ϕU_hat, λU, γ, w, v, U_s_hat, conic_optimizer, λ_sol, x_sol, h_sol, ψ0_sol, α_sol, scaling_S; πU=πU_hat, ldr_mode=ldr_mode)
-        follower_instances[s] = build_isp_follower(network, 1, ϕU_tilde, λU, γ, w, v, U_s_tilde, conic_optimizer, λ_sol, x_sol, h_sol, ψ0_sol, α_sol, scaling_S; πU=πU_tilde, yU=yU, ytsU=ytsU, ldr_mode=ldr_mode)
+        U_s = Dict(:R => Dict(:1=>R[s]), :r_dict => Dict(:1=>r_dict[s]), :xi_bar => Dict(:1=>xi_bar[s]), :epsilon => epsilon)
+        leader_instances[s] = build_isp_leader(network, 1, ϕU, λU, γ, w, v, U_s, conic_optimizer, λ_sol, x_sol, h_sol, ψ0_sol, α_sol, scaling_S; πU=πU, ldr_mode=ldr_mode)
+        follower_instances[s] = build_isp_follower(network, 1, ϕU, λU, γ, w, v, U_s, conic_optimizer, λ_sol, x_sol, h_sol, ψ0_sol, α_sol, scaling_S; πU=πU, yU=yU, ytsU=ytsU, ldr_mode=ldr_mode)
+
     end
     return leader_instances, follower_instances
 end
@@ -631,28 +623,24 @@ function subgradient_alpha_step!(α_current::Vector{Float64},
 
     uncertainty_set = isp_data[:uncertainty_set]
     R = uncertainty_set[:R]
-    r_dict_hat = uncertainty_set[:r_dict_hat]
-    r_dict_tilde = uncertainty_set[:r_dict_tilde]
+    r_dict = uncertainty_set[:r_dict]
     xi_bar = uncertainty_set[:xi_bar]
-    epsilon_hat = uncertainty_set[:epsilon_hat]
-    epsilon_tilde = uncertainty_set[:epsilon_tilde]
+    epsilon = uncertainty_set[:epsilon]
     S = isp_data[:S]
     w = isp_data[:w]
 
     # Step 1: ISP 풀기 (2S회) — 현재 α에서
     α_sol = copy(α_current)
     scenario_results, status = solve_scenarios(S; parallel=parallel) do s
-        U_s_hat = Dict(:R => Dict(:1=>R[s]), :r_dict => Dict(:1=>r_dict_hat[s]),
-                    :xi_bar => Dict(:1=>xi_bar[s]), :epsilon => epsilon_hat)
-        U_s_tilde = Dict(:R => Dict(:1=>R[s]), :r_dict => Dict(:1=>r_dict_tilde[s]),
-                    :xi_bar => Dict(:1=>xi_bar[s]), :epsilon => epsilon_tilde)
+        U_s = Dict(:R => Dict(:1=>R[s]), :r_dict => Dict(:1=>r_dict[s]),
+                    :xi_bar => Dict(:1=>xi_bar[s]), :epsilon => epsilon)
         (status_l, cut_info_l) = isp_leader_optimize!(
             isp_leader_instances[s][1], isp_leader_instances[s][2];
-            isp_data=isp_data, uncertainty_set=U_s_hat,
+            isp_data=isp_data, uncertainty_set=U_s,
             λ_sol=λ_sol, x_sol=x_sol, h_sol=h_sol, ψ0_sol=ψ0_sol, α_sol=α_sol)
         (status_f, cut_info_f) = isp_follower_optimize!(
             isp_follower_instances[s][1], isp_follower_instances[s][2];
-            isp_data=isp_data, uncertainty_set=U_s_tilde,
+            isp_data=isp_data, uncertainty_set=U_s,
             λ_sol=λ_sol, x_sol=x_sol, h_sol=h_sol, ψ0_sol=ψ0_sol, α_sol=α_sol)
         ok = (status_l == :OptimalityCut) && (status_f == :OptimalityCut)
         return (ok, (cut_info_l, cut_info_f))
@@ -759,10 +747,8 @@ function evaluate_mw_opt_cut(
     parallel=false)
 
     S = isp_data[:S]
-    ϕU_hat = isp_data[:ϕU_hat]
-    ϕU_tilde = isp_data[:ϕU_tilde]
-    πU_hat = isp_data[:πU_hat]
-    πU_tilde = isp_data[:πU_tilde]
+    ϕU = isp_data[:ϕU]
+    πU = isp_data[:πU]
     yU = isp_data[:yU]
     ytsU = isp_data[:ytsU]
     E = isp_data[:E]
@@ -799,19 +785,19 @@ function evaluate_mw_opt_cut(
         z_star_l = z_star_cache_l[s]
 
         # Reconstruct original objective (at x_sol) — mirrors isp_leader_optimize! lines 194-201
-        orig_l_1 = -ϕU_hat * sum(Uhat1[1, :, :] .* diag_x_sol_E)
-        orig_l_2 = -ϕU_hat * sum(Uhat3[1, :, :] .* (E - diag_x_sol_E))
+        orig_l_1 = -ϕU * sum(Uhat1[1, :, :] .* diag_x_sol_E)
+        orig_l_2 = -ϕU * sum(Uhat3[1, :, :] .* (E - diag_x_sol_E))
         orig_l_3 = (d0') * βhat1_1[1, :]
-        orig_l_ub = -ϕU_hat * sum(Phat1_Φ[1, :, :]) - πU_hat * sum(Phat1_Π[1, :, :])
-        orig_l_lb = -ϕU_hat * sum(Phat2_Φ[1, :, :]) - πU_hat * sum(Phat2_Π[1, :, :])
+        orig_l_ub = -ϕU * sum(Phat1_Φ[1, :, :]) - πU * sum(Phat1_Π[1, :, :])
+        orig_l_lb = -ϕU * sum(Phat2_Φ[1, :, :]) - πU * sum(Phat2_Π[1, :, :])
         orig_obj_l = orig_l_1 + orig_l_2 + orig_l_3 + orig_l_ub + orig_l_lb
 
         # MW optimality constraint
         mw_con_l = @constraint(model_l, orig_obj_l >= z_star_l - 1e-6)
 
         # Core objective (replace x_sol → x_core; intercept terms unchanged)
-        core_l_1 = -ϕU_hat * sum(Uhat1[1, :, :] .* diag_x_core_E)
-        core_l_2 = -ϕU_hat * sum(Uhat3[1, :, :] .* (E - diag_x_core_E))
+        core_l_1 = -ϕU * sum(Uhat1[1, :, :] .* diag_x_core_E)
+        core_l_2 = -ϕU * sum(Uhat3[1, :, :] .* (E - diag_x_core_E))
         core_obj_l = core_l_1 + core_l_2 + orig_l_3 + orig_l_ub + orig_l_lb
         @objective(model_l, Max, core_obj_l)
         optimize!(model_l)
@@ -841,21 +827,21 @@ function evaluate_mw_opt_cut(
         z_star_f = z_star_cache_f[s]
 
         # Reconstruct original objective (at x_sol, λ_sol, h_sol, ψ0_sol) — mirrors isp_follower_optimize! lines 239-248
-        orig_f_1 = -ϕU_tilde * sum(Utilde1[1, :, :] .* diag_x_sol_E)
-        orig_f_2 = -ϕU_tilde * sum(Utilde3[1, :, :] .* (E - diag_x_sol_E))
+        orig_f_1 = -ϕU * sum(Utilde1[1, :, :] .* diag_x_sol_E)
+        orig_f_2 = -ϕU * sum(Utilde3[1, :, :] .* (E - diag_x_sol_E))
         orig_f_4 = sum(Ztilde1_3[1, :, :] .* (diag_λ_ψ_sol * diagm(xi_bar_s)))
         orig_f_5 = (λ_sol * d0') * βtilde1_1[1, :]
         orig_f_6 = -(h_sol + diag_λ_ψ_sol * xi_bar_s)' * βtilde1_3[1, :]
-        orig_f_ub = -ϕU_tilde * sum(Ptilde1_Φ[1, :, :]) - πU_tilde * sum(Ptilde1_Π[1, :, :]) - yU * sum(Ptilde1_Y[1, :, :]) - ytsU * sum(Ptilde1_Yts[1, :])
-        orig_f_lb = -ϕU_tilde * sum(Ptilde2_Φ[1, :, :]) - πU_tilde * sum(Ptilde2_Π[1, :, :]) - yU * sum(Ptilde2_Y[1, :, :]) - ytsU * sum(Ptilde2_Yts[1, :])
+        orig_f_ub = -ϕU * sum(Ptilde1_Φ[1, :, :]) - πU * sum(Ptilde1_Π[1, :, :]) - yU * sum(Ptilde1_Y[1, :, :]) - ytsU * sum(Ptilde1_Yts[1, :])
+        orig_f_lb = -ϕU * sum(Ptilde2_Φ[1, :, :]) - πU * sum(Ptilde2_Π[1, :, :]) - yU * sum(Ptilde2_Y[1, :, :]) - ytsU * sum(Ptilde2_Yts[1, :])
         orig_obj_f = orig_f_1 + orig_f_2 + orig_f_4 + orig_f_5 + orig_f_6 + orig_f_ub + orig_f_lb
 
         # MW optimality constraint
         mw_con_f = @constraint(model_f, orig_obj_f >= z_star_f - 1e-6)
 
         # Core objective (replace x_sol → x_core, λ_sol → λ_core, etc.; P-terms unchanged)
-        core_f_1 = -ϕU_tilde * sum(Utilde1[1, :, :] .* diag_x_core_E)
-        core_f_2 = -ϕU_tilde * sum(Utilde3[1, :, :] .* (E - diag_x_core_E))
+        core_f_1 = -ϕU * sum(Utilde1[1, :, :] .* diag_x_core_E)
+        core_f_2 = -ϕU * sum(Utilde3[1, :, :] .* (E - diag_x_core_E))
         core_f_4 = sum(Ztilde1_3[1, :, :] .* (diag_λ_ψ_core * diagm(xi_bar_s)))
         core_f_5 = (λ_core * d0') * βtilde1_1[1, :]
         core_f_6 = -(h_core + diag_λ_ψ_core * xi_bar_s)' * βtilde1_3[1, :]
@@ -919,10 +905,8 @@ function evaluate_joint_mw_opt_cut(
     conic_optimizer)
 
     S = isp_data[:S]
-    ϕU_hat = isp_data[:ϕU_hat]
-    ϕU_tilde = isp_data[:ϕU_tilde]
-    πU_hat = isp_data[:πU_hat]
-    πU_tilde = isp_data[:πU_tilde]
+    ϕU = isp_data[:ϕU]
+    πU = isp_data[:πU]
     yU = isp_data[:yU]
     ytsU = isp_data[:ytsU]
     λU = isp_data[:λU]
@@ -939,9 +923,9 @@ function evaluate_joint_mw_opt_cut(
 
     # Step 1: Build joint OSP model (fresh each call)
     osp_model, osp_vars, osp_data = build_dualized_outer_subproblem(
-        network, S, ϕU_hat, ϕU_tilde, λU, γ_param, w_param, v_param, uncertainty_set, conic_optimizer,
+        network, S, ϕU, λU, γ_param, w_param, v_param, uncertainty_set, conic_optimizer,
         λ_sol, x_sol, h_sol, ψ0_sol;
-        πU_hat=πU_hat, πU_tilde=πU_tilde, yU=yU, ytsU=ytsU, scaling_S=S)
+        πU=πU, yU=yU, ytsU=ytsU, scaling_S=S)
 
     # Step 2: Fix α to IMP solution
     for k in 1:num_arcs
@@ -969,16 +953,16 @@ function evaluate_joint_mw_opt_cut(
     diag_x_sol_E = Diagonal(x_sol) * E
     diag_λ_ψ_sol = Diagonal(λ_sol * ones(num_arcs) - v_param .* ψ0_sol)
 
-    orig_term1 = [(-ϕU_hat * sum(Uhat1[s,:,:] .* diag_x_sol_E) - ϕU_tilde * sum(Utilde1[s,:,:] .* diag_x_sol_E)) for s=1:S]
-    orig_term2 = [(-ϕU_hat * sum(Uhat3[s,:,:] .* (E - diag_x_sol_E)) - ϕU_tilde * sum(Utilde3[s,:,:] .* (E - diag_x_sol_E))) for s=1:S]
+    orig_term1 = [-ϕU * sum((Uhat1[s,:,:] + Utilde1[s,:,:]) .* diag_x_sol_E) for s=1:S]
+    orig_term2 = [-ϕU * sum((Uhat3[s,:,:] + Utilde3[s,:,:]) .* (E - diag_x_sol_E)) for s=1:S]
     orig_term3 = [(d0') * βhat1_1[s,:] for s=1:S]
     orig_term4 = [sum(Ztilde1_3[s,:,:] .* (diag_λ_ψ_sol * diagm(xi_bar[s]))) for s=1:S]
     orig_term5 = [(λ_sol * d0') * βtilde1_1[s,:] for s=1:S]
     orig_term6 = [-(h_sol + diag_λ_ψ_sol * xi_bar[s])' * βtilde1_3[s,:] for s=1:S]
-    orig_term_ub_hat = [-ϕU_hat * sum(Phat1_Φ[s,:,:]) - πU_hat * sum(Phat1_Π[s,:,:]) for s=1:S]
-    orig_term_lb_hat = [-ϕU_hat * sum(Phat2_Φ[s,:,:]) - πU_hat * sum(Phat2_Π[s,:,:]) for s=1:S]
-    orig_term_ub_tilde = [-ϕU_tilde * sum(Ptilde1_Φ[s,:,:]) - πU_tilde * sum(Ptilde1_Π[s,:,:]) - yU * sum(Ptilde1_Y[s,:,:]) - ytsU * sum(Ptilde1_Yts[s,:]) for s=1:S]
-    orig_term_lb_tilde = [-ϕU_tilde * sum(Ptilde2_Φ[s,:,:]) - πU_tilde * sum(Ptilde2_Π[s,:,:]) - yU * sum(Ptilde2_Y[s,:,:]) - ytsU * sum(Ptilde2_Yts[s,:]) for s=1:S]
+    orig_term_ub_hat = [-ϕU * sum(Phat1_Φ[s,:,:]) - πU * sum(Phat1_Π[s,:,:]) for s=1:S]
+    orig_term_lb_hat = [-ϕU * sum(Phat2_Φ[s,:,:]) - πU * sum(Phat2_Π[s,:,:]) for s=1:S]
+    orig_term_ub_tilde = [-ϕU * sum(Ptilde1_Φ[s,:,:]) - πU * sum(Ptilde1_Π[s,:,:]) - yU * sum(Ptilde1_Y[s,:,:]) - ytsU * sum(Ptilde1_Yts[s,:]) for s=1:S]
+    orig_term_lb_tilde = [-ϕU * sum(Ptilde2_Φ[s,:,:]) - πU * sum(Ptilde2_Π[s,:,:]) - yU * sum(Ptilde2_Y[s,:,:]) - ytsU * sum(Ptilde2_Yts[s,:]) for s=1:S]
 
     orig_obj_expr = (sum(orig_term1) + sum(orig_term2) + sum(orig_term3) + sum(orig_term4) +
         sum(orig_term5) + sum(orig_term6) + sum(orig_term_ub_hat) + sum(orig_term_lb_hat) +
@@ -990,8 +974,8 @@ function evaluate_joint_mw_opt_cut(
     diag_x_core_E = Diagonal(x_core) * E
     diag_λ_ψ_core = Diagonal(λ_core * ones(num_arcs) - v_param .* ψ0_core)
 
-    core_term1 = [(-ϕU_hat * sum(Uhat1[s,:,:] .* diag_x_core_E) - ϕU_tilde * sum(Utilde1[s,:,:] .* diag_x_core_E)) for s=1:S]
-    core_term2 = [(-ϕU_hat * sum(Uhat3[s,:,:] .* (E - diag_x_core_E)) - ϕU_tilde * sum(Utilde3[s,:,:] .* (E - diag_x_core_E))) for s=1:S]
+    core_term1 = [-ϕU * sum((Uhat1[s,:,:] + Utilde1[s,:,:]) .* diag_x_core_E) for s=1:S]
+    core_term2 = [-ϕU * sum((Uhat3[s,:,:] + Utilde3[s,:,:]) .* (E - diag_x_core_E)) for s=1:S]
     core_term3 = orig_term3  # d0'*βhat1_1 — independent of master vars
     core_term4 = [sum(Ztilde1_3[s,:,:] .* (diag_λ_ψ_core * diagm(xi_bar[s]))) for s=1:S]
     core_term5 = [(λ_core * d0') * βtilde1_1[s,:] for s=1:S]
@@ -1060,12 +1044,10 @@ function evaluate_sherali_opt_cut(
     S = isp_data[:S]
     α_sol = cut_info[:α_sol]
     E = isp_data[:E]
-    ϕU_hat = isp_data[:ϕU_hat]
-    ϕU_tilde = isp_data[:ϕU_tilde]
-    πU_hat = isp_data[:πU_hat]
-    πU_tilde = isp_data[:πU_tilde]
-    yU = isp_data[:yU]
-    ytsU = isp_data[:ytsU]
+    ϕU = isp_data[:ϕU]
+    πU = get(isp_data, :πU, ϕU)
+    yU = get(isp_data, :yU, ϕU)
+    ytsU = get(isp_data, :ytsU, ϕU)
     d0 = isp_data[:d0]
     v_param = isp_data[:v]
     xi_bar = isp_data[:uncertainty_set][:xi_bar]
@@ -1094,11 +1076,11 @@ function evaluate_sherali_opt_cut(
         βhat1_1_v = vars_l[:βhat1_1]
 
         @objective(model_l, Max,
-            -ϕU_hat * sum(Uhat1_v[1, :, :] .* diag_x_pert_E) +
-            -ϕU_hat * sum(Uhat3_v[1, :, :] .* (E - diag_x_pert_E)) +
+            -ϕU * sum(Uhat1_v[1, :, :] .* diag_x_pert_E) +
+            -ϕU * sum(Uhat3_v[1, :, :] .* (E - diag_x_pert_E)) +
             (d0') * βhat1_1_v[1, :] +
-            -ϕU_hat * sum(Phat1_Φ[1, :, :]) - πU_hat * sum(Phat1_Π[1, :, :]) +
-            -ϕU_hat * sum(Phat2_Φ[1, :, :]) - πU_hat * sum(Phat2_Π[1, :, :]))
+            -ϕU * sum(Phat1_Φ[1, :, :]) - πU * sum(Phat1_Π[1, :, :]) +
+            -ϕU * sum(Phat2_Φ[1, :, :]) - πU * sum(Phat2_Π[1, :, :]))
         set_normalized_rhs.(vec(model_l[:coupling_cons]), α_s)
         optimize!(model_l)
         st_l = termination_status(model_l)
@@ -1117,13 +1099,13 @@ function evaluate_sherali_opt_cut(
         βtilde1_1_v = vars_f[:βtilde1_1]; βtilde1_3_v = vars_f[:βtilde1_3]
 
         @objective(model_f, Max,
-            -ϕU_tilde * sum(Utilde1_v[1, :, :] .* diag_x_pert_E) +
-            -ϕU_tilde * sum(Utilde3_v[1, :, :] .* (E - diag_x_pert_E)) +
+            -ϕU * sum(Utilde1_v[1, :, :] .* diag_x_pert_E) +
+            -ϕU * sum(Utilde3_v[1, :, :] .* (E - diag_x_pert_E)) +
             sum(Ztilde1_3_v[1, :, :] .* (diag_λ_ψ_pert * diagm(xi_bar_s))) +
             (λ_pert * d0') * βtilde1_1_v[1, :] +
             -(h_pert + diag_λ_ψ_pert * xi_bar_s)' * βtilde1_3_v[1, :] +
-            -ϕU_tilde * sum(Ptilde1_Φ[1, :, :]) - πU_tilde * sum(Ptilde1_Π[1, :, :]) - yU * sum(Ptilde1_Y[1, :, :]) - ytsU * sum(Ptilde1_Yts[1, :]) +
-            -ϕU_tilde * sum(Ptilde2_Φ[1, :, :]) - πU_tilde * sum(Ptilde2_Π[1, :, :]) - yU * sum(Ptilde2_Y[1, :, :]) - ytsU * sum(Ptilde2_Yts[1, :]))
+            -ϕU * sum(Ptilde1_Φ[1, :, :]) - πU * sum(Ptilde1_Π[1, :, :]) - yU * sum(Ptilde1_Y[1, :, :]) - ytsU * sum(Ptilde1_Yts[1, :]) +
+            -ϕU * sum(Ptilde2_Φ[1, :, :]) - πU * sum(Ptilde2_Π[1, :, :]) - yU * sum(Ptilde2_Y[1, :, :]) - ytsU * sum(Ptilde2_Yts[1, :]))
         set_normalized_rhs.(vec(model_f[:coupling_cons]), α_s)
         optimize!(model_f)
         st_f = termination_status(model_f)
@@ -1154,10 +1136,10 @@ function evaluate_sherali_opt_cut(
     diag_λ_ψ_sol = Diagonal(λ_sol * ones(num_arcs) - v_param .* ψ0_sol)
     cut_val_at_x = 0.0
     for s in 1:S
-        cut_val_at_x += -ϕU_hat * sum(Uhat1[s,:,:] .* diag_x_sol_E)
-        cut_val_at_x += -ϕU_hat * sum(Uhat3[s,:,:] .* (E - diag_x_sol_E))
-        cut_val_at_x += -ϕU_tilde * sum(Utilde1[s,:,:] .* diag_x_sol_E)
-        cut_val_at_x += -ϕU_tilde * sum(Utilde3[s,:,:] .* (E - diag_x_sol_E))
+        cut_val_at_x += -ϕU * sum(Uhat1[s,:,:] .* diag_x_sol_E)
+        cut_val_at_x += -ϕU * sum(Uhat3[s,:,:] .* (E - diag_x_sol_E))
+        cut_val_at_x += -ϕU * sum(Utilde1[s,:,:] .* diag_x_sol_E)
+        cut_val_at_x += -ϕU * sum(Utilde3[s,:,:] .* (E - diag_x_sol_E))
         cut_val_at_x += sum(Ztilde1_3[s,:,:] .* (diag_λ_ψ_sol * diagm(xi_bar[s])))
         cut_val_at_x += (d0' * βtilde1_1[s,:]) * λ_sol
         cut_val_at_x += -(h_sol + diag_λ_ψ_sol * xi_bar[s])' * βtilde1_3[s,:]
@@ -1206,8 +1188,7 @@ function alpha_fixed_benders_phase!(
     parallel=false)
 
     S = isp_data[:S]
-    ϕU_hat = isp_data[:ϕU_hat]
-    ϕU_tilde = isp_data[:ϕU_tilde]
+    ϕU = isp_data[:ϕU]
     network = isp_data[:network]
     v_param = isp_data[:v]
     num_arcs = length(network.arcs) - 1
@@ -1216,8 +1197,7 @@ function alpha_fixed_benders_phase!(
     uncertainty_set = isp_data[:uncertainty_set]
     xi_bar = uncertainty_set[:xi_bar]
     R = uncertainty_set[:R]
-    r_dict_hat = uncertainty_set[:r_dict_hat]
-    r_dict_tilde = uncertainty_set[:r_dict_tilde]
+    r_dict = uncertainty_set[:r_dict]
     S_total = S
 
     x = omp_vars[:x]
@@ -1265,15 +1245,13 @@ function alpha_fixed_benders_phase!(
 
         # 2. Evaluate ISP at (α_fixed, χ_new) — updates objective + coupling + solves
         _, _ = solve_scenarios(S; parallel=parallel) do s
-            U_s_hat = Dict(:R => Dict(:1=>R[s]), :r_dict => Dict(:1=>r_dict_hat[s]),
-                       :xi_bar => Dict(:1=>xi_bar[s]), :epsilon => uncertainty_set[:epsilon_hat])
-            U_s_tilde = Dict(:R => Dict(:1=>R[s]), :r_dict => Dict(:1=>r_dict_tilde[s]),
-                       :xi_bar => Dict(:1=>xi_bar[s]), :epsilon => uncertainty_set[:epsilon_tilde])
+            U_s = Dict(:R => Dict(:1=>R[s]), :r_dict => Dict(:1=>r_dict[s]),
+                       :xi_bar => Dict(:1=>xi_bar[s]), :epsilon => uncertainty_set[:epsilon])
             (status_l, _) = isp_leader_optimize!(leader_instances[s][1], leader_instances[s][2];
-                isp_data=isp_data, uncertainty_set=U_s_hat,
+                isp_data=isp_data, uncertainty_set=U_s,
                 λ_sol=λ_sol_j, x_sol=x_sol_j, h_sol=h_sol_j, ψ0_sol=ψ0_sol_j, α_sol=α_sol_fixed)
             (status_f, _) = isp_follower_optimize!(follower_instances[s][1], follower_instances[s][2];
-                isp_data=isp_data, uncertainty_set=U_s_tilde,
+                isp_data=isp_data, uncertainty_set=U_s,
                 λ_sol=λ_sol_j, x_sol=x_sol_j, h_sol=h_sol_j, ψ0_sol=ψ0_sol_j, α_sol=α_sol_fixed)
             ok = (status_l == :OptimalityCut) && (status_f == :OptimalityCut)
             return (ok, nothing)
@@ -1300,7 +1278,7 @@ function alpha_fixed_benders_phase!(
             :intercept=>intercept, :intercept_l=>intercept_l, :intercept_f=>intercept_f)
 
         # 4. Add cut to OMP
-        add_optimality_cuts!(omp_model, omp_vars, outer_cut_info, diag_x_E, E, diag_λ_ψ, xi_bar, d0, ϕU_hat, ϕU_tilde, λ_var, h, S, outer_iter;
+        add_optimality_cuts!(omp_model, omp_vars, outer_cut_info, diag_x_E, E, diag_λ_ψ, xi_bar, d0, ϕU, λ_var, h, S, outer_iter;
             prefix="mini_bd_$(j)", result_cuts=result_cuts)
         if cut_pool !== nothing
             push!(cut_pool, Dict{Symbol,Any}(
@@ -1335,7 +1313,7 @@ function alpha_fixed_benders_phase!(
                         parallel=parallel)
                 end
                 str_label = strengthen_cuts in (:mw, :mw_joint) ? "mw" : "sherali"
-                add_optimality_cuts!(omp_model, omp_vars, str_info, diag_x_E, E, diag_λ_ψ, xi_bar, d0, ϕU_hat, ϕU_tilde, λ_var, h, S, outer_iter;
+                add_optimality_cuts!(omp_model, omp_vars, str_info, diag_x_E, E, diag_λ_ψ, xi_bar, d0, ϕU, λ_var, h, S, outer_iter;
                     prefix="mini_bd_$(j)_$(str_label)_cp$(cp_idx)", result_cuts=result_cuts)
                 if cut_pool !== nothing
                     push!(cut_pool, Dict{Symbol,Any}(
@@ -1361,7 +1339,7 @@ function alpha_fixed_benders_phase!(
 end
 
 
-function tr_nested_benders_optimize!(omp_model::Model, omp_vars::Dict, network, ϕU_hat, ϕU_tilde, λU, γ, w, uncertainty_set; mip_optimizer=nothing, conic_optimizer=nothing, outer_tr=true, inner_tr=true, max_outer_iter=1000, isp_mode=:dual, tol=1e-4, πU_hat=ϕU_hat, πU_tilde=ϕU_tilde, yU=ϕU_tilde, ytsU=ϕU_tilde, strengthen_cuts=:none, parallel=false, mini_benders=false, max_mini_benders_iter=5, ldr_mode::Symbol=:both)
+function tr_nested_benders_optimize!(omp_model::Model, omp_vars::Dict, network, ϕU, λU, γ, w, uncertainty_set; mip_optimizer=nothing, conic_optimizer=nothing, outer_tr=true, inner_tr=true, max_outer_iter=1000, isp_mode=:dual, tol=1e-4, πU=ϕU, yU=ϕU, ytsU=ϕU, strengthen_cuts=:none, parallel=false, mini_benders=false, max_mini_benders_iter=5, ldr_mode::Symbol=:both)
     ### -------- 병렬 스레드 체크 --------
     if parallel && Threads.nthreads() == 1
         @warn "parallel=true인데 Julia 스레드가 1개입니다! 병렬 효과 없음.\n" *
@@ -1455,19 +1433,19 @@ function tr_nested_benders_optimize!(omp_model::Model, omp_vars::Dict, network, 
     local_upper_bound = Inf  # local UB (reset per stage)
     lower_bound = -Inf
     ### --------Begin Inner Master, Subproblem Initialization--------
-    imp_model, imp_vars = build_imp(network, S, ϕU_hat, λU, γ, w, v, uncertainty_set; mip_optimizer=mip_optimizer)
+    imp_model, imp_vars = build_imp(network, S, ϕU, λU, γ, w, v, uncertainty_set; mip_optimizer=mip_optimizer)
     st, α_sol = initialize_imp(imp_model, imp_vars)
     # Dual ISP instances (used for :dual and :hybrid modes)
     leader_instances, follower_instances = nothing, nothing
     if isp_mode != :full_primal
-        leader_instances, follower_instances = initialize_isp(network, S, ϕU_hat, ϕU_tilde, λU, γ, w, v, uncertainty_set; conic_optimizer=conic_optimizer, λ_sol=λ_sol, x_sol=x_sol, h_sol=h_sol, ψ0_sol=ψ0_sol, α_sol=α_sol, πU_hat=πU_hat, πU_tilde=πU_tilde, yU=yU, ytsU=ytsU, ldr_mode=ldr_mode)
+        leader_instances, follower_instances = initialize_isp(network, S, ϕU, λU, γ, w, v, uncertainty_set; conic_optimizer=conic_optimizer, λ_sol=λ_sol, x_sol=x_sol, h_sol=h_sol, ψ0_sol=ψ0_sol, α_sol=α_sol, πU=πU, yU=yU, ytsU=ytsU, ldr_mode=ldr_mode)
     end
     # Primal ISP instances (used for :hybrid and :full_primal modes)
     primal_leader_instances, primal_follower_instances = nothing, nothing
     if isp_mode != :dual
-        primal_leader_instances, primal_follower_instances = initialize_primal_isp(network, S, ϕU_hat, ϕU_tilde, λU, γ, w, v, uncertainty_set; conic_optimizer=conic_optimizer, x_sol=x_sol, λ_sol=λ_sol, h_sol=h_sol, ψ0_sol=ψ0_sol)
+        primal_leader_instances, primal_follower_instances = initialize_primal_isp(network, S, ϕU, λU, γ, w, v, uncertainty_set; conic_optimizer=conic_optimizer, x_sol=x_sol, λ_sol=λ_sol, h_sol=h_sol, ψ0_sol=ψ0_sol)
     end
-    isp_data = Dict(:E => E, :network => network, :ϕU_hat => ϕU_hat, :ϕU_tilde => ϕU_tilde, :πU_hat => πU_hat, :πU_tilde => πU_tilde, :yU => yU, :ytsU => ytsU, :λU => λU, :γ => γ, :w => w, :v => v, :uncertainty_set => uncertainty_set, :d0 => d0, :S=>S)
+    isp_data = Dict(:E => E, :network => network, :ϕU => ϕU, :πU => πU, :yU => yU, :ytsU => ytsU, :λU => λU, :γ => γ, :w => w, :v => v, :uncertainty_set => uncertainty_set, :d0 => d0, :S=>S)
     gap = Inf
     ### --------End Initialization--------
     time_start = time()
@@ -1755,7 +1733,7 @@ function tr_nested_benders_optimize!(omp_model::Model, omp_vars::Dict, network, 
                 :βtilde1_3 => norm(outer_cut_info[:βtilde1_3]),
                 :Ztilde1_3 => norm(outer_cut_info[:Ztilde1_3]),
             ))
-            opt_cut = add_optimality_cuts!(omp_model, omp_vars, outer_cut_info, diag_x_E, isp_data[:E], diag_λ_ψ, xi_bar, isp_data[:d0], ϕU_hat, ϕU_tilde, λ, h, S, iter;
+            opt_cut = add_optimality_cuts!(omp_model, omp_vars, outer_cut_info, diag_x_E, isp_data[:E], diag_λ_ψ, xi_bar, isp_data[:d0], ϕU, λ, h, S, iter;
                 prefix="opt_cut", result_cuts=result[:cuts])
             push!(result[:cut_pool], Dict{Symbol,Any}(
                 :type => :opt_cut, :iter => iter, :cut_info => deepcopy(outer_cut_info),
@@ -1793,7 +1771,7 @@ function tr_nested_benders_optimize!(omp_model::Model, omp_vars::Dict, network, 
             # ===== Best-LB intermediate cut (inner loop 중 best LB 달성 시의 cut) =====
             if use_best_lb_cut && haskey(cut_info, :best_lb_outer_cut) && cut_info[:best_lb_outer_cut] !== nothing
                 best_lb_cut_info = cut_info[:best_lb_outer_cut]
-                best_lb_cut = add_optimality_cuts!(omp_model, omp_vars, best_lb_cut_info, diag_x_E, isp_data[:E], diag_λ_ψ, xi_bar, isp_data[:d0], ϕU_hat, ϕU_tilde, λ, h, S, iter;
+                best_lb_cut = add_optimality_cuts!(omp_model, omp_vars, best_lb_cut_info, diag_x_E, isp_data[:E], diag_λ_ψ, xi_bar, isp_data[:d0], ϕU, λ, h, S, iter;
                     prefix="best_lb_cut", result_cuts=result[:cuts])
                 push!(result[:cut_pool], Dict{Symbol,Any}(
                     :type => :best_lb_cut, :iter => iter, :cut_info => deepcopy(best_lb_cut_info),
@@ -1828,7 +1806,7 @@ function tr_nested_benders_optimize!(omp_model::Model, omp_vars::Dict, network, 
                             parallel=parallel)
                     end
                     str_label = strengthen_cuts in (:mw, :mw_joint) ? "mw" : "sherali"
-                    str_cut = add_optimality_cuts!(omp_model, omp_vars, str_info, diag_x_E, isp_data[:E], diag_λ_ψ, xi_bar, isp_data[:d0], ϕU_hat, ϕU_tilde, λ, h, S, iter;
+                    str_cut = add_optimality_cuts!(omp_model, omp_vars, str_info, diag_x_E, isp_data[:E], diag_λ_ψ, xi_bar, isp_data[:d0], ϕU, λ, h, S, iter;
                         prefix="$(str_label)_cut_cp$(cp_idx)", result_cuts=result[:cuts])
                     push!(result[:cut_pool], Dict{Symbol,Any}(
                         :type => Symbol(str_label), :iter => iter, :cut_info => deepcopy(str_info),
@@ -1893,8 +1871,8 @@ function tr_nested_benders_optimize!(omp_model::Model, omp_vars::Dict, network, 
 end
 
 
-function tr_nested_benders_optimize_hybrid!(omp_model::Model, omp_vars::Dict, network, ϕU_hat, ϕU_tilde, λU, γ, w, uncertainty_set;
-    mip_optimizer=nothing, conic_optimizer=nothing, outer_tr=true, inner_tr=true, max_outer_iter=1000, full_primal=false, tol=1e-4, πU_hat=ϕU_hat, πU_tilde=ϕU_tilde, yU=ϕU_tilde, ytsU=ϕU_tilde, strengthen_cuts=:none)
+function tr_nested_benders_optimize_hybrid!(omp_model::Model, omp_vars::Dict, network, ϕU, λU, γ, w, uncertainty_set;
+    mip_optimizer=nothing, conic_optimizer=nothing, outer_tr=true, inner_tr=true, max_outer_iter=1000, full_primal=false, tol=1e-4, πU=ϕU, yU=ϕU, ytsU=ϕU, strengthen_cuts=:none)
 
     # full_primal=true is NOT recommended.
     # Outer cut extraction via Mosek IPM shadow prices (evaluate_master_opt_cut_from_primal)
@@ -1970,24 +1948,24 @@ function tr_nested_benders_optimize_hybrid!(omp_model::Model, omp_vars::Dict, ne
     lower_bound = -Inf
 
     ### --------IMP + ISP Initialization--------
-    imp_model, imp_vars = build_imp(network, S, ϕU_hat, λU, γ, w, v, uncertainty_set; mip_optimizer=mip_optimizer)
+    imp_model, imp_vars = build_imp(network, S, ϕU, λU, γ, w, v, uncertainty_set; mip_optimizer=mip_optimizer)
     st, α_sol = initialize_imp(imp_model, imp_vars)
 
     # Dual ISP instances (for outer cut generation — hybrid only)
     dual_leader_instances, dual_follower_instances = nothing, nothing
     if !full_primal
         dual_leader_instances, dual_follower_instances = initialize_isp(
-            network, S, ϕU_hat, ϕU_tilde, λU, γ, w, v, uncertainty_set;
+            network, S, ϕU, λU, γ, w, v, uncertainty_set;
             conic_optimizer=conic_optimizer, λ_sol=λ_sol, x_sol=x_sol, h_sol=h_sol, ψ0_sol=ψ0_sol, α_sol=α_sol,
-            πU_hat=πU_hat, πU_tilde=πU_tilde, yU=yU, ytsU=ytsU)
+            πU=πU, yU=yU, ytsU=ytsU)
     end
 
     # Primal ISP instances (for inner loop + full primal outer cuts)
     primal_leader_instances, primal_follower_instances = initialize_primal_isp(
-        network, S, ϕU_hat, ϕU_tilde, λU, γ, w, v, uncertainty_set;
+        network, S, ϕU, λU, γ, w, v, uncertainty_set;
         conic_optimizer=conic_optimizer, x_sol=x_sol, λ_sol=λ_sol, h_sol=h_sol, ψ0_sol=ψ0_sol)
 
-    isp_data = Dict(:E => E, :network => network, :ϕU_hat => ϕU_hat, :ϕU_tilde => ϕU_tilde, :πU_hat => πU_hat, :πU_tilde => πU_tilde, :yU => yU, :ytsU => ytsU, :λU => λU, :γ => γ, :w => w, :v => v, :uncertainty_set => uncertainty_set, :d0 => d0, :S=>S)
+    isp_data = Dict(:E => E, :network => network, :ϕU => ϕU, :πU => πU, :yU => yU, :ytsU => ytsU, :λU => λU, :γ => γ, :w => w, :v => v, :uncertainty_set => uncertainty_set, :d0 => d0, :S=>S)
     gap = Inf
 
     ### --------End Initialization--------
@@ -2153,7 +2131,7 @@ function tr_nested_benders_optimize_hybrid!(omp_model::Model, omp_vars::Dict, ne
                     λ_sol=λ_sol, x_sol=x_sol, h_sol=h_sol, ψ0_sol=ψ0_sol)
             end
 
-            opt_cut = add_optimality_cuts!(omp_model, omp_vars, outer_cut_info, diag_x_E, isp_data[:E], diag_λ_ψ, xi_bar_local, isp_data[:d0], ϕU_hat, ϕU_tilde, λ, h, S, iter;
+            opt_cut = add_optimality_cuts!(omp_model, omp_vars, outer_cut_info, diag_x_E, isp_data[:E], diag_λ_ψ, xi_bar_local, isp_data[:d0], ϕU, λ, h, S, iter;
                 prefix="opt_cut", result_cuts=result[:cuts])
 
             y = Dict(
@@ -2206,7 +2184,7 @@ function tr_nested_benders_optimize_hybrid!(omp_model::Model, omp_vars::Dict, ne
                             parallel=parallel)
                     end
                     str_label = strengthen_cuts in (:mw, :mw_joint) ? "mw" : "sherali"
-                    add_optimality_cuts!(omp_model, omp_vars, str_info, diag_x_E, isp_data[:E], diag_λ_ψ, xi_bar_local, isp_data[:d0], ϕU_hat, ϕU_tilde, λ, h, S, iter;
+                    add_optimality_cuts!(omp_model, omp_vars, str_info, diag_x_E, isp_data[:E], diag_λ_ψ, xi_bar_local, isp_data[:d0], ϕU, λ, h, S, iter;
                         prefix="$(str_label)_cut_cp$(cp_idx)", result_cuts=result[:cuts])
                 end
                 @info "  $(length(core_points)) $(strengthen_cuts) strengthening cuts added (hybrid)"

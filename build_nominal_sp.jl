@@ -53,7 +53,11 @@ function build_full_2SP_model(network, S, ϕU, λU, γ, w, v, uncertainty_set; o
 
     # Node-arc incidence matrix (excluding source row)
     N = network.N
-    R, r_dict, xi_bar, epsilon = uncertainty_set[:R], uncertainty_set[:r_dict], uncertainty_set[:xi_bar], uncertainty_set[:epsilon]
+    R = uncertainty_set[:R]
+    # SP에서는 hat/tilde 구분 불필요 — hat을 기본값으로 사용
+    r_dict = haskey(uncertainty_set, :r_dict) ? uncertainty_set[:r_dict] : uncertainty_set[:r_dict_hat]
+    xi_bar = uncertainty_set[:xi_bar]
+    epsilon = haskey(uncertainty_set, :epsilon) ? uncertainty_set[:epsilon] : uncertainty_set[:epsilon_hat]
     # Dummy arc index (t,s)
     dummy_arc_idx = findfirst(arc -> arc == ("t", "s"), network.arcs)
 

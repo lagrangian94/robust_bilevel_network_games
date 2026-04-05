@@ -20,7 +20,7 @@ include("nested_benders_trust_region.jl")
 
 using .NetworkGenerator: generate_polska_network, print_realworld_network_summary, generate_capacity_scenarios_uniform_model
 
-function measure_isp_memory(; S=20, seed=42, epsilon=0.5, γ_ratio=0.10, ρ=0.2, v=1.0)
+function measure_isp_memory(; S=20, seed=42, epsilon_hat=0.5, epsilon_tilde=0.5, γ_ratio=0.10, ρ=0.2, v=1.0)
     println("="^60)
     println("ISP 메모리 측정: Polska, S=$S")
     println("="^60)
@@ -30,8 +30,9 @@ function measure_isp_memory(; S=20, seed=42, epsilon=0.5, γ_ratio=0.10, ρ=0.2,
     print_realworld_network_summary(network)
     num_arcs = length(network.arcs) - 1
 
-    ϕU = 1/epsilon
-    λU = ϕU
+    ϕU_hat = 1/epsilon_hat
+    ϕU_tilde = 1/epsilon_tilde
+    λU = ϕU_hat
     num_interdictable = sum(network.interdictable_arcs[1:num_arcs])
     γ = ceil(Int, γ_ratio * num_interdictable)
 
@@ -42,15 +43,16 @@ function measure_isp_memory(; S=20, seed=42, epsilon=0.5, γ_ratio=0.10, ρ=0.2,
     w = round(ρ * γ * c_bar, digits=4)
 
     capacity_scenarios_regular = capacities[1:end-1, :]
-    R, r_dict, xi_bar = build_robust_counterpart_matrices(capacity_scenarios_regular, epsilon)
-    uncertainty_set = Dict(:R => R, :r_dict => r_dict, :xi_bar => xi_bar, :epsilon => epsilon)
+    R, r_dict_hat, r_dict_tilde, xi_bar = build_robust_counterpart_matrices(capacity_scenarios_regular, epsilon_hat, epsilon_tilde)
+    uncertainty_set = Dict(:R => R, :r_dict_hat => r_dict_hat, :r_dict_tilde => r_dict_tilde, :xi_bar => xi_bar, :epsilon_hat => epsilon_hat, :epsilon_tilde => epsilon_tilde)
 
     source_arc_idx = findall(a -> a[1] == "s", network.arcs[1:num_arcs])
     max_flow_ub = maximum(sum(capacities[source_arc_idx, s] for s in 1:S) / S)
     max_cap = maximum(capacity_scenarios_regular)
-    πU = ϕU
-    yU = min(max_cap, ϕU)
-    ytsU = min(max_flow_ub, ϕU)
+    πU_hat = ϕU_hat
+    πU_tilde = ϕU_tilde
+    yU = min(max_cap, ϕU_tilde)
+    ytsU = min(max_flow_ub, ϕU_tilde)
 
     # --- 메모리 측정: ISP 생성 전 ---
     GC.gc(); GC.gc()
@@ -71,19 +73,24 @@ function measure_isp_memory(; S=20, seed=42, epsilon=0.5, γ_ratio=0.10, ρ=0.2,
 
     # --- ISP 모델 생성 (시나리오별로 메모리 추적) ---
     println("\nISP 모델 생성 시작...")
-    R_us, r_dict_us, xi_bar_us = uncertainty_set[:R], uncertainty_set[:r_dict], uncertainty_set[:xi_bar]
+    R_us = uncertainty_set[:R]
+    r_dict_hat_us = uncertainty_set[:r_dict_hat]
+    r_dict_tilde_us = uncertainty_set[:r_dict_tilde]
+    xi_bar_us = uncertainty_set[:xi_bar]
 
     leader_instances = Dict{Int, Tuple{Model, Dict}}()
     follower_instances = Dict{Int, Tuple{Model, Dict}}()
 
     for s in 1:S
-        U_s = Dict(:R => Dict(:1=>R_us[s]), :r_dict => Dict(:1=>r_dict_us[s]),
-                    :xi_bar => Dict(:1=>xi_bar_us[s]), :epsilon => epsilon)
+        U_s_hat = Dict(:R => Dict(:1=>R_us[s]), :r_dict => Dict(:1=>r_dict_hat_us[s]),
+                    :xi_bar => Dict(:1=>xi_bar_us[s]), :epsilon => epsilon_hat)
+        U_s_tilde = Dict(:R => Dict(:1=>R_us[s]), :r_dict => Dict(:1=>r_dict_tilde_us[s]),
+                    :xi_bar => Dict(:1=>xi_bar_us[s]), :epsilon => epsilon_tilde)
 
-        leader_instances[s] = build_isp_leader(network, 1, ϕU, λU, γ, w, v, U_s,
-            Mosek.Optimizer, λ_dummy, x_dummy, h_dummy, ψ0_dummy, α_dummy, S; πU=πU)
-        follower_instances[s] = build_isp_follower(network, 1, ϕU, λU, γ, w, v, U_s,
-            Mosek.Optimizer, λ_dummy, x_dummy, h_dummy, ψ0_dummy, α_dummy, S; πU=πU, yU=yU, ytsU=ytsU)
+        leader_instances[s] = build_isp_leader(network, 1, ϕU_hat, λU, γ, w, v, U_s_hat,
+            Mosek.Optimizer, λ_dummy, x_dummy, h_dummy, ψ0_dummy, α_dummy, S; πU=πU_hat)
+        follower_instances[s] = build_isp_follower(network, 1, ϕU_tilde, λU, γ, w, v, U_s_tilde,
+            Mosek.Optimizer, λ_dummy, x_dummy, h_dummy, ψ0_dummy, α_dummy, S; πU=πU_tilde, yU=yU, ytsU=ytsU)
 
         GC.gc()
         mem_now = Sys.free_memory()

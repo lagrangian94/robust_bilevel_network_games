@@ -123,19 +123,19 @@ end
 # 3a. Build ISP instances for arbitrary α_sol
 # ──────────────────────────────────────────────────────────────────
 """
-    build_alpha_isps(id, α_sol, network, S, ϕU, λU, γ, w, v, uncertainty_set; ...)
+    build_alpha_isps(id, α_sol, network, S, ϕU_hat, ϕU_tilde, λU, γ, w, v, uncertainty_set; ...)
 
 임의 α_sol에 대해 ISP leader/follower 인스턴스를 모든 시나리오에 대해 생성.
 VertexData struct 재활용 (j → id로 사용).
 """
-function build_alpha_isps(id::Int, α_sol::Vector{Float64}, network, S, ϕU, λU, γ, w, v_param, uncertainty_set;
+function build_alpha_isps(id::Int, α_sol::Vector{Float64}, network, S, ϕU_hat, ϕU_tilde, λU, γ, w, v_param, uncertainty_set;
                           conic_optimizer=nothing, λ_sol=nothing, x_sol=nothing,
-                          h_sol=nothing, ψ0_sol=nothing, πU=ϕU, yU=ϕU, ytsU=ϕU)
+                          h_sol=nothing, ψ0_sol=nothing, πU_hat=ϕU_hat, πU_tilde=ϕU_tilde, yU=ϕU_tilde, ytsU=ϕU_tilde)
     leader_instances, follower_instances = initialize_isp(
-        network, S, ϕU, λU, γ, w, v_param, uncertainty_set;
+        network, S, ϕU_hat, ϕU_tilde, λU, γ, w, v_param, uncertainty_set;
         conic_optimizer=conic_optimizer,
         λ_sol=λ_sol, x_sol=x_sol, h_sol=h_sol, ψ0_sol=ψ0_sol,
-        α_sol=α_sol, πU=πU, yU=yU, ytsU=ytsU)
+        α_sol=α_sol, πU_hat=πU_hat, πU_tilde=πU_tilde, yU=yU, ytsU=ytsU)
 
     return VertexData(id, α_sol, leader_instances, follower_instances)
 end
@@ -155,28 +155,32 @@ function evaluate_vertex!(vdata::VertexData, isp_data::Dict;
     S = isp_data[:S]
     uncertainty_set = isp_data[:uncertainty_set]
     R = uncertainty_set[:R]
-    r_dict = uncertainty_set[:r_dict]
+    r_dict_hat = uncertainty_set[:r_dict_hat]
+    r_dict_tilde = uncertainty_set[:r_dict_tilde]
     xi_bar = uncertainty_set[:xi_bar]
-    epsilon = uncertainty_set[:epsilon]
+    epsilon_hat = uncertainty_set[:epsilon_hat]
+    epsilon_tilde = uncertainty_set[:epsilon_tilde]
 
     total_obj = 0.0
     cut_coeff_per_s = Dict{Int, Dict}()
 
     for s in 1:S
-        U_s = Dict(:R => Dict(:1=>R[s]), :r_dict => Dict(:1=>r_dict[s]),
-                   :xi_bar => Dict(:1=>xi_bar[s]), :epsilon => epsilon)
+        U_s_hat = Dict(:R => Dict(:1=>R[s]), :r_dict => Dict(:1=>r_dict_hat[s]),
+                       :xi_bar => Dict(:1=>xi_bar[s]), :epsilon => epsilon_hat)
+        U_s_tilde = Dict(:R => Dict(:1=>R[s]), :r_dict => Dict(:1=>r_dict_tilde[s]),
+                         :xi_bar => Dict(:1=>xi_bar[s]), :epsilon => epsilon_tilde)
 
         # Solve ISP leader
         (status_l, ci_l) = isp_leader_optimize!(
             vdata.leader_instances[s][1], vdata.leader_instances[s][2];
-            isp_data=isp_data, uncertainty_set=U_s,
+            isp_data=isp_data, uncertainty_set=U_s_hat,
             λ_sol=λ_sol, x_sol=x_sol, h_sol=h_sol, ψ0_sol=ψ0_sol,
             α_sol=vdata.α)
 
         # Solve ISP follower
         (status_f, ci_f) = isp_follower_optimize!(
             vdata.follower_instances[s][1], vdata.follower_instances[s][2];
-            isp_data=isp_data, uncertainty_set=U_s,
+            isp_data=isp_data, uncertainty_set=U_s_tilde,
             λ_sol=λ_sol, x_sol=x_sol, h_sol=h_sol, ψ0_sol=ψ0_sol,
             α_sol=vdata.α)
 
@@ -230,10 +234,8 @@ function add_scenario_cuts_to_omp!(omp_model, omp_vars, vdata::VertexData,
     x, h, λ_var, ψ0 = omp_vars[:x], omp_vars[:h], omp_vars[:λ], omp_vars[:ψ0]
     num_arcs = length(x)
     E = isp_data[:E]
-    ϕU = isp_data[:ϕU]
-    πU = get(isp_data, :πU, ϕU)
-    yU = get(isp_data, :yU, ϕU)
-    ytsU = get(isp_data, :ytsU, ϕU)
+    ϕU_hat = isp_data[:ϕU_hat]
+    ϕU_tilde = isp_data[:ϕU_tilde]
     v_param = isp_data[:v]
     d0 = isp_data[:d0]
     xi_bar = isp_data[:uncertainty_set][:xi_bar]
@@ -246,14 +248,14 @@ function add_scenario_cuts_to_omp!(omp_model, omp_vars, vdata::VertexData,
         # ISP는 S=1로 빌드되므로 인덱스는 항상 s=1
         s_idx = 1
 
-        # Leader term: -ϕU·(Û₁·diag(x)E + Û₃·(E-diag(x)E)) + intercept_l
-        leader_expr = -ϕU * sum(cc[:Uhat1][s_idx, :, :] .* diag_x_E) +
-                      -ϕU * sum(cc[:Uhat3][s_idx, :, :] .* (E - diag_x_E)) +
+        # Leader term: -ϕU_hat·(Û₁·diag(x)E + Û₃·(E-diag(x)E)) + intercept_l
+        leader_expr = -ϕU_hat * sum(cc[:Uhat1][s_idx, :, :] .* diag_x_E) +
+                      -ϕU_hat * sum(cc[:Uhat3][s_idx, :, :] .* (E - diag_x_E)) +
                       cc[:intercept_l]
 
-        # Follower term: -ϕU·(Ũ₁·diag(x)E + Ũ₃·(E-diag(x)E)) + Z̃·(diag(λ-vψ₀)·ξ̄) + λ·d₀'β̃₁ - (h+diag(λ-vψ₀)ξ̄)'β̃₃ + intercept_f
-        follower_expr = -ϕU * sum(cc[:Utilde1][s_idx, :, :] .* diag_x_E) +
-                        -ϕU * sum(cc[:Utilde3][s_idx, :, :] .* (E - diag_x_E)) +
+        # Follower term: -ϕU_tilde·(Ũ₁·diag(x)E + Ũ₃·(E-diag(x)E)) + Z̃·(diag(λ-vψ₀)·ξ̄) + λ·d₀'β̃₁ - (h+diag(λ-vψ₀)ξ̄)'β̃₃ + intercept_f
+        follower_expr = -ϕU_tilde * sum(cc[:Utilde1][s_idx, :, :] .* diag_x_E) +
+                        -ϕU_tilde * sum(cc[:Utilde3][s_idx, :, :] .* (E - diag_x_E)) +
                         sum(cc[:Ztilde1_3][s_idx, :, :] .* (diag_λ_ψ * diagm(xi_bar[s]))) +
                         (d0' * cc[:βtilde1_1][s_idx, :]) * λ_var +
                         -(h + diag_λ_ψ * xi_bar[s])' * cc[:βtilde1_3][s_idx, :] +
@@ -322,9 +324,11 @@ function add_mw_cuts_for_vertex!(omp_model, omp_vars, vdata::VertexData, isp_dat
             isp_data_s1[:S] = 1
             isp_data_s1[:uncertainty_set] = Dict(
                 :R => Dict(:1 => uncertainty_set[:R][s]),
-                :r_dict => Dict(:1 => uncertainty_set[:r_dict][s]),
+                :r_dict_hat => Dict(:1 => uncertainty_set[:r_dict_hat][s]),
+                :r_dict_tilde => Dict(:1 => uncertainty_set[:r_dict_tilde][s]),
                 :xi_bar => Dict(:1 => uncertainty_set[:xi_bar][s]),
-                :epsilon => uncertainty_set[:epsilon])
+                :epsilon_hat => uncertainty_set[:epsilon_hat],
+                :epsilon_tilde => uncertainty_set[:epsilon_tilde])
             cut_info_s = Dict(:α_sol => vdata.α)
             leader_insts_s = Dict(1 => vdata.leader_instances[s])
             follower_insts_s = Dict(1 => vdata.follower_instances[s])
@@ -354,33 +358,33 @@ end
 # 6. Pricing phase: find worst-case vertex
 # ──────────────────────────────────────────────────────────────────
 """
-    pricing_solve!(network, S, ϕU, λU, γ, w, v, uncertainty_set, isp_data;
+    pricing_solve!(network, S, ϕU_hat, ϕU_tilde, λU, γ, w, v, uncertainty_set, isp_data;
                    mip_optimizer, conic_optimizer,
-                   λ_sol, x_sol, h_sol, ψ0_sol, πU, yU, ytsU,
+                   λ_sol, x_sol, h_sol, ψ0_sol, πU_hat, πU_tilde, yU, ytsU,
                    inner_tr, tol)
 
 현재 χ*에서 max_{α ∈ Δ} Q₁(α, χ*)를 풀어 worst-case vertex 탐색.
 기존 build_imp + tr_imp_optimize! (inner Benders loop) 재사용.
 Returns: (j_star, obj_val, α_sol)
 """
-function pricing_solve!(network, S, ϕU, λU, γ, w, v_param, uncertainty_set, isp_data;
+function pricing_solve!(network, S, ϕU_hat, ϕU_tilde, λU, γ, w, v_param, uncertainty_set, isp_data;
                         mip_optimizer=nothing, conic_optimizer=nothing,
                         λ_sol=nothing, x_sol=nothing, h_sol=nothing, ψ0_sol=nothing,
-                        πU=ϕU, yU=ϕU, ytsU=ϕU,
+                        πU_hat=ϕU_hat, πU_tilde=ϕU_tilde, yU=ϕU_tilde, ytsU=ϕU_tilde,
                         inner_tr=true, tol=1e-4,
                         warm_start_cuts=false)
     num_arcs = length(network.arcs) - 1
 
     # Build fresh IMP + ISP instances
-    imp_model, imp_vars = build_imp(network, S, ϕU, λU, γ, w, v_param, uncertainty_set;
+    imp_model, imp_vars = build_imp(network, S, ϕU_hat, λU, γ, w, v_param, uncertainty_set;
                                      mip_optimizer=mip_optimizer)
     _, α_init = initialize_imp(imp_model, imp_vars)
 
     leader_instances, follower_instances = initialize_isp(
-        network, S, ϕU, λU, γ, w, v_param, uncertainty_set;
+        network, S, ϕU_hat, ϕU_tilde, λU, γ, w, v_param, uncertainty_set;
         conic_optimizer=conic_optimizer,
         λ_sol=λ_sol, x_sol=x_sol, h_sol=h_sol, ψ0_sol=ψ0_sol,
-        α_sol=α_init, πU=πU, yU=yU, ytsU=ytsU)
+        α_sol=α_init, πU_hat=πU_hat, πU_tilde=πU_tilde, yU=yU, ytsU=ytsU)
 
     # Run inner Benders loop
     imp_cuts = Dict{Symbol, Any}(:old_tr_constraints => nothing)
@@ -474,11 +478,11 @@ end
 # 7. Main C&CG algorithm
 # ──────────────────────────────────────────────────────────────────
 """
-    ccg_benders_optimize!(network, ϕU, λU, γ, w, v, uncertainty_set;
+    ccg_benders_optimize!(network, ϕU_hat, ϕU_tilde, λU, γ, w, v, uncertainty_set;
                           mip_optimizer, conic_optimizer,
                           ε_benders, ε_pricing,
                           max_ccg_iter, max_benders_iter,
-                          πU, yU, ytsU, inner_tr, tol)
+                          πU_hat, πU_tilde, yU, ytsU, inner_tr, tol)
 
 C&CG + Benders 메인 알고리즘.
 
@@ -486,11 +490,11 @@ C&CG + Benders 메인 알고리즘.
 2. Benders phase: J 내 모든 vertex에 대해 ISP 평가 + per-scenario cut 추가 → 수렴까지
 3. Pricing phase: worst-case vertex 탐색 → J에 없으면 추가 → Benders phase 반복
 """
-function ccg_benders_optimize!(network, ϕU, λU, γ, w, v_param, uncertainty_set;
+function ccg_benders_optimize!(network, ϕU_hat, ϕU_tilde, λU, γ, w, v_param, uncertainty_set;
                                 mip_optimizer=nothing, conic_optimizer=nothing,
                                 ε_benders=1e-4, ε_pricing=1e-4,
                                 max_ccg_iter=50, max_benders_iter=10000,
-                                πU=ϕU, yU=ϕU, ytsU=ϕU,
+                                πU_hat=ϕU_hat, πU_tilde=ϕU_tilde, yU=ϕU_tilde, ytsU=ϕU_tilde,
                                 inner_tr=true, tol=1e-4,
                                 strengthen_cuts=:none,
                                 warm_start_cuts=false)
@@ -501,14 +505,15 @@ function ccg_benders_optimize!(network, ϕU, λU, γ, w, v_param, uncertainty_se
     xi_bar = uncertainty_set[:xi_bar]
 
     isp_data = Dict(
-        :E => E, :network => network, :ϕU => ϕU, :πU => πU,
+        :E => E, :network => network, :ϕU_hat => ϕU_hat, :ϕU_tilde => ϕU_tilde,
+        :πU_hat => πU_hat, :πU_tilde => πU_tilde,
         :yU => yU, :ytsU => ytsU, :λU => λU, :γ => γ,
         :w => w, :v => v_param, :uncertainty_set => uncertainty_set,
         :d0 => d0, :S => S,
     )
 
     # ========== Initialization ==========
-    omp_model, omp_vars = build_omp_ccg(network, ϕU, λU, γ, w; optimizer=mip_optimizer)
+    omp_model, omp_vars = build_omp_ccg(network, ϕU_hat, λU, γ, w; optimizer=mip_optimizer)
 
     # Initial OMP solve (trivial: no cuts → t_0 unbounded below → DUAL_INFEASIBLE)
     optimize!(omp_model)
@@ -526,10 +531,10 @@ function ccg_benders_optimize!(network, ϕU, λU, γ, w, v_param, uncertainty_se
 
     # Initial pricing: 첫 번째 α 탐색
     @info "===== C&CG Initialization: Pricing for initial α ====="
-    _, Q_init, α_init, init_pricing_cuts, init_mw_cuts = pricing_solve!(network, S, ϕU, λU, γ, w, v_param, uncertainty_set, isp_data;
+    _, Q_init, α_init, init_pricing_cuts, init_mw_cuts = pricing_solve!(network, S, ϕU_hat, ϕU_tilde, λU, γ, w, v_param, uncertainty_set, isp_data;
         mip_optimizer=mip_optimizer, conic_optimizer=conic_optimizer,
         λ_sol=λ_sol, x_sol=x_sol, h_sol=h_sol, ψ0_sol=ψ0_sol,
-        πU=πU, yU=yU, ytsU=ytsU, inner_tr=inner_tr, tol=tol,
+        πU_hat=πU_hat, πU_tilde=πU_tilde, yU=yU, ytsU=ytsU, inner_tr=inner_tr, tol=tol,
         warm_start_cuts=warm_start_cuts)
 
     # Active α set (sequential ID로 관리)
@@ -539,9 +544,9 @@ function ccg_benders_optimize!(network, ϕU, λU, γ, w, v_param, uncertainty_se
 
     push!(active_ids, alpha_id_counter)
     add_vertex_to_omp!(omp_model, omp_vars, alpha_id_counter, S)
-    alpha_data[alpha_id_counter] = build_alpha_isps(alpha_id_counter, α_init, network, S, ϕU, λU, γ, w, v_param, uncertainty_set;
+    alpha_data[alpha_id_counter] = build_alpha_isps(alpha_id_counter, α_init, network, S, ϕU_hat, ϕU_tilde, λU, γ, w, v_param, uncertainty_set;
         conic_optimizer=conic_optimizer, λ_sol=λ_sol, x_sol=x_sol, h_sol=h_sol, ψ0_sol=ψ0_sol,
-        πU=πU, yU=yU, ytsU=ytsU)
+        πU_hat=πU_hat, πU_tilde=πU_tilde, yU=yU, ytsU=ytsU)
 
     # Warm-start: pricing에서 추출한 cuts + MW cuts를 OMP에 즉시 추가
     if warm_start_cuts && init_pricing_cuts !== nothing
@@ -655,10 +660,10 @@ function ccg_benders_optimize!(network, ϕU, λU, γ, w, v_param, uncertainty_se
 
         # -------- Pricing Phase --------
         @info "  [Pricing] Searching for worst-case α..."
-        _, Q_new, α_new, new_pricing_cuts, new_mw_cuts = pricing_solve!(network, S, ϕU, λU, γ, w, v_param, uncertainty_set, isp_data;
+        _, Q_new, α_new, new_pricing_cuts, new_mw_cuts = pricing_solve!(network, S, ϕU_hat, ϕU_tilde, λU, γ, w, v_param, uncertainty_set, isp_data;
             mip_optimizer=mip_optimizer, conic_optimizer=conic_optimizer,
             λ_sol=λ_sol, x_sol=x_sol, h_sol=h_sol, ψ0_sol=ψ0_sol,
-            πU=πU, yU=yU, ytsU=ytsU, inner_tr=inner_tr, tol=tol,
+            πU_hat=πU_hat, πU_tilde=πU_tilde, yU=yU, ytsU=ytsU, inner_tr=inner_tr, tol=tol,
             warm_start_cuts=warm_start_cuts)
 
         upper_bound = min(upper_bound, Q_new)
@@ -673,9 +678,9 @@ function ccg_benders_optimize!(network, ϕU, λU, γ, w, v_param, uncertainty_se
             @info "  Adding α #$alpha_id_counter to active set."
             push!(active_ids, alpha_id_counter)
             add_vertex_to_omp!(omp_model, omp_vars, alpha_id_counter, S)
-            alpha_data[alpha_id_counter] = build_alpha_isps(alpha_id_counter, α_new, network, S, ϕU, λU, γ, w, v_param, uncertainty_set;
+            alpha_data[alpha_id_counter] = build_alpha_isps(alpha_id_counter, α_new, network, S, ϕU_hat, ϕU_tilde, λU, γ, w, v_param, uncertainty_set;
                 conic_optimizer=conic_optimizer, λ_sol=λ_sol, x_sol=x_sol, h_sol=h_sol, ψ0_sol=ψ0_sol,
-                πU=πU, yU=yU, ytsU=ytsU)
+                πU_hat=πU_hat, πU_tilde=πU_tilde, yU=yU, ytsU=ytsU)
             # Warm-start: pricing에서 추출한 cuts + MW cuts를 새 α의 OMP에 즉시 추가
             if warm_start_cuts && new_pricing_cuts !== nothing
                 new_per_s = convert_to_per_scenario_cuts(new_pricing_cuts, S)
