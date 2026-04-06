@@ -185,49 +185,50 @@ network, uncertainty_set, params = setup_instance(instance_key; S=S)
 results = Dict{String, Any}()
 
 
-# # ===== 0. Full Model (Pajarito) =====
-# println("\n" * "="^80)
-# println("0. FULL MODEL (Pajarito: MIP + Conic)")
-# println("="^80)
+# ===== 0. Full Model (Pajarito) =====
+println("\n" * "="^80)
+println("0. FULL MODEL (Pajarito: MIP + Conic)")
+println("="^80)
 
-# """
-# S=10, 5x5 grid networks에서 이미 한시간넘어도 수렴안함.
-#      7    14    0.84251    3   20          -    0.09367      -   0.0  331s
-#     27    38    3.73988    5   16   11.28263    1.61417  85.7%   0.0  640s
-#     39    44    4.15700    6   16   11.28263    2.27480  79.8%   0.0  855s
-#    352    39    8.82591   10    7    9.24680    5.80339  37.2%   0.0 3614s
-# """
+"""
+S=10, 5x5 grid networks에서 이미 한시간넘어도 수렴안함.
+     7    14    0.84251    3   20          -    0.09367      -   0.0  331s
+    27    38    3.73988    5   16   11.28263    1.61417  85.7%   0.0  640s
+    39    44    4.15700    6   16   11.28263    2.27480  79.8%   0.0  855s
+   352    39    8.82591   10    7    9.24680    5.80339  37.2%   0.0 3614s
+"""
 
-# GC.gc()
-# model0, vars0 = build_full_2DRNDP_model(network, S, ϕU, λU, γ, w, v, uncertainty_set,
-#     mip_solver=Gurobi.Optimizer, conic_solver=Mosek.Optimizer)
-# add_sparsity_constraints!(model0, vars0, network, S)
-# t0_start = time()
-# optimize!(model0)
-# t0_end = time()
-# results["full_model"] = t0_end - t0_start
+GC.gc()
+model0, vars0 = build_full_2DRNDP_model(network, S, ϕU_hat, ϕU_tilde, λU, γ, w, v, uncertainty_set;
+    mip_solver=Gurobi.Optimizer, conic_solver=Mosek.Optimizer,
+    πU_hat=πU_hat, πU_tilde=πU_tilde, yU=yU, ytsU=ytsU)
+add_sparsity_constraints!(model0, vars0, network, S)
+t0_start = time()
+optimize!(model0)
+t0_end = time()
+results["full_model"] = t0_end - t0_start
 
-# t0_status = termination_status(model0)
-# if t0_status == MOI.OPTIMAL || t0_status == MOI.ALMOST_OPTIMAL
-#     obj0 = objective_value(model0)
-#     println("  Optimal objective: $(round(obj0, digits=6))")
-# else
-#     obj0 = NaN
-#     println("  Termination status: $t0_status (no optimal solution)")
-# end
-# println("\n>> Full Model time: $(results["full_model"]) seconds")
-# # ===== 1. Strict Benders =====
-# println("\n" * "="^80)
-# println("1. STRICT BENDERS DECOMPOSITION (multi-cut)")
-# println("="^80)
+t0_status = termination_status(model0)
+if t0_status == MOI.OPTIMAL || t0_status == MOI.ALMOST_OPTIMAL
+    obj0 = objective_value(model0)
+    println("  Optimal objective: $(round(obj0, digits=6))")
+else
+    obj0 = NaN
+    println("  Termination status: $t0_status (no optimal solution)")
+end
+println("\n>> Full Model time: $(results["full_model"]) seconds")
+# ===== 1. Strict Benders =====
+println("\n" * "="^80)
+println("1. STRICT BENDERS DECOMPOSITION (multi-cut)")
+println("="^80)
 
-# GC.gc()
-# model1, vars1 = build_omp(network, ϕU, λU, γ, w; optimizer=Gurobi.Optimizer, S=S)
-# t1_start = time()
-# result1 = strict_benders_optimize!(model1, vars1, network, ϕU, λU, γ, w, uncertainty_set; optimizer=Gurobi.Optimizer, πU=πU, yU=yU, ytsU=ytsU, strengthen_cuts=strengthen_cuts)
-# t1_end = time()
-# results["strict_benders"] = t1_end - t1_start
-# println("\n>> Strict Benders time: $(results["strict_benders"]) seconds")
+GC.gc()
+model1, vars1 = build_omp(network, ϕU, λU, γ, w; optimizer=Gurobi.Optimizer, S=S)
+t1_start = time()
+result1 = strict_benders_optimize!(model1, vars1, network, ϕU_hat, ϕU_tilde, λU, γ, w, uncertainty_set; optimizer=Gurobi.Optimizer, πU_hat=πU_hat, πU_tilde=πU_tilde, yU=yU, ytsU=ytsU, strengthen_cuts=strengthen_cuts)
+t1_end = time()
+results["strict_benders"] = t1_end - t1_start
+println("\n>> Strict Benders time: $(results["strict_benders"]) seconds")
 # @infiltrate
 # ===== 2. TR Nested Benders — Dual (T,T) =====
 println("\n" * "="^80)
@@ -246,7 +247,7 @@ result2 = tr_nested_benders_optimize!(model2, vars2, network, ϕU_hat, ϕU_tilde
 t2_end = time()
 results["tr_dual"] = t2_end - t2_start
 println("\n>> Dual TR Both time: $(results["tr_dual"]) seconds")
-@infiltrate
+# @infiltrate
 # # TODO:: solve only subset of scenarios (partial solve; 첫번째에선 다 풀어서 하한 다 찾아놓음) (upper bound eval. = iter N번마다 한번씩 full evaluate)
 # ===== 2.5. Scenario-Decomposed Benders =====
 # println("\n" * "="^80)
@@ -312,11 +313,11 @@ nd_ub = minimum(result2[:past_upper_bound])
 nd_gap = abs(nd_ub - nd_lb) / max(abs(nd_ub), 1e-10)
 nd_iters = length(result2[:past_upper_bound])
 
-# --- 2.5. s
-sd_lb = result_sd[:past_obj][end]
-sd_ub = minimum(result_sd[:past_upper_bound])
-sd_gap = abs(sd_ub - sd_lb) / max(abs(sd_ub), 1e-10)
-sd_iters = length(result_sd[:past_obj])
+# # --- 2.5. s
+# sd_lb = result_sd[:past_obj][end]
+# sd_ub = minimum(result_sd[:past_upper_bound])
+# sd_gap = abs(sd_ub - sd_lb) / max(abs(sd_ub), 1e-10)
+# sd_iters = length(result_sd[:past_obj])
 
 # # --- 3. TR Nested Benders — Hybrid ---
 # if haskey(result3, :past_local_lower_bound)
@@ -328,38 +329,38 @@ sd_iters = length(result_sd[:past_obj])
 # nh_gap = abs(nh_ub - nh_lb) / max(abs(nh_ub), 1e-10)
 # nh_iters = length(result3[:past_upper_bound])
 
-# --- 3. C&CG Benders ---
-ccg_lb = result3[:lower_bound]
-ccg_ub = result3[:obj_val]
-ccg_gap = abs(ccg_ub - ccg_lb) / max(abs(ccg_ub), 1e-10)
-ccg_iters = length(result3[:history][:ccg_iter])
-ccg_J = length(result3[:active_vertices])
+# # --- 3. C&CG Benders ---
+# ccg_lb = result3[:lower_bound]
+# ccg_ub = result3[:obj_val]
+# ccg_gap = abs(ccg_ub - ccg_lb) / max(abs(ccg_ub), 1e-10)
+# ccg_iters = length(result3[:history][:ccg_iter])
+# ccg_J = length(result3[:active_vertices])
 
-# --- Summary Table ---
-header = "  " * rpad("Algorithm", 30) * rpad("Time(s)", 10) * rpad("LB", 12) * rpad("UB", 12) * rpad("Gap(%)", 10) * "Iters"
-println(header)
-println("  " * "-"^76)
-println("  " * rpad("0. Full Model (Pajarito)", 30) * rpad(round(results["full_model"], digits=2), 10) *
-    rpad(obj0_str, 12) * rpad(obj0_str, 12) * rpad("0.0", 10) * "-")
-println("  " * rpad("1. Strict Benders", 30) * rpad(round(results["strict_benders"], digits=2), 10) *
-    rpad(round(sb_lb, digits=6), 12) * rpad(round(sb_ub, digits=6), 12) *
-    rpad(round(sb_gap*100, digits=2), 10) * "$sb_iters")
-println("  " * rpad("2. TR Dual (T,T)", 30) * rpad(round(results["tr_dual"], digits=2), 10) *
-    rpad(round(nd_lb, digits=6), 12) * rpad(round(nd_ub, digits=6), 12) *
-    rpad(round(nd_gap*100, digits=2), 10) * "$nd_iters")
-println("  " * rpad("2.5. Scenario-Decomposed", 30) * rpad(round(results["scenario_decomposed"], digits=2), 10) *
-    rpad(round(sd_lb, digits=6), 12) * rpad(round(sd_ub, digits=6), 12) *
-    rpad(round(sd_gap*100, digits=2), 10) * "$sd_iters")
-# println("  " * rpad("3. TR Hybrid (T,T)", 30) * rpad(round(results["tr_hybrid"], digits=2), 10) *
-#     rpad(round(nh_lb, digits=6), 12) * rpad(round(nh_ub, digits=6), 12) *
-#     rpad(round(nh_gap*100, digits=2), 10) * "$nh_iters")
-println("  " * rpad("3. C&CG Benders", 30) * rpad(round(results["ccg_benders"], digits=2), 10) *
-    rpad(round(ccg_lb, digits=6), 12) * rpad(round(ccg_ub, digits=6), 12) *
-    rpad(round(ccg_gap*100, digits=2), 10) * "$ccg_iters (|J|=$ccg_J)")
-println("  " * "-"^76)
+# # --- Summary Table ---
+# header = "  " * rpad("Algorithm", 30) * rpad("Time(s)", 10) * rpad("LB", 12) * rpad("UB", 12) * rpad("Gap(%)", 10) * "Iters"
+# println(header)
+# println("  " * "-"^76)
+# println("  " * rpad("0. Full Model (Pajarito)", 30) * rpad(round(results["full_model"], digits=2), 10) *
+#     rpad(obj0_str, 12) * rpad(obj0_str, 12) * rpad("0.0", 10) * "-")
+# println("  " * rpad("1. Strict Benders", 30) * rpad(round(results["strict_benders"], digits=2), 10) *
+#     rpad(round(sb_lb, digits=6), 12) * rpad(round(sb_ub, digits=6), 12) *
+#     rpad(round(sb_gap*100, digits=2), 10) * "$sb_iters")
+# println("  " * rpad("2. TR Dual (T,T)", 30) * rpad(round(results["tr_dual"], digits=2), 10) *
+#     rpad(round(nd_lb, digits=6), 12) * rpad(round(nd_ub, digits=6), 12) *
+#     rpad(round(nd_gap*100, digits=2), 10) * "$nd_iters")
+# println("  " * rpad("2.5. Scenario-Decomposed", 30) * rpad(round(results["scenario_decomposed"], digits=2), 10) *
+#     rpad(round(sd_lb, digits=6), 12) * rpad(round(sd_ub, digits=6), 12) *
+#     rpad(round(sd_gap*100, digits=2), 10) * "$sd_iters")
+# # println("  " * rpad("3. TR Hybrid (T,T)", 30) * rpad(round(results["tr_hybrid"], digits=2), 10) *
+# #     rpad(round(nh_lb, digits=6), 12) * rpad(round(nh_ub, digits=6), 12) *
+# #     rpad(round(nh_gap*100, digits=2), 10) * "$nh_iters")
+# println("  " * rpad("3. C&CG Benders", 30) * rpad(round(results["ccg_benders"], digits=2), 10) *
+#     rpad(round(ccg_lb, digits=6), 12) * rpad(round(ccg_ub, digits=6), 12) *
+#     rpad(round(ccg_gap*100, digits=2), 10) * "$ccg_iters (|J|=$ccg_J)")
+# println("  " * "-"^76)
 
 # UB 일치 확인 (best feasible solution 비교)
-all_ubs = filter(!isnan, [sb_ub, sd_ub, nd_ub, ccg_ub])
+all_ubs = filter(!isnan, [sb_ub,  nd_ub])
 if length(all_ubs) >= 2
     max_ub_gap = maximum(abs(a - b) for a in all_ubs for b in all_ubs)
     if max_ub_gap < 1e-3
@@ -427,9 +428,9 @@ for (name, opt_sol, vrs, reported_obj) in methods_to_verify
     GC.gc()
     # Dualized outer subproblem 구축 및 풀기
     osp_model, osp_vars, osp_data = build_dualized_outer_subproblem(
-        network, S, ϕU, λU, γ, w, v, uncertainty_set,
+        network, S, ϕU_hat, ϕU_tilde, λU, γ, w, v, uncertainty_set,
         Mosek.Optimizer, λ_val, x_val, h_val, ψ0_val;
-        πU=πU, yU=yU, ytsU=ytsU)
+        πU_hat=πU_hat, πU_tilde=πU_tilde, yU=yU, ytsU=ytsU)
 
     optimize!(osp_model)
     osp_status = termination_status(osp_model)

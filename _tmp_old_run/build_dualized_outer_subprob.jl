@@ -36,7 +36,7 @@ Note:
 - ν (nu) is a DECISION VARIABLE (appears in objective and constraint 14l)
 - v is a PARAMETER (appears in COP matrix Φ - vW)
 """
-function build_dualized_outer_subproblem(network, S, ϕU_hat, ϕU_tilde, λU, γ, w, v, uncertainty_set, optimizer, λ, x, h, ψ0; πU_hat=ϕU_hat, πU_tilde=ϕU_tilde, yU=ϕU_tilde, ytsU=ϕU_tilde, scaling_S=S)
+function build_dualized_outer_subproblem(network, S, ϕU, λU, γ, w, v, uncertainty_set, optimizer, λ, x, h, ψ0; πU=ϕU, yU=ϕU, ytsU=ϕU, scaling_S=S)
     # Extract network dimensions
     num_nodes = length(network.nodes)
     num_arcs = length(network.arcs)-1 #dummy arc 제외
@@ -46,10 +46,7 @@ function build_dualized_outer_subproblem(network, S, ϕU_hat, ϕU_tilde, λU, γ
     N = network.N
     N_y = N[:, 1:num_arcs]  # Regular arcs: (|V|-1) × |A|
     N_ts = N[:, end]         # Dummy arc: (|V|-1) × 1
-    R = uncertainty_set[:R]
-    r_dict_hat, r_dict_tilde = uncertainty_set[:r_dict_hat], uncertainty_set[:r_dict_tilde]
-    xi_bar = uncertainty_set[:xi_bar]
-    epsilon_hat, epsilon_tilde = uncertainty_set[:epsilon_hat], uncertainty_set[:epsilon_tilde]
+    R, r_dict, xi_bar, epsilon = uncertainty_set[:R], uncertainty_set[:r_dict], uncertainty_set[:xi_bar], uncertainty_set[:epsilon]
     # Dummy arc index (t,s)
     dummy_arc_idx = findfirst(arc -> arc == ("t", "s"), network.arcs)
     E = ones(num_arcs, num_arcs+1) # num_arcs × num_arcs+1 matrix of ones
@@ -63,7 +60,7 @@ function build_dualized_outer_subproblem(network, S, ϕU_hat, ϕU_tilde, λU, γ
     println("  Nodes: $num_nodes, Arcs: $num_arcs, Scenarios: $S")
     println("  Interdictable arcs: $num_interdictable")
     println("  Dummy arc index: $dummy_arc_idx")
-    println("  Parameters: ϕU_hat = $ϕU_hat, ϕU_tilde = $ϕU_tilde, λU = $λU, γ = $γ, w = $w, v = $v")
+    println("  Parameters: ϕU = $ϕU, λU = $λU, γ = $γ, w = $w, v = $v")
 
     # =========================================================================
     # DECISION VARIABLES
@@ -167,18 +164,18 @@ function build_dualized_outer_subproblem(network, S, ϕU_hat, ϕU_tilde, λU, γ
     diag_λ_ψ = Diagonal(λ*ones(num_arcs)-v.*ψ0)
     # s에 대해 summing이 필요하다면 sum over s 추가
     # matrix inner product: sum(M .* N)
-    obj_term1 = [-ϕU_hat * sum(Uhat1[s, :, :] .* diag_x_E) - ϕU_tilde * sum(Utilde1[s, :, :] .* diag_x_E) for s=1:S]
-    obj_term2 = [-ϕU_hat * sum(Uhat3[s, :, :] .* (E-diag_x_E)) - ϕU_tilde * sum(Utilde3[s, :, :] .* (E-diag_x_E)) for s=1:S]
+    obj_term1 = [-ϕU * sum((Uhat1[s, :, :] + Utilde1[s, :, :]) .* diag_x_E) for s=1:S]
+    obj_term2 = [-ϕU * sum((Uhat3[s, :, :] + Utilde3[s, :, :]) .* (E-diag_x_E)) for s=1:S]
     obj_term3 = [(d0')* βhat1_1[s,:] for s=1:S] #이거만 maximize하면 dual infeasible
     obj_term4 = [sum(Ztilde1_3[s, :, :] .* (diag_λ_ψ * diagm(xi_bar[s]))) for s=1:S]
     obj_term5 = [(λ*d0')* βtilde1_1[s,:] for s=1:S] #이거만 maximize하면 dual infeasible
     obj_term6 = [-(h+diag_λ_ψ*xi_bar[s])'* βtilde1_3[s,:] for s=1:S]
-    obj_term_ub_hat = [-ϕU_hat * sum(Phat1_Φ[s,:,:]) - πU_hat * sum(Phat1_Π[s,:,:]) for s=1:S]
-    obj_term_lb_hat = [-ϕU_hat * sum(Phat2_Φ[s,:,:]) - πU_hat * sum(Phat2_Π[s,:,:]) for s=1:S]
-    obj_term_ub_tilde = [-ϕU_tilde * sum(Ptilde1_Φ[s,:,:]) - πU_tilde * sum(Ptilde1_Π[s,:,:]) - yU * sum(Ptilde1_Y[s,:,:]) - ytsU * sum(Ptilde1_Yts[s,:]) for s=1:S]
-    obj_term_lb_tilde = [-ϕU_tilde * sum(Ptilde2_Φ[s,:,:]) - πU_tilde * sum(Ptilde2_Π[s,:,:]) - yU * sum(Ptilde2_Y[s,:,:]) - ytsU * sum(Ptilde2_Yts[s,:]) for s=1:S]
+    obj_term_ub_hat = [-ϕU * sum(Phat1_Φ[s,:,:]) - πU * sum(Phat1_Π[s,:,:]) for s=1:S]
+    obj_term_lb_hat = [-ϕU * sum(Phat2_Φ[s,:,:]) - πU * sum(Phat2_Π[s,:,:]) for s=1:S]
+    obj_term_ub_tilde = [-ϕU * sum(Ptilde1_Φ[s,:,:]) - πU * sum(Ptilde1_Π[s,:,:]) - yU * sum(Ptilde1_Y[s,:,:]) - ytsU * sum(Ptilde1_Yts[s,:]) for s=1:S]
+    obj_term_lb_tilde = [-ϕU * sum(Ptilde2_Φ[s,:,:]) - πU * sum(Ptilde2_Π[s,:,:]) - yU * sum(Ptilde2_Y[s,:,:]) - ytsU * sum(Ptilde2_Yts[s,:]) for s=1:S]
     @objective(model, Max, (sum(obj_term1) + sum(obj_term2) + sum(obj_term3) + sum(obj_term4) + sum(obj_term5) + sum(obj_term6)
-    + sum(obj_term_ub_hat) + sum(obj_term_lb_hat) + sum(obj_term_ub_tilde) + sum(obj_term_lb_tilde)))
+    + sum(obj_term_ub_hat) + sum(obj_term_lb_hat) + sum(obj_term_ub_tilde) + sum(obj_term_lb_tilde)) / scaling_S)
     # =========================================================================
     # CONSTRAINTS
     # =========================================================================
@@ -196,8 +193,8 @@ function build_dualized_outer_subproblem(network, S, ϕU_hat, ϕU_tilde, λU, γ
     @constraint(model, [s=1:S], Mhat[s, num_arcs+1, num_arcs+1] <= 1/scaling_S)
     @constraint(model, [s=1:S], Mtilde[s, num_arcs+1, num_arcs+1] == 1/scaling_S)
     @constraint(model, sum(α) <= w*(1/scaling_S))
-    @constraint(model, [s=1:S], tr(Mhat[s, 1:num_arcs, 1:num_arcs]) - Mhat[s,end,end]*(epsilon_hat^2) <= 0)
-    @constraint(model, [s=1:S], tr(Mtilde[s, 1:num_arcs, 1:num_arcs]) - Mtilde[s,end,end]*(epsilon_tilde^2) <= 0)
+    @constraint(model, [s=1:S], tr(Mhat[s, 1:num_arcs, 1:num_arcs]) - Mhat[s,end,end]*(epsilon^2) <= 0)
+    @constraint(model, [s=1:S], tr(Mtilde[s, 1:num_arcs, 1:num_arcs]) - Mtilde[s,end,end]*(epsilon^2) <= 0)
     # --- Matrix Constraints ---
     for s in 1:S
         D_s = diagm(xi_bar[s])
@@ -321,13 +318,13 @@ function build_dualized_outer_subproblem(network, S, ϕU_hat, ϕU_tilde, λU, γ
     # --- Ytilde_0 constraint
     @constraint(model, [s=1:S], -N_y' * βtilde1_2[s,:]-βtilde1_3[s,:]+βtilde1_6[s,:]+ Ptilde1_Y[s,:,end] - Ptilde2_Y[s,:,end] .== 0)
     # --- From Λhat1 ---
-    @constraint(model, [s=1:S], Zhat1[s,:,:]*R[s]' + βhat1[s,:]*r_dict_hat[s]' + Γhat1[s,:,:] .== 0.0)
+    @constraint(model, [s=1:S], Zhat1[s,:,:]*R[s]' + βhat1[s,:]*r_dict[s]' + Γhat1[s,:,:] .== 0.0)
     # --- From Λhat2 ---
-    @constraint(model, [s=1:S], Zhat2[s,:,:]*R[s]' + βhat2[s,:]*r_dict_hat[s]' + Γhat2[s,:,:] .== 0.0)
+    @constraint(model, [s=1:S], Zhat2[s,:,:]*R[s]' + βhat2[s,:]*r_dict[s]' + Γhat2[s,:,:] .== 0.0)
     # --- From Λtilde1 ---
-    @constraint(model, [s=1:S], Ztilde1[s,:,:]*R[s]' + βtilde1[s,:]*r_dict_tilde[s]' + Γtilde1[s,:,:] .== 0.0)
+    @constraint(model, [s=1:S], Ztilde1[s,:,:]*R[s]' + βtilde1[s,:]*r_dict[s]' + Γtilde1[s,:,:] .== 0.0)
     # --- From Λtilde2 ---
-    @constraint(model, [s=1:S], Ztilde2[s,:,:]*R[s]' + βtilde2[s,:]*r_dict_tilde[s]' + Γtilde2[s,:,:] .== 0.0)
+    @constraint(model, [s=1:S], Ztilde2[s,:,:]*R[s]' + βtilde2[s,:]*r_dict[s]' + Γtilde2[s,:,:] .== 0.0)
 
     vars = Dict(
         :α => α,
@@ -366,10 +363,8 @@ function build_dualized_outer_subproblem(network, S, ϕU_hat, ϕU_tilde, λU, γ
     data = Dict(
         :E => E,
         :v => v,
-        :ϕU_hat => ϕU_hat,
-        :ϕU_tilde => ϕU_tilde,
-        :πU_hat => πU_hat,
-        :πU_tilde => πU_tilde,
+        :ϕU => ϕU,
+        :πU => πU,
         :yU => yU,
         :ytsU => ytsU,
         :S => S,

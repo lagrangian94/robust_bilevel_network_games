@@ -175,12 +175,13 @@ function build_full_2SP_model(network, S, ϕU, λU, γ, w, v, uncertainty_set; o
     # =========================================================================
 
     # --- (14a) Objective function ---
-    @objective(model, Min, (1/S)*sum(ηhat[s] + ηtilde[s] for s in 1:S) + (1/S)*w * nu)
+    @objective(model, Min, (1/S)*sum(ηhat[s] + ηtilde[s] for s in 1:S) + w * nu)
 
     # --- (14b) Initial resource and domain constraints ---
     if isnothing(λ_fixed)
         @constraint(model, resource_budget, sum(h) <= λ * w)
-        @constraint(model, sum(x) <= γ) 
+        @constraint(model, λ >= 0.001)
+        @constraint(model, sum(x) <= γ)
         # x must be binary, and only interdictable arcs can be selected
         for i in 1:num_arcs
             if !network.interdictable_arcs[i]
@@ -227,7 +228,7 @@ function build_full_2SP_model(network, S, ϕU, λU, γ, w, v, uncertainty_set; o
 
     # --- (14l) Budget constraint for dual variables ---
     for k in 1:num_arcs
-        @constraint(model, sum(μtilde[s,k] + μhat[s,k] for s in 1:S) <= nu)
+        @constraint(model, sum(μtilde[s,k] + μhat[s,k] for s in 1:S) <= S*nu)
     end
 
     println("  ✓ Budget constraint (14l) added")

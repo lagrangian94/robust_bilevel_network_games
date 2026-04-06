@@ -1,0 +1,454 @@
+================================================================================
+네트워크 인스턴스 선택
+================================================================================
+  1. Grid network
+  2. Sioux Falls
+  3. Nobel US
+  4. Abilene
+  5. Polska
+선택 (1-5): 2
+시나리오 수 S: 20
+Cut strengthening (none/mw/sherali): mw
+LDR adjacency mode (both/head/tail/self) [both]: self
+
+================================================================================
+INSTANCE: sioux_falls (S=20, cuts=mw, ldr_mode=self)
+================================================================================
+============================================================
+Sioux-Falls Network Summary
+============================================================
+Number of nodes: 24
+Number of arcs (incl. dummy): 77
+Number of regular arcs: 76
+Number of interdictable arcs: 76
+Source node: s (1)
+Sink node: t (24)
+Node-incidence matrix N dimensions: (23, 77)
+
+Sparsity Information:
+  Arc-arc adjacency: 864 / 5776 pairs (85.0% sparse)
+  Node-arc incidence: 148 / 1748 pairs (91.5% sparse)
+
+First 15 arcs:
+  Arc 1: ("10", "11") [Interdictable: ✓]
+  Arc 2: ("10", "15") [Interdictable: ✓]
+  Arc 3: ("10", "16") [Interdictable: ✓]
+  Arc 4: ("10", "17") [Interdictable: ✓]
+  Arc 5: ("10", "9") [Interdictable: ✓]
+  Arc 6: ("11", "10") [Interdictable: ✓]
+  Arc 7: ("11", "12") [Interdictable: ✓]
+  Arc 8: ("11", "14") [Interdictable: ✓]
+  Arc 9: ("11", "4") [Interdictable: ✓]
+  Arc 10: ("12", "11") [Interdictable: ✓]
+  Arc 11: ("12", "13") [Interdictable: ✓]
+  Arc 12: ("12", "3") [Interdictable: ✓]
+  Arc 13: ("13", "12") [Interdictable: ✓]
+  Arc 14: ("13", "t") [Interdictable: ✓]
+  Arc 15: ("14", "11") [Interdictable: ✓]
+============================================================
+  Interdiction budget: γ = ceil(0.1 × 76) = 8
+  Recovery budget: w = ρ·γ·c̄ = 0.2 × 8 × 5.61 = 8.9811
+  LDR bounds: ϕU=2.0, πU=2.0, yU=2.0, ytsU=2.0
+
+================================================================================
+1. TR NESTED BENDERS — DUAL (outer=true, inner=true)
+================================================================================
+Set parameter Username
+Set parameter LicenseID to value 2742039
+Academic license - for non-commercial use only - expires 2026-11-20
+[ Info: Initial status OPTIMAL
+Set parameter Username
+Set parameter LicenseID to value 2742039
+Academic license - for non-commercial use only - expires 2026-11-20
+Building dualized outer subproblem...
+  Nodes: 24, Arcs: 76, Scenarios: 1
+  Interdictable arcs: 76
+  Dummy arc index: 77
+  Parameters: ϕU = 2.0, λU = 2.0, γ = 8, w = 8.9811, v = 1.0
+Building dualized outer subproblem...
+  Nodes: 24, Arcs: 76, Scenarios: 1
+  Interdictable arcs: 76
+  Dummy arc index: 77
+  Parameters: ϕU = 2.0, λU = 2.0, γ = 8, w = 8.9811, v = 1.0
+Building dualized outer subproblem...
+  Nodes: 24, Arcs: 76, Scenarios: 1
+  Interdictable arcs: 76
+  Dummy arc index: 77
+  Parameters: ϕU = 2.0, λU = 2.0, γ = 8, w = 8.9811, v = 1.0
+Building dualized outer subproblem...
+  Nodes: 24, Arcs: 76, Scenarios: 1
+  Interdictable arcs: 76
+  Dummy arc index: 77
+  Parameters: ϕU = 2.0, λU = 2.0, γ = 8, w = 8.9811, v = 1.0
+Building dualized outer subproblem...
+  Nodes: 24, Arcs: 76, Scenarios: 1
+  Interdictable arcs: 76
+  Dummy arc index: 77
+  Parameters: ϕU = 2.0, λU = 2.0, γ = 8, w = 8.9811, v = 1.0
+Building dualized outer subproblem...
+  Nodes: 24, Arcs: 76, Scenarios: 1
+  Interdictable arcs: 76
+  Dummy arc index: 77
+  Parameters: ϕU = 2.0, λU = 2.0, γ = 8, w = 8.9811, v = 1.0
+Building dualized outer subproblem...
+  Nodes: 24, Arcs: 76, Scenarios: 1
+  Interdictable arcs: 76
+  Dummy arc index: 77
+  Parameters: ϕU = 2.0, λU = 2.0, γ = 8, w = 8.9811, v = 1.0
+Building dualized outer subproblem...
+  Nodes: 24, Arcs: 76, Scenarios: 1
+  Interdictable arcs: 76
+  Dummy arc index: 77
+  Parameters: ϕU = 2.0, λU = 2.0, γ = 8, w = 8.9811, v = 1.0
+Building dualized outer subproblem...
+  Nodes: 24, Arcs: 76, Scenarios: 1
+  Interdictable arcs: 76
+  Dummy arc index: 77
+  Parameters: ϕU = 2.0, λU = 2.0, γ = 8, w = 8.9811, v = 1.0
+Building dualized outer subproblem...
+  Nodes: 24, Arcs: 76, Scenarios: 1
+  Interdictable arcs: 76
+  Dummy arc index: 77
+  Parameters: ϕU = 2.0, λU = 2.0, γ = 8, w = 8.9811, v = 1.0
+Building dualized outer subproblem...
+  Nodes: 24, Arcs: 76, Scenarios: 1
+  Interdictable arcs: 76
+  Dummy arc index: 77
+  Parameters: ϕU = 2.0, λU = 2.0, γ = 8, w = 8.9811, v = 1.0
+Building dualized outer subproblem...
+  Nodes: 24, Arcs: 76, Scenarios: 1
+  Interdictable arcs: 76
+  Dummy arc index: 77
+  Parameters: ϕU = 2.0, λU = 2.0, γ = 8, w = 8.9811, v = 1.0
+Building dualized outer subproblem...
+  Nodes: 24, Arcs: 76, Scenarios: 1
+  Interdictable arcs: 76
+  Dummy arc index: 77
+  Parameters: ϕU = 2.0, λU = 2.0, γ = 8, w = 8.9811, v = 1.0
+Building dualized outer subproblem...
+  Nodes: 24, Arcs: 76, Scenarios: 1
+  Interdictable arcs: 76
+  Dummy arc index: 77
+  Parameters: ϕU = 2.0, λU = 2.0, γ = 8, w = 8.9811, v = 1.0
+Building dualized outer subproblem...
+  Nodes: 24, Arcs: 76, Scenarios: 1
+  Interdictable arcs: 76
+  Dummy arc index: 77
+  Parameters: ϕU = 2.0, λU = 2.0, γ = 8, w = 8.9811, v = 1.0
+Building dualized outer subproblem...
+  Nodes: 24, Arcs: 76, Scenarios: 1
+  Interdictable arcs: 76
+  Dummy arc index: 77
+  Parameters: ϕU = 2.0, λU = 2.0, γ = 8, w = 8.9811, v = 1.0
+Building dualized outer subproblem...
+  Nodes: 24, Arcs: 76, Scenarios: 1
+  Interdictable arcs: 76
+  Dummy arc index: 77
+  Parameters: ϕU = 2.0, λU = 2.0, γ = 8, w = 8.9811, v = 1.0
+Building dualized outer subproblem...
+  Nodes: 24, Arcs: 76, Scenarios: 1
+  Interdictable arcs: 76
+  Dummy arc index: 77
+  Parameters: ϕU = 2.0, λU = 2.0, γ = 8, w = 8.9811, v = 1.0
+Building dualized outer subproblem...
+  Nodes: 24, Arcs: 76, Scenarios: 1
+  Interdictable arcs: 76
+  Dummy arc index: 77
+  Parameters: ϕU = 2.0, λU = 2.0, γ = 8, w = 8.9811, v = 1.0
+Building dualized outer subproblem...
+  Nodes: 24, Arcs: 76, Scenarios: 1
+  Interdictable arcs: 76
+  Dummy arc index: 77
+  Parameters: ϕU = 2.0, λU = 2.0, γ = 8, w = 8.9811, v = 1.0
+Building dualized outer subproblem...
+  Nodes: 24, Arcs: 76, Scenarios: 1
+  Interdictable arcs: 76
+  Dummy arc index: 77
+  Parameters: ϕU = 2.0, λU = 2.0, γ = 8, w = 8.9811, v = 1.0
+Building dualized outer subproblem...
+  Nodes: 24, Arcs: 76, Scenarios: 1
+  Interdictable arcs: 76
+  Dummy arc index: 77
+  Parameters: ϕU = 2.0, λU = 2.0, γ = 8, w = 8.9811, v = 1.0
+Building dualized outer subproblem...
+  Nodes: 24, Arcs: 76, Scenarios: 1
+  Interdictable arcs: 76
+  Dummy arc index: 77
+  Parameters: ϕU = 2.0, λU = 2.0, γ = 8, w = 8.9811, v = 1.0
+Building dualized outer subproblem...
+  Nodes: 24, Arcs: 76, Scenarios: 1
+  Interdictable arcs: 76
+  Dummy arc index: 77
+  Parameters: ϕU = 2.0, λU = 2.0, γ = 8, w = 8.9811, v = 1.0
+Building dualized outer subproblem...
+  Nodes: 24, Arcs: 76, Scenarios: 1
+  Interdictable arcs: 76
+  Dummy arc index: 77
+  Parameters: ϕU = 2.0, λU = 2.0, γ = 8, w = 8.9811, v = 1.0
+Building dualized outer subproblem...
+  Nodes: 24, Arcs: 76, Scenarios: 1
+  Interdictable arcs: 76
+  Dummy arc index: 77
+  Parameters: ϕU = 2.0, λU = 2.0, γ = 8, w = 8.9811, v = 1.0
+Building dualized outer subproblem...
+  Nodes: 24, Arcs: 76, Scenarios: 1
+  Interdictable arcs: 76
+  Dummy arc index: 77
+  Parameters: ϕU = 2.0, λU = 2.0, γ = 8, w = 8.9811, v = 1.0
+Building dualized outer subproblem...
+  Nodes: 24, Arcs: 76, Scenarios: 1
+  Interdictable arcs: 76
+  Dummy arc index: 77
+  Parameters: ϕU = 2.0, λU = 2.0, γ = 8, w = 8.9811, v = 1.0
+Building dualized outer subproblem...
+  Nodes: 24, Arcs: 76, Scenarios: 1
+  Interdictable arcs: 76
+  Dummy arc index: 77
+  Parameters: ϕU = 2.0, λU = 2.0, γ = 8, w = 8.9811, v = 1.0
+Building dualized outer subproblem...
+  Nodes: 24, Arcs: 76, Scenarios: 1
+  Interdictable arcs: 76
+  Dummy arc index: 77
+  Parameters: ϕU = 2.0, λU = 2.0, γ = 8, w = 8.9811, v = 1.0
+Building dualized outer subproblem...
+  Nodes: 24, Arcs: 76, Scenarios: 1
+  Interdictable arcs: 76
+  Dummy arc index: 77
+  Parameters: ϕU = 2.0, λU = 2.0, γ = 8, w = 8.9811, v = 1.0
+Building dualized outer subproblem...
+  Nodes: 24, Arcs: 76, Scenarios: 1
+  Interdictable arcs: 76
+  Dummy arc index: 77
+  Parameters: ϕU = 2.0, λU = 2.0, γ = 8, w = 8.9811, v = 1.0
+Building dualized outer subproblem...
+  Nodes: 24, Arcs: 76, Scenarios: 1
+  Interdictable arcs: 76
+  Dummy arc index: 77
+  Parameters: ϕU = 2.0, λU = 2.0, γ = 8, w = 8.9811, v = 1.0
+Building dualized outer subproblem...
+  Nodes: 24, Arcs: 76, Scenarios: 1
+  Interdictable arcs: 76
+  Dummy arc index: 77
+  Parameters: ϕU = 2.0, λU = 2.0, γ = 8, w = 8.9811, v = 1.0
+Building dualized outer subproblem...
+  Nodes: 24, Arcs: 76, Scenarios: 1
+  Interdictable arcs: 76
+  Dummy arc index: 77
+  Parameters: ϕU = 2.0, λU = 2.0, γ = 8, w = 8.9811, v = 1.0
+Building dualized outer subproblem...
+  Nodes: 24, Arcs: 76, Scenarios: 1
+  Interdictable arcs: 76
+  Dummy arc index: 77
+  Parameters: ϕU = 2.0, λU = 2.0, γ = 8, w = 8.9811, v = 1.0
+Building dualized outer subproblem...
+  Nodes: 24, Arcs: 76, Scenarios: 1
+  Interdictable arcs: 76
+  Dummy arc index: 77
+  Parameters: ϕU = 2.0, λU = 2.0, γ = 8, w = 8.9811, v = 1.0
+Building dualized outer subproblem...
+  Nodes: 24, Arcs: 76, Scenarios: 1
+  Interdictable arcs: 76
+  Dummy arc index: 77
+  Parameters: ϕU = 2.0, λU = 2.0, γ = 8, w = 8.9811, v = 1.0
+Building dualized outer subproblem...
+  Nodes: 24, Arcs: 76, Scenarios: 1
+  Interdictable arcs: 76
+  Dummy arc index: 77
+  Parameters: ϕU = 2.0, λU = 2.0, γ = 8, w = 8.9811, v = 1.0
+Building dualized outer subproblem...
+  Nodes: 24, Arcs: 76, Scenarios: 1
+  Interdictable arcs: 76
+  Dummy arc index: 77
+  Parameters: ϕU = 2.0, λU = 2.0, γ = 8, w = 8.9811, v = 1.0
+[ Info: [Outer-dual] Iteration 1 (B_bin=1, Stage=1/4)
+[ Info:     [Inner] Iteration 1
+[ Info: Poor improvement: Reducing B_conti
+subproblem objective: 0.5431419263818685
+[ Info: Optimality cut added
+[ Info:     [Inner] Iteration 2
+[ Info: Very good improvement: Expanding B_conti
+subproblem objective: 0.6805221315874926
+[ Info: Optimality cut added
+[ Info:     [Inner] Iteration 3
+[ Info: Inner converged within TR: expanding B_conti to 0.018/0.4491
+[ Info:     [Inner] Iteration 4
+[ Info: Very good improvement: Expanding B_conti
+subproblem objective: 0.6881205626101817
+[ Info: Optimality cut added
+[ Info:     [Inner] Iteration 5
+[ Info: Very good improvement: Expanding B_conti
+subproblem objective: 0.6958600487590292
+[ Info: Optimality cut added
+[ Info:     [Inner] Iteration 6
+[ Info: Very good improvement: Expanding B_conti
+subproblem objective: 0.7053686920734326
+[ Info: Optimality cut added
+[ Info:     [Inner] Iteration 7
+[ Info: Poor improvement: Reducing B_conti
+subproblem objective: 0.7026107707961639
+[ Info: Optimality cut added
+[ Info:     [Inner] Iteration 8
+[ Info: Very good improvement: Expanding B_conti
+subproblem objective: 0.7079932925373783
+[ Info: Optimality cut added
+[ Info:     [Inner] Iteration 9
+[ Info: Moderate improvement: Keeping B_conti
+subproblem objective: 0.7081625513643348
+[ Info: Optimality cut added
+[ Info:     [Inner] Iteration 10
+[ Info: Moderate improvement: Keeping B_conti
+subproblem objective: 0.7082895325391236
+[ Info: Optimality cut added
+[ Info:     [Inner] Iteration 11
+[ Info: Inner converged within TR: expanding B_conti to 0.4491/0.4491
+[ Info:     [Inner] Iteration 12
+[ Info: Termination condition met
+model_estimate: 0.7083261379094804, subprob_obj: 0.7082912635227936
+  │ subprob_obj = 0.708291,  inner_iters = 12
+  │ LB = 0.0,  localUB = 0.708291,  globalUB = 0.708291,  gap = 1.0
+  │ past_major_subprob_obj[end] = 0.708291,  improvement = 0.0,  β_dynamic = 7.083e-5
+  │   null step
+[ Info: [Outer-dual] Stage 1/4 Iter 1: localLB=0.0  localUB=0.7083  localGap=1.0  (globalUB=0.7083; 765.6s)
+avg of leader and follower objective: 0.7082912697528958, cut_info[:obj_val]: 0.7082912635227936
+Outer loop iteration: 1
+  │ opt_cut at x_sol = 14.165825 (should ≈ subprob*S = 14.165825)
+subproblem objective: 0.7082912635227936
+[ Info: Optimality cut added
+  │ [Best-LB cut] val at x_sol = 14.165825
+  │ mw_cut_cp1 at x_sol = 11.904002  (diff from opt = -2.261824)
+[ Info:   1 mw strengthening cuts added
+[ Info:   [Mini-Benders] iter 1: LB=0.0, α-fixed UB=0.708194, gap=1.0
+[ Info:   [Mini-Benders] iter 2: LB=0.0, α-fixed UB=0.714162, gap=1.0
+[ Info:   [Mini-Benders] LB stagnated at iter 3 (LB=0.0, history=[0.0, 0.0, 0.0]), stopping.
+  │ [Mini-Benders] 4 extra cuts added (α-fixed, max_iter=3)
+  └──────────────────────────────────────────────
+[ Info: [Outer-dual] Iteration 2 (B_bin=1, Stage=1/4)
+  [Subgrad] obj=0.542761, ‖μ‖=72.6959, step=0.1
+  │ subprob_obj = 0.542761,  inner_iters = 1 (inexact)
+  │ LB = 0.0,  localUB = 0.708291,  globalUB = 0.708291,  gap = 1.0
+  │ (inexact solve — SS skip)
+[ Info: [Outer-dual] Stage 1/4 Iter 2: localLB=0.0  localUB=0.7083  localGap=1.0  (globalUB=0.7083; 1534.8s)
+  │ opt_cut at x_sol = 10.85523 (should ≈ subprob*S = 10.85523)
+subproblem objective: 0.5427614893062058
+[ Info: Optimality cut added
+  │ mw_cut_cp1 at x_sol = 9.942232  (diff from opt = -0.912998)
+[ Info:   1 mw strengthening cuts added
+  └──────────────────────────────────────────────
+[ Info: [Outer-dual] Iteration 3 (B_bin=1, Stage=1/4)
+[ Info:     [Inner] Iteration 1
+[ Info: Poor improvement: Reducing B_conti
+subproblem objective: 0.4116700240382765
+[ Info: Optimality cut added
+[ Info:     [Inner] Iteration 2
+[ Info: Very good improvement: Expanding B_conti
+subproblem objective: 0.5584572210011752
+[ Info: Optimality cut added
+[ Info:     [Inner] Iteration 3
+[ Info: Inner converged within TR: expanding B_conti to 0.018/0.4491
+[ Info:     [Inner] Iteration 4
+[ Info: Very good improvement: Expanding B_conti
+subproblem objective: 0.5745231583493648
+[ Info: Optimality cut added
+[ Info:     [Inner] Iteration 5
+[ Info: Very good improvement: Expanding B_conti
+subproblem objective: 0.5935926106071246
+[ Info: Optimality cut added
+[ Info:     [Inner] Iteration 6
+[ Info: Very good improvement: Expanding B_conti
+subproblem objective: 0.6120382280455158
+[ Info: Optimality cut added
+[ Info:     [Inner] Iteration 7
+[ Info: Poor improvement: Reducing B_conti
+subproblem objective: 0.5879334360340731
+[ Info: Optimality cut added
+[ Info:     [Inner] Iteration 8
+[ Info: Poor improvement: Reducing B_conti
+subproblem objective: 0.6096326233638438
+[ Info: Optimality cut added
+[ Info:     [Inner] Iteration 9
+[ Info: Poor improvement: Reducing B_conti
+subproblem objective: 0.6116308779687547
+[ Info: Optimality cut added
+[ Info:     [Inner] Iteration 10
+[ Info: Very good improvement: Expanding B_conti
+subproblem objective: 0.6122533931596388
+[ Info: Optimality cut added
+[ Info:     [Inner] Iteration 11
+[ Info: Poor improvement: Reducing B_conti
+subproblem objective: 0.6057490584957775
+[ Info: Optimality cut added
+[ Info:     [Inner] Iteration 12
+[ Info: Inner converged within TR: expanding B_conti to 0.4491/0.4491
+[ Info:     [Inner] Iteration 13
+[ Info: Termination condition met
+model_estimate: 0.612439199487988, subprob_obj: 0.6123771968357672
+  │ subprob_obj = 0.612377,  inner_iters = 13
+  │ LB = 0.0,  localUB = 0.612377,  globalUB = 0.612377,  gap = 1.0
+  │ past_major_subprob_obj[end] = 0.612377,  improvement = 0.095914,  β_dynamic = 7.083e-5
+  │ ★ SERIOUS STEP
+[ Info: [Outer-dual] Stage 1/4 Iter 3: localLB=-Inf  localUB=0.6124  localGap=1.0  (globalUB=0.6124; 2492.0s)
+avg of leader and follower objective: 0.6123771986615207, cut_info[:obj_val]: 0.6123771968357672
+Outer loop iteration: 3
+  │ opt_cut at x_sol = 12.247544 (should ≈ subprob*S = 12.247544)
+subproblem objective: 0.6123771968357672
+[ Info: Optimality cut added
+  │ [Best-LB cut] val at x_sol = 12.247544
+  │ mw_cut_cp1 at x_sol = 8.338619  (diff from opt = -3.908924)
+[ Info:   1 mw strengthening cuts added
+[ Info: Updating Trust Region
+  │ TR updated: center=[51], B_bin=1
+[ Info:   [Mini-Benders] iter 1: LB=0.0, α-fixed UB=0.399296, gap=1.0
+[ Info:   [Mini-Benders] iter 2: LB=0.0, α-fixed UB=0.400436, gap=1.0
+[ Info:   [Mini-Benders] LB stagnated at iter 3 (LB=0.0, history=[0.0, 0.0, 0.0]), stopping.
+  │ [Mini-Benders] 4 extra cuts added (α-fixed, max_iter=3)
+  └──────────────────────────────────────────────
+[ Info: [Outer-dual] Iteration 4 (B_bin=1, Stage=1/4)
+  [Subgrad] obj=0.400582, ‖μ‖=22.6469, step=0.1
+  │ subprob_obj = 0.400582,  inner_iters = 1 (inexact)
+  │ LB = 0.0,  localUB = 0.612377,  globalUB = 0.612377,  gap = 1.0
+  │ (inexact solve — SS skip)
+[ Info: [Outer-dual] Stage 1/4 Iter 4: localLB=0.0  localUB=0.6124  localGap=1.0  (globalUB=0.6124; 3232.1s)
+  │ opt_cut at x_sol = 8.011649 (should ≈ subprob*S = 8.011649)
+subproblem objective: 0.4005824374102064
+[ Info: Optimality cut added
+  │ mw_cut_cp1 at x_sol = 7.286189  (diff from opt = -0.72546)
+[ Info:   1 mw strengthening cuts added
+  └──────────────────────────────────────────────
+[ Info: [Outer-dual] Iteration 5 (B_bin=1, Stage=1/4)
+  [Subgrad] obj=0.309247, ‖μ‖=100.9046, step=0.1
+  │ subprob_obj = 0.309247,  inner_iters = 1 (inexact)
+  │ LB = 0.0,  localUB = 0.612377,  globalUB = 0.612377,  gap = 1.0
+  │ (inexact solve — SS skip)
+[ Info: [Outer-dual] Stage 1/4 Iter 5: localLB=0.0  localUB=0.6124  localGap=1.0  (globalUB=0.6124; 3426.2s)
+  │ opt_cut at x_sol = 6.184947 (should ≈ subprob*S = 6.184947)
+subproblem objective: 0.3092473265646113
+[ Info: Optimality cut added
+  │ mw_cut_cp1 at x_sol = 5.660545  (diff from opt = -0.524402)
+[ Info:   1 mw strengthening cuts added
+  └──────────────────────────────────────────────
+[ Info: [Outer-dual] Iteration 6 (B_bin=1, Stage=1/4)
+[ Info:     [Inner] Iteration 1
+[ Info: Poor improvement: Reducing B_conti
+subproblem objective: 0.4656615959189354
+[ Info: Optimality cut added
+[ Info:     [Inner] Iteration 2
+[ Info: Very good improvement: Expanding B_conti
+subproblem objective: 1.219516798903618
+[ Info: Optimality cut added
+[ Info:     [Inner] Iteration 3
+[ Info: Very good improvement: Expanding B_conti
+subproblem objective: 1.228626145883253
+[ Info: Optimality cut added
+[ Info:     [Inner] Iteration 4
+[ Info: Very good improvement: Expanding B_conti
+subproblem objective: 1.2463669957963073
+[ Info: Optimality cut added
+[ Info:     [Inner] Iteration 5
+[ Info: Very good improvement: Expanding B_conti
+subproblem objective: 1.27862562547717
+[ Info: Optimality cut added
+[ Info:     [Inner] Iteration 6
+[ Info: Very good improvement: Expanding B_conti
+subproblem objective: 1.3136534900348393
+[ Info: Optimality cut added
+[ Info:     [Inner] Iteration 7
