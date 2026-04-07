@@ -53,6 +53,7 @@ includet("build_full_model.jl")
 includet("parallel_utils.jl")
 includet("strict_benders.jl")
 includet("build_primal_isp.jl")
+includet("build_lp_isp.jl")
 includet("compact_ldr_utils.jl")
 
 
@@ -1361,6 +1362,231 @@ function alpha_fixed_benders_phase!(
 end
 
 
+"""
+    tr_imp_optimize_partial!(imp_model, imp_vars, lp_instances, sdp_instances;
+        isp_mode, isp_data, λ_sol, x_sol, h_sol, ψ0_sol, outer_iter, imp_cuts,
+        inner_tr, tol, parallel)
+
+Inner loop for partial robust modes. Mixes LP ISP (ε=0 side) and dual SDP ISP (ε>0 side).
+Based on tr_imp_optimize! with ISP dispatch modified per isp_mode.
+
+:partial_hat0 → leader=LP, follower=SDP (dual)
+:partial_tilde0 → leader=SDP (dual), follower=LP
+"""
+function tr_imp_optimize_partial!(imp_model::Model, imp_vars::Dict,
+    lp_instances::Dict, sdp_instances::Dict;
+    isp_mode::Symbol, isp_data=nothing, λ_sol=nothing, x_sol=nothing,
+    h_sol=nothing, ψ0_sol=nothing, outer_iter=nothing,
+    imp_cuts=nothing, inner_tr=true, tol=1e-6, parallel=false)
+
+    st = MOI.get(imp_model, MOI.TerminationStatus())
+    iter = 0
+    uncertainty_set = isp_data[:uncertainty_set]
+    R = uncertainty_set[:R]
+    r_dict_hat = uncertainty_set[:r_dict_hat]
+    r_dict_tilde = uncertainty_set[:r_dict_tilde]
+    xi_bar = uncertainty_set[:xi_bar]
+    epsilon_hat = uncertainty_set[:epsilon_hat]
+    epsilon_tilde = uncertainty_set[:epsilon_tilde]
+    S_total = isp_data[:S]
+    S = S_total
+    past_obj = []
+    past_subprob_obj = []
+    past_major_subprob_obj = []
+    past_lower_bound = []
+    major_iter = []
+    lower_bound = -Inf
+    result = Dict()
+    result[:cuts] = Dict()
+    if inner_tr
+        B_conti_max = isp_data[:w]/isp_data[:S]
+        B_conti = B_conti_max * 0.01
+        counter = 0
+        β_relative = 1e-4
+        ρ = 0.0
+        centers = Dict(:α=>value.(imp_vars[:α]))
+        tr_constraints = Dict(:continuous=>nothing)
+    end
+    ## Clean up old cuts from previous outer iteration
+    if outer_iter > 1
+        for (cut_name, cut) in imp_cuts[:old_cuts]
+            delete(imp_model, cut)
+        end
+        if inner_tr && imp_cuts[:old_tr_constraints] !== nothing
+            for tr_cons in imp_cuts[:old_tr_constraints]
+                valid_cons = filter(c -> is_valid(imp_model, c), tr_cons)
+                delete.(imp_model, valid_cons)
+            end
+        end
+    end
+    ##
+    while (st == MOI.DUAL_INFEASIBLE || st == MOI.OPTIMAL)
+        iter += 1
+        @info "    [Inner-Partial-$isp_mode] Iteration $iter"
+        optimize!(imp_model)
+        st = MOI.get(imp_model, MOI.TerminationStatus())
+        α_sol = value.(imp_vars[:α])
+        model_estimate = sum(value.(imp_vars[:t_1_l])) + sum(value.(imp_vars[:t_1_f]))
+        subprob_obj = 0
+        dict_cut_info_l, dict_cut_info_f = Dict(), Dict()
+
+        # ISP dispatch: LP side + SDP side
+        scenario_results, status = solve_scenarios(S; parallel=parallel) do s
+            if isp_mode == :partial_hat0
+                # Leader = LP
+                (status_l, cut_info_l) = lp_isp_leader_optimize!(
+                    lp_instances[s][1], lp_instances[s][2];
+                    isp_data=isp_data, α_sol=α_sol)
+                # Follower = SDP (dual)
+                U_s_tilde = Dict(:R => Dict(:1=>R[s]), :r_dict => Dict(:1=>r_dict_tilde[s]),
+                                  :xi_bar => Dict(:1=>xi_bar[s]), :epsilon => epsilon_tilde)
+                (status_f, cut_info_f) = isp_follower_optimize!(
+                    sdp_instances[s][1], sdp_instances[s][2];
+                    isp_data=isp_data, uncertainty_set=U_s_tilde,
+                    λ_sol=λ_sol, x_sol=x_sol, h_sol=h_sol, ψ0_sol=ψ0_sol, α_sol=α_sol)
+            else  # :partial_tilde0
+                # Leader = SDP (dual)
+                U_s_hat = Dict(:R => Dict(:1=>R[s]), :r_dict => Dict(:1=>r_dict_hat[s]),
+                                :xi_bar => Dict(:1=>xi_bar[s]), :epsilon => epsilon_hat)
+                (status_l, cut_info_l) = isp_leader_optimize!(
+                    sdp_instances[s][1], sdp_instances[s][2];
+                    isp_data=isp_data, uncertainty_set=U_s_hat,
+                    λ_sol=λ_sol, x_sol=x_sol, h_sol=h_sol, ψ0_sol=ψ0_sol, α_sol=α_sol)
+                # Follower = LP
+                (status_f, cut_info_f) = lp_isp_follower_optimize!(
+                    lp_instances[s][1], lp_instances[s][2];
+                    isp_data=isp_data, α_sol=α_sol)
+            end
+            ok = (status_l == :OptimalityCut) && (status_f == :OptimalityCut)
+            return (ok, (cut_info_l, cut_info_f))
+        end
+
+        for s in 1:S
+            dict_cut_info_l[s] = scenario_results[s][1]
+            dict_cut_info_f[s] = scenario_results[s][2]
+            subprob_obj += scenario_results[s][1][:obj_val] + scenario_results[s][2][:obj_val]
+        end
+        # subprob_obj is already correctly scaled (ISP obj has 1/S built-in)
+        # Best LB → snapshot outer cut from current ISP solutions
+        if subprob_obj > lower_bound + 1e-8
+            result[:best_lb_outer_cut] = extract_partial_outer_cut(
+                lp_instances, sdp_instances, S, isp_mode;
+                x_sol=x_sol, h_sol=h_sol, λ_sol=λ_sol, ψ0_sol=ψ0_sol, isp_data=isp_data)
+            result[:best_lb_α] = copy(α_sol)
+        end
+        lower_bound = max(lower_bound, subprob_obj)
+        gap = abs(model_estimate - lower_bound) / max(abs(model_estimate), 1e-10)
+        # Inner TR: expand when converged within TR
+        inner_converged = gap <= tol || lower_bound > model_estimate - 1e-4
+        if inner_converged && inner_tr && B_conti < B_conti_max - 1e-8
+            B_conti = min(B_conti_max, B_conti * 2.0)
+            @info "Inner converged within TR (partial): expanding B_conti to $(round(B_conti, digits=4))/$(round(B_conti_max, digits=4))"
+            centers[:α] = α_sol
+            push!(past_major_subprob_obj, subprob_obj)
+            lower_bound = -Inf
+            tr_constraints = update_inner_trust_region_constraints!(imp_model, imp_vars, centers, B_conti, tr_constraints, network)
+        elseif inner_converged
+            @info "Termination condition met (partial-$isp_mode)"
+            println("model_estimate: ", model_estimate, ", subprob_obj: ", subprob_obj, ", lower_bound: ", lower_bound)
+            result[:past_obj] = past_obj
+            result[:past_subprob_obj] = past_subprob_obj
+            result[:α_sol] = α_sol
+            result[:obj_val] = subprob_obj
+            result[:past_lower_bound] = past_lower_bound
+            result[:iter] = iter
+            if inner_tr && tr_constraints[:continuous] !== nothing
+                result[:tr_constraints] = tr_constraints[:continuous]
+            else
+                result[:tr_constraints] = nothing
+            end
+            return (:OptimalityCut, result)
+        else
+            if inner_tr
+                # Serious Test (same logic as tr_imp_optimize!)
+                if iter == 1
+                    push!(past_major_subprob_obj, subprob_obj)
+                end
+                tr_needs_update = false
+                predicted_increase = model_estimate - past_major_subprob_obj[end]
+                β_dynamic = max(1e-8, β_relative * predicted_increase)
+                improvement = subprob_obj - past_major_subprob_obj[end]
+                is_serious_step = (improvement >= β_dynamic)
+                if is_serious_step
+                    tr_needs_update = true
+                    distance = norm(α_sol - centers[:α], Inf)
+                    centers[:α] = α_sol
+                    push!(major_iter, iter)
+                    push!(past_major_subprob_obj, subprob_obj)
+                    if (improvement >= 0.5*β_dynamic) && (distance >= B_conti - 1e-6)
+                        B_conti = min(B_conti_max, B_conti * 2.0)
+                    end
+                    tr_constraints = update_inner_trust_region_constraints!(imp_model, imp_vars, centers, B_conti, tr_constraints, network)
+                else
+                    ρ = min(1, B_conti) * improvement / β_dynamic
+                    if ρ > 3.0
+                        B_conti = B_conti / min(ρ, 4)
+                        counter = 0
+                        tr_needs_update = true
+                    elseif (1.0 < ρ) && (counter >= 3)
+                        B_conti = B_conti / min(ρ, 4)
+                        counter = 0
+                        tr_needs_update = true
+                    elseif (1.0 < ρ) && (counter < 3)
+                        counter += 1
+                    elseif (0.0 < ρ) && (ρ <= 1.0)
+                        counter += 1
+                    end
+                    if tr_needs_update
+                        tr_constraints = update_inner_trust_region_constraints!(imp_model, imp_vars, centers, B_conti, tr_constraints, network)
+                    end
+                end
+            end
+            push!(past_obj, model_estimate)
+            push!(past_subprob_obj, subprob_obj)
+            push!(past_lower_bound, lower_bound)
+            if status == false
+                @warn "Subproblem is not optimal (partial)"
+            end
+
+            # Inner cuts: same format as dual/primal ISP (intercept + α'μ)
+            subgradient_l = [dict_cut_info_l[s][:μhat] for s in 1:S]
+            subgradient_f = [dict_cut_info_f[s][:μtilde] for s in 1:S]
+            intercept_l = [dict_cut_info_l[s][:intercept] for s in 1:S]
+            intercept_f = [dict_cut_info_f[s][:intercept] for s in 1:S]
+
+            cut_added_l = @constraint(imp_model, [s=1:S], imp_vars[:t_1_l][s] <= intercept_l[s] + imp_vars[:α]'*subgradient_l[s])
+            cut_added_f = @constraint(imp_model, [s=1:S], imp_vars[:t_1_f][s] <= intercept_f[s] + imp_vars[:α]'*subgradient_f[s])
+            set_name.(cut_added_l, ["opt_cut_$(iter)_l_s$(s)" for s in 1:S])
+            set_name.(cut_added_f, ["opt_cut_$(iter)_f_s$(s)" for s in 1:S])
+            result[:cuts]["opt_cut_$(iter)_l"] = cut_added_l
+            result[:cuts]["opt_cut_$(iter)_f"] = cut_added_f
+            println("subproblem objective (partial-$isp_mode): ", subprob_obj)
+            @info "Optimality cut added (partial)"
+
+            # Cut tightness check
+            y = Dict([imp_vars[:α][k] => α_sol[k] for k in 1:length(α_sol)]...)
+            function evaluate_expr(expr::AffExpr, var_values::Dict)
+                eval_result = expr.constant
+                for (var, coef) in expr.terms
+                    if haskey(var_values, var)
+                        eval_result += coef * var_values[var]
+                    else
+                        error("Variable $var not found in var_values")
+                    end
+                end
+                return eval_result
+            end
+            opt_cut_val = sum(evaluate_expr(intercept_l[s] + imp_vars[:α]'*subgradient_l[s], y) for s in 1:S) +
+                          sum(evaluate_expr(intercept_f[s] + imp_vars[:α]'*subgradient_f[s], y) for s in 1:S)
+            if abs(subprob_obj - opt_cut_val) > 1e-4
+                println("something went wrong (partial-$isp_mode)")
+                @infiltrate
+            end
+        end
+    end
+end
+
+
 function tr_nested_benders_optimize!(omp_model::Model, omp_vars::Dict, network, ϕU_hat, ϕU_tilde, λU, γ, w, uncertainty_set; mip_optimizer=nothing, conic_optimizer=nothing, outer_tr=true, inner_tr=true, max_outer_iter=1000, isp_mode=:dual, tol=1e-4, πU_hat=ϕU_hat, πU_tilde=ϕU_tilde, yU=ϕU_tilde, ytsU=ϕU_tilde, strengthen_cuts=:none, parallel=false, mini_benders=false, max_mini_benders_iter=5, ldr_mode::Symbol=:both)
     ### -------- 병렬 스레드 체크 --------
     if parallel && Threads.nthreads() == 1
@@ -1457,15 +1683,23 @@ function tr_nested_benders_optimize!(omp_model::Model, omp_vars::Dict, network, 
     ### --------Begin Inner Master, Subproblem Initialization--------
     imp_model, imp_vars = build_imp(network, S, ϕU_hat, λU, γ, w, v, uncertainty_set; mip_optimizer=mip_optimizer)
     st, α_sol = initialize_imp(imp_model, imp_vars)
-    # Dual ISP instances (used for :dual and :hybrid modes)
+    # Dual ISP instances (used for :dual, :hybrid, and partial modes — SDP side)
     leader_instances, follower_instances = nothing, nothing
-    if isp_mode != :full_primal
+    if isp_mode in (:dual, :hybrid, :partial_hat0, :partial_tilde0)
+        # For partial modes, both sides are initialized but only the SDP side is used
         leader_instances, follower_instances = initialize_isp(network, S, ϕU_hat, ϕU_tilde, λU, γ, w, v, uncertainty_set; conic_optimizer=conic_optimizer, λ_sol=λ_sol, x_sol=x_sol, h_sol=h_sol, ψ0_sol=ψ0_sol, α_sol=α_sol, πU_hat=πU_hat, πU_tilde=πU_tilde, yU=yU, ytsU=ytsU, ldr_mode=ldr_mode)
     end
     # Primal ISP instances (used for :hybrid and :full_primal modes)
     primal_leader_instances, primal_follower_instances = nothing, nothing
-    if isp_mode != :dual
+    if isp_mode in (:hybrid, :full_primal)
         primal_leader_instances, primal_follower_instances = initialize_primal_isp(network, S, ϕU_hat, ϕU_tilde, λU, γ, w, v, uncertainty_set; conic_optimizer=conic_optimizer, x_sol=x_sol, λ_sol=λ_sol, h_sol=h_sol, ψ0_sol=ψ0_sol)
+    end
+    # LP ISP instances (used for :partial_hat0 and :partial_tilde0)
+    lp_leader_instances, lp_follower_instances = nothing, nothing
+    if isp_mode == :partial_hat0
+        lp_leader_instances = initialize_lp_isp_leader(network, S, ϕU_hat, v, uncertainty_set, x_sol, S; optimizer=mip_optimizer)
+    elseif isp_mode == :partial_tilde0
+        lp_follower_instances = initialize_lp_isp_follower(network, S, ϕU_tilde, v, uncertainty_set, x_sol, h_sol, λ_sol, ψ0_sol, S; optimizer=mip_optimizer)
     end
     isp_data = Dict(:E => E, :network => network, :ϕU_hat => ϕU_hat, :ϕU_tilde => ϕU_tilde, :πU_hat => πU_hat, :πU_tilde => πU_tilde, :yU => yU, :ytsU => ytsU, :λU => λU, :γ => γ, :w => w, :v => v, :uncertainty_set => uncertainty_set, :d0 => d0, :S=>S)
     gap = Inf
@@ -1505,8 +1739,15 @@ function tr_nested_benders_optimize!(omp_model::Model, omp_vars::Dict, network, 
             #     end
             # end
             # Update primal ISP parameters (x,h,λ,ψ0 are in constraint RHS → set_normalized_rhs)
-            if isp_mode != :dual
+            if isp_mode in (:hybrid, :full_primal)
                 update_primal_isp_parameters!(primal_leader_instances, primal_follower_instances;
+                    x_sol=x_sol, h_sol=h_sol, λ_sol=λ_sol, ψ0_sol=ψ0_sol, isp_data=isp_data)
+            end
+            # Update LP ISP parameters for partial modes
+            if isp_mode == :partial_hat0
+                update_lp_isp_leader_parameters!(lp_leader_instances; x_sol=x_sol, ϕU=ϕU_hat)
+            elseif isp_mode == :partial_tilde0
+                update_lp_isp_follower_parameters!(lp_follower_instances;
                     x_sol=x_sol, h_sol=h_sol, λ_sol=λ_sol, ψ0_sol=ψ0_sol, isp_data=isp_data)
             end
             # Outer Subproblem 풀기 (inexact: N번에 1번만 exact)
@@ -1524,6 +1765,12 @@ function tr_nested_benders_optimize!(omp_model::Model, omp_vars::Dict, network, 
                 α_persistent = cut_info[:α_new]  # 다음 iteration용 α 누적
             elseif isp_mode == :dual
                 status, cut_info = tr_imp_optimize!(imp_model, imp_vars, leader_instances, follower_instances; isp_data=isp_data, λ_sol=λ_sol, x_sol=x_sol, h_sol=h_sol, ψ0_sol=ψ0_sol, outer_iter=iter, imp_cuts=imp_cuts, inner_tr=inner_tr, parallel=parallel, inexact=use_inexact)
+            elseif isp_mode == :partial_hat0
+                # Leader=LP, Follower=SDP(dual)
+                status, cut_info = tr_imp_optimize_partial!(imp_model, imp_vars, lp_leader_instances, follower_instances; isp_mode=:partial_hat0, isp_data=isp_data, λ_sol=λ_sol, x_sol=x_sol, h_sol=h_sol, ψ0_sol=ψ0_sol, outer_iter=iter, imp_cuts=imp_cuts, inner_tr=inner_tr, parallel=parallel)
+            elseif isp_mode == :partial_tilde0
+                # Leader=SDP(dual), Follower=LP
+                status, cut_info = tr_imp_optimize_partial!(imp_model, imp_vars, lp_follower_instances, leader_instances; isp_mode=:partial_tilde0, isp_data=isp_data, λ_sol=λ_sol, x_sol=x_sol, h_sol=h_sol, ψ0_sol=ψ0_sol, outer_iter=iter, imp_cuts=imp_cuts, inner_tr=inner_tr, parallel=parallel)
             else
                 status, cut_info = tr_imp_optimize_hybrid!(imp_model, imp_vars, primal_leader_instances, primal_follower_instances; isp_data=isp_data, λ_sol=λ_sol, x_sol=x_sol, h_sol=h_sol, ψ0_sol=ψ0_sol, outer_iter=iter, imp_cuts=imp_cuts, inner_tr=inner_tr, parallel=parallel)
             end
@@ -1726,9 +1973,28 @@ function tr_nested_benders_optimize!(omp_model::Model, omp_vars::Dict, network, 
             end
         else
             # Gap still large → Add cut and continue
+            is_partial = isp_mode in (:partial_hat0, :partial_tilde0)
             if is_subgradient
                 # Subgradient heuristic: ISP 이미 풀었으므로 re-solve 불필요
                 outer_cut_info = cut_info[:outer_cut_info]
+            elseif is_partial
+                # Partial mode: extract combined LP + SDP outer cut
+                lp_inst = isp_mode == :partial_hat0 ? lp_leader_instances : lp_follower_instances
+                sdp_inst = isp_mode == :partial_hat0 ? follower_instances : leader_instances
+                # Re-solve SDP side at converged α for accurate outer cut
+                α_converged = cut_info[:α_sol]
+                for s in 1:S
+                    if isp_mode == :partial_hat0
+                        set_normalized_rhs.(vec(sdp_inst[s][1][:coupling_cons]), α_converged)
+                        optimize!(sdp_inst[s][1])
+                    else
+                        set_normalized_rhs.(vec(sdp_inst[s][1][:coupling_cons]), α_converged)
+                        optimize!(sdp_inst[s][1])
+                    end
+                end
+                outer_cut_info = extract_partial_outer_cut(
+                    lp_inst, sdp_inst, S, isp_mode;
+                    x_sol=x_sol, h_sol=h_sol, λ_sol=λ_sol, ψ0_sol=ψ0_sol, isp_data=isp_data)
             elseif isp_mode == :full_primal
                 outer_cut_info = evaluate_master_opt_cut_from_primal(
                     primal_leader_instances, primal_follower_instances,
@@ -1746,17 +2012,26 @@ function tr_nested_benders_optimize!(omp_model::Model, omp_vars::Dict, network, 
             push!(result[:debug_α], cut_info[:α_sol])
             push!(result[:debug_intercept_l], sum(outer_cut_info[:intercept_l]))
             push!(result[:debug_intercept_f], sum(outer_cut_info[:intercept_f]))
-            push!(result[:debug_coeff_norms], Dict(
-                :Uhat1 => norm(outer_cut_info[:Uhat1]),
-                :Utilde1 => norm(outer_cut_info[:Utilde1]),
-                :Uhat3 => norm(outer_cut_info[:Uhat3]),
-                :Utilde3 => norm(outer_cut_info[:Utilde3]),
-                :βtilde1_1 => norm(outer_cut_info[:βtilde1_1]),
-                :βtilde1_3 => norm(outer_cut_info[:βtilde1_3]),
-                :Ztilde1_3 => norm(outer_cut_info[:Ztilde1_3]),
-            ))
-            opt_cut = add_optimality_cuts!(omp_model, omp_vars, outer_cut_info, diag_x_E, isp_data[:E], diag_λ_ψ, xi_bar, isp_data[:d0], ϕU_hat, ϕU_tilde, λ, h, S, iter;
-                prefix="opt_cut", result_cuts=result[:cuts])
+            if !is_partial
+                push!(result[:debug_coeff_norms], Dict(
+                    :Uhat1 => norm(outer_cut_info[:Uhat1]),
+                    :Utilde1 => norm(outer_cut_info[:Utilde1]),
+                    :Uhat3 => norm(outer_cut_info[:Uhat3]),
+                    :Utilde3 => norm(outer_cut_info[:Utilde3]),
+                    :βtilde1_1 => norm(outer_cut_info[:βtilde1_1]),
+                    :βtilde1_3 => norm(outer_cut_info[:βtilde1_3]),
+                    :Ztilde1_3 => norm(outer_cut_info[:Ztilde1_3]),
+                ))
+            else
+                push!(result[:debug_coeff_norms], Dict(:partial => isp_mode))
+            end
+            if is_partial
+                opt_cut = add_partial_optimality_cuts!(omp_model, omp_vars, outer_cut_info, diag_x_E, isp_data[:E], diag_λ_ψ, xi_bar, isp_data[:d0], ϕU_hat, ϕU_tilde, λ, h, S, iter, isp_mode;
+                    prefix="opt_cut", result_cuts=result[:cuts])
+            else
+                opt_cut = add_optimality_cuts!(omp_model, omp_vars, outer_cut_info, diag_x_E, isp_data[:E], diag_λ_ψ, xi_bar, isp_data[:d0], ϕU_hat, ϕU_tilde, λ, h, S, iter;
+                    prefix="opt_cut", result_cuts=result[:cuts])
+            end
             push!(result[:cut_pool], Dict{Symbol,Any}(
                 :type => :opt_cut, :iter => iter, :cut_info => deepcopy(outer_cut_info),
                 :x_sol => copy(x_sol), :λ_sol => λ_sol, :h_sol => copy(h_sol), :ψ0_sol => copy(ψ0_sol),
@@ -1793,8 +2068,13 @@ function tr_nested_benders_optimize!(omp_model::Model, omp_vars::Dict, network, 
             # ===== Best-LB intermediate cut (inner loop 중 best LB 달성 시의 cut) =====
             if use_best_lb_cut && haskey(cut_info, :best_lb_outer_cut) && cut_info[:best_lb_outer_cut] !== nothing
                 best_lb_cut_info = cut_info[:best_lb_outer_cut]
-                best_lb_cut = add_optimality_cuts!(omp_model, omp_vars, best_lb_cut_info, diag_x_E, isp_data[:E], diag_λ_ψ, xi_bar, isp_data[:d0], ϕU_hat, ϕU_tilde, λ, h, S, iter;
-                    prefix="best_lb_cut", result_cuts=result[:cuts])
+                if is_partial
+                    best_lb_cut = add_partial_optimality_cuts!(omp_model, omp_vars, best_lb_cut_info, diag_x_E, isp_data[:E], diag_λ_ψ, xi_bar, isp_data[:d0], ϕU_hat, ϕU_tilde, λ, h, S, iter, isp_mode;
+                        prefix="best_lb_cut", result_cuts=result[:cuts])
+                else
+                    best_lb_cut = add_optimality_cuts!(omp_model, omp_vars, best_lb_cut_info, diag_x_E, isp_data[:E], diag_λ_ψ, xi_bar, isp_data[:d0], ϕU_hat, ϕU_tilde, λ, h, S, iter;
+                        prefix="best_lb_cut", result_cuts=result[:cuts])
+                end
                 push!(result[:cut_pool], Dict{Symbol,Any}(
                     :type => :best_lb_cut, :iter => iter, :cut_info => deepcopy(best_lb_cut_info),
                     :x_sol => copy(x_sol), :λ_sol => λ_sol, :h_sol => copy(h_sol), :ψ0_sol => copy(ψ0_sol)))
@@ -1802,8 +2082,8 @@ function tr_nested_benders_optimize!(omp_model::Model, omp_vars::Dict, network, 
                 println("  │ [Best-LB cut] val at x_sol = $(round(best_lb_cut_val, digits=6))")
             end
 
-            # ===== Cut Strengthening (:mw or :sherali) =====
-            if strengthen_cuts != :none && leader_instances !== nothing
+            # ===== Cut Strengthening (:mw or :sherali) — not supported for partial modes =====
+            if strengthen_cuts != :none && leader_instances !== nothing && !is_partial
                 interdictable_idx = findall(network.interdictable_arcs[1:num_arcs])
                 core_points = generate_core_points(network, γ, λU, w, v;
                     interdictable_idx=interdictable_idx, strategy=:interior)
@@ -1860,7 +2140,7 @@ function tr_nested_benders_optimize!(omp_model::Model, omp_vars::Dict, network, 
             # inexact_every_n = 1: mini_benders_last_n 기준으로 stage 제한
             mini_benders_stage_ok = inexact_every_n > 1 ||
                 !outer_tr || mini_benders_last_n == 0 || B_bin_stage > n_stages - mini_benders_last_n
-            mini_benders_active = mini_benders && !is_inexact && leader_instances !== nothing && mini_benders_stage_ok
+            mini_benders_active = mini_benders && !is_inexact && leader_instances !== nothing && mini_benders_stage_ok && !is_partial
             if mini_benders_active
                 n_mini = alpha_fixed_benders_phase!(
                     omp_model, omp_vars, cut_info[:α_sol],
