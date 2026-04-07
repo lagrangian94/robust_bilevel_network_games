@@ -158,6 +158,75 @@ function add_optimality_cuts!(omp_model, omp_vars, cut_info, diag_x_E, E, diag_�
     return opt_cut
 end
 
+
+"""
+    add_partial_optimality_cuts!(omp_model, omp_vars, partial_cut_info,
+        diag_x_E, E, diag_λ_ψ, xi_bar, d0, ϕU_hat, ϕU_tilde, λ_var, h_var, S, iter, isp_mode;
+        prefix="opt_cut", result_cuts=nothing)
+
+Mixed LP+SDP outer cut for partial robust modes (:partial_hat0 / :partial_tilde0).
+One side has LP linear coefficients, the other has standard SDP matrices.
+
+Returns combined AffExpr for tightness check.
+"""
+function add_partial_optimality_cuts!(omp_model, omp_vars, partial_cut_info,
+    diag_x_E, E, diag_λ_ψ, xi_bar, d0, ϕU_hat, ϕU_tilde, λ_var, h_var, S, iter, isp_mode;
+    prefix="opt_cut", result_cuts=nothing)
+
+    opt_cut = AffExpr(0.0)
+    x_var = omp_vars[:x]
+    ψ0_var = omp_vars[:ψ0]
+    num_arcs = length(x_var)
+
+    for s in 1:S
+        if isp_mode == :partial_hat0
+            # ---- LP leader contribution (linear in x) ----
+            lp_l = partial_cut_info[:lp_leader][s]
+            add_to_expression!(opt_cut, lp_l[:intercept])
+            for k in 1:num_arcs
+                add_to_expression!(opt_cut, lp_l[:coeff_x][k], x_var[k])
+            end
+
+            # ---- SDP follower contribution (standard tilde terms) ----
+            add_to_expression!(opt_cut, -ϕU_tilde, dot(partial_cut_info[:Utilde1][s,:,:], diag_x_E))
+            add_to_expression!(opt_cut, -ϕU_tilde, dot(partial_cut_info[:Utilde3][s,:,:], E - diag_x_E))
+            add_to_expression!(opt_cut, dot(partial_cut_info[:Ztilde1_3][s,:,:], diag_λ_ψ * diagm(xi_bar[s])))
+            add_to_expression!(opt_cut, dot(d0, partial_cut_info[:βtilde1_1][s,:]), λ_var)
+            add_to_expression!(opt_cut, -1.0, dot(partial_cut_info[:βtilde1_3][s,:], h_var + diag_λ_ψ * xi_bar[s]))
+            add_to_expression!(opt_cut, partial_cut_info[:intercept_f][s])
+
+        elseif isp_mode == :partial_tilde0
+            # ---- SDP leader contribution (standard hat terms) ----
+            add_to_expression!(opt_cut, -ϕU_hat, dot(partial_cut_info[:Uhat1][s,:,:], diag_x_E))
+            add_to_expression!(opt_cut, -ϕU_hat, dot(partial_cut_info[:Uhat3][s,:,:], E - diag_x_E))
+            add_to_expression!(opt_cut, partial_cut_info[:intercept_l][s])
+
+            # ---- LP follower contribution (linear in x,h,λ,ψ0) ----
+            lp_f = partial_cut_info[:lp_follower][s]
+            add_to_expression!(opt_cut, lp_f[:intercept])
+            for k in 1:num_arcs
+                add_to_expression!(opt_cut, lp_f[:coeff_x][k], x_var[k])
+            end
+            for k in 1:num_arcs
+                add_to_expression!(opt_cut, lp_f[:coeff_h][k], h_var[k])
+            end
+            add_to_expression!(opt_cut, lp_f[:coeff_λ], λ_var)
+            for k in 1:num_arcs
+                add_to_expression!(opt_cut, lp_f[:coeff_ψ0][k], ψ0_var[k])
+            end
+        end
+    end
+
+    c = @constraint(omp_model, omp_vars[:t_0] >= opt_cut)
+    set_name(c, "$(prefix)_$(iter)")
+    if result_cuts !== nothing
+        result_cuts["$(prefix)_$(iter)"] = c
+    end
+
+    return opt_cut
+end
+
+
 function initialize_omp(omp_model::Model, omp_vars::Dict)
     optimize!(omp_model) # 여기서 최적화를 하는 이유는 초기해를 뽑아서 subproblem을 build하기 위함임.
     st = MOI.get(omp_model, MOI.TerminationStatus())    

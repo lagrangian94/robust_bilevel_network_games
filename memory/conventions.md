@@ -12,7 +12,9 @@ Exact match not guaranteed due to dual degeneracy (multiple optimal dual solutio
 
 ## Bug Fixes Applied
 - `dim_R_cols = size(R[1], 2)` not `size(R[1], 1)` — R has shape (num_arcs+1, num_arcs)
-- `α_sol = max.(value.(imp_vars[:α]), 0.0)` — IMP can return tiny negatives causing DUAL_INFEASIBLE in primal ISP
+- `α_sol = max.(value.(imp_vars[:α]), 0.0)` — IMP can return tiny negatives (~1e-7) causing DUAL_INFEASIBLE in ISP. 적용 위치:
+  - `build_primal_isp.jl:646` (hybrid inner loop)
+  - `nested_benders_trust_region.jl` — `tr_imp_optimize!` (dual inner loop), `tr_imp_optimize_partial!` (partial inner loop)
 
 ## nested_benders.jl vs nested_benders_trust_region.jl
 `nested_benders_trust_region.jl` is strictly more general:

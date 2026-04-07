@@ -48,17 +48,13 @@ network_configs = Dict(
     :polska => Dict(:type => :real_world, :generator => generate_polska_network),
 )
 
-# ===== ε=0 처리: nominal case =====
-# ε=0 → ISP SDP degenerate. ε=1e-2 (ϕU=100)로 근사.
-# ϕU=1/ε 필수: ISP feasibility가 slope bound 1/ε를 요구 (ϕU decouple 불가)
-const EPSILON_NOMINAL = 1e-2
-
-# Model variants: (name, ε_hat_fn, ε_tilde_fn) where fn(ε) -> actual epsilon
+# Model variants: (name, isp_mode)
+# ε=0 side uses exact LP ISP (no SDP numerical issues, no ϕU=1/ε blow-up)
 const MODEL_VARIANTS = [
-    (:N,  ε -> EPSILON_NOMINAL, ε -> EPSILON_NOMINAL),
-    (:FO, ε -> EPSILON_NOMINAL, ε -> ε),
-    (:TO, ε -> ε,               ε -> EPSILON_NOMINAL),
-    (:FM, ε -> ε,               ε -> ε),
+    (:N,  :nominal),           # Nominal SP (solve_nominal path)
+    (:FO, :partial_hat0),      # ε̂=0 → LP leader ISP, ε̃=ε → SDP follower ISP
+    (:TO, :partial_tilde0),    # ε̂=ε → SDP leader ISP, ε̃=0 → LP follower ISP
+    (:FM, :dual),              # ε̂=ε, ε̃=ε → both SDP ISP (standard)
 ]
 
 # ===== Defaults =====
@@ -71,10 +67,11 @@ EXP_K_TEST = 100
 EXP_S_FOLLOWER = 10
 EXP_RHO = 0.2
 EXP_V = 1.0
-CHECKPOINT_FILE = "experiment1_vfm_checkpoint.jls"
+CHECKPOINT_FILE = "output/experiment1_vfm_checkpoint.jls"
 
 # ===== Interactive Input (compare_benders.jl과 동일 패턴) =====
-if !("--test" in ARGS)
+# 직접 실행할 때만 interactive input, include()로 불릴 때는 skip
+if (abspath(PROGRAM_FILE) == @__FILE__) && !("--test" in ARGS)
     println("="^80)
     println("EXPERIMENT 1: VALUE OF FULL MODEL (VFM)")
     println("="^80)
@@ -118,7 +115,7 @@ if !("--test" in ARGS)
     if !isempty(kt_str); EXP_K_TEST = parse(Int, kt_str); end
 
     # 네트워크별 checkpoint 파일
-    CHECKPOINT_FILE = "experiment1_vfm_$(EXP_NETWORKS[1]).jls"
+    CHECKPOINT_FILE = "output/experiment1_vfm_$(EXP_NETWORKS[1]).jls"
 
     println("\n" * "="^80)
     println("설정 확인:")
@@ -165,10 +162,22 @@ function setup_instance_vfm(config_key::Symbol;
 
     num_arcs = length(network.arcs) - 1  # dummy 제외
 
-    # Parameters
-    ϕU_hat = 1.0 / epsilon_hat
-    ϕU_tilde = 1.0 / epsilon_tilde
-    λU = ϕU_hat
+    # Parameters: ϕU computation handles ε=0 by borrowing from the nonzero side
+    if epsilon_hat == 0.0 && epsilon_tilde == 0.0
+        # Both nominal: dummy values (solve_nominal path doesn't use these for Benders)
+        ϕU_hat = 10.0
+        ϕU_tilde = 10.0
+    elseif epsilon_hat == 0.0
+        ϕU_tilde = 1.0 / epsilon_tilde
+        ϕU_hat = ϕU_tilde  # LP leader ISP uses this as McCormick big-M
+    elseif epsilon_tilde == 0.0
+        ϕU_hat = 1.0 / epsilon_hat
+        ϕU_tilde = ϕU_hat  # LP follower ISP uses this as McCormick big-M
+    else
+        ϕU_hat = 1.0 / epsilon_hat
+        ϕU_tilde = 1.0 / epsilon_tilde
+    end
+    λU = max(ϕU_hat, ϕU_tilde)
     num_interdictable = sum(network.interdictable_arcs[1:num_arcs])
     γ = ceil(Int, γ_ratio * num_interdictable)
 
@@ -211,7 +220,7 @@ end
 
 Nominal SP (N variant): build_full_2SP_model로 직접 풀기. ε 무관.
 """
-function solve_nominal(net, uncertainty_set, params)
+function solve_nominal(net, uncertainty_set, params; max_time=7200.0)
     γ = params[:γ]
     ϕU_hat = params[:ϕU_hat]
     λU = params[:λU]
@@ -223,26 +232,32 @@ function solve_nominal(net, uncertainty_set, params)
 
     t_start = time()
     model, vars = build_full_2SP_model(net, S_val, ϕU_hat, λU, γ, w, v_param, uncertainty_set)
+    set_optimizer_attribute(model, "TimeLimit", max_time)
     optimize!(model)
     solve_time = time() - t_start
 
     st = termination_status(model)
-    if st != MOI.OPTIMAL
-        error("Nominal SP not optimal: $st")
+    if st ∉ (MOI.OPTIMAL, MOI.TIME_LIMIT)
+        error("Nominal SP failed: $st")
     end
 
+    time_limit_hit = (st == MOI.TIME_LIMIT)
     x_star = value.(vars[:x])
     obj_val = objective_value(model)
+    h_star = value.(vars[:h])
+    λ_star = value(vars[:λ])
+    opt_gap = time_limit_hit ? relative_gap(model) : 0.0
 
-    return x_star, obj_val, solve_time, 0
+    return x_star, obj_val, solve_time, 0, h_star, λ_star, opt_gap, time_limit_hit
 end
 
 """
-    solve_variant(network, uncertainty_set, params) -> (x_star, obj_val, solve_time)
+    solve_variant(network, uncertainty_set, params; isp_mode=:dual) -> (x_star, obj_val, solve_time)
 
 Benders decomposition으로 in-sample 문제 풀기.
+isp_mode: :dual (standard), :partial_hat0 (ε̂=0), :partial_tilde0 (ε̃=0)
 """
-function solve_variant(net, uncertainty_set, params)
+function solve_variant(net, uncertainty_set, params; isp_mode=:dual, max_time=7200.0)
     γ = params[:γ]
     ϕU_hat = params[:ϕU_hat]
     ϕU_tilde = params[:ϕU_tilde]
@@ -252,6 +267,10 @@ function solve_variant(net, uncertainty_set, params)
     πU_tilde = params[:πU_tilde]
     yU = params[:yU]
     ytsU = params[:ytsU]
+
+    if isp_model != :dual
+        max_time = 3600
+    end
 
     # tr_nested_benders_optimize!()가 global v, S, network를 참조 (compare_benders.jl과 동일 패턴)
     global v = params[:v]
@@ -267,18 +286,30 @@ function solve_variant(net, uncertainty_set, params)
     t_start = time()
     result = tr_nested_benders_optimize!(model, vars, network, ϕU_hat, ϕU_tilde, λU, γ, w, uncertainty_set;
         mip_optimizer=Gurobi.Optimizer, conic_optimizer=Mosek.Optimizer,
-        outer_tr=true, inner_tr=true,
+        outer_tr=true, inner_tr=true, isp_mode=isp_mode, max_time=max_time,
         πU_hat=πU_hat, πU_tilde=πU_tilde, yU=yU, ytsU=ytsU,
-        strengthen_cuts=:mw, parallel=true, mini_benders=true, max_mini_benders_iter=3,
+        strengthen_cuts=:mw,  # partial mode: SDP side only MW (LP side는 기존 cut 유지)
+        parallel=true, mini_benders=true, max_mini_benders_iter=3,
         ldr_mode=:both)
     solve_time = time() - t_start
 
-    # Extract solution
-    x_star = result[:opt_sol][:x]
-    obj_val = minimum(result[:past_upper_bound])
-    num_iters = length(result[:past_upper_bound])
+    # Extract best solution (global UB 기준)
+    ub_vec = result[:past_upper_bound]
+    lb_vec = result[:past_lower_bound]
+    obj_val = minimum(ub_vec)
+    num_iters = length(ub_vec)
 
-    return x_star, obj_val, solve_time, num_iters
+    # Optimality gap
+    best_lb = isempty(lb_vec) ? -Inf : maximum(lb_vec)
+    opt_gap = abs(obj_val) > 1e-8 ? (obj_val - best_lb) / abs(obj_val) : Inf
+    time_limit_hit = solve_time >= max_time
+
+    # Best UB에 해당하는 solution 사용
+    x_star = result[:opt_sol][:x]
+    h_star = result[:opt_sol][:h]
+    λ_star = result[:opt_sol][:λ]
+
+    return x_star, obj_val, solve_time, num_iters, h_star, λ_star, opt_gap, time_limit_hit
 end
 
 # ===== Main Experiment Loop =====
@@ -286,7 +317,7 @@ function run_experiment()
     results = load_checkpoint()
     total_runs = length(EXP_NETWORKS) * length(EXP_GAMMA_RATIOS) * length(EXP_EPSILONS) *
                  length(MODEL_VARIANTS)
-    completed = length(results)
+    completed = count(v -> !haskey(v, :error), values(results))
     println("="^80)
     println("EXPERIMENT 1: VALUE OF FULL MODEL (VFM)")
     println("="^80)
@@ -302,14 +333,15 @@ function run_experiment()
     for net_key in EXP_NETWORKS
         for γ_ratio in EXP_GAMMA_RATIOS
             for ε in EXP_EPSILONS
-                for (variant_name, ε_hat_fn, ε_tilde_fn) in MODEL_VARIANTS
+                for (variant_name, isp_mode) in MODEL_VARIANTS
                     rkey = result_key(net_key, γ_ratio, ε, variant_name)
-                    if haskey(results, rkey)
-                        continue  # already done
+                    if haskey(results, rkey) && !haskey(results[rkey], :error)
+                        continue  # already done (에러 항목은 재실행)
                     end
 
-                    ε_hat = ε_hat_fn(ε)
-                    ε_tilde = ε_tilde_fn(ε)
+                    # Compute ε̂/ε̃ from isp_mode
+                    ε_hat = isp_mode in (:nominal, :partial_hat0) ? 0.0 : ε
+                    ε_tilde = isp_mode in (:nominal, :partial_tilde0) ? 0.0 : ε
 
                     run_count += 1
                     println("\n" * "─"^70)
@@ -325,14 +357,15 @@ function run_experiment()
                             seed=EXP_SEED,
                             epsilon_hat=ε_hat, epsilon_tilde=ε_tilde)
 
-                        x_star, obj_val, solve_time, num_iters = if variant_name == :N
+                        x_star, obj_val, solve_time, num_iters, h_insample, λ_insample, opt_gap, time_limit_hit = if variant_name == :N
                             solve_nominal(network, uncertainty_set, params)
                         else
-                            solve_variant(network, uncertainty_set, params)
+                            solve_variant(network, uncertainty_set, params; isp_mode=isp_mode)
                         end
 
                         println("  In-sample: obj=$(round(obj_val, digits=4)), " *
-                                "time=$(round(solve_time, digits=1))s, iters=$(num_iters)")
+                                "time=$(round(solve_time, digits=1))s, iters=$(num_iters)" *
+                                (time_limit_hit ? ", TIME LIMIT (gap=$(round(opt_gap*100, digits=2))%)" : ""))
                         println("  x* = $(x_star)")
 
                         # === OOS evaluation ===
@@ -360,11 +393,15 @@ function run_experiment()
                             :epsilon_tilde => ε_tilde,
                             :x_star => x_star,
                             :h_star => h_star,
+                            :h_insample => h_insample,
+                            :lambda_insample => λ_insample,
                             :obj_insample => obj_val,
                             :oos_mean => mean_flow,
                             :oos_std => std_flow,
                             :solve_time => solve_time,
                             :num_iters => num_iters,
+                            :opt_gap => opt_gap,
+                            :time_limit_hit => time_limit_hit,
                         )
 
                     catch e
@@ -381,15 +418,7 @@ function run_experiment()
                     # Checkpoint after each run
                     save_checkpoint(results)
 
-                    # DEBUG: FO 완료 후, TO 진입 전 breakpoint
-                    if variant_name == :FO
-                        println("\n*** @infiltrate: FO 완료. results[N], results[FO] 확인 ***")
-                        rkey_N = result_key(net_key, γ_ratio, ε, :N)
-                        rkey_FO = rkey
-                        res_N = get(results, rkey_N, nothing)
-                        res_FO = get(results, rkey, nothing)
-                        @infiltrate
-                    end
+
                 end  # variant
             end  # ε
         end  # γ_ratio
@@ -420,7 +449,7 @@ function print_summary_tables(results)
 
             for ε in EXP_EPSILONS
                 row = @sprintf("│ %5.2f  ", ε)
-                for (variant_name, _, _) in MODEL_VARIANTS
+                for (variant_name, _) in MODEL_VARIANTS
                     rkey = result_key(net_key, γ_ratio, ε, variant_name)
                     if haskey(results, rkey) && haskey(results[rkey], :oos_mean)
                         m = results[rkey][:oos_mean]
@@ -455,21 +484,21 @@ function run_quick_test()
 
     test_results = Dict{Symbol, Any}()
 
-    for (variant_name, ε_hat_fn, ε_tilde_fn) in MODEL_VARIANTS
-        ε_hat = ε_hat_fn(ε)
-        ε_tilde = ε_tilde_fn(ε)
+    for (variant_name, isp_mode) in MODEL_VARIANTS
+        ε_hat = isp_mode in (:nominal, :partial_hat0) ? 0.0 : ε
+        ε_tilde = isp_mode in (:nominal, :partial_tilde0) ? 0.0 : ε
 
-        println("\n── $(variant_name) (ε̂=$(ε_hat), ε̃=$(ε_tilde)) ──")
+        println("\n── $(variant_name) (ε̂=$(ε_hat), ε̃=$(ε_tilde), isp_mode=$(isp_mode)) ──")
 
         network, uncertainty_set, params = setup_instance_vfm(net_key;
             S=2, γ_ratio=γ_ratio, ρ=EXP_RHO, v=EXP_V,
             seed=seed,
             epsilon_hat=ε_hat, epsilon_tilde=ε_tilde)
 
-        x_star, obj_val, solve_time, num_iters = if variant_name == :N
+        x_star, obj_val, solve_time, num_iters, h_insample, λ_insample, opt_gap, time_limit_hit = if variant_name == :N
             solve_nominal(network, uncertainty_set, params)
         else
-            solve_variant(network, uncertainty_set, params)
+            solve_variant(network, uncertainty_set, params; isp_mode=isp_mode)
         end
 
         println("  In-sample: obj=$(round(obj_val, digits=4)), time=$(round(solve_time, digits=1))s")
