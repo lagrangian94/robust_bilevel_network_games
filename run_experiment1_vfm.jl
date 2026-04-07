@@ -24,6 +24,7 @@ using Serialization
 using Printf
 using Revise
 using Dates
+using Infiltrator
 
 includet("network_generator.jl")
 includet("build_uncertainty_set.jl")
@@ -31,6 +32,7 @@ includet("build_full_model.jl")
 includet("parallel_utils.jl")
 includet("strict_benders.jl")
 includet("nested_benders_trust_region.jl")
+includet("build_nominal_sp.jl")
 includet("oos_evaluation.jl")
 
 using .NetworkGenerator: generate_grid_network, generate_capacity_scenarios_uniform_model, print_network_summary
@@ -63,7 +65,7 @@ const MODEL_VARIANTS = [
 EXP_NETWORKS = [:grid_5x5]
 EXP_S = 10
 EXP_GAMMA_RATIOS = [0.05, 0.10]
-EXP_EPSILONS = [0.25, 0.5, 1.0, 2.0]
+EXP_EPSILONS = [0.25, 0.5, 1.0]
 EXP_SEED = 42
 EXP_K_TEST = 100
 EXP_S_FOLLOWER = 10
@@ -106,8 +108,8 @@ if !("--test" in ARGS)
     print("시나리오 수 S [$EXP_S]: "); s_str = strip(readline())
     if !isempty(s_str); EXP_S = parse(Int, s_str); end
 
-    print("γ_ratio (comma-separated) [$(join(EXP_GAMMA_RATIOS, ","))]: "); gr_str = strip(readline())
-    if !isempty(gr_str); EXP_GAMMA_RATIOS = parse.(Float64, split(gr_str, ",")); end
+    EXP_GAMMA_RATIOS = [0.1]  # 고정
+    EXP_S_FOLLOWER = EXP_S    # in-sample S와 동일
 
     print("ε values (comma-separated) [$(join(EXP_EPSILONS, ","))]: "); eps_str = strip(readline())
     if !isempty(eps_str); EXP_EPSILONS = parse.(Float64, split(eps_str, ",")); end
@@ -115,16 +117,13 @@ if !("--test" in ARGS)
     print("OOS test scenarios K_test [$EXP_K_TEST]: "); kt_str = strip(readline())
     if !isempty(kt_str); EXP_K_TEST = parse(Int, kt_str); end
 
-    print("Follower belief scenarios S_f [$EXP_S_FOLLOWER]: "); sf_str = strip(readline())
-    if !isempty(sf_str); EXP_S_FOLLOWER = parse(Int, sf_str); end
-
     # 네트워크별 checkpoint 파일
     CHECKPOINT_FILE = "experiment1_vfm_$(EXP_NETWORKS[1]).jls"
 
     println("\n" * "="^80)
     println("설정 확인:")
     println("  Networks:  $(EXP_NETWORKS)")
-    println("  S=$(EXP_S), γ_ratios=$(EXP_GAMMA_RATIOS), ε=$(EXP_EPSILONS)")
+    println("  S=$(EXP_S), γ_ratio=0.1, ε=$(EXP_EPSILONS)")
     println("  seed=$(EXP_SEED), K_test=$(EXP_K_TEST), S_f=$(EXP_S_FOLLOWER)")
     println("  ρ=$(EXP_RHO), v=$(EXP_V)")
     println("  Checkpoint: $(CHECKPOINT_FILE)")
@@ -208,6 +207,37 @@ end
 
 # ===== Solve one variant =====
 """
+    solve_nominal(network, uncertainty_set, params) -> (x_star, obj_val, solve_time, num_iters)
+
+Nominal SP (N variant): build_full_2SP_model로 직접 풀기. ε 무관.
+"""
+function solve_nominal(net, uncertainty_set, params)
+    γ = params[:γ]
+    ϕU_hat = params[:ϕU_hat]
+    λU = params[:λU]
+    w = params[:w]
+    v_param = params[:v]
+    S_val = params[:S]
+
+    GC.gc()
+
+    t_start = time()
+    model, vars = build_full_2SP_model(net, S_val, ϕU_hat, λU, γ, w, v_param, uncertainty_set)
+    optimize!(model)
+    solve_time = time() - t_start
+
+    st = termination_status(model)
+    if st != MOI.OPTIMAL
+        error("Nominal SP not optimal: $st")
+    end
+
+    x_star = value.(vars[:x])
+    obj_val = objective_value(model)
+
+    return x_star, obj_val, solve_time, 0
+end
+
+"""
     solve_variant(network, uncertainty_set, params) -> (x_star, obj_val, solve_time)
 
 Benders decomposition으로 in-sample 문제 풀기.
@@ -239,7 +269,7 @@ function solve_variant(net, uncertainty_set, params)
         mip_optimizer=Gurobi.Optimizer, conic_optimizer=Mosek.Optimizer,
         outer_tr=true, inner_tr=true,
         πU_hat=πU_hat, πU_tilde=πU_tilde, yU=yU, ytsU=ytsU,
-        strengthen_cuts=:none, parallel=true, mini_benders=true, max_mini_benders_iter=3,
+        strengthen_cuts=:mw, parallel=true, mini_benders=true, max_mini_benders_iter=3,
         ldr_mode=:both)
     solve_time = time() - t_start
 
@@ -295,8 +325,11 @@ function run_experiment()
                             seed=EXP_SEED,
                             epsilon_hat=ε_hat, epsilon_tilde=ε_tilde)
 
-                        x_star, obj_val, solve_time, num_iters = solve_variant(
-                            network, uncertainty_set, params)
+                        x_star, obj_val, solve_time, num_iters = if variant_name == :N
+                            solve_nominal(network, uncertainty_set, params)
+                        else
+                            solve_variant(network, uncertainty_set, params)
+                        end
 
                         println("  In-sample: obj=$(round(obj_val, digits=4)), " *
                                 "time=$(round(solve_time, digits=1))s, iters=$(num_iters)")
@@ -347,6 +380,16 @@ function run_experiment()
 
                     # Checkpoint after each run
                     save_checkpoint(results)
+
+                    # DEBUG: FO 완료 후, TO 진입 전 breakpoint
+                    if variant_name == :FO
+                        println("\n*** @infiltrate: FO 완료. results[N], results[FO] 확인 ***")
+                        rkey_N = result_key(net_key, γ_ratio, ε, :N)
+                        rkey_FO = rkey
+                        res_N = get(results, rkey_N, nothing)
+                        res_FO = get(results, rkey, nothing)
+                        @infiltrate
+                    end
                 end  # variant
             end  # ε
         end  # γ_ratio
@@ -423,8 +466,11 @@ function run_quick_test()
             seed=seed,
             epsilon_hat=ε_hat, epsilon_tilde=ε_tilde)
 
-        x_star, obj_val, solve_time, num_iters = solve_variant(
-            network, uncertainty_set, params)
+        x_star, obj_val, solve_time, num_iters = if variant_name == :N
+            solve_nominal(network, uncertainty_set, params)
+        else
+            solve_variant(network, uncertainty_set, params)
+        end
 
         println("  In-sample: obj=$(round(obj_val, digits=4)), time=$(round(solve_time, digits=1))s")
         println("  x* = $(x_star)")
