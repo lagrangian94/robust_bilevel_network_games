@@ -194,15 +194,16 @@ function tv_isp_follower_optimize!(model, vars, tv::TVData, α_sol::Vector{Float
     obj_val = objective_value(model)
 
     # Extract subgradient ∂Z^F/∂α_k from dual values of F9-F12
+    # NOTE: shadow_price for ≥ constraints = ∂obj/∂(relaxation) = -∂obj/∂RHS → negate.
     subgradient = zeros(K)
     for k in 1:K
         sg_k = 0.0
         for s in 1:S
-            sg_k += q[s] * shadow_price(vars[:F9][s, k])
-            sg_k += q[s] * shadow_price(vars[:F10][s, k])
+            sg_k += q[s] * shadow_price(vars[:F9][s, k])        # F9 ≤ → direct
+            sg_k += q[s] * (-shadow_price(vars[:F10][s, k]))    # F10 ≥ → negate
         end
-        sg_k += 2 * ε * shadow_price(vars[:F11][k])
-        sg_k += 1.0 * shadow_price(vars[:F12][k])
+        sg_k += 2 * ε * shadow_price(vars[:F11][k])              # F11 ≤ → direct
+        sg_k += 1.0 * shadow_price(vars[:F12][k])                # F12 == → direct
         subgradient[k] = sg_k
     end
 
@@ -212,12 +213,19 @@ function tv_isp_follower_optimize!(model, vars, tv::TVData, α_sol::Vector{Float
     β_val = [value(vars[:β][k, s]) for k in 1:K, s in 1:S]
     σ_tilde_val = [value(vars[:σ_tilde][s]) for s in 1:S]
 
+    # Extract outer cut materials: d_s values and φ̃_k^s = shadow_price(F2)
+    d_val = [value(vars[:d][s]) for s in 1:S]
+    # φ̃_k^s: OSP primal capacity dual = shadow_price of F2 (≤ in Max → sp ≥ 0)
+    φ_tilde_val = [shadow_price(vars[:F2][k, s]) for k in 1:K, s in 1:S]
+
     cut_info = Dict(
         :obj_val => obj_val,
         :subgradient => subgradient,
         :intercept => intercept,
         :β_val => β_val,
         :σ_tilde_val => σ_tilde_val,
+        :d_val => d_val,
+        :φ_tilde_val => φ_tilde_val,
     )
     return :OptimalityCut, cut_info
 end

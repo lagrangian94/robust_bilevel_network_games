@@ -149,11 +149,40 @@ s.t.
 ```
 min   t₀
 
-s.t.  1ᵀh ≤ w,   x ∈ X,   McCormick
-      t₀ ≥ Z₀(x, h, λ, ψ⁰)    (Benders cuts)
+s.t.  1ᵀh ≤ λw,   x ∈ X,   McCormick(ψ⁰ = λx)
+      t₀ ≥ (optimality cuts)
 ```
 
 OMP variables: t₀, x, h, λ, ψ⁰.
+
+### 6.1 Outer Optimality Cut
+
+At the current solution (x̄, h̄, λ̄, ψ̄⁰), solve the inner loop to get Z₀*.
+The cut is:
+
+```
+t₀ ≥ intercept + π_h'h + π_λ λ + π_{ψ⁰}'ψ⁰ + π_x'x
+```
+
+where:
+
+```
+π_{h_k}   = -Σ_s β_k^s                                         (P16 RHS: r_k^s = h_k + ...)
+π_λ       = Σ_s σ̃^s - Σ_{s,k} ξ̄_k^s β_k^s                     (P9 RHS: λ̄, P16 RHS: r_k^s)
+π_{ψ⁰_k}  = v_k Σ_s ξ̄_k^s β_k^s                                (P16 RHS: r_k^s = ... - v_k ψ⁰_k ξ_k^s)
+π_{x_k}   = -v_k Σ_s ξ̄_k^s (a_s φ̂_k^s + d_s φ̃_k^s)           (P2/P4 coeff: c_k^s = ξ̄_k^s(1-v_k x_k))
+
+intercept = Z₀* - π_h'h̄ - π_λ λ̄ - π_{ψ⁰}'ψ̄⁰ - π_x'x̄
+```
+
+Sources:
+- β_k^s, σ̃^s: ISP-F primal values
+- a_s, φ̂_k^s: ISP-L primal value(a[s]), shadow_price(L2[k,s])
+- d_s, φ̃_k^s: ISP-F primal value(d[s]), shadow_price(F2[k,s])
+
+**Note on π_x**: x appears in c_k^s = ξ̄_k^s(1 - v_k x_k), which enters as coefficient
+in (P2) and (P4). The sensitivity ∂Z₀/∂x_k = -v_k Σ_s ξ̄_k^s (a_s φ̂_k^s + d_s φ̃_k^s).
+Without π_x, OMP has no information that interdiction reduces adversary flow → x=0 고착.
 
 
 ## 7. OSP Primal: Z₀(x̄, h̄, λ̄, ψ̄⁰)
@@ -303,6 +332,52 @@ s.t. Σ_k α_k ≤ w,  α_k ≥ 0  ∀k
 ```
 
 IMP variables: α_k, θ^L, θ^F.  Size O(|A|).
+
+**Inner Benders Cut** (added to IMP after solving ISP at α*):
+
+```
+θ^L ≤ intercept_L + sg_L' α       (leader cut)
+θ^F ≤ intercept_F + sg_F' α       (follower cut)
+```
+
+where `intercept = Z(α*) - sg' α*` and sg = ∂Z/∂α (subgradient).
+
+### 9.2.1 Subgradient ∂Z^L/∂α_k
+
+α_k appears in RHS of L7–L10. The subgradient is:
+
+```
+∂Z^L/∂α_k = Σ_s q̂_s · (∂Z/∂RHS_L7[s,k])
+           + Σ_s q̂_s · (∂Z/∂RHS_L8[s,k])
+           + 2ε̂   · (∂Z/∂RHS_L9[k])
+           + 1     · (∂Z/∂RHS_L10[k])
+```
+
+**⚠ JuMP shadow_price convention**:
+JuMP `shadow_price` = sensitivity to *relaxation*, NOT to RHS increase.
+- For ≤ constraints: relaxation = RHS↑ → `shadow_price = ∂obj/∂RHS` (use directly)
+- For ≥ constraints: relaxation = RHS↓ → `shadow_price = -∂obj/∂RHS` (**must negate**)
+- For == constraints: `shadow_price = ∂obj/∂RHS` (use directly)
+
+Therefore in code:
+
+```
+sg_k += q[s] *   shadow_price(L7[s,k])      # L7 is ≤
+sg_k += q[s] * (-shadow_price(L8[s,k]))     # L8 is ≥ → NEGATE
+sg_k += 2ε̂  *   shadow_price(L9[k])         # L9 is ≤
+sg_k += 1.0  *   shadow_price(L10[k])        # L10 is ==
+```
+
+### 9.2.2 Subgradient ∂Z^F/∂α_k
+
+Same structure with F9–F12:
+
+```
+sg_k += q[s] *   shadow_price(F9[s,k])      # F9 is ≤
+sg_k += q[s] * (-shadow_price(F10[s,k]))    # F10 is ≥ → NEGATE
+sg_k += 2ε̃  *   shadow_price(F11[k])        # F11 is ≤
+sg_k += 1.0  *   shadow_price(F12[k])        # F12 is ==
+```
 
 
 ### 9.3 Leader Subproblem: Σ_s Z^{L,s}(α) — LP

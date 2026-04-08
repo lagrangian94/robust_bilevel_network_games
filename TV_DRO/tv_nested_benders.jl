@@ -236,8 +236,9 @@ function tv_nested_benders_optimize!(tv::TVData;
         add_tv_optimality_cut!(omp_model, omp_vars, outer_cut, outer_iter)
 
         if verbose
-            @printf("  Added outer cut: intercept=%.6f, π_λ=%.4f\n",
-                    outer_cut[:intercept], outer_cut[:π_λ])
+            @printf("  Added outer cut: intercept=%.6f, π_λ=%.4f, π_x_range=[%.4f, %.4f]\n",
+                    outer_cut[:intercept], outer_cut[:π_λ],
+                    minimum(outer_cut[:π_x]), maximum(outer_cut[:π_x]))
         end
     end
 

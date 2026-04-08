@@ -184,24 +184,34 @@ function tv_isp_leader_optimize!(model, vars, tv::TVData, α_sol::Vector{Float64
     # Use dual() instead to get raw dual values, then multiply by RHS coefficient of α.
     # shadow_price in JuMP: returns the change in obj per unit increase in RHS.
 
+    # NOTE: shadow_price for ≥ constraints gives ∂obj/∂(relaxation), not ∂obj/∂RHS.
+    #   For ≥: relaxation = RHS↓, so shadow_price = -∂obj/∂RHS → must negate.
+    #   For ≤ and ==: shadow_price = ∂obj/∂RHS → use directly.
     subgradient = zeros(K)
     for k in 1:K
         sg_k = 0.0
         for s in 1:S
-            sg_k += q[s] * shadow_price(vars[:L7][s, k])  # RHS coeff of α_k in L7
-            sg_k += q[s] * shadow_price(vars[:L8][s, k])  # RHS coeff of α_k in L8
+            sg_k += q[s] * shadow_price(vars[:L7][s, k])        # L7 ≤ → direct
+            sg_k += q[s] * (-shadow_price(vars[:L8][s, k]))     # L8 ≥ → negate
         end
-        sg_k += 2 * ε * shadow_price(vars[:L9][k])        # RHS coeff of α_k in L9
-        sg_k += 1.0 * shadow_price(vars[:L10][k])          # RHS coeff of α_k in L10
+        sg_k += 2 * ε * shadow_price(vars[:L9][k])              # L9 ≤ → direct
+        sg_k += 1.0 * shadow_price(vars[:L10][k])                # L10 == → direct
         subgradient[k] = sg_k
     end
 
     intercept = obj_val - dot(subgradient, α_sol)
 
+    # Extract outer cut materials: a_s values and φ̂_k^s = shadow_price(L2)
+    a_val = [value(vars[:a][s]) for s in 1:S]
+    # φ̂_k^s: OSP primal capacity dual = shadow_price of L2 (≤ in Max → sp ≥ 0)
+    φ_hat_val = [shadow_price(vars[:L2][k, s]) for k in 1:K, s in 1:S]
+
     cut_info = Dict(
         :obj_val => obj_val,
         :subgradient => subgradient,
         :intercept => intercept,
+        :a_val => a_val,
+        :φ_hat_val => φ_hat_val,
     )
     return :OptimalityCut, cut_info
 end

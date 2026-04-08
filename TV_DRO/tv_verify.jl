@@ -373,8 +373,12 @@ function solve_osp_primal_with_alpha(tv::TVData, x_sol, h_sol, λ_sol, ψ0_sol)
         error("OSP primal not optimal: $st")
     end
 
-    # α = dual of P10 (shadow_price for min ≥ constraint → non-negative)
-    α_opt = [shadow_price(P10[k]) for k in 1:K]
+    # α = dual of P10
+    # NOTE: shadow_price(P10) gives WRONG sign (negative) — JuMP internally
+    #   normalizes ≥ to ≤, so shadow_price follows Min+≤ convention (≤ 0).
+    #   Use dual() directly which returns correct α ≥ 0.
+    # α_opt = [shadow_price(P10[k]) for k in 1:K]   # ← 부호 반대! 사용 금지
+    α_opt = [dual(P10[k]) for k in 1:K]
 
     return Dict(:obj => objective_value(model), :α => α_opt, :ν => value(ν))
 end
@@ -711,7 +715,8 @@ function test_outer_cut_tightness(; m=3, n=3, S=2, seed=42,
     cut_at_bar = outer_cut[:intercept] +
         dot(outer_cut[:π_h], h_sol) +
         outer_cut[:π_λ] * λ_sol +
-        dot(outer_cut[:π_ψ0], ψ0_sol)
+        dot(outer_cut[:π_ψ0], ψ0_sol) +
+        dot(outer_cut[:π_x], x_sol)
 
     gap = abs(cut_at_bar - Z0)
     @printf("  Z₀* = %.6f\n", Z0)
@@ -758,7 +763,7 @@ function test_full_vs_benders_s3(; m=3, n=3, S=3, seed=42,
         max_inner_iter=100,
         outer_tol=1e-4,
         inner_tol=1e-5,
-        verbose=false)
+        verbose=true)
 
     benders_obj = result[:Z0]
     @printf("  Benders: Z₀=%.6f (%d outer iters)\n", benders_obj, result[:outer_iters])
