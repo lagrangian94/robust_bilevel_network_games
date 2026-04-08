@@ -1246,6 +1246,209 @@ end
 
 
 """
+    evaluate_lp_in_imp_mw_opt_cut(outer_cut_info, sdp_instances, isp_data, cut_info, iter, isp_mode; ...)
+
+LP-in-IMP MW: LP side는 outer_cut_info에서 가져오고 (MW 불필요), SDP side만 MW 강화.
+partial MW와 동일 구조이나 LP ISP instances 없이 동작.
+"""
+function evaluate_lp_in_imp_mw_opt_cut(
+    outer_cut_info, sdp_instances, isp_data, cut_info, iter, isp_mode;
+    x_sol, λ_sol, h_sol, ψ0_sol,
+    x_core, λ_core, h_core, ψ0_core,
+    parallel=false)
+
+    if isp_mode == :lp_in_imp_hat0
+        return _mw_lp_in_imp_hat0(outer_cut_info, sdp_instances, isp_data, cut_info, iter;
+            x_sol=x_sol, λ_sol=λ_sol, h_sol=h_sol, ψ0_sol=ψ0_sol,
+            x_core=x_core, λ_core=λ_core, h_core=h_core, ψ0_core=ψ0_core)
+    elseif isp_mode == :lp_in_imp_tilde0
+        return _mw_lp_in_imp_tilde0(outer_cut_info, sdp_instances, isp_data, cut_info, iter;
+            x_sol=x_sol, λ_sol=λ_sol, h_sol=h_sol, ψ0_sol=ψ0_sol,
+            x_core=x_core, λ_core=λ_core, h_core=h_core, ψ0_core=ψ0_core)
+    else
+        error("evaluate_lp_in_imp_mw_opt_cut: invalid isp_mode=$isp_mode")
+    end
+end
+
+"""
+lp_in_imp_hat0 MW: leader=LP (IMP에서 추출, MW 없음), follower=SDP (MW 강화).
+_mw_partial_hat0와 SDP side 동일, LP side만 outer_cut_info에서 가져옴.
+"""
+function _mw_lp_in_imp_hat0(
+    outer_cut_info, sdp_instances, isp_data, cut_info, iter;
+    x_sol, λ_sol, h_sol, ψ0_sol,
+    x_core, λ_core, h_core, ψ0_core)
+
+    S = isp_data[:S]
+    ϕU_tilde = isp_data[:ϕU_tilde]
+    πU_tilde = isp_data[:πU_tilde]
+    yU = isp_data[:yU]
+    ytsU = isp_data[:ytsU]
+    E = isp_data[:E]
+    d0 = isp_data[:d0]
+    v_param = isp_data[:v]
+    num_arcs = length(x_sol)
+    xi_bar = isp_data[:uncertainty_set][:xi_bar]
+
+    diag_x_sol_E = Diagonal(x_sol) * E
+    diag_x_core_E = Diagonal(x_core) * E
+    diag_λ_ψ_sol = Diagonal(λ_sol * ones(num_arcs) - v_param .* ψ0_sol)
+    diag_λ_ψ_core = Diagonal(λ_core * ones(num_arcs) - v_param .* ψ0_core)
+
+    # Cache z_star for SDP follower side
+    z_star_cache = [objective_value(sdp_instances[s][1]) for s in 1:S]
+
+    # ===== SDP follower: MW strengthening (same as _mw_partial_hat0) =====
+    mw_results, _ = solve_scenarios(S; parallel=false) do s
+        xi_bar_s = xi_bar[s]
+        model_f = sdp_instances[s][1]
+        vars_f = sdp_instances[s][2]
+        Utilde1 = vars_f[:Utilde1]; Utilde3 = vars_f[:Utilde3]
+        Ztilde1_3 = vars_f[:Ztilde1_3]
+        Ptilde1_Φ = vars_f[:Ptilde1_Φ]; Ptilde1_Π = vars_f[:Ptilde1_Π]
+        Ptilde2_Φ = vars_f[:Ptilde2_Φ]; Ptilde2_Π = vars_f[:Ptilde2_Π]
+        Ptilde1_Y = vars_f[:Ptilde1_Y]; Ptilde1_Yts = vars_f[:Ptilde1_Yts]
+        Ptilde2_Y = vars_f[:Ptilde2_Y]; Ptilde2_Yts = vars_f[:Ptilde2_Yts]
+        βtilde1_1 = vars_f[:βtilde1_1]; βtilde1_3 = vars_f[:βtilde1_3]
+
+        z_star_f = z_star_cache[s]
+
+        orig_f_1 = -ϕU_tilde * sum(Utilde1[1,:,:] .* diag_x_sol_E)
+        orig_f_2 = -ϕU_tilde * sum(Utilde3[1,:,:] .* (E - diag_x_sol_E))
+        orig_f_4 = sum(Ztilde1_3[1,:,:] .* (diag_λ_ψ_sol * diagm(xi_bar_s)))
+        orig_f_5 = (λ_sol * d0') * βtilde1_1[1,:]
+        orig_f_6 = -(h_sol + diag_λ_ψ_sol * xi_bar_s)' * βtilde1_3[1,:]
+        orig_f_ub = -ϕU_tilde * sum(Ptilde1_Φ[1,:,:]) - πU_tilde * sum(Ptilde1_Π[1,:,:]) - yU * sum(Ptilde1_Y[1,:,:]) - ytsU * sum(Ptilde1_Yts[1,:])
+        orig_f_lb = -ϕU_tilde * sum(Ptilde2_Φ[1,:,:]) - πU_tilde * sum(Ptilde2_Π[1,:,:]) - yU * sum(Ptilde2_Y[1,:,:]) - ytsU * sum(Ptilde2_Yts[1,:])
+        orig_obj_f = orig_f_1 + orig_f_2 + orig_f_4 + orig_f_5 + orig_f_6 + orig_f_ub + orig_f_lb
+
+        mw_con_f = @constraint(model_f, orig_obj_f >= z_star_f - 1e-6)
+
+        core_f_1 = -ϕU_tilde * sum(Utilde1[1,:,:] .* diag_x_core_E)
+        core_f_2 = -ϕU_tilde * sum(Utilde3[1,:,:] .* (E - diag_x_core_E))
+        core_f_4 = sum(Ztilde1_3[1,:,:] .* (diag_λ_ψ_core * diagm(xi_bar_s)))
+        core_f_5 = (λ_core * d0') * βtilde1_1[1,:]
+        core_f_6 = -(h_core + diag_λ_ψ_core * xi_bar_s)' * βtilde1_3[1,:]
+        core_obj_f = core_f_1 + core_f_2 + core_f_4 + core_f_5 + core_f_6 + orig_f_ub + orig_f_lb
+        @objective(model_f, Max, core_obj_f)
+        optimize!(model_f)
+
+        st_f = termination_status(model_f)
+        if !(st_f == MOI.OPTIMAL || st_f == MOI.SLOW_PROGRESS)
+            @warn "MW follower (lp_in_imp_hat0) solve failed for s=$s: $st_f"
+        end
+
+        return (true, (mw_con_f, model_f))
+    end
+
+    # Extract MW-strengthened SDP follower coefficients
+    Utilde1 = cat([value.(sdp_instances[s][2][:Utilde1]) for s in 1:S]...; dims=1)
+    Utilde3 = cat([value.(sdp_instances[s][2][:Utilde3]) for s in 1:S]...; dims=1)
+    Ztilde1_3 = cat([value.(sdp_instances[s][2][:Ztilde1_3]) for s in 1:S]...; dims=1)
+    βtilde1_1 = cat([value.(sdp_instances[s][2][:βtilde1_1]) for s in 1:S]...; dims=1)
+    βtilde1_3 = cat([value.(sdp_instances[s][2][:βtilde1_3]) for s in 1:S]...; dims=1)
+    intercept_f = [value.(sdp_instances[s][2][:intercept]) for s in 1:S]
+
+    # Cleanup MW constraints
+    for s in 1:S
+        (mw_con_f, model_f) = mw_results[s]
+        delete(model_f, mw_con_f)
+    end
+
+    # LP leader cuts: 이미 추출된 outer_cut_info에서 그대로 사용
+    lp_leader_cuts = outer_cut_info[:lp_leader]
+
+    return Dict(
+        :mode => :partial_hat0,
+        :lp_leader => lp_leader_cuts,
+        :Utilde1 => Utilde1, :Utilde3 => Utilde3,
+        :Ztilde1_3 => Ztilde1_3, :βtilde1_1 => βtilde1_1, :βtilde1_3 => βtilde1_3,
+        :intercept_f => intercept_f,
+        :intercept_l => [lp_leader_cuts[s][:intercept] for s in 1:S],
+    )
+end
+
+"""
+lp_in_imp_tilde0 MW: leader=SDP (MW 강화), follower=LP (IMP에서 추출, MW 없음).
+_mw_partial_tilde0와 SDP side 동일, LP side만 outer_cut_info에서 가져옴.
+"""
+function _mw_lp_in_imp_tilde0(
+    outer_cut_info, sdp_instances, isp_data, cut_info, iter;
+    x_sol, λ_sol, h_sol, ψ0_sol,
+    x_core, λ_core, h_core, ψ0_core)
+
+    S = isp_data[:S]
+    ϕU_hat = isp_data[:ϕU_hat]
+    πU_hat = isp_data[:πU_hat]
+    E = isp_data[:E]
+    d0 = isp_data[:d0]
+    num_arcs = length(x_sol)
+
+    diag_x_sol_E = Diagonal(x_sol) * E
+    diag_x_core_E = Diagonal(x_core) * E
+
+    # Cache z_star for SDP leader side
+    z_star_cache = [objective_value(sdp_instances[s][1]) for s in 1:S]
+
+    # ===== SDP leader: MW strengthening (same as _mw_partial_tilde0) =====
+    mw_results, _ = solve_scenarios(S; parallel=false) do s
+        model_l = sdp_instances[s][1]
+        vars_l = sdp_instances[s][2]
+        Uhat1 = vars_l[:Uhat1]; Uhat3 = vars_l[:Uhat3]
+        Phat1_Φ = vars_l[:Phat1_Φ]; Phat1_Π = vars_l[:Phat1_Π]
+        Phat2_Φ = vars_l[:Phat2_Φ]; Phat2_Π = vars_l[:Phat2_Π]
+        βhat1_1 = vars_l[:βhat1_1]
+
+        z_star_l = z_star_cache[s]
+
+        orig_l_1 = -ϕU_hat * sum(Uhat1[1,:,:] .* diag_x_sol_E)
+        orig_l_2 = -ϕU_hat * sum(Uhat3[1,:,:] .* (E - diag_x_sol_E))
+        orig_l_3 = (d0') * βhat1_1[1,:]
+        orig_l_ub = -ϕU_hat * sum(Phat1_Φ[1,:,:]) - πU_hat * sum(Phat1_Π[1,:,:])
+        orig_l_lb = -ϕU_hat * sum(Phat2_Φ[1,:,:]) - πU_hat * sum(Phat2_Π[1,:,:])
+        orig_obj_l = orig_l_1 + orig_l_2 + orig_l_3 + orig_l_ub + orig_l_lb
+
+        mw_con_l = @constraint(model_l, orig_obj_l >= z_star_l - 1e-6)
+
+        core_l_1 = -ϕU_hat * sum(Uhat1[1,:,:] .* diag_x_core_E)
+        core_l_2 = -ϕU_hat * sum(Uhat3[1,:,:] .* (E - diag_x_core_E))
+        core_obj_l = core_l_1 + core_l_2 + orig_l_3 + orig_l_ub + orig_l_lb
+        @objective(model_l, Max, core_obj_l)
+        optimize!(model_l)
+
+        st_l = termination_status(model_l)
+        if !(st_l == MOI.OPTIMAL || st_l == MOI.SLOW_PROGRESS)
+            @warn "MW leader (lp_in_imp_tilde0) solve failed for s=$s: $st_l"
+        end
+
+        return (true, (mw_con_l, model_l))
+    end
+
+    # Extract MW-strengthened SDP leader coefficients
+    Uhat1 = cat([value.(sdp_instances[s][2][:Uhat1]) for s in 1:S]...; dims=1)
+    Uhat3 = cat([value.(sdp_instances[s][2][:Uhat3]) for s in 1:S]...; dims=1)
+    intercept_l = [value.(sdp_instances[s][2][:intercept]) for s in 1:S]
+
+    # Cleanup MW constraints
+    for s in 1:S
+        (mw_con_l, model_l) = mw_results[s]
+        delete(model_l, mw_con_l)
+    end
+
+    # LP follower cuts: 이미 추출된 outer_cut_info에서 그대로 사용
+    lp_follower_cuts = outer_cut_info[:lp_follower]
+
+    return Dict(
+        :mode => :partial_tilde0,
+        :Uhat1 => Uhat1, :Uhat3 => Uhat3,
+        :intercept_l => intercept_l,
+        :lp_follower => lp_follower_cuts,
+        :intercept_f => [lp_follower_cuts[s][:intercept] for s in 1:S],
+    )
+end
+
+
+"""
     evaluate_joint_mw_opt_cut(isp_data, cut_info, iter; ...)
 
 Joint MW cut strengthening: leader+follower를 하나의 OSP 모델에서 동시 최적화.
@@ -2107,7 +2310,10 @@ function tr_imp_optimize_lp_in_imp!(imp_model::Model, imp_vars::Dict,
     imp_cuts=nothing, inner_tr=true, tol=1e-6, parallel=false, network=nothing,
     inexact=false, inexact_tol=0.1, max_inexact_iter=5)
 
-    st = MOI.get(imp_model, MOI.TerminationStatus())
+    # lp_in_imp: update_imp_*_lp! 후 모델이 수정되므로 st가 OPTIMIZE_NOT_CALLED일 수 있음
+    # → DUAL_INFEASIBLE로 취급하여 while loop 진입 보장
+    st_raw = MOI.get(imp_model, MOI.TerminationStatus())
+    st = (st_raw == MOI.OPTIMIZE_NOT_CALLED) ? MOI.DUAL_INFEASIBLE : st_raw
     iter = 0
     uncertainty_set = isp_data[:uncertainty_set]
     R = uncertainty_set[:R]
@@ -2135,7 +2341,7 @@ function tr_imp_optimize_lp_in_imp!(imp_model::Model, imp_vars::Dict,
         counter = 0
         β_relative = 1e-4
         ρ = 0.0
-        centers = Dict(:α=>value.(imp_vars[:α]))
+        centers = nothing  # 첫 optimize! 후 초기화 (lp_in_imp: update_imp 후 stale 방지)
         tr_constraints = Dict(:continuous=>nothing)
     end
     ## Clean up old cuts from previous outer iteration
@@ -2161,6 +2367,10 @@ function tr_imp_optimize_lp_in_imp!(imp_model::Model, imp_vars::Dict,
         optimize!(imp_model)
         st = MOI.get(imp_model, MOI.TerminationStatus())
         α_sol = max.(value.(imp_vars[:α]), 0.0)
+        # Lazy init: 첫 optimize! 후 centers 초기화
+        if inner_tr && centers === nothing
+            centers = Dict(:α => copy(α_sol))
+        end
 
         # IMP objective includes both LP (exact) and SDP epigraph parts
         imp_obj = objective_value(imp_model)
@@ -2194,7 +2404,8 @@ function tr_imp_optimize_lp_in_imp!(imp_model::Model, imp_vars::Dict,
         end
 
         # LP side contribution: IMP obj minus SDP epigraph part
-        lp_contribution = imp_obj - (1/S) * sdp_epi_estimate
+        # IMP objective no longer has (1/S), so subtract raw epigraph sum directly
+        lp_contribution = imp_obj - sdp_epi_estimate
         sdp_contribution = 0.0
         for s in 1:S
             dict_cut_info_sdp[s] = scenario_results[s]
@@ -2914,6 +3125,17 @@ function tr_nested_benders_optimize!(omp_model::Model, omp_vars::Dict, network, 
                                 parallel=parallel)
                             str_label = "mw"
                             str_cut = add_partial_optimality_cuts!(omp_model, omp_vars, str_info, diag_x_E, isp_data[:E], diag_λ_ψ, xi_bar, isp_data[:d0], ϕU_hat, ϕU_tilde, λ, h, S, iter, isp_mode;
+                                prefix="$(str_label)_cut_cp$(cp_idx)", result_cuts=result[:cuts])
+                        elseif is_lp_in_imp_mode
+                            # LP-in-IMP MW: SDP side only MW, LP side from outer_cut_info
+                            sdp_inst = isp_mode == :lp_in_imp_hat0 ? follower_instances : leader_instances
+                            partial_mode = isp_mode == :lp_in_imp_hat0 ? :partial_hat0 : :partial_tilde0
+                            str_info = evaluate_lp_in_imp_mw_opt_cut(
+                                outer_cut_info, sdp_inst, isp_data, cut_info, iter, isp_mode;
+                                x_sol=x_sol, λ_sol=λ_sol, h_sol=h_sol, ψ0_sol=ψ0_sol,
+                                x_core=cp.x, λ_core=cp.λ, h_core=cp.h, ψ0_core=cp.ψ0)
+                            str_label = "mw"
+                            str_cut = add_partial_optimality_cuts!(omp_model, omp_vars, str_info, diag_x_E, isp_data[:E], diag_λ_ψ, xi_bar, isp_data[:d0], ϕU_hat, ϕU_tilde, λ, h, S, iter, partial_mode;
                                 prefix="$(str_label)_cut_cp$(cp_idx)", result_cuts=result[:cuts])
                         elseif strengthen_cuts == :mw
                             str_info = evaluate_mw_opt_cut(

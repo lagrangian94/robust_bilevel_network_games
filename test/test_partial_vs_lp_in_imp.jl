@@ -140,39 +140,28 @@ network, uncertainty_set, params = setup_instance()
 println("  γ=$(params[:γ]), w=$(params[:w]), ϕU_hat=$(params[:ϕU_hat]), ϕU_tilde=$(params[:ϕU_tilde])")
 println()
 
-# --- partial_hat0 ---
-println("▶ [1/2] partial_hat0")
-res_partial = solve_mode(network, uncertainty_set, params; isp_mode=:partial_hat0)
-println("  Done: obj=$(round(res_partial[:obj], digits=6)), gap=$(round(res_partial[:gap]*100, digits=4))%, " *
-        "iters=$(res_partial[:iters]), time=$(round(res_partial[:time], digits=1))s")
-println()
-
-GC.gc()
+# # --- partial_hat0 --- (이미 결과 있음, skip)
+# println("▶ [1/2] partial_hat0")
+# res_partial = solve_mode(network, uncertainty_set, params; isp_mode=:partial_hat0)
+# println("  Done: obj=$(round(res_partial[:obj], digits=6)), gap=$(round(res_partial[:gap]*100, digits=4))%, " *
+#         "iters=$(res_partial[:iters]), time=$(round(res_partial[:time], digits=1))s")
+# println()
+# GC.gc()
 
 # --- lp_in_imp_hat0 ---
-println("▶ [2/2] lp_in_imp_hat0")
+println("▶ lp_in_imp_hat0")
 res_lp = solve_mode(network, uncertainty_set, params; isp_mode=:lp_in_imp_hat0)
 println("  Done: obj=$(round(res_lp[:obj], digits=6)), gap=$(round(res_lp[:gap]*100, digits=4))%, " *
         "iters=$(res_lp[:iters]), time=$(round(res_lp[:time], digits=1))s")
 println()
 
-# ===== 비교 테이블 =====
+# ===== 결과 =====
 println("="^70)
-println("  COMPARISON: partial_hat0 vs lp_in_imp_hat0")
+println("  lp_in_imp_hat0 RESULT")
 println("="^70)
-@printf("  %-20s  %15s  %15s\n", "", "partial_hat0", "lp_in_imp_hat0")
-@printf("  %-20s  %15.6f  %15.6f\n", "Objective", res_partial[:obj], res_lp[:obj])
-@printf("  %-20s  %15.6f  %15.6f\n", "Best LB", res_partial[:lb], res_lp[:lb])
-@printf("  %-20s  %14.4f%%  %14.4f%%\n", "Gap", res_partial[:gap]*100, res_lp[:gap]*100)
-@printf("  %-20s  %15d  %15d\n", "Outer iters", res_partial[:iters], res_lp[:iters])
-@printf("  %-20s  %14.1fs  %14.1fs\n", "Solve time", res_partial[:time], res_lp[:time])
-@printf("  %-20s  %15.1f  %15.1f\n", "Avg inner iters",
-    mean(res_partial[:inner_iters]), mean(res_lp[:inner_iters]))
-
-# 수렴값 일치 확인
-obj_diff = abs(res_partial[:obj] - res_lp[:obj])
-if obj_diff < 1e-3
-    println("\n  ✓ 수렴값 일치 (diff=$(round(obj_diff, digits=8)))")
-else
-    println("\n  ✗ 수렴값 불일치! (diff=$(round(obj_diff, digits=6)))")
-end
+@printf("  %-20s  %15.6f\n", "Objective", res_lp[:obj])
+@printf("  %-20s  %15.6f\n", "Best LB", res_lp[:lb])
+@printf("  %-20s  %14.4f%%\n", "Gap", res_lp[:gap]*100)
+@printf("  %-20s  %15d\n", "Outer iters", res_lp[:iters])
+@printf("  %-20s  %14.1fs\n", "Solve time", res_lp[:time])
+@printf("  %-20s  %15.1f\n", "Avg inner iters", mean(res_lp[:inner_iters]))

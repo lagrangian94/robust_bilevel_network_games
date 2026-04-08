@@ -51,10 +51,10 @@ network_configs = Dict(
 # Model variants: (name, isp_mode)
 # ε=0 side uses exact LP ISP (no SDP numerical issues, no ϕU=1/ε blow-up)
 const MODEL_VARIANTS = [
-    (:N,  :nominal),           # Nominal SP (solve_nominal path)
-    (:FO, :partial_hat0),      # ε̂=0 → LP leader ISP, ε̃=ε → SDP follower ISP
-    (:TO, :partial_tilde0),    # ε̂=ε → SDP leader ISP, ε̃=0 → LP follower ISP
-    (:FM, :dual),              # ε̂=ε, ε̃=ε → both SDP ISP (standard)
+    (:N,  :nominal),               # Nominal SP (solve_nominal path)
+    (:FO, :lp_in_imp_hat0),        # ε̂=0 → leader LP in IMP, ε̃=ε → SDP follower ISP
+    (:TO, :lp_in_imp_tilde0),      # ε̂=ε → SDP leader ISP, ε̃=0 → follower LP in IMP
+    (:FM, :dual),                  # ε̂=ε, ε̃=ε → both SDP ISP (standard)
 ]
 
 # ===== Defaults =====
@@ -268,7 +268,7 @@ function solve_variant(net, uncertainty_set, params; isp_mode=:dual, max_time=72
     yU = params[:yU]
     ytsU = params[:ytsU]
 
-    if isp_model != :dual
+    if isp_mode != :dual
         max_time = 3600
     end
 
@@ -340,8 +340,8 @@ function run_experiment()
                     end
 
                     # Compute ε̂/ε̃ from isp_mode
-                    ε_hat = isp_mode in (:nominal, :partial_hat0) ? 0.0 : ε
-                    ε_tilde = isp_mode in (:nominal, :partial_tilde0) ? 0.0 : ε
+                    ε_hat = isp_mode in (:nominal, :partial_hat0, :lp_in_imp_hat0) ? 0.0 : ε
+                    ε_tilde = isp_mode in (:nominal, :partial_tilde0, :lp_in_imp_tilde0) ? 0.0 : ε
 
                     run_count += 1
                     println("\n" * "─"^70)
@@ -485,8 +485,8 @@ function run_quick_test()
     test_results = Dict{Symbol, Any}()
 
     for (variant_name, isp_mode) in MODEL_VARIANTS
-        ε_hat = isp_mode in (:nominal, :partial_hat0) ? 0.0 : ε
-        ε_tilde = isp_mode in (:nominal, :partial_tilde0) ? 0.0 : ε
+        ε_hat = isp_mode in (:nominal, :partial_hat0, :lp_in_imp_hat0) ? 0.0 : ε
+        ε_tilde = isp_mode in (:nominal, :partial_tilde0, :lp_in_imp_tilde0) ? 0.0 : ε
 
         println("\n── $(variant_name) (ε̂=$(ε_hat), ε̃=$(ε_tilde), isp_mode=$(isp_mode)) ──")
 

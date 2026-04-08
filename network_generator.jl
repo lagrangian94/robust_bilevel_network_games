@@ -19,7 +19,7 @@ using Distributions
 using LinearAlgebra
 using Statistics
 using Revise
-export GridNetworkData, generate_grid_network, generate_capacity_scenarios_factor_model, generate_capacity_scenarios_uniform_model, print_network_summary
+export GridNetworkData, generate_grid_network, generate_capacity_scenarios_factor_model, generate_capacity_scenarios_uniform_model, generate_capacity_scenarios_contaminated, generate_capacity_scenarios_trunc_normal, print_network_summary
 export RealWorldNetworkData, generate_sioux_falls_network, generate_nobel_us_network, generate_abilene_network, generate_polska_network, print_realworld_network_summary
 using Infiltrator
 """
@@ -363,6 +363,80 @@ function generate_capacity_scenarios_uniform_model(num_arcs::Int, num_scenarios:
 
     return capacity_scenarios, F
 end
+
+"""
+    generate_capacity_scenarios_contaminated(num_arcs, num_scenarios, δ; seed=nothing)
+
+Contaminated DGP: (1-δ)·Uniform{1,...,10} + δ·Uniform{0,1,2}.
+각 (arc, scenario)마다 확률 δ로 low-capacity component에서 추출.
+Dummy arc (마지막) = regular arcs 합산.
+"""
+function generate_capacity_scenarios_contaminated(num_arcs::Int, num_scenarios::Int, δ::Float64;
+    seed::Union{Int,Nothing}=nothing)
+    if !isnothing(seed)
+        Random.seed!(seed)
+    end
+
+    num_regular_arcs = num_arcs - 1
+    F = zeros(Int, num_regular_arcs, num_scenarios)
+
+    for j in 1:num_scenarios
+        for i in 1:num_regular_arcs
+            if rand() < δ
+                F[i, j] = rand(0:2)    # contamination component
+            else
+                F[i, j] = rand(1:10)   # nominal component
+            end
+        end
+    end
+
+    capacity_scenarios = zeros(Float64, num_arcs, num_scenarios)
+    for scenario in 1:num_scenarios
+        capacity_scenarios[1:num_regular_arcs, scenario] = F[:, scenario]
+        capacity_scenarios[end, scenario] = sum(capacity_scenarios[1:num_regular_arcs, scenario])
+    end
+
+    return capacity_scenarios, F
+end
+
+"""
+    generate_capacity_scenarios_trunc_normal(num_arcs, num_scenarios, μ, σ; lb=0.0, ub=10.0, seed=nothing)
+
+Truncated Normal(μ, σ) on [lb, ub]. Rejection sampling.
+Dummy arc (마지막) = regular arcs 합산.
+Returns Float64 matrix (정수 아님).
+"""
+function generate_capacity_scenarios_trunc_normal(num_arcs::Int, num_scenarios::Int,
+    μ::Float64, σ::Float64; lb::Float64=0.0, ub::Float64=10.0,
+    seed::Union{Int,Nothing}=nothing)
+    if !isnothing(seed)
+        Random.seed!(seed)
+    end
+
+    num_regular_arcs = num_arcs - 1
+    F = zeros(Float64, num_regular_arcs, num_scenarios)
+
+    for j in 1:num_scenarios
+        for i in 1:num_regular_arcs
+            while true
+                x = μ + σ * randn()
+                if lb <= x <= ub
+                    F[i, j] = x
+                    break
+                end
+            end
+        end
+    end
+
+    capacity_scenarios = zeros(Float64, num_arcs, num_scenarios)
+    for scenario in 1:num_scenarios
+        capacity_scenarios[1:num_regular_arcs, scenario] = F[:, scenario]
+        capacity_scenarios[end, scenario] = sum(capacity_scenarios[1:num_regular_arcs, scenario])
+    end
+
+    return capacity_scenarios, F
+end
+
 """
     print_network_summary(network::GridNetworkData)
 

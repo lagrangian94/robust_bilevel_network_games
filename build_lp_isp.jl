@@ -521,16 +521,18 @@ function build_imp_with_leader_lp(network, S, ϕU, v_param, w, uncertainty_set, 
         # (DL3) −ξ̄ₖτ̂ + Zhat1_1ₖ + Uhat2ₖ − Uhat3ₖ ≤ αₖ  (α coupling)
         @constraint(model, [k=1:num_arcs],
             -ξ̄[k] * τhat[s] + Zhat1_1[s,k] + Uhat2[s,k] - Uhat3[s,k] <= α[k])
-        # (DL4) vξ̄ₖτ̂ − Uhat1ₖ − Uhat2ₖ + Uhat3ₖ = 0
+        # (DL4) vξ̄ₖτ̂ − Uhat1ₖ − Uhat2ₖ + Uhat3ₖ ≤ 0
+        # Ψhat_0 >= 0 (primal) → dual constraint is inequality, not equality
         @constraint(model, [k=1:num_arcs],
-            v_param * ξ̄[k] * τhat[s] - Uhat1[s,k] - Uhat2[s,k] + Uhat3[s,k] == 0)
+            v_param * ξ̄[k] * τhat[s] - Uhat1[s,k] - Uhat2[s,k] + Uhat3[s,k] <= 0)
     end
 
     # ===== 목적함수: leader dual obj + follower epigraph =====
-    # Leader: (1/S) Σₛ [βhat1_ts − ϕU·x·Uhat1 − ϕU·(1−x)·Uhat3]
-    # Follower: (1/S) Σₛ t_f[s]
+    # LP ISP dual value already includes (1/S) in ηhat term (by duality of LP ISP primal).
+    # Standard IMP uses sum(t_1_l + t_1_f) without outer (1/S).
+    # So here: Σₛ [leader_dual_s + t_1_f_s] — NO outer (1/S).
     @objective(model, Max,
-        (1/S) * sum(
+        sum(
             βhat1_ts[s]
             - ϕU * sum(x_sol[k] * Uhat1[s,k] for k in 1:num_arcs)
             - ϕU * sum((1-x_sol[k]) * Uhat3[s,k] for k in 1:num_arcs)
@@ -593,9 +595,10 @@ function build_imp_with_follower_lp(network, S, ϕU, v_param, w, uncertainty_set
         # (DF3) −ξ̄ₖτ̃ + Ztilde1_1ₖ + Utilde2ₖ − Utilde3ₖ ≤ αₖ  (α coupling)
         @constraint(model, [k=1:num_arcs],
             -ξ̄[k] * τtilde[s] + Ztilde1_1[s,k] + Utilde2[s,k] - Utilde3[s,k] <= α[k])
-        # (DF4) vξ̄ₖτ̃ − Utilde1ₖ − Utilde2ₖ + Utilde3ₖ = 0
+        # (DF4) vξ̄ₖτ̃ − Utilde1ₖ − Utilde2ₖ + Utilde3ₖ ≤ 0
+        # Ψtilde_0 >= 0 (primal) → dual constraint is inequality, not equality
         @constraint(model, [k=1:num_arcs],
-            v_param * ξ̄[k] * τtilde[s] - Utilde1[s,k] - Utilde2[s,k] + Utilde3[s,k] == 0)
+            v_param * ξ̄[k] * τtilde[s] - Utilde1[s,k] - Utilde2[s,k] + Utilde3[s,k] <= 0)
         # (DF5) Nyᵀ · Ztilde_cy + Ztilde_cap ≥ 0
         @constraint(model, [k=1:num_arcs],
             sum(Ny[j,k] * Ztilde_cy[s,j] for j in 1:nv1) + Ztilde_cap[s,k] >= 0)
@@ -604,10 +607,11 @@ function build_imp_with_follower_lp(network, S, ϕU, v_param, w, uncertainty_set
     end
 
     # ===== 목적함수: leader epigraph + follower dual obj =====
-    # Leader: (1/S) Σₛ t_l[s]
-    # Follower: (1/S) Σₛ [λ·βtilde1_ts − Σₖ Cₖ·Ztilde_cap − ϕU·x·Utilde1 − ϕU·(1−x)·Utilde3]
+    # LP ISP dual value already includes (1/S) in ηtilde term (by duality of LP ISP primal).
+    # Standard IMP uses sum(t_1_l + t_1_f) without outer (1/S).
+    # So here: Σₛ [t_1_l_s + follower_dual_s] — NO outer (1/S).
     @objective(model, Max,
-        (1/S) * sum(
+        sum(
             t_1_l[s]
             + λ_sol * βtilde1_ts[s]
             - sum((h_sol[k] + (λ_sol - v_param * ψ0_sol[k]) * xi_bar[s][k]) * Ztilde_cap[s,k]
@@ -639,8 +643,8 @@ Only Uhat1, Uhat3 coefficients depend on x.
 function update_imp_leader_lp!(model, vars; x_sol, ϕU, S)
     num_arcs = length(x_sol)
     for s in 1:S, k in 1:num_arcs
-        set_objective_coefficient(model, vars[:Uhat1][s,k], -(1/S) * ϕU * x_sol[k])
-        set_objective_coefficient(model, vars[:Uhat3][s,k], -(1/S) * ϕU * (1 - x_sol[k]))
+        set_objective_coefficient(model, vars[:Uhat1][s,k], -ϕU * x_sol[k])
+        set_objective_coefficient(model, vars[:Uhat3][s,k], -ϕU * (1 - x_sol[k]))
     end
 end
 
@@ -655,12 +659,12 @@ function update_imp_follower_lp!(model, vars; x_sol, h_sol, λ_sol, ψ0_sol,
                                   ϕU, v_param, xi_bar, S)
     num_arcs = length(x_sol)
     for s in 1:S
-        set_objective_coefficient(model, vars[:βtilde1_ts][s], (1/S) * λ_sol)
+        set_objective_coefficient(model, vars[:βtilde1_ts][s], λ_sol)
         for k in 1:num_arcs
             Cₖ = h_sol[k] + (λ_sol - v_param * ψ0_sol[k]) * xi_bar[s][k]
-            set_objective_coefficient(model, vars[:Ztilde_cap][s,k], -(1/S) * Cₖ)
-            set_objective_coefficient(model, vars[:Utilde1][s,k], -(1/S) * ϕU * x_sol[k])
-            set_objective_coefficient(model, vars[:Utilde3][s,k], -(1/S) * ϕU * (1 - x_sol[k]))
+            set_objective_coefficient(model, vars[:Ztilde_cap][s,k], -Cₖ)
+            set_objective_coefficient(model, vars[:Utilde1][s,k], -ϕU * x_sol[k])
+            set_objective_coefficient(model, vars[:Utilde3][s,k], -ϕU * (1 - x_sol[k]))
         end
     end
 end
@@ -698,6 +702,7 @@ function extract_lp_in_imp_outer_cut(imp_vars, sdp_instances, S, isp_mode;
             βhat1_ts_val = value(imp_vars[:βhat1_ts][s])
 
             # Leader outer cut: ∂obj/∂x from McCormick structure
+            # LP ISP dual vars already encode (1/S) through duality (ηhat/S in primal → τ≤1/S in dual)
             coeff_x = [ϕU_hat * (Uhat3_val[k] - Uhat1_val[k]) for k in 1:num_arcs]
             # Leader contribution at current x
             leader_obj_s = βhat1_ts_val -
@@ -742,10 +747,11 @@ function extract_lp_in_imp_outer_cut(imp_vars, sdp_instances, S, isp_mode;
             Ztilde_cap_val = [value(imp_vars[:Ztilde_cap][s,k]) for k in 1:num_arcs]
 
             # ∂obj/∂x: McCormick sensitivity
+            # LP ISP dual vars already encode (1/S) through duality
             coeff_x = [ϕU_tilde * (Utilde3_val[k] - Utilde1_val[k]) for k in 1:num_arcs]
-            # ∂obj/∂h: capacity dual (Ztilde_cap coefficient = -1 in obj)
+            # ∂obj/∂h: capacity dual
             coeff_h = [-Ztilde_cap_val[k] for k in 1:num_arcs]
-            # ∂obj/∂λ: βtilde1_ts + Σₖ ξ̄ₖ·(-Ztilde_cap_k)  (from Cₖ = h + (λ-vψ⁰)ξ̄)
+            # ∂obj/∂λ: βtilde1_ts + Σₖ ξ̄ₖ·(-Ztilde_cap_k)
             coeff_λ = βtilde1_ts_val + sum(-xi_bar[s][k] * Ztilde_cap_val[k] for k in 1:num_arcs)
             # ∂obj/∂ψ⁰ₖ: from Cₖ = h + (λ-vψ⁰)ξ̄  → ∂Cₖ/∂ψ⁰ₖ = v·ξ̄ₖ
             coeff_ψ0 = [v_param * xi_bar[s][k] * Ztilde_cap_val[k] for k in 1:num_arcs]
