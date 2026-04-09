@@ -91,8 +91,8 @@ function make_tv_data(network, scenarios, q_hat, eps_hat, eps_tilde;
 
     v = Float64.(network.interdictable_arcs)  # v_k ∈ {0,1}
 
-    # McCormick big-M for φ̂, φ̃ dual variables
-    phi_U = maximum(sum(xi_bar[:, s]) for s in 1:S) + 1.0
+    # McCormick big-M for φ̂, φ̃ dual variables (max-flow dual UB = 1.0)
+    phi_U = 2.0
 
     return TVData(Ny, Nts, nv1, num_arcs, S, xi_bar, q_hat,
                   eps_hat, eps_tilde, v, gamma, w, lambda_U,

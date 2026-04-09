@@ -89,12 +89,12 @@ function test_isp_standalone(; m=3, n=3, S=2, seed=42,
     α_sol = fill(tv.w / K, K)
 
     # --- ISP-L ---
-    isp_l_model, isp_l_vars = build_tv_isp_leader(tv, x_sol; optimizer=HiGHS.Optimizer)
+    isp_l_model, isp_l_vars = build_tv_isp_leader(tv, x_sol; optimizer=Gurobi.Optimizer)
     _, leader_cut = tv_isp_leader_optimize!(isp_l_model, isp_l_vars, tv, α_sol)
 
     # --- ISP-F ---
     isp_f_model, isp_f_vars = build_tv_isp_follower(tv, x_sol, h_sol, λ_sol, ψ0_sol;
-                                                      optimizer=HiGHS.Optimizer)
+                                                      optimizer=Gurobi.Optimizer)
     _, follower_cut = tv_isp_follower_optimize!(isp_f_model, isp_f_vars, tv, α_sol)
 
     Z_L = leader_cut[:obj_val]
@@ -107,10 +107,10 @@ function test_isp_standalone(; m=3, n=3, S=2, seed=42,
     @printf("  OSP primal (direct): %.6f\n", Z_OSP)
 
     # Inner loop으로 구한 값과 비교
-    imp_model, imp_vars = build_tv_imp(tv; optimizer=HiGHS.Optimizer)
-    isp_l2, isp_l2_vars = build_tv_isp_leader(tv, x_sol; optimizer=HiGHS.Optimizer)
+    imp_model, imp_vars = build_tv_imp(tv; optimizer=Gurobi.Optimizer)
+    isp_l2, isp_l2_vars = build_tv_isp_leader(tv, x_sol; optimizer=Gurobi.Optimizer)
     isp_f2, isp_f2_vars = build_tv_isp_follower(tv, x_sol, h_sol, λ_sol, ψ0_sol;
-                                                   optimizer=HiGHS.Optimizer)
+                                                   optimizer=Gurobi.Optimizer)
 
     inner_result = tv_inner_loop!(tv, imp_model, imp_vars,
                                    isp_l2, isp_l2_vars,
@@ -129,10 +129,10 @@ function test_isp_standalone(; m=3, n=3, S=2, seed=42,
 
     # Evaluate ISP at OSP's optimal α
     α_opt = Z_OSP_check[:α]
-    isp_l3, isp_l3_vars = build_tv_isp_leader(tv, x_sol; optimizer=HiGHS.Optimizer)
+    isp_l3, isp_l3_vars = build_tv_isp_leader(tv, x_sol; optimizer=Gurobi.Optimizer)
     _, lc3 = tv_isp_leader_optimize!(isp_l3, isp_l3_vars, tv, α_opt)
     isp_f3, isp_f3_vars = build_tv_isp_follower(tv, x_sol, h_sol, λ_sol, ψ0_sol;
-                                                   optimizer=HiGHS.Optimizer)
+                                                   optimizer=Gurobi.Optimizer)
     _, fc3 = tv_isp_follower_optimize!(isp_f3, isp_f3_vars, tv, α_opt)
     Z_ISP_at_opt = lc3[:obj_val] + fc3[:obj_val]
     @printf("  ISP-L+F at OSP's α*: %.6f  (L=%.6f, F=%.6f)\n",
@@ -172,7 +172,7 @@ function solve_osp_primal(tv::TVData, x_sol, h_sol, λ_sol, ψ0_sol)
         r[k, s] = h_sol[k] + (λ_sol - v[k] * ψ0_sol[k]) * ξ[k, s]
     end
 
-    model = Model(optimizer_with_attributes(HiGHS.Optimizer, MOI.Silent() => true))
+    model = Model(optimizer_with_attributes(Gurobi.Optimizer, MOI.Silent() => true))
 
     # === Variables ===
     @variable(model, ν >= 0)
@@ -319,7 +319,7 @@ function solve_osp_primal_with_alpha(tv::TVData, x_sol, h_sol, λ_sol, ψ0_sol)
         r[k, s] = h_sol[k] + (λ_sol - v[k] * ψ0_sol[k]) * ξ[k, s]
     end
 
-    model = Model(optimizer_with_attributes(HiGHS.Optimizer, MOI.Silent() => true))
+    model = Model(optimizer_with_attributes(Gurobi.Optimizer, MOI.Silent() => true))
 
     @variable(model, ν >= 0)
     @variable(model, σ_Lp[1:S] >= 0)
@@ -447,7 +447,7 @@ function solve_osp_dual(tv::TVData, x_sol, h_sol, λ_sol, ψ0_sol)
         r[k, s] = h_sol[k] + (λ_sol - v[k] * ψ0_sol[k]) * ξ[k, s]
     end
 
-    model = Model(optimizer_with_attributes(HiGHS.Optimizer, MOI.Silent() => true))
+    model = Model(optimizer_with_attributes(Gurobi.Optimizer, MOI.Silent() => true))
 
     # === Dual variables (all ≥ 0) ===
     @variable(model, α[1:K] >= 0)
@@ -593,7 +593,7 @@ function test_full_vs_benders(; m=3, n=3, S=2, seed=42,
     # --- Benders ---
     println("\n  Solving nested Benders...")
     result = tv_nested_benders_optimize!(tv;
-        lp_optimizer=HiGHS.Optimizer,
+        lp_optimizer=Gurobi.Optimizer,
         mip_optimizer=Gurobi.Optimizer,
         max_outer_iter=50,
         max_inner_iter=100,
@@ -681,7 +681,7 @@ function test_inner_cut_tightness(; m=3, n=3, S=2, seed=42,
         α_sol .*= tv.w / sum(α_sol)  # normalize to Σα = w
 
         # ISP-L
-        isp_l, isp_l_v = build_tv_isp_leader(tv, x_sol; optimizer=HiGHS.Optimizer)
+        isp_l, isp_l_v = build_tv_isp_leader(tv, x_sol; optimizer=Gurobi.Optimizer)
         _, l_cut = tv_isp_leader_optimize!(isp_l, isp_l_v, tv, α_sol)
 
         cut_val_l = l_cut[:intercept] + dot(l_cut[:subgradient], α_sol)
@@ -696,7 +696,7 @@ function test_inner_cut_tightness(; m=3, n=3, S=2, seed=42,
 
         # ISP-F
         isp_f, isp_f_v = build_tv_isp_follower(tv, x_sol, h_sol, λ_sol, ψ0_sol;
-                                                  optimizer=HiGHS.Optimizer)
+                                                  optimizer=Gurobi.Optimizer)
         _, f_cut = tv_isp_follower_optimize!(isp_f, isp_f_v, tv, α_sol)
 
         cut_val_f = f_cut[:intercept] + dot(f_cut[:subgradient], α_sol)
@@ -741,10 +741,10 @@ function test_outer_cut_tightness(; m=3, n=3, S=2, seed=42,
     h_sol = fill(tv.w / K, K)
 
     # Inner loop 수렴
-    imp_model, imp_vars = build_tv_imp(tv; optimizer=HiGHS.Optimizer)
-    isp_l, isp_l_vars = build_tv_isp_leader(tv, x_sol; optimizer=HiGHS.Optimizer)
+    imp_model, imp_vars = build_tv_imp(tv; optimizer=Gurobi.Optimizer)
+    isp_l, isp_l_vars = build_tv_isp_leader(tv, x_sol; optimizer=Gurobi.Optimizer)
     isp_f, isp_f_vars = build_tv_isp_follower(tv, x_sol, h_sol, λ_sol, ψ0_sol;
-                                                optimizer=HiGHS.Optimizer)
+                                                optimizer=Gurobi.Optimizer)
 
     inner_result = tv_inner_loop!(tv, imp_model, imp_vars,
                                    isp_l, isp_l_vars,
@@ -779,7 +779,7 @@ end
 # ============================================================
 # Test 6: S=3 full vs Benders
 # ============================================================
-function test_full_vs_benders_s3(; m=3, n=3, S=3, seed=42,
+function test_full_vs_benders_s3(; m=5, n=5, S=20, seed=42,
                                    eps_hat=0.15, eps_tilde=0.15)
     println("=" ^ 60)
     println("Test 6: Full vs Benders ($(m)×$(n), S=$S)")
@@ -804,10 +804,10 @@ function test_full_vs_benders_s3(; m=3, n=3, S=3, seed=42,
     # --- Benders ---
     println("\n  Solving nested Benders...")
     result = tv_nested_benders_optimize!(tv;
-        lp_optimizer=HiGHS.Optimizer,
+        lp_optimizer=Gurobi.Optimizer,
         mip_optimizer=Gurobi.Optimizer,
-        max_outer_iter=50,
-        max_inner_iter=100,
+        max_outer_iter=1e+4,
+        max_inner_iter=1e+4,
         outer_tol=1e-4,
         inner_tol=1e-5,
         verbose=true)
