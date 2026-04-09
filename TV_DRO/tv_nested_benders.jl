@@ -3,6 +3,8 @@ tv_nested_benders.jl — TV-DRO nested Benders decomposition.
 
 Main algorithm: outer loop (OMP ↔ OSP) + inner loop (IMP ↔ ISP-L/ISP-F).
 
+ISP constraints are independent of OMP variables (x,h,λ,ψ⁰) →
+  build ISP-L/ISP-F ONCE, update objective only per outer iteration.
 All subproblems are LP → HiGHS for LP, Gurobi for MILP.
 """
 
@@ -126,6 +128,9 @@ end
 
 Main TV-DRO nested Benders algorithm.
 
+ISP-L/ISP-F are built ONCE (constraints independent of OMP vars).
+Each outer iteration: update ISP objectives, build fresh IMP, run inner loop.
+
 Returns Dict with optimal solution and convergence info.
 """
 function tv_nested_benders_optimize!(tv::TVData;
@@ -139,6 +144,15 @@ function tv_nested_benders_optimize!(tv::TVData;
 
     # --- Build OMP ---
     omp_model, omp_vars = build_tv_omp(tv; optimizer=mip_optimizer)
+
+    # --- Build ISP-L, ISP-F ONCE (constraints are x-independent) ---
+    x_init = zeros(K)
+    h_init = zeros(K)
+    λ_init = 0.0
+    ψ0_init = zeros(K)
+    isp_l_model, isp_l_vars = build_tv_isp_leader(tv, x_init; optimizer=lp_optimizer)
+    isp_f_model, isp_f_vars = build_tv_isp_follower(tv, x_init, h_init, λ_init, ψ0_init;
+                                                      optimizer=lp_optimizer)
 
     # Iteration history
     history = Dict(
@@ -175,16 +189,12 @@ function tv_nested_benders_optimize!(tv::TVData;
             @printf("  OMP: t₀=%.6f, λ=%.4f, x=%s\n", t0_val, λ_sol, string(x_int))
         end
 
-        # --- Compute c, r ---
-        c = compute_c(tv, x_sol)
-        r = compute_r(tv, h_sol, λ_sol, c)
+        # --- Update ISP objectives only (no rebuild!) ---
+        update_tv_isp_leader_objective!(isp_l_model, isp_l_vars, tv, x_sol)
+        update_tv_isp_follower_objective!(isp_f_model, isp_f_vars, tv,
+                                           x_sol, h_sol, λ_sol, ψ0_sol)
 
-        # --- Build ISP-L, ISP-F (rebuild each outer iter) ---
-        isp_l_model, isp_l_vars = build_tv_isp_leader(tv, c; optimizer=lp_optimizer)
-        isp_f_model, isp_f_vars = build_tv_isp_follower(tv, c, r, λ_sol;
-                                                          optimizer=lp_optimizer)
-
-        # --- Build IMP (fresh each outer iter) ---
+        # --- Build IMP (fresh each outer iter — cuts accumulate for this x) ---
         imp_model, imp_vars = build_tv_imp(tv; optimizer=lp_optimizer)
 
         # --- Inner loop ---
@@ -229,10 +239,10 @@ function tv_nested_benders_optimize!(tv::TVData;
             )
         end
 
-        # --- Add outer cut ---
+        # --- Add outer cut (no c parameter) ---
         outer_cut = compute_tv_outer_cut_coeffs(
             tv, inner_result[:leader_cut_info], inner_result[:follower_cut_info],
-            c, x_sol, h_sol, λ_sol, ψ0_sol)
+            x_sol, h_sol, λ_sol, ψ0_sol)
         add_tv_optimality_cut!(omp_model, omp_vars, outer_cut, outer_iter)
 
         if verbose

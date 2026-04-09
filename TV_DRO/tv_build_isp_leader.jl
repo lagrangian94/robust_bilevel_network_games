@@ -1,13 +1,14 @@
 """
 tv_build_isp_leader.jl — Leader Inner Subproblem (ISP-L) for TV-DRO.
 
-All-scenario pooled LP. Constraints L1-L11 from tv_derivation.md §9.3.
+All-scenario pooled LP. Constraints L1-L12 from tv_derivation_revised.md §9.3.
 
-Given α_k from IMP, c_k^s from OMP:
-  Z^L = max  Σ_s σ̂^s
-  s.t. L1-L11
+Given α_k from IMP, x̄_k from OMP:
+  Z^L = max  Σ_s σ̂^s - φ^U Σ_{s,k} x̄_k ρ̂¹_{k,s} - φ^U Σ_{s,k} (1-x̄_k) ρ̂³_{k,s}
+  s.t. L1-L12
 
-Sensitivity ∂Z^L/∂α_k comes from dual values of L7-L10 (α appears in RHS).
+x̄ appears ONLY in objective → constraints are x-independent → build once, update obj only.
+Sensitivity ∂Z^L/∂α_k comes from dual values of L8-L11 (α appears in RHS).
 """
 
 using JuMP
@@ -15,19 +16,20 @@ using LinearAlgebra
 
 
 """
-    build_tv_isp_leader(tv::TVData, c::Matrix{Float64}; optimizer)
+    build_tv_isp_leader(tv::TVData, x_bar::Vector{Float64}; optimizer)
 
-Build leader ISP LP (L1-L11). All scenarios pooled.
+Build leader ISP LP (L1-L12). All scenarios pooled.
+x̄ appears only in objective → can update objective without rebuilding constraints.
 
 # Arguments
 - `tv`: TVData struct
-- `c`: |A| × S matrix, c_k^s = ξ̄_k^s(1 - v_k x_k)
+- `x_bar`: |A| vector, current OMP x solution
 - `optimizer`: LP solver (e.g., HiGHS.Optimizer)
 
 # Returns
 - `(model, vars)` where vars contains all variables and named constraints
 """
-function build_tv_isp_leader(tv::TVData, c::Matrix{Float64}; optimizer)
+function build_tv_isp_leader(tv::TVData, x_bar::Vector{Float64}; optimizer)
     S = tv.S
     K = tv.num_arcs
     m = tv.nv1
@@ -35,58 +37,74 @@ function build_tv_isp_leader(tv::TVData, c::Matrix{Float64}; optimizer)
     Nts = tv.Nts
     q = tv.q_hat
     ε = tv.eps_hat
+    ξ = tv.xi_bar
+    v = tv.v
+    φ_U = tv.phi_U
 
     model = Model(optimizer_with_attributes(optimizer, MOI.Silent() => true))
 
-    # --- Variables (L11) ---
+    # --- Variables (L12) ---
     @variable(model, σ_hat[1:S] >= 0)
     @variable(model, u_hat[1:K, 1:S] >= 0)
     @variable(model, a[1:S] >= 0)
     @variable(model, b[1:S] >= 0)
     @variable(model, a_nu[1:S, 1:K] >= 0)
     @variable(model, b_nu[1:S, 1:K] >= 0)
+    # McCormick duals for ψ̂ ≈ x·φ̂
+    @variable(model, ρ_hat_1[1:K, 1:S] >= 0)
+    @variable(model, ρ_hat_2[1:K, 1:S] >= 0)
+    @variable(model, ρ_hat_3[1:K, 1:S] >= 0)
 
     # --- (L1): N_y û^s + N_ts σ̂^s ≤ 0,  ∀s ---
     @constraint(model, L1[j=1:m, s=1:S],
         sum(Ny[j, k] * u_hat[k, s] for k in 1:K) + Nts[j] * σ_hat[s] <= 0)
 
-    # --- (L2): -c_k^s a_s + û_k^s - a_{s,k}^ν ≤ 0,  ∀k,s ---
+    # --- (L2): -ξ̄_k^s a_s + û_k^s - a_{s,k}^ν + ρ̂²_{k,s} - ρ̂³_{k,s} ≤ 0,  ∀k,s ---
     @constraint(model, L2[k=1:K, s=1:S],
-        -c[k, s] * a[s] + u_hat[k, s] - a_nu[s, k] <= 0)
+        -ξ[k, s] * a[s] + u_hat[k, s] - a_nu[s, k]
+        + ρ_hat_2[k, s] - ρ_hat_3[k, s] <= 0)
 
-    # --- (L3): a_s - b_s ≤ q̂_s,  ∀s ---
-    @constraint(model, L3[s=1:S], a[s] - b[s] <= q[s])
+    # --- (L3): v_k ξ̄_k^s a_s - ρ̂¹_{k,s} - ρ̂²_{k,s} + ρ̂³_{k,s} ≤ 0,  ∀k,s ---
+    @constraint(model, L3[k=1:K, s=1:S],
+        v[k] * ξ[k, s] * a[s] - ρ_hat_1[k, s]
+        - ρ_hat_2[k, s] + ρ_hat_3[k, s] <= 0)
 
-    # --- (L4): a_s + b_s ≥ q̂_s,  ∀s ---
-    @constraint(model, L4[s=1:S], a[s] + b[s] >= q[s])
+    # --- (L4): a_s - b_s ≤ q̂_s,  ∀s ---
+    @constraint(model, L4[s=1:S], a[s] - b[s] <= q[s])
 
-    # --- (L5): Σ_s b_s ≤ 2ε̂ ---
-    @constraint(model, L5, sum(b[s] for s in 1:S) <= 2 * ε)
+    # --- (L5): a_s + b_s ≥ q̂_s,  ∀s ---
+    @constraint(model, L5[s=1:S], a[s] + b[s] >= q[s])
 
-    # --- (L6): Σ_s a_s = 1 ---
-    @constraint(model, L6, sum(a[s] for s in 1:S) == 1)
+    # --- (L6): Σ_s b_s ≤ 2ε̂ ---
+    @constraint(model, L6, sum(b[s] for s in 1:S) <= 2 * ε)
 
-    # --- (L7): a_{s,k}^ν - b_{s,k}^ν ≤ q̂_s α_k,  ∀s,k ---
+    # --- (L7): Σ_s a_s = 1 ---
+    @constraint(model, L7, sum(a[s] for s in 1:S) == 1)
+
+    # --- (L8): a_{s,k}^ν - b_{s,k}^ν ≤ q̂_s α_k,  ∀s,k ---
     # RHS = q̂_s · α_k, initially α=0 → RHS=0
-    @constraint(model, L7[s=1:S, k=1:K], a_nu[s, k] - b_nu[s, k] <= 0)
+    @constraint(model, L8[s=1:S, k=1:K], a_nu[s, k] - b_nu[s, k] <= 0)
 
-    # --- (L8): a_{s,k}^ν + b_{s,k}^ν ≥ q̂_s α_k,  ∀s,k ---
-    @constraint(model, L8[s=1:S, k=1:K], a_nu[s, k] + b_nu[s, k] >= 0)
+    # --- (L9): a_{s,k}^ν + b_{s,k}^ν ≥ q̂_s α_k,  ∀s,k ---
+    @constraint(model, L9[s=1:S, k=1:K], a_nu[s, k] + b_nu[s, k] >= 0)
 
-    # --- (L9): Σ_s b_{s,k}^ν ≤ 2ε̂ α_k,  ∀k ---
-    @constraint(model, L9[k=1:K], sum(b_nu[s, k] for s in 1:S) <= 0)
+    # --- (L10): Σ_s b_{s,k}^ν ≤ 2ε̂ α_k,  ∀k ---
+    @constraint(model, L10[k=1:K], sum(b_nu[s, k] for s in 1:S) <= 0)
 
-    # --- (L10): Σ_s a_{s,k}^ν = α_k,  ∀k ---
-    @constraint(model, L10[k=1:K], sum(a_nu[s, k] for s in 1:S) == 0)
+    # --- (L11): Σ_s a_{s,k}^ν = α_k,  ∀k ---
+    @constraint(model, L11[k=1:K], sum(a_nu[s, k] for s in 1:S) == 0)
 
-    # --- Objective: max Σ_s σ̂^s ---
-    @objective(model, Max, sum(σ_hat[s] for s in 1:S))
+    # --- Objective: max Σ_s σ̂^s - φ^U Σ_{s,k} x̄_k ρ̂¹_{k,s} - φ^U Σ_{s,k} (1-x̄_k) ρ̂³_{k,s} ---
+    @objective(model, Max,
+        sum(σ_hat[s] for s in 1:S)
+        - φ_U * sum(x_bar[k] * ρ_hat_1[k, s] for k in 1:K, s in 1:S)
+        - φ_U * sum((1.0 - x_bar[k]) * ρ_hat_3[k, s] for k in 1:K, s in 1:S))
 
     vars = Dict(
         :σ_hat => σ_hat, :u_hat => u_hat,
         :a => a, :b => b, :a_nu => a_nu, :b_nu => b_nu,
-        :L7 => L7, :L8 => L8, :L9 => L9, :L10 => L10,
-        :L2 => L2,
+        :ρ_hat_1 => ρ_hat_1, :ρ_hat_2 => ρ_hat_2, :ρ_hat_3 => ρ_hat_3,
+        :L8 => L8, :L9 => L9, :L10 => L10, :L11 => L11,
     )
     return model, vars
 end
@@ -95,7 +113,7 @@ end
 """
     update_tv_isp_leader_alpha!(model, vars, tv::TVData, α_sol::Vector{Float64})
 
-Update RHS of L7-L10 for new α from IMP.
+Update RHS of L8-L11 for new α from IMP.
 """
 function update_tv_isp_leader_alpha!(model, vars, tv::TVData, α_sol::Vector{Float64})
     S = tv.S
@@ -104,38 +122,34 @@ function update_tv_isp_leader_alpha!(model, vars, tv::TVData, α_sol::Vector{Flo
     ε = tv.eps_hat
 
     for s in 1:S, k in 1:K
-        set_normalized_rhs(vars[:L7][s, k], q[s] * α_sol[k])
         set_normalized_rhs(vars[:L8][s, k], q[s] * α_sol[k])
+        set_normalized_rhs(vars[:L9][s, k], q[s] * α_sol[k])
     end
     for k in 1:K
-        set_normalized_rhs(vars[:L9][k], 2 * ε * α_sol[k])
-        set_normalized_rhs(vars[:L10][k], α_sol[k])
+        set_normalized_rhs(vars[:L10][k], 2 * ε * α_sol[k])
+        set_normalized_rhs(vars[:L11][k], α_sol[k])
     end
 end
 
 
 """
-    update_tv_isp_leader_outer!(model, vars, tv::TVData, c_new::Matrix{Float64})
+    update_tv_isp_leader_objective!(model, vars, tv::TVData, x_bar_new::Vector{Float64})
 
-Update L2 coefficients when c_k^s changes (new x from OMP).
-Rebuild approach: delete old L2, add new. (LP → cheap)
+Update objective for new x̄ from OMP. No constraint rebuild needed.
 """
-function update_tv_isp_leader_outer!(model, vars, tv::TVData, c_new::Matrix{Float64})
+function update_tv_isp_leader_objective!(model, vars, tv::TVData, x_bar_new::Vector{Float64})
     S = tv.S
     K = tv.num_arcs
+    φ_U = tv.phi_U
 
-    # Delete old L2 constraints
-    for k in 1:K, s in 1:S
-        delete(model, vars[:L2][k, s])
-    end
+    σ_hat = vars[:σ_hat]
+    ρ_hat_1 = vars[:ρ_hat_1]
+    ρ_hat_3 = vars[:ρ_hat_3]
 
-    # Add new L2 with updated c
-    a = vars[:a]
-    u_hat = vars[:u_hat]
-    a_nu = vars[:a_nu]
-    L2_new = @constraint(model, [k=1:K, s=1:S],
-        -c_new[k, s] * a[s] + u_hat[k, s] - a_nu[s, k] <= 0)
-    vars[:L2] = L2_new
+    @objective(model, Max,
+        sum(σ_hat[s] for s in 1:S)
+        - φ_U * sum(x_bar_new[k] * ρ_hat_1[k, s] for k in 1:K, s in 1:S)
+        - φ_U * sum((1.0 - x_bar_new[k]) * ρ_hat_3[k, s] for k in 1:K, s in 1:S))
 end
 
 
@@ -146,8 +160,9 @@ Update α, solve ISP-L, extract inner cut info.
 
 Returns (status, cut_info) where cut_info contains:
 - `:obj_val`: Z^L*
-- `:subgradient`: ∂Z^L/∂α (from dual of L7-L10)
+- `:subgradient`: ∂Z^L/∂α (from dual of L8-L11)
 - `:intercept`: Z^L* - subgradient' * α_sol
+- `:ρ_hat_1_val`, `:ρ_hat_3_val`: K×S matrices for outer cut π_x
 """
 function tv_isp_leader_optimize!(model, vars, tv::TVData, α_sol::Vector{Float64})
     S = tv.S
@@ -166,52 +181,32 @@ function tv_isp_leader_optimize!(model, vars, tv::TVData, α_sol::Vector{Float64
 
     obj_val = objective_value(model)
 
-    # Extract subgradient ∂Z^L/∂α_k from dual values of L7-L10
-    # L7: a_nu - b_nu ≤ q_s α_k  →  dual ≥ 0 (≤ constraint in max)
-    # L8: a_nu + b_nu ≥ q_s α_k  →  dual ≥ 0 (≥ constraint in max)
-    # L9: Σ_s b_nu ≤ 2ε α_k      →  dual ≥ 0
-    # L10: Σ_s a_nu = α_k         →  dual free
-    #
-    # ∂Z^L/∂α_k = Σ_s q_s · shadow(L7[s,k]) + Σ_s q_s · shadow(L8[s,k])
-    #            + 2ε · shadow(L9[k]) + shadow(L10[k])
-    #
-    # Note: JuMP shadow_price convention: for max problem,
-    #   ≤ constraint → shadow_price ≤ 0 (∂obj/∂RHS ≤ 0 wouldn't make sense)
-    #   Actually shadow_price = ∂obj/∂RHS for the appropriate sign convention.
-    #   For max with ≤: shadow_price = dual value (≥ 0 for max)
-    #   For max with ≥: shadow_price = dual value (≤ 0... hmm)
-    #
-    # Use dual() instead to get raw dual values, then multiply by RHS coefficient of α.
-    # shadow_price in JuMP: returns the change in obj per unit increase in RHS.
-
-    # NOTE: shadow_price for ≥ constraints gives ∂obj/∂(relaxation), not ∂obj/∂RHS.
-    #   For ≥: relaxation = RHS↓, so shadow_price = -∂obj/∂RHS → must negate.
-    #   For ≤ and ==: shadow_price = ∂obj/∂RHS → use directly.
+    # Extract subgradient ∂Z^L/∂α_k from dual values of L8-L11
+    # NOTE: shadow_price for ≥ constraints = ∂obj/∂(relaxation) = -∂obj/∂RHS → negate.
     subgradient = zeros(K)
     for k in 1:K
         sg_k = 0.0
         for s in 1:S
-            sg_k += q[s] * shadow_price(vars[:L7][s, k])        # L7 ≤ → direct
-            sg_k += q[s] * (-shadow_price(vars[:L8][s, k]))     # L8 ≥ → negate
+            sg_k += q[s] * shadow_price(vars[:L8][s, k])        # L8 ≤ → direct
+            sg_k += q[s] * (-shadow_price(vars[:L9][s, k]))     # L9 ≥ → negate
         end
-        sg_k += 2 * ε * shadow_price(vars[:L9][k])              # L9 ≤ → direct
-        sg_k += 1.0 * shadow_price(vars[:L10][k])                # L10 == → direct
+        sg_k += 2 * ε * shadow_price(vars[:L10][k])              # L10 ≤ → direct
+        sg_k += 1.0 * shadow_price(vars[:L11][k])                # L11 == → direct
         subgradient[k] = sg_k
     end
 
     intercept = obj_val - dot(subgradient, α_sol)
 
-    # Extract outer cut materials: a_s values and φ̂_k^s = shadow_price(L2)
-    a_val = [value(vars[:a][s]) for s in 1:S]
-    # φ̂_k^s: OSP primal capacity dual = shadow_price of L2 (≤ in Max → sp ≥ 0)
-    φ_hat_val = [shadow_price(vars[:L2][k, s]) for k in 1:K, s in 1:S]
+    # Extract McCormick dual values for outer cut π_x computation
+    ρ_hat_1_val = [value(vars[:ρ_hat_1][k, s]) for k in 1:K, s in 1:S]
+    ρ_hat_3_val = [value(vars[:ρ_hat_3][k, s]) for k in 1:K, s in 1:S]
 
     cut_info = Dict(
         :obj_val => obj_val,
         :subgradient => subgradient,
         :intercept => intercept,
-        :a_val => a_val,
-        :φ_hat_val => φ_hat_val,
+        :ρ_hat_1_val => ρ_hat_1_val,
+        :ρ_hat_3_val => ρ_hat_3_val,
     )
     return :OptimalityCut, cut_info
 end

@@ -7,11 +7,13 @@ tv_build_omp.jl — Outer Master Problem (OMP) for TV-DRO.
 
 Outer cut: t₀ ≥ Z₀* + π_h'(h-h̄) + π_λ(λ-λ̄) + π_{ψ⁰}'(ψ⁰-ψ̄⁰) + π_x'(x-x̄)
 
-From OSP sensitivity:
-  π_{h_k}   = -Σ_s β_k^s                                    (P16 RHS)
-  π_λ       = Σ_s σ̃^s - Σ_{s,k} ξ̄_k^s β_k^s               (P9 + P16 RHS)
-  π_{ψ⁰_k}  = v_k Σ_s ξ̄_k^s β_k^s                          (P16 RHS)
-  π_{x_k}   = -v_k Σ_s ξ̄_k^s (a_s φ̂_k^s + d_s φ̃_k^s)     (P2 + P4 coefficient)
+From OSP dual objective (§10.1 in tv_derivation_revised.md):
+  π_{h_k}   = -Σ_s β_k^s
+  π_λ       = Σ_s σ̃^s - Σ_{s,k} ξ̄_k^s β_k^s
+  π_{ψ⁰_k}  = v_k Σ_s ξ̄_k^s β_k^s
+  π_{x_k}   = -φ^U Σ_s (ρ̂¹_{k,s} + ρ̃¹_{k,s}) + φ^U Σ_s (ρ̂³_{k,s} + ρ̃³_{k,s})
+
+Globally valid: dual feasible region is independent of OMP variables.
 """
 
 using JuMP
@@ -73,27 +75,29 @@ end
 
 """
     compute_tv_outer_cut_coeffs(tv::TVData, leader_cut_info, follower_cut_info,
-                                 c::Matrix{Float64}, x_sol, h_sol, λ_sol, ψ0_sol)
+                                 x_sol, h_sol, λ_sol, ψ0_sol)
 
 Compute outer cut coefficients from converged inner loop.
+Uses McCormick-based π_x (globally valid).
 
 Returns Dict with :intercept, :π_h, :π_λ, :π_ψ0, :π_x, :Z0_val.
 """
 function compute_tv_outer_cut_coeffs(tv::TVData, leader_cut_info, follower_cut_info,
-                                      c::Matrix{Float64}, x_sol, h_sol, λ_sol, ψ0_sol)
+                                      x_sol, h_sol, λ_sol, ψ0_sol)
     S = tv.S
     K = tv.num_arcs
     ξ = tv.xi_bar
     v = tv.v
+    φ_U = tv.phi_U
 
     β = follower_cut_info[:β_val]       # K × S
     σ̃ = follower_cut_info[:σ_tilde_val]  # S
 
-    # For x-gradient: ISP primal values and φ duals
-    a_val = leader_cut_info[:a_val]           # S (ISP-L primal a_s)
-    φ_hat = leader_cut_info[:φ_hat_val]       # K × S (shadow_price of L2)
-    d_val = follower_cut_info[:d_val]         # S (ISP-F primal d_s)
-    φ_tilde = follower_cut_info[:φ_tilde_val] # K × S (shadow_price of F2)
+    # McCormick dual values for x-gradient
+    ρ̂1 = leader_cut_info[:ρ_hat_1_val]       # K × S
+    ρ̂3 = leader_cut_info[:ρ_hat_3_val]       # K × S
+    ρ̃1 = follower_cut_info[:ρ_tilde_1_val]   # K × S
+    ρ̃3 = follower_cut_info[:ρ_tilde_3_val]   # K × S
 
     Z_L = leader_cut_info[:obj_val]
     Z_F = follower_cut_info[:obj_val]
@@ -108,10 +112,10 @@ function compute_tv_outer_cut_coeffs(tv::TVData, leader_cut_info, follower_cut_i
     # π_{ψ⁰_k} = v_k · Σ_s ξ̄_k^s · β_k^s
     π_ψ0 = [v[k] * sum(ξ[k, s] * β[k, s] for s in 1:S) for k in 1:K]
 
-    # π_{x_k} = -v_k Σ_s ξ̄_k^s (a_s φ̂_k^s + d_s φ̃_k^s)
-    # From P2/P4 coefficient sensitivity: ∂Z₀/∂x_k from c_k^s = ξ(1-vx) change
-    π_x = [-v[k] * sum(ξ[k, s] * (a_val[s] * φ_hat[k, s] + d_val[s] * φ_tilde[k, s])
-                        for s in 1:S) for k in 1:K]
+    # π_{x_k} = -φ^U Σ_s (ρ̂¹_{k,s} + ρ̃¹_{k,s}) + φ^U Σ_s (ρ̂³_{k,s} + ρ̃³_{k,s})
+    # From dual objective coefficient of x̄_k (§10.1)
+    π_x = [(-φ_U * sum(ρ̂1[k, s] + ρ̃1[k, s] for s in 1:S)
+             + φ_U * sum(ρ̂3[k, s] + ρ̃3[k, s] for s in 1:S)) for k in 1:K]
 
     # intercept = Z₀ - π_h'h̄ - π_λ λ̄ - π_{ψ⁰}'ψ̄⁰ - π_x'x̄
     intercept = Z0 - dot(π_h, h_sol) - π_λ * λ_sol - dot(π_ψ0, ψ0_sol) - dot(π_x, x_sol)

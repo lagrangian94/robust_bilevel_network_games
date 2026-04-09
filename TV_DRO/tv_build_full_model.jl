@@ -33,9 +33,7 @@ function build_full_tv_model(tv::TVData; optimizer)
     λU = tv.lambda_U
 
     # Big-M for McCormick on x·φ̂, x·φ̃
-    # φ̂_k^s, φ̃_k^s are dual variables. Upper bound = max possible dual value.
-    # Conservative: use sum of capacities as bound
-    φ_U = maximum(sum(ξ[:, s]) for s in 1:S) + 1.0
+    φ_U = tv.phi_U
 
     model = Model(optimizer_with_attributes(optimizer, MOI.Silent() => true))
 

@@ -27,6 +27,7 @@ TV-DRO에 필요한 모든 데이터를 담는 구조체.
 - `w::Float64`: recovery budget weight
 - `lambda_U::Float64`: upper bound on λ
 - `interdictable_arcs::Vector{Bool}`: which arcs can be interdicted
+- `phi_U::Float64`: McCormick big-M for φ̂, φ̃ (= max_s Σ_k ξ̄_k^s + 1)
 """
 struct TVData
     Ny::Matrix{Float64}
@@ -43,6 +44,7 @@ struct TVData
     w::Float64
     lambda_U::Float64
     interdictable_arcs::Vector{Bool}
+    phi_U::Float64
 end
 
 
@@ -89,39 +91,10 @@ function make_tv_data(network, scenarios, q_hat, eps_hat, eps_tilde;
 
     v = Float64.(network.interdictable_arcs)  # v_k ∈ {0,1}
 
+    # McCormick big-M for φ̂, φ̃ dual variables
+    phi_U = maximum(sum(xi_bar[:, s]) for s in 1:S) + 1.0
+
     return TVData(Ny, Nts, nv1, num_arcs, S, xi_bar, q_hat,
                   eps_hat, eps_tilde, v, gamma, w, lambda_U,
-                  network.interdictable_arcs)
-end
-
-
-"""
-    compute_c(tv::TVData, x_sol::Vector{Float64})
-
-c_k^s = ξ̄_k^s (1 - v_k x_k) for all k, s.
-Returns Matrix |A| × S.
-"""
-function compute_c(tv::TVData, x_sol::Vector{Float64})
-    c = similar(tv.xi_bar)
-    for s in 1:tv.S, k in 1:tv.num_arcs
-        c[k, s] = tv.xi_bar[k, s] * (1.0 - tv.v[k] * x_sol[k])
-    end
-    return c
-end
-
-
-"""
-    compute_r(tv::TVData, h_sol::Vector{Float64}, lambda_sol::Float64,
-              c::Matrix{Float64})
-
-r_k^s = h_k + λ · c_k^s for all k, s.
-Returns Matrix |A| × S.
-"""
-function compute_r(tv::TVData, h_sol::Vector{Float64}, lambda_sol::Float64,
-                   c::Matrix{Float64})
-    r = similar(c)
-    for s in 1:tv.S, k in 1:tv.num_arcs
-        r[k, s] = h_sol[k] + lambda_sol * c[k, s]
-    end
-    return r
+                  network.interdictable_arcs, phi_U)
 end

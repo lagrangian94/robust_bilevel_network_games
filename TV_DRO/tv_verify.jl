@@ -88,15 +88,13 @@ function test_isp_standalone(; m=3, n=3, S=2, seed=42,
     # 고정 α
     α_sol = fill(tv.w / K, K)
 
-    c = compute_c(tv, x_sol)
-    r = compute_r(tv, h_sol, λ_sol, c)
-
     # --- ISP-L ---
-    isp_l_model, isp_l_vars = build_tv_isp_leader(tv, c; optimizer=HiGHS.Optimizer)
+    isp_l_model, isp_l_vars = build_tv_isp_leader(tv, x_sol; optimizer=HiGHS.Optimizer)
     _, leader_cut = tv_isp_leader_optimize!(isp_l_model, isp_l_vars, tv, α_sol)
 
     # --- ISP-F ---
-    isp_f_model, isp_f_vars = build_tv_isp_follower(tv, c, r, λ_sol; optimizer=HiGHS.Optimizer)
+    isp_f_model, isp_f_vars = build_tv_isp_follower(tv, x_sol, h_sol, λ_sol, ψ0_sol;
+                                                      optimizer=HiGHS.Optimizer)
     _, follower_cut = tv_isp_follower_optimize!(isp_f_model, isp_f_vars, tv, α_sol)
 
     Z_L = leader_cut[:obj_val]
@@ -110,8 +108,9 @@ function test_isp_standalone(; m=3, n=3, S=2, seed=42,
 
     # Inner loop으로 구한 값과 비교
     imp_model, imp_vars = build_tv_imp(tv; optimizer=HiGHS.Optimizer)
-    isp_l2, isp_l2_vars = build_tv_isp_leader(tv, c; optimizer=HiGHS.Optimizer)
-    isp_f2, isp_f2_vars = build_tv_isp_follower(tv, c, r, λ_sol; optimizer=HiGHS.Optimizer)
+    isp_l2, isp_l2_vars = build_tv_isp_leader(tv, x_sol; optimizer=HiGHS.Optimizer)
+    isp_f2, isp_f2_vars = build_tv_isp_follower(tv, x_sol, h_sol, λ_sol, ψ0_sol;
+                                                   optimizer=HiGHS.Optimizer)
 
     inner_result = tv_inner_loop!(tv, imp_model, imp_vars,
                                    isp_l2, isp_l2_vars,
@@ -124,16 +123,16 @@ function test_isp_standalone(; m=3, n=3, S=2, seed=42,
     @printf("  Inner loop vs OSP primal gap: %.2e\n", gap1)
 
     # ISP-L + ISP-F at optimal α from OSP primal
-    # Extract optimal α from OSP primal to verify ISP formulation
     Z_OSP_check = solve_osp_primal_with_alpha(tv, x_sol, h_sol, λ_sol, ψ0_sol)
     @printf("  OSP primal (α returned): Z=%.6f, α_sum=%.4f\n",
             Z_OSP_check[:obj], sum(Z_OSP_check[:α]))
 
     # Evaluate ISP at OSP's optimal α
     α_opt = Z_OSP_check[:α]
-    isp_l3, isp_l3_vars = build_tv_isp_leader(tv, c; optimizer=HiGHS.Optimizer)
+    isp_l3, isp_l3_vars = build_tv_isp_leader(tv, x_sol; optimizer=HiGHS.Optimizer)
     _, lc3 = tv_isp_leader_optimize!(isp_l3, isp_l3_vars, tv, α_opt)
-    isp_f3, isp_f3_vars = build_tv_isp_follower(tv, c, r, λ_sol; optimizer=HiGHS.Optimizer)
+    isp_f3, isp_f3_vars = build_tv_isp_follower(tv, x_sol, h_sol, λ_sol, ψ0_sol;
+                                                   optimizer=HiGHS.Optimizer)
     _, fc3 = tv_isp_follower_optimize!(isp_f3, isp_f3_vars, tv, α_opt)
     Z_ISP_at_opt = lc3[:obj_val] + fc3[:obj_val]
     @printf("  ISP-L+F at OSP's α*: %.6f  (L=%.6f, F=%.6f)\n",
@@ -149,7 +148,8 @@ end
 
 
 """
-OSP primal (§7 in tv_derivation.md): Z₀ at fixed (x̄, h̄, λ̄, ψ̄⁰).
+OSP primal (§7 in tv_derivation_revised.md): Z₀ at fixed (x̄, h̄, λ̄, ψ̄⁰).
+McCormick linearization for ψ̂ ≈ x̄·φ̂, ψ̃ ≈ x̄·φ̃.
 w·ν term included in objective.
 """
 function solve_osp_primal(tv::TVData, x_sol, h_sol, λ_sol, ψ0_sol)
@@ -164,9 +164,9 @@ function solve_osp_primal(tv::TVData, x_sol, h_sol, λ_sol, ψ0_sol)
     ξ = tv.xi_bar
     v = tv.v
     w = tv.w
+    φ_U = tv.phi_U
 
-    c = compute_c(tv, x_sol)
-    # r_k^s = h_k + (λ - v_k ψ⁰_k) ξ̄_k^s   (from T16 RHS)
+    # r_k^s = h_k + (λ - v_k ψ⁰_k) ξ̄_k^s   (from P16 RHS)
     r = zeros(K, S)
     for s in 1:S, k in 1:K
         r[k, s] = h_sol[k] + (λ_sol - v[k] * ψ0_sol[k]) * ξ[k, s]
@@ -211,17 +211,34 @@ function solve_osp_primal(tv::TVData, x_sol, h_sol, λ_sol, ψ0_sol)
     @variable(model, y_tilde[1:K, 1:S] >= 0)
     @variable(model, yts_tilde[1:S] >= 0)
 
+    # McCormick variables: ψ̂ ≈ x̄·φ̂, ψ̃ ≈ x̄·φ̃
+    @variable(model, ψ_hat_mc[1:K, 1:S] >= 0)
+    @variable(model, ψ_tilde_mc[1:K, 1:S] >= 0)
+
     # === Constraints ===
 
-    # (P2): σ^{L+} - σ^{L-} + η^L ≥ g_s^L = Σ_k c_k^s φ̂_k^s
+    # McCormick for ψ̂_k^s ≈ x̄_k · φ̂_k^s (MH1-MH3)
+    @constraint(model, [k=1:K, s=1:S], ψ_hat_mc[k, s] <= φ_U * x_sol[k])
+    @constraint(model, [k=1:K, s=1:S], ψ_hat_mc[k, s] <= φ_hat[k, s])
+    @constraint(model, [k=1:K, s=1:S], ψ_hat_mc[k, s] >= φ_hat[k, s] - φ_U * (1 - x_sol[k]))
+
+    # McCormick for ψ̃_k^s ≈ x̄_k · φ̃_k^s (MT1-MT3)
+    @constraint(model, [k=1:K, s=1:S], ψ_tilde_mc[k, s] <= φ_U * x_sol[k])
+    @constraint(model, [k=1:K, s=1:S], ψ_tilde_mc[k, s] <= φ_tilde[k, s])
+    @constraint(model, [k=1:K, s=1:S], ψ_tilde_mc[k, s] >= φ_tilde[k, s] - φ_U * (1 - x_sol[k]))
+
+    # (P2): σ^{L+} - σ^{L-} + η^L ≥ Σ_k ξ̄(φ̂ - v·ψ̂_mc)
     @constraint(model, [s=1:S],
-        σ_Lp[s] - σ_Lm[s] + η_L >= sum(c[k, s] * φ_hat[k, s] for k in 1:K))
+        σ_Lp[s] - σ_Lm[s] + η_L >=
+        sum(ξ[k, s] * (φ_hat[k, s] - v[k] * ψ_hat_mc[k, s]) for k in 1:K))
     # (P3)
     @constraint(model, [s=1:S], μ_L - σ_Lp[s] - σ_Lm[s] >= 0)
 
-    # (P4): σ^{F+} - σ^{F-} + η^F ≥ g_s^F = Σ_k c_k^s φ̃_k^s - ỹ_ts^s
+    # (P4): σ^{F+} - σ^{F-} + η^F ≥ Σ_k ξ̄(φ̃ - v·ψ̃_mc) - ỹ_ts
     @constraint(model, [s=1:S],
-        σ_Fp[s] - σ_Fm[s] + η_F >= sum(c[k, s] * φ_tilde[k, s] for k in 1:K) - yts_tilde[s])
+        σ_Fp[s] - σ_Fm[s] + η_F >=
+        sum(ξ[k, s] * (φ_tilde[k, s] - v[k] * ψ_tilde_mc[k, s]) for k in 1:K)
+        - yts_tilde[s])
     # (P5)
     @constraint(model, [s=1:S], μ_F - σ_Fp[s] - σ_Fm[s] >= 0)
 
@@ -295,8 +312,8 @@ function solve_osp_primal_with_alpha(tv::TVData, x_sol, h_sol, λ_sol, ψ0_sol)
     ξ = tv.xi_bar
     v = tv.v
     w = tv.w
+    φ_U = tv.phi_U
 
-    c = compute_c(tv, x_sol)
     r = zeros(K, S)
     for s in 1:S, k in 1:K
         r[k, s] = h_sol[k] + (λ_sol - v[k] * ψ0_sol[k]) * ξ[k, s]
@@ -328,12 +345,33 @@ function solve_osp_primal_with_alpha(tv::TVData, x_sol, h_sol, λ_sol, ψ0_sol)
     @variable(model, y_tilde[1:K, 1:S] >= 0)
     @variable(model, yts_tilde[1:S] >= 0)
 
+    # McCormick variables
+    @variable(model, ψ_hat_mc[1:K, 1:S] >= 0)
+    @variable(model, ψ_tilde_mc[1:K, 1:S] >= 0)
+
+    # McCormick constraints (MH1-MH3)
+    @constraint(model, [k=1:K, s=1:S], ψ_hat_mc[k, s] <= φ_U * x_sol[k])
+    @constraint(model, [k=1:K, s=1:S], ψ_hat_mc[k, s] <= φ_hat[k, s])
+    @constraint(model, [k=1:K, s=1:S], ψ_hat_mc[k, s] >= φ_hat[k, s] - φ_U * (1 - x_sol[k]))
+
+    # McCormick constraints (MT1-MT3)
+    @constraint(model, [k=1:K, s=1:S], ψ_tilde_mc[k, s] <= φ_U * x_sol[k])
+    @constraint(model, [k=1:K, s=1:S], ψ_tilde_mc[k, s] <= φ_tilde[k, s])
+    @constraint(model, [k=1:K, s=1:S], ψ_tilde_mc[k, s] >= φ_tilde[k, s] - φ_U * (1 - x_sol[k]))
+
+    # (P2): McCormick version
     @constraint(model, [s=1:S],
-        σ_Lp[s] - σ_Lm[s] + η_L >= sum(c[k, s] * φ_hat[k, s] for k in 1:K))
+        σ_Lp[s] - σ_Lm[s] + η_L >=
+        sum(ξ[k, s] * (φ_hat[k, s] - v[k] * ψ_hat_mc[k, s]) for k in 1:K))
     @constraint(model, [s=1:S], μ_L - σ_Lp[s] - σ_Lm[s] >= 0)
+
+    # (P4): McCormick version
     @constraint(model, [s=1:S],
-        σ_Fp[s] - σ_Fm[s] + η_F >= sum(c[k, s] * φ_tilde[k, s] for k in 1:K) - yts_tilde[s])
+        σ_Fp[s] - σ_Fm[s] + η_F >=
+        sum(ξ[k, s] * (φ_tilde[k, s] - v[k] * ψ_tilde_mc[k, s]) for k in 1:K)
+        - yts_tilde[s])
     @constraint(model, [s=1:S], μ_F - σ_Fp[s] - σ_Fm[s] >= 0)
+
     @constraint(model, [k=1:K, s=1:S],
         sum(Ny[j, k] * π_hat[j, s] for j in 1:m) + φ_hat[k, s] >= 0)
     @constraint(model, [s=1:S],
@@ -374,10 +412,6 @@ function solve_osp_primal_with_alpha(tv::TVData, x_sol, h_sol, λ_sol, ψ0_sol)
     end
 
     # α = dual of P10
-    # NOTE: shadow_price(P10) gives WRONG sign (negative) — JuMP internally
-    #   normalizes ≥ to ≤, so shadow_price follows Min+≤ convention (≤ 0).
-    #   Use dual() directly which returns correct α ≥ 0.
-    # α_opt = [shadow_price(P10[k]) for k in 1:K]   # ← 부호 반대! 사용 금지
     α_opt = [dual(P10[k]) for k in 1:K]
 
     return Dict(:obj => objective_value(model), :α => α_opt, :ν => value(ν))
@@ -385,11 +419,14 @@ end
 
 
 """
-OSP dual (§8 in tv_derivation.md): Z₀ at fixed (x̄, h̄, λ̄, ψ̄⁰).
+OSP dual (§8 in tv_derivation_revised.md): Z₀ at fixed (x̄, h̄, λ̄, ψ̄⁰).
 
-max  Σ_s σ̂^s  +  λ̄ Σ_s σ̃^s  -  Σ_{s,k} r_k^s β_k^s
+Includes McCormick duals ρ̂, ρ̃ for globally valid x-sensitivity.
 
-s.t. (D-nu)-(D-etakFnu), all signs from §8.2
+max  Σ_s σ̂^s + λ̄ Σ_s σ̃^s
+     − Σ_{s,k} [h̄_k + (λ̄ − v_k ψ̄⁰_k) ξ̄_k^s] β_k^s
+     − φ^U Σ_{s,k} x̄_k (ρ̂¹ + ρ̃¹)
+     − φ^U Σ_{s,k} (1−x̄_k)(ρ̂³ + ρ̃³)
 """
 function solve_osp_dual(tv::TVData, x_sol, h_sol, λ_sol, ψ0_sol)
     S = tv.S
@@ -403,8 +440,8 @@ function solve_osp_dual(tv::TVData, x_sol, h_sol, λ_sol, ψ0_sol)
     ξ = tv.xi_bar
     v = tv.v
     w = tv.w
+    φ_U = tv.phi_U
 
-    c = compute_c(tv, x_sol)
     r = zeros(K, S)
     for s in 1:S, k in 1:K
         r[k, s] = h_sol[k] + (λ_sol - v[k] * ψ0_sol[k]) * ξ[k, s]
@@ -437,6 +474,14 @@ function solve_osp_dual(tv::TVData, x_sol, h_sol, λ_sol, ψ0_sol)
     @variable(model, d_ν[1:S, 1:K] >= 0)
     @variable(model, e_ν[1:S, 1:K] >= 0)
 
+    # McCormick duals
+    @variable(model, ρ_hat_1[1:K, 1:S] >= 0)
+    @variable(model, ρ_hat_2[1:K, 1:S] >= 0)
+    @variable(model, ρ_hat_3[1:K, 1:S] >= 0)
+    @variable(model, ρ_tilde_1[1:K, 1:S] >= 0)
+    @variable(model, ρ_tilde_2[1:K, 1:S] >= 0)
+    @variable(model, ρ_tilde_3[1:K, 1:S] >= 0)
+
     # === Constraints ===
 
     # (D-nu): Σ α ≤ w
@@ -446,17 +491,29 @@ function solve_osp_dual(tv::TVData, x_sol, h_sol, λ_sol, ψ0_sol)
     @constraint(model, [j=1:m, s=1:S],
         sum(Ny[j, k] * û[k, s] for k in 1:K) + Nts[j] * σ̂[s] <= 0)
 
-    # (D-phihat): -c_k^s a_s + û_k^s - a_{s,k}^ν ≤ 0,  ∀k,s
+    # (D-phihat): -ξ̄_k^s a_s + û_k^s - a_{s,k}^ν + ρ̂² - ρ̂³ ≤ 0,  ∀k,s
     @constraint(model, [k=1:K, s=1:S],
-        -c[k, s] * a[s] + û[k, s] - a_ν[s, k] <= 0)
+        -ξ[k, s] * a[s] + û[k, s] - a_ν[s, k]
+        + ρ_hat_2[k, s] - ρ_hat_3[k, s] <= 0)
+
+    # (D-psihat): v_k ξ̄_k^s a_s - ρ̂¹ - ρ̂² + ρ̂³ ≤ 0,  ∀k,s
+    @constraint(model, [k=1:K, s=1:S],
+        v[k] * ξ[k, s] * a[s] - ρ_hat_1[k, s]
+        - ρ_hat_2[k, s] + ρ_hat_3[k, s] <= 0)
 
     # (D-pitilde): N_y ũ^s + N_ts σ̃^s ≤ 0,  ∀s
     @constraint(model, [j=1:m, s=1:S],
         sum(Ny[j, k] * ũ[k, s] for k in 1:K) + Nts[j] * σ̃[s] <= 0)
 
-    # (D-phitilde): -c_k^s d_s + ũ_k^s - d_{s,k}^ν ≤ 0,  ∀k,s
+    # (D-phitilde): -ξ̄_k^s d_s + ũ_k^s - d_{s,k}^ν + ρ̃² - ρ̃³ ≤ 0,  ∀k,s
     @constraint(model, [k=1:K, s=1:S],
-        -c[k, s] * d[s] + ũ[k, s] - d_ν[s, k] <= 0)
+        -ξ[k, s] * d[s] + ũ[k, s] - d_ν[s, k]
+        + ρ_tilde_2[k, s] - ρ_tilde_3[k, s] <= 0)
+
+    # (D-psitilde): v_k ξ̄_k^s d_s - ρ̃¹ - ρ̃² + ρ̃³ ≤ 0,  ∀k,s
+    @constraint(model, [k=1:K, s=1:S],
+        v[k] * ξ[k, s] * d[s] - ρ_tilde_1[k, s]
+        - ρ_tilde_2[k, s] + ρ_tilde_3[k, s] <= 0)
 
     # (D-ytilde): [N_yᵀ ω^s]_k + β_k^s ≥ 0,  ∀k,s
     @constraint(model, [k=1:K, s=1:S],
@@ -467,13 +524,9 @@ function solve_osp_dual(tv::TVData, x_sol, h_sol, λ_sol, ψ0_sol)
         sum(Nts[j] * ω[j, s] for j in 1:m) >= d[s])
 
     # === Leader TV duals (ε̂) ===
-    # (D-sigLp): a_s - b_s ≤ q̂_s
     @constraint(model, [s=1:S], a[s] - b[s] <= q[s])
-    # (D-sigLm): a_s + b_s ≥ q̂_s  (equivalently -(a+b) ≤ -q)
     @constraint(model, [s=1:S], a[s] + b[s] >= q[s])
-    # (D-muL): Σ b ≤ 2ε̂
     @constraint(model, sum(b[s] for s in 1:S) <= 2ε̂)
-    # (D-etaL): Σ a = 1
     @constraint(model, sum(a[s] for s in 1:S) == 1)
 
     # === Follower TV duals (ε̃) ===
@@ -483,13 +536,9 @@ function solve_osp_dual(tv::TVData, x_sol, h_sol, λ_sol, ψ0_sol)
     @constraint(model, sum(d[s] for s in 1:S) == 1)
 
     # === Leader TV-ν duals (ε̂), ∀k ===
-    # (D-sigLnup): a_ν - b_ν ≤ q̂_s α_k
     @constraint(model, [s=1:S, k=1:K], a_ν[s, k] - b_ν[s, k] <= q[s] * α[k])
-    # (D-sigLnum): a_ν + b_ν ≥ q̂_s α_k
     @constraint(model, [s=1:S, k=1:K], a_ν[s, k] + b_ν[s, k] >= q[s] * α[k])
-    # (D-mukLnu): Σ_s b_ν ≤ 2ε̂ α_k
     @constraint(model, [k=1:K], sum(b_ν[s, k] for s in 1:S) <= 2ε̂ * α[k])
-    # (D-etakLnu): Σ_s a_ν = α_k
     @constraint(model, [k=1:K], sum(a_ν[s, k] for s in 1:S) == α[k])
 
     # === Follower TV-ν duals (ε̃), ∀k ===
@@ -498,11 +547,13 @@ function solve_osp_dual(tv::TVData, x_sol, h_sol, λ_sol, ψ0_sol)
     @constraint(model, [k=1:K], sum(e_ν[s, k] for s in 1:S) <= 2ε̃ * α[k])
     @constraint(model, [k=1:K], sum(d_ν[s, k] for s in 1:S) == α[k])
 
-    # === Objective ===
+    # === Objective (expanded with McCormick terms) ===
     @objective(model, Max,
         sum(σ̂[s] for s in 1:S)
         + λ_sol * sum(σ̃[s] for s in 1:S)
-        - sum(r[k, s] * β[k, s] for k in 1:K, s in 1:S))
+        - sum(r[k, s] * β[k, s] for k in 1:K, s in 1:S)
+        - φ_U * sum(x_sol[k] * (ρ_hat_1[k, s] + ρ_tilde_1[k, s]) for k in 1:K, s in 1:S)
+        - φ_U * sum((1 - x_sol[k]) * (ρ_hat_3[k, s] + ρ_tilde_3[k, s]) for k in 1:K, s in 1:S))
 
     optimize!(model)
     st = termination_status(model)
@@ -623,9 +674,6 @@ function test_inner_cut_tightness(; m=3, n=3, S=2, seed=42,
     ψ0_sol = λ_sol .* x_sol
     h_sol = fill(tv.w / K, K)
 
-    c = compute_c(tv, x_sol)
-    r = compute_r(tv, h_sol, λ_sol, c)
-
     # 여러 α 값에서 cut tightness 확인
     pass_all = true
     for trial in 1:5
@@ -633,7 +681,7 @@ function test_inner_cut_tightness(; m=3, n=3, S=2, seed=42,
         α_sol .*= tv.w / sum(α_sol)  # normalize to Σα = w
 
         # ISP-L
-        isp_l, isp_l_v = build_tv_isp_leader(tv, c; optimizer=HiGHS.Optimizer)
+        isp_l, isp_l_v = build_tv_isp_leader(tv, x_sol; optimizer=HiGHS.Optimizer)
         _, l_cut = tv_isp_leader_optimize!(isp_l, isp_l_v, tv, α_sol)
 
         cut_val_l = l_cut[:intercept] + dot(l_cut[:subgradient], α_sol)
@@ -647,7 +695,8 @@ function test_inner_cut_tightness(; m=3, n=3, S=2, seed=42,
         end
 
         # ISP-F
-        isp_f, isp_f_v = build_tv_isp_follower(tv, c, r, λ_sol; optimizer=HiGHS.Optimizer)
+        isp_f, isp_f_v = build_tv_isp_follower(tv, x_sol, h_sol, λ_sol, ψ0_sol;
+                                                  optimizer=HiGHS.Optimizer)
         _, f_cut = tv_isp_follower_optimize!(isp_f, isp_f_v, tv, α_sol)
 
         cut_val_f = f_cut[:intercept] + dot(f_cut[:subgradient], α_sol)
@@ -691,13 +740,11 @@ function test_outer_cut_tightness(; m=3, n=3, S=2, seed=42,
     ψ0_sol = λ_sol .* x_sol
     h_sol = fill(tv.w / K, K)
 
-    c = compute_c(tv, x_sol)
-    r = compute_r(tv, h_sol, λ_sol, c)
-
     # Inner loop 수렴
     imp_model, imp_vars = build_tv_imp(tv; optimizer=HiGHS.Optimizer)
-    isp_l, isp_l_vars = build_tv_isp_leader(tv, c; optimizer=HiGHS.Optimizer)
-    isp_f, isp_f_vars = build_tv_isp_follower(tv, c, r, λ_sol; optimizer=HiGHS.Optimizer)
+    isp_l, isp_l_vars = build_tv_isp_leader(tv, x_sol; optimizer=HiGHS.Optimizer)
+    isp_f, isp_f_vars = build_tv_isp_follower(tv, x_sol, h_sol, λ_sol, ψ0_sol;
+                                                optimizer=HiGHS.Optimizer)
 
     inner_result = tv_inner_loop!(tv, imp_model, imp_vars,
                                    isp_l, isp_l_vars,
@@ -709,7 +756,7 @@ function test_outer_cut_tightness(; m=3, n=3, S=2, seed=42,
     # Outer cut 계산
     outer_cut = compute_tv_outer_cut_coeffs(
         tv, inner_result[:leader_cut_info], inner_result[:follower_cut_info],
-        c, x_sol, h_sol, λ_sol, ψ0_sol)
+        x_sol, h_sol, λ_sol, ψ0_sol)
 
     # Tightness: cut(h̄, λ̄, ψ̄⁰) = Z₀*
     cut_at_bar = outer_cut[:intercept] +
