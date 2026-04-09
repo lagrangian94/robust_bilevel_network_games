@@ -11,7 +11,7 @@ From OSP dual objective (§10.1 in tv_derivation_revised.md):
   π_{h_k}   = -Σ_s β_k^s
   π_λ       = Σ_s σ̃^s - Σ_{s,k} ξ̄_k^s β_k^s
   π_{ψ⁰_k}  = v_k Σ_s ξ̄_k^s β_k^s
-  π_{x_k}   = -φ^U Σ_s (ρ̂¹_{k,s} + ρ̃¹_{k,s}) + φ^U Σ_s (ρ̂³_{k,s} + ρ̃³_{k,s})
+  π_{x_k}   = -φ̂^U Σ_s ρ̂¹_{k,s} - φ̃^U Σ_s ρ̃¹_{k,s} + φ̂^U Σ_s ρ̂³_{k,s} + φ̃^U Σ_s ρ̃³_{k,s}
 
 Globally valid: dual feasible region is independent of OMP variables.
 """
@@ -88,7 +88,8 @@ function compute_tv_outer_cut_coeffs(tv::TVData, leader_cut_info, follower_cut_i
     K = tv.num_arcs
     ξ = tv.xi_bar
     v = tv.v
-    φ_U = tv.phi_U
+    φ̂_U = tv.phi_hat_U
+    φ̃_U = tv.phi_tilde_U
 
     β = follower_cut_info[:β_val]       # K × S
     σ̃ = follower_cut_info[:σ_tilde_val]  # S
@@ -112,10 +113,10 @@ function compute_tv_outer_cut_coeffs(tv::TVData, leader_cut_info, follower_cut_i
     # π_{ψ⁰_k} = v_k · Σ_s ξ̄_k^s · β_k^s
     π_ψ0 = [v[k] * sum(ξ[k, s] * β[k, s] for s in 1:S) for k in 1:K]
 
-    # π_{x_k} = -φ^U Σ_s (ρ̂¹_{k,s} + ρ̃¹_{k,s}) + φ^U Σ_s (ρ̂³_{k,s} + ρ̃³_{k,s})
+    # π_{x_k} = -φ̂^U Σ_s ρ̂¹ - φ̃^U Σ_s ρ̃¹ + φ̂^U Σ_s ρ̂³ + φ̃^U Σ_s ρ̃³
     # From dual objective coefficient of x̄_k (§10.1)
-    π_x = [(-φ_U * sum(ρ̂1[k, s] + ρ̃1[k, s] for s in 1:S)
-             + φ_U * sum(ρ̂3[k, s] + ρ̃3[k, s] for s in 1:S)) for k in 1:K]
+    π_x = [(-φ̂_U * sum(ρ̂1[k, s] for s in 1:S) - φ̃_U * sum(ρ̃1[k, s] for s in 1:S)
+             + φ̂_U * sum(ρ̂3[k, s] for s in 1:S) + φ̃_U * sum(ρ̃3[k, s] for s in 1:S)) for k in 1:K]
 
     # intercept = Z₀ - π_h'h̄ - π_λ λ̄ - π_{ψ⁰}'ψ̄⁰ - π_x'x̄
     intercept = Z0 - dot(π_h, h_sol) - π_λ * λ_sol - dot(π_ψ0, ψ0_sol) - dot(π_x, x_sol)

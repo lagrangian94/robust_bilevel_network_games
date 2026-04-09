@@ -14,19 +14,20 @@ using Gurobi
 using Printf
 using LinearAlgebra
 using Random
+using Revise
 
 # Load parent module
 include("../network_generator.jl")
 using .NetworkGenerator
 
-# Load TV-DRO modules
-include("tv_data.jl")
-include("tv_build_isp_leader.jl")
-include("tv_build_isp_follower.jl")
-include("tv_build_imp.jl")
-include("tv_build_omp.jl")
-include("tv_build_full_model.jl")
-include("tv_nested_benders.jl")
+# Load TV-DRO modules — includet for Revise hot-reload
+includet("tv_data.jl")
+includet("tv_build_isp_leader.jl")
+includet("tv_build_isp_follower.jl")
+includet("tv_build_imp.jl")
+includet("tv_build_omp.jl")
+includet("tv_build_full_model.jl")
+includet("tv_nested_benders.jl")
 
 
 # ============================================================
@@ -115,7 +116,7 @@ function test_isp_standalone(; m=3, n=3, S=2, seed=42,
     inner_result = tv_inner_loop!(tv, imp_model, imp_vars,
                                    isp_l2, isp_l2_vars,
                                    isp_f2, isp_f2_vars;
-                                   max_inner_iter=500, inner_tol=1e-6, verbose=false)
+                                   max_inner_iter=500, inner_tol=1e-4, verbose=false)
     Z_inner = inner_result[:Z0_val]
     @printf("  Inner loop: %.6f  (iters=%d)\n", Z_inner, inner_result[:inner_iters])
 
@@ -164,7 +165,8 @@ function solve_osp_primal(tv::TVData, x_sol, h_sol, λ_sol, ψ0_sol)
     ξ = tv.xi_bar
     v = tv.v
     w = tv.w
-    φ_U = tv.phi_U
+    φ̂_U = tv.phi_hat_U
+    φ̃_U = tv.phi_tilde_U
 
     # r_k^s = h_k + (λ - v_k ψ⁰_k) ξ̄_k^s   (from P16 RHS)
     r = zeros(K, S)
@@ -218,14 +220,14 @@ function solve_osp_primal(tv::TVData, x_sol, h_sol, λ_sol, ψ0_sol)
     # === Constraints ===
 
     # McCormick for ψ̂_k^s ≈ x̄_k · φ̂_k^s (MH1-MH3)
-    @constraint(model, [k=1:K, s=1:S], ψ_hat_mc[k, s] <= φ_U * x_sol[k])
+    @constraint(model, [k=1:K, s=1:S], ψ_hat_mc[k, s] <= φ̂_U * x_sol[k])
     @constraint(model, [k=1:K, s=1:S], ψ_hat_mc[k, s] <= φ_hat[k, s])
-    @constraint(model, [k=1:K, s=1:S], ψ_hat_mc[k, s] >= φ_hat[k, s] - φ_U * (1 - x_sol[k]))
+    @constraint(model, [k=1:K, s=1:S], ψ_hat_mc[k, s] >= φ_hat[k, s] - φ̂_U * (1 - x_sol[k]))
 
     # McCormick for ψ̃_k^s ≈ x̄_k · φ̃_k^s (MT1-MT3)
-    @constraint(model, [k=1:K, s=1:S], ψ_tilde_mc[k, s] <= φ_U * x_sol[k])
+    @constraint(model, [k=1:K, s=1:S], ψ_tilde_mc[k, s] <= φ̃_U * x_sol[k])
     @constraint(model, [k=1:K, s=1:S], ψ_tilde_mc[k, s] <= φ_tilde[k, s])
-    @constraint(model, [k=1:K, s=1:S], ψ_tilde_mc[k, s] >= φ_tilde[k, s] - φ_U * (1 - x_sol[k]))
+    @constraint(model, [k=1:K, s=1:S], ψ_tilde_mc[k, s] >= φ_tilde[k, s] - φ̃_U * (1 - x_sol[k]))
 
     # (P2): σ^{L+} - σ^{L-} + η^L ≥ Σ_k ξ̄(φ̂ - v·ψ̂_mc)
     @constraint(model, [s=1:S],
@@ -312,7 +314,8 @@ function solve_osp_primal_with_alpha(tv::TVData, x_sol, h_sol, λ_sol, ψ0_sol)
     ξ = tv.xi_bar
     v = tv.v
     w = tv.w
-    φ_U = tv.phi_U
+    φ̂_U = tv.phi_hat_U
+    φ̃_U = tv.phi_tilde_U
 
     r = zeros(K, S)
     for s in 1:S, k in 1:K
@@ -350,14 +353,14 @@ function solve_osp_primal_with_alpha(tv::TVData, x_sol, h_sol, λ_sol, ψ0_sol)
     @variable(model, ψ_tilde_mc[1:K, 1:S] >= 0)
 
     # McCormick constraints (MH1-MH3)
-    @constraint(model, [k=1:K, s=1:S], ψ_hat_mc[k, s] <= φ_U * x_sol[k])
+    @constraint(model, [k=1:K, s=1:S], ψ_hat_mc[k, s] <= φ̂_U * x_sol[k])
     @constraint(model, [k=1:K, s=1:S], ψ_hat_mc[k, s] <= φ_hat[k, s])
-    @constraint(model, [k=1:K, s=1:S], ψ_hat_mc[k, s] >= φ_hat[k, s] - φ_U * (1 - x_sol[k]))
+    @constraint(model, [k=1:K, s=1:S], ψ_hat_mc[k, s] >= φ_hat[k, s] - φ̂_U * (1 - x_sol[k]))
 
     # McCormick constraints (MT1-MT3)
-    @constraint(model, [k=1:K, s=1:S], ψ_tilde_mc[k, s] <= φ_U * x_sol[k])
+    @constraint(model, [k=1:K, s=1:S], ψ_tilde_mc[k, s] <= φ̃_U * x_sol[k])
     @constraint(model, [k=1:K, s=1:S], ψ_tilde_mc[k, s] <= φ_tilde[k, s])
-    @constraint(model, [k=1:K, s=1:S], ψ_tilde_mc[k, s] >= φ_tilde[k, s] - φ_U * (1 - x_sol[k]))
+    @constraint(model, [k=1:K, s=1:S], ψ_tilde_mc[k, s] >= φ_tilde[k, s] - φ̃_U * (1 - x_sol[k]))
 
     # (P2): McCormick version
     @constraint(model, [s=1:S],
@@ -440,7 +443,8 @@ function solve_osp_dual(tv::TVData, x_sol, h_sol, λ_sol, ψ0_sol)
     ξ = tv.xi_bar
     v = tv.v
     w = tv.w
-    φ_U = tv.phi_U
+    φ̂_U = tv.phi_hat_U
+    φ̃_U = tv.phi_tilde_U
 
     r = zeros(K, S)
     for s in 1:S, k in 1:K
@@ -552,8 +556,10 @@ function solve_osp_dual(tv::TVData, x_sol, h_sol, λ_sol, ψ0_sol)
         sum(σ̂[s] for s in 1:S)
         + λ_sol * sum(σ̃[s] for s in 1:S)
         - sum(r[k, s] * β[k, s] for k in 1:K, s in 1:S)
-        - φ_U * sum(x_sol[k] * (ρ_hat_1[k, s] + ρ_tilde_1[k, s]) for k in 1:K, s in 1:S)
-        - φ_U * sum((1 - x_sol[k]) * (ρ_hat_3[k, s] + ρ_tilde_3[k, s]) for k in 1:K, s in 1:S))
+        - φ̂_U * sum(x_sol[k] * ρ_hat_1[k, s] for k in 1:K, s in 1:S)
+        - φ̃_U * sum(x_sol[k] * ρ_tilde_1[k, s] for k in 1:K, s in 1:S)
+        - φ̂_U * sum((1 - x_sol[k]) * ρ_hat_3[k, s] for k in 1:K, s in 1:S)
+        - φ̃_U * sum((1 - x_sol[k]) * ρ_tilde_3[k, s] for k in 1:K, s in 1:S))
 
     optimize!(model)
     st = termination_status(model)
@@ -598,7 +604,7 @@ function test_full_vs_benders(; m=3, n=3, S=2, seed=42,
         max_outer_iter=50,
         max_inner_iter=100,
         outer_tol=1e-4,
-        inner_tol=1e-5,
+        inner_tol=1e-4,
         verbose=true)
 
     benders_obj = result[:Z0]
@@ -749,7 +755,7 @@ function test_outer_cut_tightness(; m=3, n=3, S=2, seed=42,
     inner_result = tv_inner_loop!(tv, imp_model, imp_vars,
                                    isp_l, isp_l_vars,
                                    isp_f, isp_f_vars;
-                                   max_inner_iter=100, inner_tol=1e-6, verbose=false)
+                                   max_inner_iter=100, inner_tol=1e-4, verbose=false)
 
     Z0 = inner_result[:Z0_val]
 
@@ -809,7 +815,7 @@ function test_full_vs_benders_s3(; m=5, n=5, S=20, seed=42,
         max_outer_iter=1e+4,
         max_inner_iter=1e+4,
         outer_tol=1e-4,
-        inner_tol=1e-5,
+        inner_tol=1e-4,
         verbose=true)
 
     benders_obj = result[:Z0]

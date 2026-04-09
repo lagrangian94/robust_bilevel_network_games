@@ -39,7 +39,7 @@ function build_tv_isp_leader(tv::TVData, x_bar::Vector{Float64}; optimizer)
     ε = tv.eps_hat
     ξ = tv.xi_bar
     v = tv.v
-    φ_U = tv.phi_U
+    φ̂_U = tv.phi_hat_U
 
     model = Model(optimizer_with_attributes(optimizer, MOI.Silent() => true))
 
@@ -97,8 +97,8 @@ function build_tv_isp_leader(tv::TVData, x_bar::Vector{Float64}; optimizer)
     # --- Objective: max Σ_s σ̂^s - φ^U Σ_{s,k} x̄_k ρ̂¹_{k,s} - φ^U Σ_{s,k} (1-x̄_k) ρ̂³_{k,s} ---
     @objective(model, Max,
         sum(σ_hat[s] for s in 1:S)
-        - φ_U * sum(x_bar[k] * ρ_hat_1[k, s] for k in 1:K, s in 1:S)
-        - φ_U * sum((1.0 - x_bar[k]) * ρ_hat_3[k, s] for k in 1:K, s in 1:S))
+        - φ̂_U * sum(x_bar[k] * ρ_hat_1[k, s] for k in 1:K, s in 1:S)
+        - φ̂_U * sum((1.0 - x_bar[k]) * ρ_hat_3[k, s] for k in 1:K, s in 1:S))
 
     vars = Dict(
         :σ_hat => σ_hat, :u_hat => u_hat,
@@ -140,7 +140,7 @@ Update objective for new x̄ from OMP. No constraint rebuild needed.
 function update_tv_isp_leader_objective!(model, vars, tv::TVData, x_bar_new::Vector{Float64})
     S = tv.S
     K = tv.num_arcs
-    φ_U = tv.phi_U
+    φ̂_U = tv.phi_hat_U
 
     σ_hat = vars[:σ_hat]
     ρ_hat_1 = vars[:ρ_hat_1]
@@ -148,8 +148,8 @@ function update_tv_isp_leader_objective!(model, vars, tv::TVData, x_bar_new::Vec
 
     @objective(model, Max,
         sum(σ_hat[s] for s in 1:S)
-        - φ_U * sum(x_bar_new[k] * ρ_hat_1[k, s] for k in 1:K, s in 1:S)
-        - φ_U * sum((1.0 - x_bar_new[k]) * ρ_hat_3[k, s] for k in 1:K, s in 1:S))
+        - φ̂_U * sum(x_bar_new[k] * ρ_hat_1[k, s] for k in 1:K, s in 1:S)
+        - φ̂_U * sum((1.0 - x_bar_new[k]) * ρ_hat_3[k, s] for k in 1:K, s in 1:S))
 end
 
 

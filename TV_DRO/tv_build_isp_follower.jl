@@ -42,7 +42,7 @@ function build_tv_isp_follower(tv::TVData, x_bar::Vector{Float64},
     ε = tv.eps_tilde
     ξ = tv.xi_bar
     v = tv.v
-    φ_U = tv.phi_U
+    φ̃_U = tv.phi_tilde_U
 
     model = Model(optimizer_with_attributes(optimizer, MOI.Silent() => true))
 
@@ -111,8 +111,8 @@ function build_tv_isp_follower(tv::TVData, x_bar::Vector{Float64},
         lambda_bar * sum(σ_tilde[s] for s in 1:S)
         - sum((h_bar[k] + (lambda_bar - v[k] * psi0_bar[k]) * ξ[k, s]) * β[k, s]
               for k in 1:K, s in 1:S)
-        - φ_U * sum(x_bar[k] * ρ_tilde_1[k, s] for k in 1:K, s in 1:S)
-        - φ_U * sum((1.0 - x_bar[k]) * ρ_tilde_3[k, s] for k in 1:K, s in 1:S))
+        - φ̃_U * sum(x_bar[k] * ρ_tilde_1[k, s] for k in 1:K, s in 1:S)
+        - φ̃_U * sum((1.0 - x_bar[k]) * ρ_tilde_3[k, s] for k in 1:K, s in 1:S))
 
     vars = Dict(
         :σ_tilde => σ_tilde, :u_tilde => u_tilde,
@@ -162,7 +162,7 @@ function update_tv_isp_follower_objective!(model, vars, tv::TVData,
     K = tv.num_arcs
     ξ = tv.xi_bar
     v = tv.v
-    φ_U = tv.phi_U
+    φ̃_U = tv.phi_tilde_U
 
     σ_tilde = vars[:σ_tilde]
     β = vars[:β]
@@ -173,8 +173,8 @@ function update_tv_isp_follower_objective!(model, vars, tv::TVData,
         lambda_bar_new * sum(σ_tilde[s] for s in 1:S)
         - sum((h_bar_new[k] + (lambda_bar_new - v[k] * psi0_bar_new[k]) * ξ[k, s]) * β[k, s]
               for k in 1:K, s in 1:S)
-        - φ_U * sum(x_bar_new[k] * ρ_tilde_1[k, s] for k in 1:K, s in 1:S)
-        - φ_U * sum((1.0 - x_bar_new[k]) * ρ_tilde_3[k, s] for k in 1:K, s in 1:S))
+        - φ̃_U * sum(x_bar_new[k] * ρ_tilde_1[k, s] for k in 1:K, s in 1:S)
+        - φ̃_U * sum((1.0 - x_bar_new[k]) * ρ_tilde_3[k, s] for k in 1:K, s in 1:S))
 end
 
 

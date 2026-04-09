@@ -33,7 +33,8 @@ function build_full_tv_model(tv::TVData; optimizer)
     λU = tv.lambda_U
 
     # Big-M for McCormick on x·φ̂, x·φ̃
-    φ_U = tv.phi_U
+    φ̂_U = tv.phi_hat_U
+    φ̃_U = tv.phi_tilde_U
 
     model = Model(optimizer_with_attributes(optimizer, MOI.Silent() => true))
 
@@ -95,15 +96,15 @@ function build_full_tv_model(tv::TVData; optimizer)
     # McCormick for bilinear: ψ̂_k^s = x_k · φ̂_k^s
     # =============================================
     @variable(model, ψ_hat_mc[1:K, 1:S] >= 0)
-    @constraint(model, [k=1:K, s=1:S], ψ_hat_mc[k, s] <= φ_U * x[k])
+    @constraint(model, [k=1:K, s=1:S], ψ_hat_mc[k, s] <= φ̂_U * x[k])
     @constraint(model, [k=1:K, s=1:S], ψ_hat_mc[k, s] <= φ_hat[k, s])
-    @constraint(model, [k=1:K, s=1:S], ψ_hat_mc[k, s] >= φ_hat[k, s] - φ_U * (1 - x[k]))
+    @constraint(model, [k=1:K, s=1:S], ψ_hat_mc[k, s] >= φ_hat[k, s] - φ̂_U * (1 - x[k]))
 
     # McCormick for bilinear: ψ̃_k^s = x_k · φ̃_k^s
     @variable(model, ψ_tilde_mc[1:K, 1:S] >= 0)
-    @constraint(model, [k=1:K, s=1:S], ψ_tilde_mc[k, s] <= φ_U * x[k])
+    @constraint(model, [k=1:K, s=1:S], ψ_tilde_mc[k, s] <= φ̃_U * x[k])
     @constraint(model, [k=1:K, s=1:S], ψ_tilde_mc[k, s] <= φ_tilde[k, s])
-    @constraint(model, [k=1:K, s=1:S], ψ_tilde_mc[k, s] >= φ_tilde[k, s] - φ_U * (1 - x[k]))
+    @constraint(model, [k=1:K, s=1:S], ψ_tilde_mc[k, s] >= φ_tilde[k, s] - φ̃_U * (1 - x[k]))
 
     # =============================================
     # Constraints

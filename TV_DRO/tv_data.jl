@@ -27,7 +27,8 @@ TV-DRO에 필요한 모든 데이터를 담는 구조체.
 - `w::Float64`: recovery budget weight
 - `lambda_U::Float64`: upper bound on λ
 - `interdictable_arcs::Vector{Bool}`: which arcs can be interdicted
-- `phi_U::Float64`: McCormick big-M for φ̂, φ̃ (= max_s Σ_k ξ̄_k^s + 1)
+- `phi_hat_U::Float64`: McCormick big-M for φ̂ (leader, = 1.0)
+- `phi_tilde_U::Float64`: McCormick big-M for φ̃ (follower, = λ_U)
 """
 struct TVData
     Ny::Matrix{Float64}
@@ -44,7 +45,8 @@ struct TVData
     w::Float64
     lambda_U::Float64
     interdictable_arcs::Vector{Bool}
-    phi_U::Float64
+    phi_hat_U::Float64
+    phi_tilde_U::Float64
 end
 
 
@@ -91,10 +93,15 @@ function make_tv_data(network, scenarios, q_hat, eps_hat, eps_tilde;
 
     v = Float64.(network.interdictable_arcs)  # v_k ∈ {0,1}
 
-    # McCormick big-M for φ̂, φ̃ dual variables (max-flow dual UB = 1.0)
-    phi_U = 2.0
+    # McCormick big-M: φ̂ ≤ 1 (leader, RHS=1), φ̃ ≤ λ_U (follower, RHS=λ)
+    phi_hat_U = 1.0
+    phi_tilde_U = 2.0
 
     return TVData(Ny, Nts, nv1, num_arcs, S, xi_bar, q_hat,
                   eps_hat, eps_tilde, v, gamma, w, lambda_U,
-                  network.interdictable_arcs, phi_U)
+                  network.interdictable_arcs, phi_hat_U, phi_tilde_U)
 end
+
+## trust region
+## mini-benders
+## mw cuts

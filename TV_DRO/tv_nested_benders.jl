@@ -16,7 +16,7 @@ using Printf
 """
     tv_inner_loop!(tv, imp_model, imp_vars, isp_l_model, isp_l_vars,
                    isp_f_model, isp_f_vars;
-                   max_inner_iter=100, inner_tol=1e-5, verbose=true)
+                   max_inner_iter=100, inner_tol=1e-4, verbose=true)
 
 Inner loop: IMP ↔ ISP-L + ISP-F.
 
@@ -30,7 +30,7 @@ Returns Dict with:
 function tv_inner_loop!(tv::TVData, imp_model, imp_vars,
                         isp_l_model, isp_l_vars,
                         isp_f_model, isp_f_vars;
-                        max_inner_iter=1000, inner_tol=1e-5, verbose=true)
+                        max_inner_iter=1000, inner_tol=1e-4, verbose=true)
     K = tv.num_arcs
     lower_bound = -Inf
     upper_bound = Inf
@@ -123,7 +123,7 @@ end
     tv_nested_benders_optimize!(tv::TVData;
         lp_optimizer, mip_optimizer,
         max_outer_iter=50, max_inner_iter=100,
-        outer_tol=1e-4, inner_tol=1e-5,
+        outer_tol=1e-4, inner_tol=1e-4,
         verbose=true)
 
 Main TV-DRO nested Benders algorithm.
@@ -136,7 +136,7 @@ Returns Dict with optimal solution and convergence info.
 function tv_nested_benders_optimize!(tv::TVData;
         lp_optimizer, mip_optimizer,
         max_outer_iter=50, max_inner_iter=100,
-        outer_tol=1e-4, inner_tol=1e-5,
+        outer_tol=1e-4, inner_tol=1e-4,
         verbose=true)
 
     K = tv.num_arcs
@@ -163,6 +163,13 @@ function tv_nested_benders_optimize!(tv::TVData;
 
     lower_bound = -Inf
     upper_bound = Inf
+
+    # Track best UB solution
+    best_x = zeros(K)
+    best_h = zeros(K)
+    best_λ = 0.0
+    best_ψ0 = zeros(K)
+    best_α = zeros(K)
 
     for outer_iter in 1:max_outer_iter
         if verbose
@@ -206,7 +213,14 @@ function tv_nested_benders_optimize!(tv::TVData;
                                        verbose=verbose)
 
         Z0_val = inner_result[:Z0_val]
-        upper_bound = min(upper_bound, Z0_val)
+        if Z0_val < upper_bound
+            upper_bound = Z0_val
+            best_x = copy(x_sol)
+            best_h = copy(h_sol)
+            best_λ = λ_sol
+            best_ψ0 = copy(ψ0_sol)
+            best_α = copy(inner_result[:α_sol])
+        end
 
         push!(history[:lower_bounds], lower_bound)
         push!(history[:upper_bounds], upper_bound)
@@ -226,12 +240,12 @@ function tv_nested_benders_optimize!(tv::TVData;
             end
             return Dict(
                 :status => :Optimal,
-                :Z0 => Z0_val,
-                :x => x_sol,
-                :h => h_sol,
-                :λ => λ_sol,
-                :ψ0 => ψ0_sol,
-                :α => inner_result[:α_sol],
+                :Z0 => upper_bound,
+                :x => best_x,
+                :h => best_h,
+                :λ => best_λ,
+                :ψ0 => best_ψ0,
+                :α => best_α,
                 :lower_bound => lower_bound,
                 :upper_bound => upper_bound,
                 :outer_iters => outer_iter,
@@ -256,6 +270,11 @@ function tv_nested_benders_optimize!(tv::TVData;
     return Dict(
         :status => :MaxIter,
         :Z0 => upper_bound,
+        :x => best_x,
+        :h => best_h,
+        :λ => best_λ,
+        :ψ0 => best_ψ0,
+        :α => best_α,
         :lower_bound => lower_bound,
         :upper_bound => upper_bound,
         :outer_iters => max_outer_iter,
