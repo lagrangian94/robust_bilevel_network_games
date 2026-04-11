@@ -15,6 +15,7 @@ using Printf
 using LinearAlgebra
 using Random
 using Revise
+using Infiltrator
 
 # Load parent module
 include("../network_generator.jl")
@@ -785,12 +786,14 @@ end
 # ============================================================
 # Test 6: S=3 full vs Benders
 # ============================================================
-function test_full_vs_benders_s3(; m=5, n=5, S=20, seed=42,
+function test_full_vs_benders_s3(; m=4, n=4, S=50, seed=42,
                                    eps_hat=0.15, eps_tilde=0.15)
     println("=" ^ 60)
     println("Test 6: Full vs Benders ($(m)×$(n), S=$S)")
     println("=" ^ 60)
-
+    #debug
+    eps_hat=0.01
+    eps_tilde=0.01
     network, tv = setup_instance(; m, n, S, seed, eps_hat, eps_tilde)
     K = tv.num_arcs
 
@@ -806,6 +809,10 @@ function test_full_vs_benders_s3(; m=5, n=5, S=20, seed=42,
     full_obj = objective_value(full_model)
     x_full = round.(Int, [value(full_vars[:x][k]) for k in 1:K])
     @printf("  Full model: obj=%.6f, x=%s\n", full_obj, string(x_full))
+    @infiltrate
+
+    # --- Worst-case distribution 진단 ---
+    diag = diagnose_worst_case(tv, full_vars)
 
     # --- Benders ---
     println("\n  Solving nested Benders...")
@@ -864,6 +871,131 @@ function run_all_tests()
     n_total = length(results)
     println("\n  $n_pass / $n_total passed")
     return results
+end
+
+
+# ============================================================
+# Worst-case probability recovery from TV dual variables
+# ============================================================
+"""
+    recover_worst_case_q(f, q_hat, ε)
+
+TV ambiguity set 내에서 Σ q_s f_s를 maximize하는 worst-case distribution q*를 복원.
+
+# Arguments
+- `f`: length-S vector, scenario별 cost (e.g., g_s^L or g_s^F)
+- `q_hat`: nominal probability
+- `ε`: TV radius
+
+# Returns
+- `q_star`: worst-case probability vector
+"""
+function recover_worst_case_q(f::Vector{Float64}, q_hat::Vector{Float64}, ε::Float64)
+    S = length(f)
+    model = Model(optimizer_with_attributes(Gurobi.Optimizer, MOI.Silent() => true))
+    @variable(model, q[1:S] >= 0)
+    @variable(model, z[1:S] >= 0)
+    @constraint(model, sum(q) == 1)
+    @constraint(model, [s=1:S], z[s] >= q[s] - q_hat[s])
+    @constraint(model, [s=1:S], z[s] >= q_hat[s] - q[s])
+    @constraint(model, sum(z) <= 2ε)
+    @objective(model, Max, sum(q[s] * f[s] for s in 1:S))
+    optimize!(model)
+    return value.(q)
+end
+
+
+"""
+    diagnose_worst_case(tv::TVData, full_vars)
+
+Full model의 optimal solution에서 worst-case distribution 복원 + 진단.
+
+4가지 sup_q를 복원:
+  1. Leader obj (T1-T3): sup_q E[g_s^L]
+  2. Follower obj (T1,T4-T5): sup_q E[g_s^F]
+  3. Leader ν per arc k (T10-T12): sup_q E[φ̂_k^s]
+  4. Follower ν per arc k (T10,T13-T14): sup_q E[φ̃_k^s]
+"""
+function diagnose_worst_case(tv::TVData, full_vars)
+    S = tv.S
+    K = tv.num_arcs
+    ξ = tv.xi_bar
+    v = tv.v
+    q_hat = tv.q_hat
+    ε̂ = tv.eps_hat
+    ε̃ = tv.eps_tilde
+
+    # --- g_s^L, g_s^F 계산 ---
+    f_L = zeros(S)
+    f_F = zeros(S)
+    for s in 1:S
+        for k in 1:K
+            f_L[s] += ξ[k, s] * (value(full_vars[:φ_hat][k, s])
+                                  - v[k] * value(full_vars[:ψ_hat_mc][k, s]))
+            f_F[s] += ξ[k, s] * (value(full_vars[:φ_tilde][k, s])
+                                  - v[k] * value(full_vars[:ψ_tilde_mc][k, s]))
+        end
+        f_F[s] -= value(full_vars[:yts_tilde][s])
+    end
+
+    # --- Worst-case q 복원 ---
+    q_L = recover_worst_case_q(f_L, q_hat, ε̂)
+    q_F = recover_worst_case_q(f_F, q_hat, ε̃)
+
+    println("=" ^ 60)
+    println("Worst-case distribution diagnosis")
+    println("=" ^ 60)
+
+    # Leader obj
+    @printf("  Leader obj (ε̂=%.3f):\n", ε̂)
+    @printf("    E_nom[g^L] = %.6f\n", dot(q_hat, f_L))
+    @printf("    E_wc [g^L] = %.6f\n", dot(q_L, f_L))
+    top_L = sortperm(q_L .- q_hat, rev=true)
+    @printf("    Top shifted scenarios: ")
+    for i in 1:min(5, S)
+        s = top_L[i]
+        Δ = q_L[s] - q_hat[s]
+        if abs(Δ) > 1e-8
+            @printf("s%d(%+.4f) ", s, Δ)
+        end
+    end
+    println()
+
+    # Follower obj
+    @printf("\n  Follower obj (ε̃=%.3f):\n", ε̃)
+    @printf("    E_nom[g^F] = %.6f\n", dot(q_hat, f_F))
+    @printf("    E_wc [g^F] = %.6f\n", dot(q_F, f_F))
+    @printf("    g^F range: [%.4f, %.4f]\n", minimum(f_F), maximum(f_F))
+    top_F = sortperm(q_F .- q_hat, rev=true)
+    @printf("    Top shifted scenarios: ")
+    for i in 1:min(5, S)
+        s = top_F[i]
+        Δ = q_F[s] - q_hat[s]
+        if abs(Δ) > 1e-8
+            @printf("s%d(%+.4f) ", s, Δ)
+        end
+    end
+    println()
+
+    # λ, x 정보
+    λ_val = value(full_vars[:λ])
+    x_val = [value(full_vars[:x][k]) for k in 1:K]
+    @printf("\n  λ* = %.4f,  Σx = %d\n", λ_val, round(Int, sum(x_val)))
+
+    # Per-arc ν diagnosis (worst arc)
+    ν_val = value(full_vars[:ν])
+    @printf("  ν* = %.6f,  w·ν = %.6f\n", ν_val, tv.w * ν_val)
+
+    # φ̂, φ̃ per-scenario max
+    φ̂_max = maximum(value(full_vars[:φ_hat][k, s]) for k in 1:K, s in 1:S)
+    φ̃_max = maximum(value(full_vars[:φ_tilde][k, s]) for k in 1:K, s in 1:S)
+    @printf("  max(φ̂) = %.6f,  max(φ̃) = %.6f\n", φ̂_max, φ̃_max)
+
+    return Dict(
+        :f_L => f_L, :f_F => f_F,
+        :q_L => q_L, :q_F => q_F,
+        :λ => λ_val, :x => x_val,
+    )
 end
 
 

@@ -36,7 +36,7 @@ function build_full_tv_model(tv::TVData; optimizer)
     φ̂_U = tv.phi_hat_U
     φ̃_U = tv.phi_tilde_U
 
-    model = Model(optimizer_with_attributes(optimizer, MOI.Silent() => true))
+    model = Model(optimizer_with_attributes(optimizer, MOI.Silent() => false))
 
     # =============================================
     # First-stage variables
@@ -193,7 +193,7 @@ function build_full_tv_model(tv::TVData; optimizer)
         end
     end
     @constraint(model, λ <= λU)
-
+    # @constraint(model, λ >= 0.01)
     # --- McCormick for ψ⁰ = λ·x ---
     @constraint(model, [k=1:K], ψ0[k] <= λU * x[k])
     @constraint(model, [k=1:K], ψ0[k] <= λ)
