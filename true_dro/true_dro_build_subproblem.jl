@@ -32,7 +32,7 @@ Build merged bilinear subproblem.
 Returns (model, vars). Caller must use `Gurobi.Optimizer` (or any QCP solver
 supporting non-convex bilinear) and set `NonConvex=2` separately.
 """
-function build_true_dro_subproblem(td::TrueDROData, x_bar::Vector{Float64}; optimizer)
+function build_true_dro_subproblem(td::TrueDROData, x_bar::Vector{Float64}; optimizer, silent=true)
     S = td.S
     K = td.num_arcs
     m = td.nv1
@@ -49,7 +49,9 @@ function build_true_dro_subproblem(td::TrueDROData, x_bar::Vector{Float64}; opti
     λU = td.lambda_U
 
     model = Model(optimizer)
-    set_silent(model)
+    if silent
+        set_silent(model)
+    end
 
     # ====================================================================
     # Tight per-scenario TV ball bounds (true_dro_v5.md §10.1)

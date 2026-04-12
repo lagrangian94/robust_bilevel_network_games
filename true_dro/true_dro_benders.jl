@@ -36,7 +36,8 @@ Returns Dict with :status, :Z0, :x, :α, :lower_bound, :upper_bound, :iters, :hi
 """
 function true_dro_benders_optimize!(td::TrueDROData;
         mip_optimizer, nlp_optimizer,
-        max_iter=50, tol=1e-4, verbose=true,
+        max_iter=1e+3, tol=1e-4, verbose=true,
+        sub_verbose=false,
         nonconvex_attr=("NonConvex" => 2))
 
     K = td.num_arcs
@@ -46,7 +47,7 @@ function true_dro_benders_optimize!(td::TrueDROData;
 
     # ---- Build subproblem once with x_bar = 0 (objective will be updated each iter) ----
     x_init = zeros(K)
-    sub_model, sub_vars = build_true_dro_subproblem(td, x_init; optimizer=nlp_optimizer)
+    sub_model, sub_vars = build_true_dro_subproblem(td, x_init; optimizer=nlp_optimizer, silent=!sub_verbose)
     if nonconvex_attr !== nothing
         try
             set_optimizer_attribute(sub_model, nonconvex_attr.first, nonconvex_attr.second)

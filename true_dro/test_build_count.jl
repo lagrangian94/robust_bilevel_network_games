@@ -2,14 +2,17 @@
 test_build_count.jl — Build subproblem and verify constraint counts.
 """
 
+using Revise
 using JuMP
 using Gurobi
 
-include("../network_generator.jl")
+if !@isdefined(NetworkGenerator)
+    include("../network_generator.jl")
+end
 using .NetworkGenerator
 
-include("true_dro_data.jl")
-include("true_dro_build_subproblem.jl")
+includet("true_dro_data.jl")
+includet("true_dro_build_subproblem.jl")
 
 # Small instance
 m, n, S = 2, 2, 2
