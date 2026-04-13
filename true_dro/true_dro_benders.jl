@@ -11,6 +11,10 @@ Each iteration:
   3. Compute cut from ρ values (§9.3) and add to OMP
 
 Subproblem is built ONCE (constraints x-independent); only objective updates.
+
+Mini-Benders (§9.4, mini_benders=true):
+  Bilinear solve → α* 고정 후, OMP ↔ ISP-L/F LP를 max_mini_benders_iter회 반복.
+  α 고정이면 ISP-L ∥ ISP-F 독립 LP → 값싼 cut을 여러 개 축적.
 """
 
 using JuMP
@@ -21,8 +25,10 @@ using Printf
 """
     true_dro_benders_optimize!(td::TrueDROData;
         mip_optimizer, nlp_optimizer,
-        max_iter=50, tol=1e-4, verbose=true,
-        nonconvex_attr=nothing)
+        max_iter=1000, tol=1e-4, verbose=true,
+        nonconvex_attr=("NonConvex" => 2),
+        mini_benders=false, lp_optimizer=nothing,
+        max_mini_benders_iter=5)
 
 Run outer Benders.
 
@@ -31,6 +37,10 @@ Run outer Benders.
 - `nlp_optimizer`: e.g., `Gurobi.Optimizer` (for bilinear subproblem; needs NonConvex=2)
 - `nonconvex_attr`: optional Pair to set on subproblem model after construction,
   e.g., `"NonConvex" => 2` for Gurobi. Defaults to `"NonConvex" => 2`.
+- `mini_benders`: if true, after each bilinear solve, fix α* and run LP-based
+  inner Benders loop (OMP ↔ ISP-L/F) for additional cuts
+- `lp_optimizer`: LP solver for mini-benders (e.g., HiGHS.Optimizer). Required if mini_benders=true.
+- `max_mini_benders_iter`: max iterations in mini-benders phase per outer iter (default 5)
 
 Returns Dict with :status, :Z0, :x, :α, :lower_bound, :upper_bound, :iters, :history.
 """
@@ -38,9 +48,16 @@ function true_dro_benders_optimize!(td::TrueDROData;
         mip_optimizer, nlp_optimizer,
         max_iter=1e+3, tol=1e-4, verbose=true,
         sub_verbose=false,
-        nonconvex_attr=("NonConvex" => 2))
+        nonconvex_attr=("NonConvex" => 2),
+        mini_benders::Bool=false,
+        lp_optimizer=nothing,
+        max_mini_benders_iter::Int=5)
 
     K = td.num_arcs
+
+    if mini_benders && lp_optimizer === nothing
+        error("mini_benders=true requires lp_optimizer (e.g., HiGHS.Optimizer)")
+    end
 
     # ---- Build OMP ----
     omp_model, omp_vars = build_true_dro_omp(td; optimizer=mip_optimizer)
@@ -56,6 +73,17 @@ function true_dro_benders_optimize!(td::TrueDROData;
         end
     end
 
+    # ---- Mini-Benders: build ISP-L and ISP-F LP models once ----
+    local isp_l_model, isp_l_vars, isp_f_model, isp_f_vars
+    if mini_benders
+        α_init = zeros(K)
+        isp_l_model, isp_l_vars = build_true_dro_isp_leader(td, x_init, α_init; optimizer=lp_optimizer)
+        isp_f_model, isp_f_vars = build_true_dro_isp_follower(td, x_init, α_init; optimizer=lp_optimizer)
+        if verbose
+            @info "Mini-Benders enabled: max_mini_iter=$max_mini_benders_iter"
+        end
+    end
+
     history = Dict(
         :lower_bounds => Float64[],
         :upper_bounds => Float64[],
@@ -66,6 +94,7 @@ function true_dro_benders_optimize!(td::TrueDROData;
     upper_bound = Inf
     best_x = zeros(K)
     best_α = zeros(K)
+    cut_count = 0
 
     for iter in 1:max_iter
         if verbose
@@ -126,14 +155,101 @@ function true_dro_benders_optimize!(td::TrueDROData;
             )
         end
 
-        # ---- Add outer cut ----
+        # ---- Add outer cut from bilinear solve ----
         outer_cut = compute_true_dro_outer_cut(td, sub_info, x_sol)
-        add_true_dro_optimality_cut!(omp_model, omp_vars, outer_cut, iter)
+        cut_count += 1
+        add_true_dro_optimality_cut!(omp_model, omp_vars, outer_cut, cut_count)
 
         if verbose
             @printf("  Cut: intercept=%.6f, π_x_range=[%.4f, %.4f]\n",
                     outer_cut[:intercept],
                     minimum(outer_cut[:π_x]), maximum(outer_cut[:π_x]))
+        end
+
+        # ---- Mini-Benders phase: fix α*, iterate OMP ↔ LP subproblem (§9.4) ----
+        if mini_benders
+            α_fixed = sub_info[:α_val]
+
+            # Set α once for this phase
+            update_isp_leader_alpha!(isp_l_model, isp_l_vars, td, α_fixed)
+            update_isp_follower_alpha!(isp_f_model, isp_f_vars, td, α_fixed)
+
+            prev_lb = lower_bound
+            stagnation_count = 0
+
+            for j in 1:max_mini_benders_iter
+                # Re-solve OMP with accumulated cuts → new x̄
+                optimize!(omp_model)
+                st_mb = termination_status(omp_model)
+                if st_mb != MOI.OPTIMAL
+                    if verbose
+                        @printf("  Mini-Benders[%d]: OMP %s, break\n", j, st_mb)
+                    end
+                    break
+                end
+
+                x_mb = [value(omp_vars[:x][k]) for k in 1:K]
+                lb_mb = objective_value(omp_model)
+
+                # LB stagnation check
+                if lb_mb <= prev_lb + 1e-6
+                    stagnation_count += 1
+                else
+                    stagnation_count = 0
+                end
+                prev_lb = lb_mb
+
+                if stagnation_count >= 3
+                    if verbose
+                        @printf("  Mini-Benders[%d]: LB stagnated, break\n", j)
+                    end
+                    break
+                end
+
+                # Solve ISP-L(α*, x̄_new) + ISP-F(α*, x̄_new) → cut
+                update_isp_leader_objective!(isp_l_model, isp_l_vars, td, x_mb)
+                l_info = solve_isp_leader!(isp_l_model, isp_l_vars, td)
+
+                update_isp_follower_objective!(isp_f_model, isp_f_vars, td, x_mb)
+                f_info = solve_isp_follower!(isp_f_model, isp_f_vars, td)
+
+                Z0_mini = l_info[:obj_val] + f_info[:obj_val]
+
+                mini_sub_info = Dict(
+                    :Z0_val => Z0_mini,
+                    :α_val => α_fixed,
+                    :rho_hat_1_val => l_info[:rho_hat_1_val],
+                    :rho_hat_3_val => l_info[:rho_hat_3_val],
+                    :rho_tilde_1_val => f_info[:rho_tilde_1_val],
+                    :rho_tilde_3_val => f_info[:rho_tilde_3_val],
+                    :rho_psi0_1_val => f_info[:rho_psi0_1_val],
+                    :rho_psi0_3_val => f_info[:rho_psi0_3_val],
+                )
+
+                mini_cut = compute_true_dro_outer_cut(td, mini_sub_info, x_mb)
+                cut_count += 1
+                add_true_dro_optimality_cut!(omp_model, omp_vars, mini_cut, cut_count)
+
+                if verbose
+                    @printf("  Mini-Benders[%d]: LB=%.6f, Z₀(α*)=%.6f, cut_intercept=%.6f\n",
+                            j, lb_mb, Z0_mini, mini_cut[:intercept])
+                end
+
+                # Gap check (mini LB vs outer UB)
+                mini_gap = abs(upper_bound - lb_mb) / max(abs(upper_bound), 1e-10)
+                if mini_gap <= tol
+                    if verbose
+                        @printf("  Mini-Benders[%d]: gap=%.2e ≤ tol, break\n", j, mini_gap)
+                    end
+                    break
+                end
+            end
+
+            # Update lower_bound from final OMP state after mini-benders
+            optimize!(omp_model)
+            if termination_status(omp_model) == MOI.OPTIMAL
+                lower_bound = max(lower_bound, objective_value(omp_model))
+            end
         end
     end
 

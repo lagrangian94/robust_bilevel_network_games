@@ -23,7 +23,10 @@ using .NetworkGenerator
 includet("true_dro_data.jl")
 includet("true_dro_build_omp.jl")
 includet("true_dro_build_subproblem.jl")
+includet("true_dro_build_isp_leader.jl")
+includet("true_dro_build_isp_follower.jl")
 includet("true_dro_benders.jl")
+includet("true_dro_recover.jl")
 
 # TV-DRO (for sandwich comparison)
 includet("../TV_DRO/tv_data.jl")
@@ -126,6 +129,13 @@ print("ε̂ (leader TV radius) [0.1]: "); ε_hat_str = strip(readline())
 ε_hat = isempty(ε_hat_str) ? 0.1 : parse(Float64, ε_hat_str)
 print("ε̃ (follower TV radius) [ε̂]: "); ε_tilde_str = strip(readline())
 ε_tilde = isempty(ε_tilde_str) ? ε_hat : parse(Float64, ε_tilde_str)
+print("Mini-Benders? (y/n) [n]: "); mb_str = strip(readline())
+use_mini_benders = lowercase(mb_str) == "y"
+max_mb_iter = 5
+if use_mini_benders
+    print("Mini-Benders max iter [5]: "); mb_iter_str = strip(readline())
+    max_mb_iter = isempty(mb_iter_str) ? 5 : parse(Int, mb_iter_str)
+end
 
 println("\n" * "=" ^ 70)
 println("INSTANCE: $instance_key (S=$S, ε̂=$ε_hat, ε̃=$ε_tilde)")
@@ -146,7 +156,10 @@ result = true_dro_benders_optimize!(td;
     max_iter=1000,
     tol=1e-4,
     verbose=true,
-    sub_verbose=true)
+    sub_verbose=true,
+    mini_benders=use_mini_benders,
+    lp_optimizer=(use_mini_benders ? HiGHS.Optimizer : nothing),
+    max_mini_benders_iter=max_mb_iter)
 
 gap = abs(result[:upper_bound] - result[:lower_bound]) /
       max(abs(result[:upper_bound]), 1e-10)
@@ -158,6 +171,9 @@ x_int = round.(Int, result[:x])
 println("  x* = $x_int")
 α_str = join([@sprintf("%.3f", a) for a in result[:α]], ", ")
 println("  α* = [$α_str]")
+
+# ===== Primal Recovery =====
+rec = recover_and_print(td, result; optimizer=HiGHS.Optimizer)
 
 @infiltrate
 

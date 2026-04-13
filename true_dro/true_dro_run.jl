@@ -22,7 +22,10 @@ using .NetworkGenerator
 includet("true_dro_data.jl")
 includet("true_dro_build_omp.jl")
 includet("true_dro_build_subproblem.jl")
+includet("true_dro_build_isp_leader.jl")
+includet("true_dro_build_isp_follower.jl")
 includet("true_dro_benders.jl")
+includet("true_dro_recover.jl")
 
 
 """
@@ -30,16 +33,19 @@ includet("true_dro_benders.jl")
                  eps_hat=0.1, eps_tilde=0.1,
                  gamma=2, w=1.0, lambda_U=10.0,
                  max_iter=30, tol=1e-4, verbose=true,
-                 sub_verbose=false)
+                 sub_verbose=false,
+                 mini_benders=false, lp_optimizer=nothing)
 
 Build True-DRO instance and run outer Benders.
 `sub_verbose=true` 로 Gurobi NonConvex subproblem 로그 출력.
+`mini_benders=true` 로 §9.4 mini-Benders 추가 cut 생성 (lp_optimizer 필요).
 """
 function run_true_dro(; m=2, n=2, S=2, seed=42,
                        eps_hat=0.1, eps_tilde=0.1,
                        gamma=2, w=1.0, lambda_U=10.0,
                        max_iter=30, tol=1e-4, verbose=true,
-                       sub_verbose=true)
+                       sub_verbose=true,
+                       mini_benders=false, lp_optimizer=nothing)
     println("=" ^ 60)
     println("True-DRO-Exact: $(m)×$(n) grid, S=$S, ε̂=$eps_hat, ε̃=$eps_tilde")
     println("=" ^ 60)
@@ -63,7 +69,9 @@ function run_true_dro(; m=2, n=2, S=2, seed=42,
         max_iter=max_iter,
         tol=tol,
         verbose=verbose,
-        sub_verbose=sub_verbose)
+        sub_verbose=sub_verbose,
+        mini_benders=mini_benders,
+        lp_optimizer=lp_optimizer)
 
     @printf("\nResult: status=%s, Z₀=%.6f, iters=%d\n",
             result[:status], result[:Z0], result[:iters])
