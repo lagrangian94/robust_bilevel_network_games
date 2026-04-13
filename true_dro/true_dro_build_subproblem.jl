@@ -271,7 +271,7 @@ function solve_true_dro_subproblem!(model, vars, td::TrueDROData, x_bar::Vector{
 
     has_solution = (st == MOI.OPTIMAL) ||
                    (st == MOI.LOCALLY_SOLVED) ||
-                   (st == MOI.TIME_LIMIT && has_values(model))
+                   ((st == MOI.TIME_LIMIT || st == MOI.ITERATION_LIMIT) && has_values(model))
 
     if !has_solution
         error("True-DRO subproblem: $st (no feasible solution)")

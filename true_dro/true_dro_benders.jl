@@ -44,6 +44,9 @@ Run outer Benders.
 - `inexact`: true이면 3회 중 2회는 OptimalityTarget=1 (local opt)으로 빠르게 풀고,
   3회째에만 global opt. Local opt에서도 valid cut 생성 (feasible point of max subproblem).
   UB는 global solve에서만 갱신.
+- `strengthen_cuts`: `:none` (default), `:mw` (cut strengthening).
+  `:mw` — outer bilinear: Sherali perturbation (x_pert로 추가 solve, constraint 변경 없음).
+         mini-benders: MW (ISP-L/F 독립 LP Phase 2, joint Pareto-optimality 미보장).
 
 Returns Dict with :status, :Z0, :x, :α, :lower_bound, :upper_bound, :iters, :history.
 """
@@ -57,7 +60,8 @@ function true_dro_benders_optimize!(td::TrueDROData;
         mini_benders::Bool=false,
         lp_optimizer=nothing,
         max_mini_benders_iter::Int=5,
-        inexact::Bool=false)
+        inexact::Bool=false,
+        strengthen_cuts::Symbol=:none)
 
     K = td.num_arcs
 
@@ -70,6 +74,15 @@ function true_dro_benders_optimize!(td::TrueDROData;
     const_inexact_cycle = 3  # every 3rd iter is global, others are local opt
     if inexact && verbose
         @info "Inexact mode: $(const_inexact_cycle-1)/$(const_inexact_cycle) iters use OptimalityTarget=1 (local opt)"
+    end
+
+    # ---- MW core point ----
+    if strengthen_cuts == :mw
+        n_interd = sum(td.interdictable_arcs)
+        x_core = [(td.interdictable_arcs[k] ? td.gamma / n_interd : 0.0) for k in 1:K]
+        if verbose
+            @info "MW cut enabled: core point x_core (γ/$n_interd per interdictable arc)"
+        end
     end
 
     # ---- Build OMP ----
@@ -231,6 +244,33 @@ function true_dro_benders_optimize!(td::TrueDROData;
                     minimum(outer_cut[:π_x]), maximum(outer_cut[:π_x]))
         end
 
+        # ---- Sherali cut: perturbed bilinear solve at x_pert ----
+        # Bilinear subproblem에 MW (optimality constraint 추가)하면 문제가 어려워져서
+        # Sherali perturbation 사용: constraint 추가 없이 objective만 변경 → 동일 난이도.
+        # (mini-benders에서는 LP이므로 MW 사용)
+        #
+        # ζ 선택 근거 (Sherali & Lunday 2011):
+        #   - 원논문 Algorithm 5: RHS perturbation μ = 10⁻⁶ (best), 10⁻⁵~10⁻³도 시도
+        #   - 우리 구조: objective perturbation (x_pert = (1-ζ)·x_sol + ζ·x_core)
+        #     x가 objective에만 등장하므로 RHS perturbation이 아닌 objective perturbation
+        #   - Bilinear B&B solver는 LP simplex보다 perturbation 감지 어려움 →
+        #     RHS μ=10⁻⁶보다 큰 ζ=0.001 사용 (너무 크면 cut center 이탈, 너무 작으면 무효)
+        if strengthen_cuts == :mw && is_exact
+            ζ_sherali = 0.001
+            x_pert = [(1.0 - ζ_sherali) * x_sol[k] + ζ_sherali * x_core[k] for k in 1:K]
+
+            sherali_info = solve_true_dro_subproblem!(sub_model, sub_vars, td, x_pert)
+            sherali_cut = compute_true_dro_outer_cut(td, sherali_info, x_pert)
+            cut_count += 1
+            add_true_dro_optimality_cut!(omp_model, omp_vars, sherali_cut, cut_count)
+
+            if verbose
+                @printf("  Sherali-Cut: intercept=%.6f, π_x_range=[%.4f, %.4f]\n",
+                        sherali_cut[:intercept],
+                        minimum(sherali_cut[:π_x]), maximum(sherali_cut[:π_x]))
+            end
+        end
+
         # ---- Mini-Benders phase: fix α*, iterate OMP ↔ LP subproblem (§9.4) ----
         #   Phase 1: α from bilinear solve → mini-benders cuts
         #   α-step:  fix (a*, d*) from last ISP-L/F → sub_model becomes LP → new α'
@@ -279,11 +319,23 @@ function true_dro_benders_optimize!(td::TrueDROData;
                     end
 
                     # Solve ISP-L(α*, x̄_new) + ISP-F(α*, x̄_new) → cut
-                    update_isp_leader_objective!(isp_l_model, isp_l_vars, td, x_mb)
-                    l_info = solve_isp_leader!(isp_l_model, isp_l_vars, td)
+                    # Note: inexact mode의 local opt α나 alternating α가 특정 x̄에서
+                    # ISP-F를 DUAL_INFEASIBLE (unbounded)로 만들 수 있음.
+                    # 이 경우 mini-benders phase만 중단하고 outer loop은 계속 진행.
+                    local l_info, f_info
+                    try
+                        update_isp_leader_objective!(isp_l_model, isp_l_vars, td, x_mb)
+                        l_info = solve_isp_leader!(isp_l_model, isp_l_vars, td)
 
-                    update_isp_follower_objective!(isp_f_model, isp_f_vars, td, x_mb)
-                    f_info = solve_isp_follower!(isp_f_model, isp_f_vars, td)
+                        update_isp_follower_objective!(isp_f_model, isp_f_vars, td, x_mb)
+                        f_info = solve_isp_follower!(isp_f_model, isp_f_vars, td)
+                    catch e
+                        if verbose
+                            @printf("  %s-Benders[%d]: ISP failed (%s), break\n",
+                                    phase_tag, j, sprint(showerror, e))
+                        end
+                        break
+                    end
 
                     # 마지막 ISP solve의 a*, d* 저장 (α-step에 사용)
                     last_a_val = l_info[:a_val]
@@ -302,13 +354,81 @@ function true_dro_benders_optimize!(td::TrueDROData;
                         :rho_psi0_3_val => f_info[:rho_psi0_3_val],
                     )
 
-                    mini_cut = compute_true_dro_outer_cut(td, mini_sub_info, x_mb)
+                    # ---- Cut 추가: base 또는 MW ----
+                    # MW: ISP-L/F 독립 적용 (joint Pareto-optimality 미보장, valid cut 보장)
+                    local cut_tag, final_cut
+                    if strengthen_cuts == :mw
+                        S = td.S
+                        φ̂U = td.phi_hat_U
+                        φ̃U = td.phi_tilde_U
+                        λU = td.lambda_U
+
+                        # ISP-L MW Phase 2
+                        z_star_l = l_info[:obj_val]
+                        orig_obj_l = sum(isp_l_vars[:σ_hat][s] for s in 1:S) -
+                            φ̂U * sum(x_mb[k] * isp_l_vars[:ρ_hat_1][k, s] for k in 1:K, s in 1:S) -
+                            φ̂U * sum((1.0 - x_mb[k]) * isp_l_vars[:ρ_hat_3][k, s] for k in 1:K, s in 1:S)
+                        mw_con_l = @constraint(isp_l_model, orig_obj_l >= z_star_l - 1e-6)
+                        update_isp_leader_objective!(isp_l_model, isp_l_vars, td, x_core)
+                        optimize!(isp_l_model)
+                        mw_l_ok = termination_status(isp_l_model) == MOI.OPTIMAL
+                        mw_l_info = mw_l_ok ? Dict(
+                            :obj_val => objective_value(isp_l_model),
+                            :rho_hat_1_val => [value(isp_l_vars[:ρ_hat_1][k, s]) for k in 1:K, s in 1:S],
+                            :rho_hat_3_val => [value(isp_l_vars[:ρ_hat_3][k, s]) for k in 1:K, s in 1:S],
+                        ) : nothing
+                        delete(isp_l_model, mw_con_l)
+                        update_isp_leader_objective!(isp_l_model, isp_l_vars, td, x_mb)
+
+                        # ISP-F MW Phase 2
+                        z_star_f = f_info[:obj_val]
+                        orig_obj_f = -φ̃U * sum(x_mb[k] * isp_f_vars[:ρ_tilde_1][k, s] for k in 1:K, s in 1:S) -
+                            φ̃U * sum((1.0 - x_mb[k]) * isp_f_vars[:ρ_tilde_3][k, s] for k in 1:K, s in 1:S) -
+                            λU * sum(x_mb[k] * isp_f_vars[:ρ_psi0_1][k] for k in 1:K) -
+                            λU * sum((1.0 - x_mb[k]) * isp_f_vars[:ρ_psi0_3][k] for k in 1:K)
+                        mw_con_f = @constraint(isp_f_model, orig_obj_f >= z_star_f - 1e-6)
+                        update_isp_follower_objective!(isp_f_model, isp_f_vars, td, x_core)
+                        optimize!(isp_f_model)
+                        mw_f_ok = termination_status(isp_f_model) == MOI.OPTIMAL
+                        mw_f_info = mw_f_ok ? Dict(
+                            :obj_val => objective_value(isp_f_model),
+                            :rho_tilde_1_val => [value(isp_f_vars[:ρ_tilde_1][k, s]) for k in 1:K, s in 1:S],
+                            :rho_tilde_3_val => [value(isp_f_vars[:ρ_tilde_3][k, s]) for k in 1:K, s in 1:S],
+                            :rho_psi0_1_val => [value(isp_f_vars[:ρ_psi0_1][k]) for k in 1:K],
+                            :rho_psi0_3_val => [value(isp_f_vars[:ρ_psi0_3][k]) for k in 1:K],
+                        ) : nothing
+                        delete(isp_f_model, mw_con_f)
+                        update_isp_follower_objective!(isp_f_model, isp_f_vars, td, x_mb)
+
+                        if mw_l_ok && mw_f_ok
+                            mw_mini_info = Dict(
+                                :Z0_val => mw_l_info[:obj_val] + mw_f_info[:obj_val],
+                                :α_val => α_fixed,
+                                :rho_hat_1_val => mw_l_info[:rho_hat_1_val],
+                                :rho_hat_3_val => mw_l_info[:rho_hat_3_val],
+                                :rho_tilde_1_val => mw_f_info[:rho_tilde_1_val],
+                                :rho_tilde_3_val => mw_f_info[:rho_tilde_3_val],
+                                :rho_psi0_1_val => mw_f_info[:rho_psi0_1_val],
+                                :rho_psi0_3_val => mw_f_info[:rho_psi0_3_val],
+                            )
+                            final_cut = compute_true_dro_outer_cut(td, mw_mini_info, x_core)
+                            cut_tag = "mw"
+                        else
+                            # MW failed → fallback to base cut
+                            final_cut = compute_true_dro_outer_cut(td, mini_sub_info, x_mb)
+                            cut_tag = "base*"
+                        end
+                    else
+                        final_cut = compute_true_dro_outer_cut(td, mini_sub_info, x_mb)
+                        cut_tag = "base"
+                    end
+
                     cut_count += 1
-                    add_true_dro_optimality_cut!(omp_model, omp_vars, mini_cut, cut_count)
+                    add_true_dro_optimality_cut!(omp_model, omp_vars, final_cut, cut_count)
 
                     if verbose
-                        @printf("  %s-Benders[%d]: LB=%.6f, Z₀(α*)=%.6f, cut_intercept=%.6f\n",
-                                phase_tag, j, lb_mb, Z0_mini, mini_cut[:intercept])
+                        @printf("  %s-Benders[%d] (%s): LB=%.6f, Z₀(α*)=%.6f, intercept=%.6f\n",
+                                phase_tag, j, cut_tag, lb_mb, Z0_mini, final_cut[:intercept])
                     end
 
                     # Gap check (mini LB vs outer UB)

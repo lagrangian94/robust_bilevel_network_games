@@ -139,6 +139,8 @@ if use_mini_benders
     print("Mini-Benders max iter [5]: "); mb_iter_str = strip(readline())
     max_mb_iter = isempty(mb_iter_str) ? 5 : parse(Int, mb_iter_str)
 end
+print("Strengthen cuts? (none/mw) [none]: "); sc_str = strip(readline())
+strengthen_cuts = isempty(sc_str) || sc_str == "none" ? :none : Symbol(sc_str)
 
 println("\n" * "=" ^ 70)
 println("INSTANCE: $instance_key (S=$S, ε̂=$ε_hat, ε̃=$ε_tilde)")
@@ -164,7 +166,8 @@ result = true_dro_benders_optimize!(td;
     sub_time_limit=sub_tl,
     mini_benders=use_mini_benders,
     lp_optimizer=(use_mini_benders ? Gurobi.Optimizer : nothing),
-    max_mini_benders_iter=max_mb_iter)
+    max_mini_benders_iter=max_mb_iter,
+    strengthen_cuts=strengthen_cuts)
 
 gap = abs(result[:upper_bound] - result[:lower_bound]) /
       max(abs(result[:upper_bound]), 1e-10)
