@@ -156,13 +156,14 @@ println("=" ^ 70)
 result = true_dro_benders_optimize!(td;
     mip_optimizer=Gurobi.Optimizer,
     nlp_optimizer=Gurobi.Optimizer,
+    inexact=true,
     max_iter=1000,
     tol=1e-4,
     verbose=true,
     sub_verbose=true,
     sub_time_limit=sub_tl,
     mini_benders=use_mini_benders,
-    lp_optimizer=(use_mini_benders ? HiGHS.Optimizer : nothing),
+    lp_optimizer=(use_mini_benders ? Gurobi.Optimizer : nothing),
     max_mini_benders_iter=max_mb_iter)
 
 gap = abs(result[:upper_bound] - result[:lower_bound]) /
@@ -227,7 +228,7 @@ for ε in epsilons
         max_iter=1000, tol=1e-4, verbose=false,
         sub_time_limit=sub_tl,
         mini_benders=use_mini_benders,
-        lp_optimizer=(use_mini_benders ? HiGHS.Optimizer : nothing),
+        lp_optimizer=(use_mini_benders ? Gurobi.Optimizer : nothing),
         max_mini_benders_iter=max_mb_iter)
     push!(eps_results, (ε=ε, Z0=r[:Z0], status=r[:status], iters=r[:iters]))
     @printf("  ε=%.4f → Z₀=%.6f  (%s, %d iters)\n", ε, r[:Z0], r[:status], r[:iters])

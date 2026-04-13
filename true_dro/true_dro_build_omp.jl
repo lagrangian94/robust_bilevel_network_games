@@ -29,7 +29,7 @@ function build_true_dro_omp(td::TrueDROData; optimizer)
 
     model = Model(optimizer_with_attributes(optimizer, MOI.Silent() => true))
 
-    @variable(model, t_0 >= 0)
+    @variable(model, t_0 >= -1e+4)
     @variable(model, x[1:K], Bin)
 
     # Interdiction budget
