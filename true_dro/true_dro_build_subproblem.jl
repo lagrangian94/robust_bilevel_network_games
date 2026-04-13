@@ -255,6 +255,10 @@ Update obj for x̄, solve, return Dict with:
 - :rho_hat_1_val, :rho_hat_3_val      (K × S)
 - :rho_tilde_1_val, :rho_tilde_3_val  (K × S)
 - :rho_psi0_1_val, :rho_psi0_3_val    (K)
+- :is_optimal (Bool)
+
+TIME_LIMIT with feasible incumbent → :is_optimal=false, incumbent 값 반환.
+Cut은 valid (feasible point의 obj ≤ Z₀*), 다만 UB 갱신에는 사용 불가.
 """
 function solve_true_dro_subproblem!(model, vars, td::TrueDROData, x_bar::Vector{Float64})
     S = td.S
@@ -264,9 +268,15 @@ function solve_true_dro_subproblem!(model, vars, td::TrueDROData, x_bar::Vector{
 
     optimize!(model)
     st = termination_status(model)
-    if st != MOI.OPTIMAL
-        error("True-DRO subproblem not optimal: $st")
+
+    has_solution = (st == MOI.OPTIMAL) ||
+                   (st == MOI.TIME_LIMIT && has_values(model))
+
+    if !has_solution
+        error("True-DRO subproblem: $st (no feasible solution)")
     end
+
+    is_optimal = (st == MOI.OPTIMAL)
 
     Z0_val = objective_value(model)
     α_val = [value(vars[:α][k]) for k in 1:K]
@@ -283,5 +293,6 @@ function solve_true_dro_subproblem!(model, vars, td::TrueDROData, x_bar::Vector{
         :rho_hat_1_val => ρ̂1, :rho_hat_3_val => ρ̂3,
         :rho_tilde_1_val => ρ̃1, :rho_tilde_3_val => ρ̃3,
         :rho_psi0_1_val => ρ01, :rho_psi0_3_val => ρ03,
+        :is_optimal => is_optimal,
     )
 end

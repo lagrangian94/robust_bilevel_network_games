@@ -34,18 +34,21 @@ includet("true_dro_recover.jl")
                  gamma=2, w=1.0, lambda_U=10.0,
                  max_iter=30, tol=1e-4, verbose=true,
                  sub_verbose=false,
-                 mini_benders=false, lp_optimizer=nothing)
+                 mini_benders=false, lp_optimizer=nothing,
+                 sub_time_limit=nothing)
 
 Build True-DRO instance and run outer Benders.
 `sub_verbose=true` 로 Gurobi NonConvex subproblem 로그 출력.
 `mini_benders=true` 로 §9.4 mini-Benders 추가 cut 생성 (lp_optimizer 필요).
+`sub_time_limit` — bilinear subproblem time limit (sec). nothing=무제한.
 """
 function run_true_dro(; m=2, n=2, S=2, seed=42,
                        eps_hat=0.1, eps_tilde=0.1,
                        gamma=2, w=1.0, lambda_U=10.0,
                        max_iter=30, tol=1e-4, verbose=true,
                        sub_verbose=true,
-                       mini_benders=false, lp_optimizer=nothing)
+                       mini_benders=false, lp_optimizer=nothing,
+                       sub_time_limit=nothing)
     println("=" ^ 60)
     println("True-DRO-Exact: $(m)×$(n) grid, S=$S, ε̂=$eps_hat, ε̃=$eps_tilde")
     println("=" ^ 60)
@@ -70,6 +73,7 @@ function run_true_dro(; m=2, n=2, S=2, seed=42,
         tol=tol,
         verbose=verbose,
         sub_verbose=sub_verbose,
+        sub_time_limit=sub_time_limit,
         mini_benders=mini_benders,
         lp_optimizer=lp_optimizer)
 

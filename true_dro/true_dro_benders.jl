@@ -7,10 +7,14 @@ Single-level Benders:
 Each iteration:
   1. Solve OMP → x̄, t₀ (LB)
   2. Update subproblem objective with x̄, solve → Z₀(x̄)
-     Update UB ← min(UB, Z₀(x̄))
+     Update UB ← min(UB, Z₀(x̄))  [only if OPTIMAL]
   3. Compute cut from ρ values (§9.3) and add to OMP
 
 Subproblem is built ONCE (constraints x-independent); only objective updates.
+
+Adaptive time limit (sub_time_limit > 0):
+  초반: time limit으로 빠르게 feasible incumbent → valid but weak cut.
+  UB는 OPTIMAL일 때만 갱신. LB/UB stagnation 감지 시 time limit 해제.
 
 Mini-Benders (§9.4, mini_benders=true):
   Bilinear solve → α* 고정 후, OMP ↔ ISP-L/F LP를 max_mini_benders_iter회 반복.
@@ -23,24 +27,20 @@ using Printf
 
 
 """
-    true_dro_benders_optimize!(td::TrueDROData;
-        mip_optimizer, nlp_optimizer,
-        max_iter=1000, tol=1e-4, verbose=true,
-        nonconvex_attr=("NonConvex" => 2),
-        mini_benders=false, lp_optimizer=nothing,
-        max_mini_benders_iter=5)
+    true_dro_benders_optimize!(td::TrueDROData; ...)
 
 Run outer Benders.
 
 # Arguments
-- `mip_optimizer`: e.g., `Gurobi.Optimizer` (for OMP MILP)
-- `nlp_optimizer`: e.g., `Gurobi.Optimizer` (for bilinear subproblem; needs NonConvex=2)
-- `nonconvex_attr`: optional Pair to set on subproblem model after construction,
-  e.g., `"NonConvex" => 2` for Gurobi. Defaults to `"NonConvex" => 2`.
-- `mini_benders`: if true, after each bilinear solve, fix α* and run LP-based
-  inner Benders loop (OMP ↔ ISP-L/F) for additional cuts
-- `lp_optimizer`: LP solver for mini-benders (e.g., HiGHS.Optimizer). Required if mini_benders=true.
-- `max_mini_benders_iter`: max iterations in mini-benders phase per outer iter (default 5)
+- `mip_optimizer`: OMP MILP solver
+- `nlp_optimizer`: bilinear subproblem solver (needs NonConvex=2)
+- `nonconvex_attr`: defaults to `"NonConvex" => 2`
+- `sub_time_limit`: initial time limit (seconds) for bilinear subproblem.
+  `nothing` = no limit. Incumbent에서 valid cut 생성, UB는 OPTIMAL만.
+- `stagnation_window`: LB/UB 변화 없는 연속 iter 수 → time limit 해제 (default 3)
+- `mini_benders`: LP-based inner loop with fixed α
+- `lp_optimizer`: LP solver for mini-benders
+- `max_mini_benders_iter`: mini-benders phase 반복 횟수 (default 5)
 
 Returns Dict with :status, :Z0, :x, :α, :lower_bound, :upper_bound, :iters, :history.
 """
@@ -49,6 +49,8 @@ function true_dro_benders_optimize!(td::TrueDROData;
         max_iter=1e+3, tol=1e-4, verbose=true,
         sub_verbose=false,
         nonconvex_attr=("NonConvex" => 2),
+        sub_time_limit=nothing,
+        stagnation_window::Int=3,
         mini_benders::Bool=false,
         lp_optimizer=nothing,
         max_mini_benders_iter::Int=5)
@@ -72,6 +74,11 @@ function true_dro_benders_optimize!(td::TrueDROData;
             @warn "Could not set $(nonconvex_attr.first) on subproblem: $err"
         end
     end
+
+    # ---- Adaptive time limit state ----
+    current_time_limit = sub_time_limit  # nothing = unlimited
+    stagnation_count = 0
+    prev_gap = Inf
 
     # ---- Mini-Benders: build ISP-L and ISP-F LP models once ----
     local isp_l_model, isp_l_vars, isp_f_model, isp_f_vars
@@ -117,11 +124,20 @@ function true_dro_benders_optimize!(td::TrueDROData;
             @printf("  OMP: t₀=%.6f, x=%s\n", t0_val, string(x_int))
         end
 
+        # ---- Set subproblem time limit ----
+        if current_time_limit !== nothing
+            set_time_limit_sec(sub_model, current_time_limit)
+        else
+            set_time_limit_sec(sub_model, nothing)
+        end
+
         # ---- Solve subproblem ----
         sub_info = solve_true_dro_subproblem!(sub_model, sub_vars, td, x_sol)
         Z0_val = sub_info[:Z0_val]
+        is_exact = sub_info[:is_optimal]
 
-        if Z0_val < upper_bound
+        # UB는 OPTIMAL일 때만 갱신 (TIME_LIMIT incumbent는 Z₀_feas ≤ Z₀*)
+        if is_exact && Z0_val < upper_bound
             upper_bound = Z0_val
             best_x = copy(x_sol)
             best_α = copy(sub_info[:α_val])
@@ -134,7 +150,8 @@ function true_dro_benders_optimize!(td::TrueDROData;
         gap = abs(upper_bound - lower_bound) / max(abs(upper_bound), 1e-10)
         if verbose
             α_str = join([@sprintf("%.3f", a) for a in sub_info[:α_val]], ",")
-            @printf("  Sub: Z₀=%.6f, α=[%s]\n", Z0_val, α_str)
+            exact_str = is_exact ? "" : " [TIME_LIMIT]"
+            @printf("  Sub: Z₀=%.6f%s, α=[%s]\n", Z0_val, exact_str, α_str)
             @printf("  Iter %d: LB=%.6f  UB=%.6f  gap=%.2e\n",
                     iter, lower_bound, upper_bound, gap)
         end
@@ -153,6 +170,28 @@ function true_dro_benders_optimize!(td::TrueDROData;
                 :iters => iter,
                 :history => history,
             )
+        end
+
+        # ---- Adaptive time limit: gap stagnation in near-convergence zone ----
+        if current_time_limit !== nothing
+            # gap이 1e-3 이하 진입 후에만 stagnation 체크
+            if gap <= 1e-3
+                gap_change = abs(prev_gap - gap)
+                if gap_change < 1e-5
+                    stagnation_count += 1
+                else
+                    stagnation_count = 0
+                end
+            end
+            prev_gap = gap
+
+            if stagnation_count >= stagnation_window
+                current_time_limit = nothing
+                if verbose
+                    @printf("  → Time limit removed (gap stagnation %d iters in near-convergence zone)\n",
+                            stagnation_count)
+                end
+            end
         end
 
         # ---- Add outer cut from bilinear solve ----
@@ -174,8 +213,8 @@ function true_dro_benders_optimize!(td::TrueDROData;
             update_isp_leader_alpha!(isp_l_model, isp_l_vars, td, α_fixed)
             update_isp_follower_alpha!(isp_f_model, isp_f_vars, td, α_fixed)
 
-            prev_lb = lower_bound
-            stagnation_count = 0
+            prev_lb_mb = lower_bound
+            stag_mb = 0
 
             for j in 1:max_mini_benders_iter
                 # Re-solve OMP with accumulated cuts → new x̄
@@ -192,14 +231,14 @@ function true_dro_benders_optimize!(td::TrueDROData;
                 lb_mb = objective_value(omp_model)
 
                 # LB stagnation check
-                if lb_mb <= prev_lb + 1e-6
-                    stagnation_count += 1
+                if lb_mb <= prev_lb_mb + 1e-6
+                    stag_mb += 1
                 else
-                    stagnation_count = 0
+                    stag_mb = 0
                 end
-                prev_lb = lb_mb
+                prev_lb_mb = lb_mb
 
-                if stagnation_count >= 3
+                if stag_mb >= 3
                     if verbose
                         @printf("  Mini-Benders[%d]: LB stagnated, break\n", j)
                     end

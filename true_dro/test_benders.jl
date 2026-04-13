@@ -129,6 +129,9 @@ print("ε̂ (leader TV radius) [0.1]: "); ε_hat_str = strip(readline())
 ε_hat = isempty(ε_hat_str) ? 0.1 : parse(Float64, ε_hat_str)
 print("ε̃ (follower TV radius) [ε̂]: "); ε_tilde_str = strip(readline())
 ε_tilde = isempty(ε_tilde_str) ? ε_hat : parse(Float64, ε_tilde_str)
+print("Sub time limit (sec, 0=none) [30]: "); tl_str = strip(readline())
+sub_tl = isempty(tl_str) ? 30.0 : parse(Float64, tl_str)
+sub_tl = sub_tl <= 0 ? nothing : sub_tl
 print("Mini-Benders? (y/n) [n]: "); mb_str = strip(readline())
 use_mini_benders = lowercase(mb_str) == "y"
 max_mb_iter = 5
@@ -157,6 +160,7 @@ result = true_dro_benders_optimize!(td;
     tol=1e-4,
     verbose=true,
     sub_verbose=true,
+    sub_time_limit=sub_tl,
     mini_benders=use_mini_benders,
     lp_optimizer=(use_mini_benders ? HiGHS.Optimizer : nothing),
     max_mini_benders_iter=max_mb_iter)
@@ -203,4 +207,37 @@ if termination_status(full_model) == MOI.OPTIMAL
     end
 else
     println("  TV-DRO full model: $(termination_status(full_model))")
+end
+
+
+# ===== 3. ε→0 nominal convergence =====
+println("\n" * "=" ^ 70)
+println("3. ε→0 nominal convergence")
+println("=" ^ 70)
+
+epsilons = [0.3, 0.1, 0.05, 0.01, 0.001]
+eps_results = []
+
+for ε in epsilons
+    network_eps, td_eps = setup_true_dro_instance(instance_key; S=S,
+        epsilon_hat=ε, epsilon_tilde=ε)
+    r = true_dro_benders_optimize!(td_eps;
+        mip_optimizer=Gurobi.Optimizer,
+        nlp_optimizer=Gurobi.Optimizer,
+        max_iter=1000, tol=1e-4, verbose=false,
+        sub_time_limit=sub_tl,
+        mini_benders=use_mini_benders,
+        lp_optimizer=(use_mini_benders ? HiGHS.Optimizer : nothing),
+        max_mini_benders_iter=max_mb_iter)
+    push!(eps_results, (ε=ε, Z0=r[:Z0], status=r[:status], iters=r[:iters]))
+    @printf("  ε=%.4f → Z₀=%.6f  (%s, %d iters)\n", ε, r[:Z0], r[:status], r[:iters])
+end
+
+# ε 작아질수록 Z₀ monotone non-increasing (tighter ambiguity → smaller worst-case)
+objs = [r.Z0 for r in eps_results]
+is_mono = all(objs[i] >= objs[i+1] - 1e-4 for i in 1:length(objs)-1)
+if is_mono
+    println("  ✓ Z₀ monotone non-increasing as ε→0")
+else
+    println("  ✗ Z₀ not monotone — check!")
 end
