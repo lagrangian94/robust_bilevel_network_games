@@ -5,6 +5,61 @@ Interactive input으로 network config, S 선택.
 compare_benders.jl의 setup_instance 패턴 참고.
 """
 
+"""
+5x5, S=10, 0.1, 0.1, Sub time =30, mini-bd=true
+User-callback calls 243, time in user-callback 0.00 sec
+  Sub: Z₀=11.500237 [LOCAL], α=[0.000,0.000,0.000,0.000,0.000,0.000,0.000,0.000,0.000,0.000,0.000,0.000,0.000,0.000,0.000,0.000,0.000,0.000,0.000,0.000,0.000,0.000,0.000,0.000,0.000,0.000,0.000,0.000,0.000,0.000,0.000,0.000,0.000,0.297,0.720,2.316,0.000,0.000,0.000,0.000,0.000,0.000,0.000,0.000,0.000,0.000,0.000]
+  Iter 637: LB=8.133596  UB=8.133597  gap=1.46e-07
+[ Info: True-DRO Benders converged at iter 637 (gap=1.455851768957056e-7)
+
+----------------------------------------
+True-DRO: status=Optimal, Z₀=8.133597, iters=637
+  LB=8.133596, UB=8.133597, gap=1.46e-07
+  x* = [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
+  α* = [0.000, 0.000, 0.000, 0.000, 0.000, 0.000, 0.000, 0.000, 0.000, 0.000, 0.000, 0.000, 0.000, 0.000, 0.000, 0.000, 0.000, 0.000, 0.000, 0.000, 0.000, 0.000, 0.000, 0.000, 0.000, 0.000, 0.000, 0.000, 0.000, 0.000, 0.000, 0.000, 1.112, 1.175, 0.000, 0.000, 1.047, 0.000, 0.000, 0.000, 0.000, 0.000, 0.000, 0.000, 0.000, 0.000, 0.000]
+============================================================
+Primal Recovery: x* → α* → (h*, λ*, ψ⁰*)
+============================================================
+
+lambdaU=2.0 했을 시,
+  Sub: Z₀=8.133597, α=[0.000,0.000,0.000,0.000,0.000,0.000,0.000,0.000,0.000,0.000,0.000,0.000,0.000,0.000,0.000,0.000,0.000,0.000,0.000,0.000,0.000,0.000,1.074,1.222,0.000,0.000,0.000,0.000,0.000,0.000,0.000,0.000,0.000,0.000,0.000,0.000,1.038,0.000,0.000,0.000,0.000,0.000,0.000,0.000,0.000,0.000,0.000]
+  Iter 198: LB=8.133598  UB=8.133597  gap=8.90e-08
+[ Info: True-DRO Benders converged at iter 198 (gap=8.904142162382194e-8)
+
+----------------------------------------
+True-DRO: status=Optimal, Z₀=8.133597, iters=198
+  LB=8.133598, UB=8.133597, gap=8.90e-08
+  x* = [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
+  α* = [0.000, 0.000, 0.000, 0.000, 0.000, 0.000, 0.000, 0.000, 0.000, 0.000, 0.000, 0.000, 0.000, 0.000, 0.000, 0.000, 0.000, 0.000, 0.000, 0.000, 0.000, 0.000, 1.074, 1.222, 0.000, 0.000, 0.000, 0.000, 0.000, 0.000, 0.000, 0.000, 0.000, 0.000, 0.000, 0.000, 1.038, 0.000, 0.000, 0.000, 0.000, 0.000, 0.000, 0.000, 0.000, 0.000, 0.000]
+============================================================
+
+lambdaU=2.0, omp VI (phase A) 했을 시,
+  Sub: Z₀=8.133599, α=[0.000,0.000,0.000,0.000,0.000,0.000,0.000,0.000,0.000,0.000,0.000,0.000,0.000,0.000,0.000,0.000,0.000,0.000,0.000,0.000,0.000,0.000,0.000,0.000,0.000,0.000,0.000,0.000,1.494,0.000,0.000,0.000,0.704,0.000,0.000,0.000,1.135,0.000,0.000,0.000,0.000,0.000,0.000,0.000,0.000,0.000,0.000]
+  Iter 102: LB=8.133598  UB=8.133599  gap=1.67e-07
+[ Info: True-DRO Benders converged at iter 102 (gap=1.669338904071469e-7)
+
+----------------------------------------
+True-DRO: status=Optimal, Z₀=8.133599, iters=102
+  LB=8.133598, UB=8.133599, gap=1.67e-07
+  x* = [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
+  α* = [0.000, 0.000, 0.000, 0.000, 0.000, 0.000, 0.000, 0.000, 0.000, 0.000, 0.000, 0.000, 0.000, 0.000, 0.000, 0.000, 0.000, 0.000, 0.000, 0.000, 0.000, 0.000, 0.000, 0.000, 0.000, 0.000, 0.000, 0.000, 1.494, 0.000, 0.000, 0.000, 0.704, 0.000, 0.000, 0.000, 1.135, 0.000, 0.000, 0.000, 0.000, 0.000, 0.000, 0.000, 0.000, 0.000, 0.000]
+  Wall time: 362.06 sec
+
+
+LambdaU=2.0 ,omp VI (phase A + 2B) 했을 시,
+  Sub: Z₀=8.133600, α=[0.000,0.000,0.000,0.000,0.000,0.000,0.000,0.000,0.000,0.000,0.000,0.000,0.000,0.000,0.000,0.000,0.000,0.000,0.000,0.000,0.000,0.000,0.000,0.000,0.000,0.000,0.000,0.000,1.891,0.000,0.000,0.000,0.865,0.000,0.000,0.000,0.578,0.000,0.000,0.000,0.000,0.000,0.000,0.000,0.000,0.000,0.000]
+  Iter 105: LB=8.133598  UB=8.133600  gap=2.32e-07
+[ Info: True-DRO Benders converged at iter 105 (gap=2.3234024756858074e-7)
+
+----------------------------------------
+True-DRO: status=Optimal, Z₀=8.133600, iters=105
+  LB=8.133598, UB=8.133600, gap=2.32e-07
+  x* = [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
+  α* = [0.000, 0.000, 0.000, 0.000, 0.000, 0.000, 0.000, 0.000, 0.000, 0.000, 0.000, 0.000, 0.000, 0.000, 0.000, 0.000, 0.000, 0.000, 0.000, 0.000, 0.000, 0.000, 0.000, 0.000, 0.000, 0.000, 0.000, 0.000, 1.891, 0.000, 0.000, 0.000, 0.865, 0.000, 0.000, 0.000, 0.578, 0.000, 0.000, 0.000, 0.000, 0.000, 0.000, 0.000, 0.000, 0.000, 0.000]
+  Wall time: 564.02 sec
+  """
+
+
 using Revise
 using JuMP
 using Gurobi
@@ -26,6 +81,7 @@ includet("true_dro_build_subproblem.jl")
 includet("true_dro_build_isp_leader.jl")
 includet("true_dro_build_isp_follower.jl")
 includet("true_dro_benders.jl")
+includet("true_dro_mincut_vi.jl")
 includet("true_dro_recover.jl")
 
 # TV-DRO (for sandwich comparison)
@@ -82,7 +138,7 @@ function setup_true_dro_instance(config_key::Symbol;
     w = round(ρ * γ * c_bar; digits=4)
 
     # λU: leader's λ upper bound
-    λU = 1.0 / epsilon_hat
+    λU = 2.0
 
     q_hat = fill(1.0 / S, S)
 
@@ -135,12 +191,10 @@ sub_tl = sub_tl <= 0 ? nothing : sub_tl
 print("Mini-Benders? (y/n) [n]: "); mb_str = strip(readline())
 use_mini_benders = lowercase(mb_str) == "y"
 max_mb_iter = 5
-if use_mini_benders
-    print("Mini-Benders max iter [5]: "); mb_iter_str = strip(readline())
-    max_mb_iter = isempty(mb_iter_str) ? 5 : parse(Int, mb_iter_str)
-end
 print("Strengthen cuts? (none/mw) [none]: "); sc_str = strip(readline())
 strengthen_cuts = isempty(sc_str) || sc_str == "none" ? :none : Symbol(sc_str)
+print("Valid inequality? (none/mincut) [none]: "); vi_str = strip(readline())
+vi_sym = isempty(vi_str) || vi_str == "none" ? :none : Symbol(vi_str)
 
 println("\n" * "=" ^ 70)
 println("INSTANCE: $instance_key (S=$S, ε̂=$ε_hat, ε̃=$ε_tilde)")
@@ -167,13 +221,15 @@ result = true_dro_benders_optimize!(td;
     mini_benders=use_mini_benders,
     lp_optimizer=(use_mini_benders ? Gurobi.Optimizer : nothing),
     max_mini_benders_iter=max_mb_iter,
-    strengthen_cuts=strengthen_cuts)
+    strengthen_cuts=strengthen_cuts,
+    valid_inequality=vi_sym)
 
 gap = abs(result[:upper_bound] - result[:lower_bound]) /
       max(abs(result[:upper_bound]), 1e-10)
 
 println("\n" * "-" ^ 40)
-@printf("True-DRO: status=%s, Z₀=%.6f, iters=%d\n", result[:status], result[:Z0], result[:iters])
+wt = get(result, :wall_time, NaN)
+@printf("True-DRO: status=%s, Z₀=%.6f, iters=%d, time=%.2fs\n", result[:status], result[:Z0], result[:iters], wt)
 @printf("  LB=%.6f, UB=%.6f, gap=%.2e\n", result[:lower_bound], result[:upper_bound], gap)
 x_int = round.(Int, result[:x])
 println("  x* = $x_int")

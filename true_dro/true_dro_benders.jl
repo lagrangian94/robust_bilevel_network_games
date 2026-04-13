@@ -47,6 +47,8 @@ Run outer Benders.
 - `strengthen_cuts`: `:none` (default), `:mw` (cut strengthening).
   `:mw` — outer bilinear: Sherali perturbation (x_pert로 추가 solve, constraint 변경 없음).
          mini-benders: MW (ISP-L/F 독립 LP Phase 2, joint Pareto-optimality 미보장).
+- `valid_inequality`: `:none` (default), `:mincut`.
+  `:mincut` — Phase 1 (all S, 1회) + Phase 2B (comp-min + α*, 매 iter) min-cut valid inequalities.
 
 Returns Dict with :status, :Z0, :x, :α, :lower_bound, :upper_bound, :iters, :history.
 """
@@ -61,7 +63,8 @@ function true_dro_benders_optimize!(td::TrueDROData;
         lp_optimizer=nothing,
         max_mini_benders_iter::Int=5,
         inexact::Bool=false,
-        strengthen_cuts::Symbol=:none)
+        strengthen_cuts::Symbol=:none,
+        valid_inequality::Symbol=:none)
 
     K = td.num_arcs
 
@@ -87,6 +90,16 @@ function true_dro_benders_optimize!(td::TrueDROData;
 
     # ---- Build OMP ----
     omp_model, omp_vars = build_true_dro_omp(td; optimizer=mip_optimizer)
+
+    # ---- Min-cut valid inequality: Phase 1 (all S, 1회) ----
+    local arc_topo
+    if valid_inequality == :mincut
+        add_phase1_mincut_vi!(omp_model, omp_vars, td)
+        arc_topo = extract_arc_topology(td.Ny, td.nv1)
+        if verbose
+            @info "Min-cut VI enabled: Phase 1 (all S) added"
+        end
+    end
 
     # ---- Build subproblem once with x_bar = 0 (objective will be updated each iter) ----
     x_init = zeros(K)
@@ -126,6 +139,7 @@ function true_dro_benders_optimize!(td::TrueDROData;
     best_x = zeros(K)
     best_α = zeros(K)
     cut_count = 0
+    wall_start = time()
 
     for iter in 1:max_iter
         if verbose
@@ -196,8 +210,10 @@ function true_dro_benders_optimize!(td::TrueDROData;
         end
 
         if gap <= tol
+            wall_elapsed = time() - wall_start
             if verbose
                 @info "True-DRO Benders converged at iter $iter (gap=$gap)"
+                @printf("  Wall time: %.2f sec\n", wall_elapsed)
             end
             return Dict(
                 :status => :Optimal,
@@ -208,6 +224,7 @@ function true_dro_benders_optimize!(td::TrueDROData;
                 :upper_bound => upper_bound,
                 :iters => iter,
                 :history => history,
+                :wall_time => wall_elapsed,
             )
         end
 
@@ -242,6 +259,40 @@ function true_dro_benders_optimize!(td::TrueDROData;
             @printf("  Cut: intercept=%.6f, π_x_range=[%.4f, %.4f]\n",
                     outer_cut[:intercept],
                     minimum(outer_cut[:π_x]), maximum(outer_cut[:π_x]))
+        end
+
+        # ---- Min-cut valid inequality: Phase 2B (comp-min + α*) ----
+        # if valid_inequality == :mincut && is_exact
+        #     add_phase2B_mincut_vi!(omp_model, omp_vars, td, sub_info[:α_val], iter;
+        #                            arc_topology=arc_topo)
+        #     if verbose
+        #         @printf("  Phase2B-VI added (α from iter %d)\n", iter)
+        #     end
+        # end
+
+        # ---- ρ diagnostic (sub_verbose) ----
+        if sub_verbose
+            ρ̂1 = sub_info[:rho_hat_1_val]; ρ̂3 = sub_info[:rho_hat_3_val]
+            ρ̃1 = sub_info[:rho_tilde_1_val]; ρ̃3 = sub_info[:rho_tilde_3_val]
+            ρ01 = sub_info[:rho_psi0_1_val]; ρ03 = sub_info[:rho_psi0_3_val]
+            φ̂U = td.phi_hat_U; φ̃U = td.phi_tilde_U; λU = td.lambda_U
+            # 각 component별 π_x 기여도
+            π_L = [φ̂U * (-sum(ρ̂1[k,:]) + sum(ρ̂3[k,:])) for k in 1:K]
+            π_F = [φ̃U * (-sum(ρ̃1[k,:]) + sum(ρ̃3[k,:])) for k in 1:K]
+            π_ψ = [λU * (-ρ01[k] + ρ03[k]) for k in 1:K]
+            @printf("  [ρ-diag] φ̂U=%.2f, φ̃U=%.2f, λU=%.2f\n", φ̂U, φ̃U, λU)
+            @printf("    π_L range=[%.4f, %.4f], |π_L|_∞=%.4f\n",
+                    minimum(π_L), maximum(π_L), maximum(abs.(π_L)))
+            @printf("    π_F range=[%.4f, %.4f], |π_F|_∞=%.4f\n",
+                    minimum(π_F), maximum(π_F), maximum(abs.(π_F)))
+            @printf("    π_ψ range=[%.4f, %.4f], |π_ψ|_∞=%.4f\n",
+                    minimum(π_ψ), maximum(π_ψ), maximum(abs.(π_ψ)))
+            @printf("    ρ̂1: [%.4f, %.4f], ρ̂3: [%.4f, %.4f]\n",
+                    minimum(ρ̂1), maximum(ρ̂1), minimum(ρ̂3), maximum(ρ̂3))
+            @printf("    ρ̃1: [%.4f, %.4f], ρ̃3: [%.4f, %.4f]\n",
+                    minimum(ρ̃1), maximum(ρ̃1), minimum(ρ̃3), maximum(ρ̃3))
+            @printf("    ρ⁰1: [%.4f, %.4f], ρ⁰3: [%.4f, %.4f]\n",
+                    minimum(ρ01), maximum(ρ01), minimum(ρ03), maximum(ρ03))
         end
 
         # ---- Sherali cut: perturbed bilinear solve at x_pert ----
@@ -342,6 +393,17 @@ function true_dro_benders_optimize!(td::TrueDROData;
                     last_d_val = f_info[:d_val]
 
                     Z0_mini = l_info[:obj_val] + f_info[:obj_val]
+
+                    # ---- φ̂, φ̃ 실측 진단 (DL-2, DF-6 dual = primal φ) ----
+                    # Max 문제의 ≤ constraint dual → non-positive. φ = -dual(con).
+                    if sub_verbose && j == 1 && phase == 1
+                        φ̂_vals = [-dual(isp_l_vars[:DL2][k, s]) for k in 1:K, s in 1:td.S]
+                        φ̃_vals = [-dual(isp_f_vars[:DF6][k, s]) for k in 1:K, s in 1:td.S]
+                        @printf("  [φ-diag] φ̂ actual: [%.4f, %.4f], φ̂U=%.2f\n",
+                                minimum(φ̂_vals), maximum(φ̂_vals), td.phi_hat_U)
+                        @printf("  [φ-diag] φ̃ actual: [%.4f, %.4f], φ̃U=%.2f\n",
+                                minimum(φ̃_vals), maximum(φ̃_vals), td.phi_tilde_U)
+                    end
 
                     mini_sub_info = Dict(
                         :Z0_val => Z0_mini,
@@ -493,7 +555,11 @@ function true_dro_benders_optimize!(td::TrueDROData;
         end
     end
 
+    wall_elapsed = time() - wall_start
     @warn "True-DRO Benders did not converge in $max_iter iterations"
+    if verbose
+        @printf("  Wall time: %.2f sec\n", wall_elapsed)
+    end
     return Dict(
         :status => :MaxIter,
         :Z0 => upper_bound,
@@ -503,5 +569,6 @@ function true_dro_benders_optimize!(td::TrueDROData;
         :upper_bound => upper_bound,
         :iters => max_iter,
         :history => history,
+        :wall_time => wall_elapsed,
     )
 end
