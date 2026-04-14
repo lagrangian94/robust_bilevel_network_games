@@ -67,6 +67,7 @@ using HiGHS
 using Printf
 using LinearAlgebra
 using Infiltrator
+using Serialization
 
 # ---- Load modules ----
 if !@isdefined(NetworkGenerator)
@@ -235,6 +236,15 @@ x_int = round.(Int, result[:x])
 println("  x* = $x_int")
 α_str = join([@sprintf("%.3f", a) for a in result[:α]], ", ")
 println("  α* = [$α_str]")
+
+# ===== Save profile =====
+profile_key = (net=instance_key, S=S, εh=ε_hat, εt=ε_tilde,
+               tl=sub_tl, mb=use_mini_benders, sc=strengthen_cuts, vi=vi_sym)
+profile_path = joinpath(@__DIR__, "profiles.jls")
+profiles = isfile(profile_path) ? deserialize(profile_path) : Dict{NamedTuple, Dict}()
+profiles[profile_key] = result
+serialize(profile_path, profiles)
+println("  Profile saved → $profile_path ($(length(profiles)) entries)")
 
 # ===== Primal Recovery =====
 rec = recover_and_print(td, result; optimizer=HiGHS.Optimizer)

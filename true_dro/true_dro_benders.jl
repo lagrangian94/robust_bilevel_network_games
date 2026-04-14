@@ -24,6 +24,7 @@ Mini-Benders (§9.4, mini_benders=true):
 using JuMP
 using LinearAlgebra
 using Printf
+using Statistics
 
 
 """
@@ -132,6 +133,10 @@ function true_dro_benders_optimize!(td::TrueDROData;
         :lower_bounds => Float64[],
         :upper_bounds => Float64[],
         :Z0_vals => Float64[],
+        :wall_times => Float64[],
+        :omp_times => Float64[],
+        :sub_times => Float64[],
+        :sub_is_exact => Bool[],
     )
 
     lower_bound = -Inf
@@ -147,13 +152,13 @@ function true_dro_benders_optimize!(td::TrueDROData;
         end
 
         # ---- Solve OMP ----
-        optimize!(omp_model)
+        t_omp = @elapsed optimize!(omp_model)
         st = termination_status(omp_model)
         if st != MOI.OPTIMAL
             error("True-DRO OMP not optimal: $st (iter=$iter)")
         end
 
-        x_sol = [value(omp_vars[:x][k]) for k in 1:K]
+        x_sol = round.([value(omp_vars[:x][k]) for k in 1:K])
         t0_val = objective_value(omp_model)
         lower_bound = t0_val
 
@@ -178,7 +183,9 @@ function true_dro_benders_optimize!(td::TrueDROData;
         end
 
         # ---- Solve subproblem ----
-        sub_info = solve_true_dro_subproblem!(sub_model, sub_vars, td, x_sol)
+        t_sub = @elapsed begin
+            sub_info = solve_true_dro_subproblem!(sub_model, sub_vars, td, x_sol)
+        end
         Z0_val = sub_info[:Z0_val]
         is_exact = sub_info[:is_optimal]
 
@@ -193,6 +200,10 @@ function true_dro_benders_optimize!(td::TrueDROData;
         push!(history[:lower_bounds], lower_bound)
         push!(history[:upper_bounds], upper_bound)
         push!(history[:Z0_vals], Z0_val)
+        push!(history[:wall_times], time() - wall_start)
+        push!(history[:omp_times], t_omp)
+        push!(history[:sub_times], t_sub)
+        push!(history[:sub_is_exact], is_exact)
 
         gap = abs(upper_bound - lower_bound) / max(abs(upper_bound), 1e-10)
         if verbose
@@ -214,6 +225,17 @@ function true_dro_benders_optimize!(td::TrueDROData;
             if verbose
                 @info "True-DRO Benders converged at iter $iter (gap=$gap)"
                 @printf("  Wall time: %.2f sec\n", wall_elapsed)
+                omp_ts = history[:omp_times]
+                sub_exact_mask = history[:sub_is_exact]
+                sub_exact_ts = history[:sub_times][sub_exact_mask]
+                @printf("  OMP  time: mean=%.3fs, median=%.3fs, max=%.3fs\n",
+                        mean(omp_ts), median(omp_ts), maximum(omp_ts))
+                if !isempty(sub_exact_ts)
+                    @printf("  Sub  time (exact): mean=%.3fs, median=%.3fs, q90=%.3fs, max=%.3fs (n=%d/%d)\n",
+                            mean(sub_exact_ts), median(sub_exact_ts),
+                            quantile(sub_exact_ts, 0.9), maximum(sub_exact_ts),
+                            length(sub_exact_ts), length(history[:sub_times]))
+                end
             end
             return Dict(
                 :status => :Optimal,
@@ -351,7 +373,7 @@ function true_dro_benders_optimize!(td::TrueDROData;
                         break
                     end
 
-                    x_mb = [value(omp_vars[:x][k]) for k in 1:K]
+                    x_mb = round.([value(omp_vars[:x][k]) for k in 1:K])
                     lb_mb = objective_value(omp_model)
 
                     # LB stagnation check
@@ -516,14 +538,16 @@ function true_dro_benders_optimize!(td::TrueDROData;
                     # OMP x̄ for objective
                     optimize!(omp_model)
                     if termination_status(omp_model) != MOI.OPTIMAL
-                        # Unfix and skip phase 2
-                        for s in 1:S
-                            unfix(sub_vars[:a][s])
-                            unfix(sub_vars[:d][s])
-                        end
+                        # Unfix and restore bounds, skip phase 2
+                        unfix.(sub_vars[:a])
+                        set_lower_bound.(sub_vars[:a], sub_vars[:a_min])
+                        set_upper_bound.(sub_vars[:a], sub_vars[:a_max])
+                        unfix.(sub_vars[:d])
+                        set_lower_bound.(sub_vars[:d], sub_vars[:d_min])
+                        set_upper_bound.(sub_vars[:d], sub_vars[:d_max])
                         break
                     end
-                    x_alt = [value(omp_vars[:x][k]) for k in 1:K]
+                    x_alt = round.([value(omp_vars[:x][k]) for k in 1:K])
 
                     # Solve α-step (sub_model with a,d fixed → LP)
                     alt_info = solve_true_dro_subproblem!(sub_model, sub_vars, td, x_alt)
@@ -539,11 +563,13 @@ function true_dro_benders_optimize!(td::TrueDROData;
                         @printf("  α-step: Z₀=%.6f, α=[%s]\n", alt_info[:Z0_val], α_str)
                     end
 
-                    # Unfix a, d for future bilinear solves
-                    for s in 1:S
-                        unfix(sub_vars[:a][s])
-                        unfix(sub_vars[:d][s])
-                    end
+                    # Unfix a, d and restore bounds for future bilinear solves
+                    unfix.(sub_vars[:a])
+                    set_lower_bound.(sub_vars[:a], sub_vars[:a_min])
+                    set_upper_bound.(sub_vars[:a], sub_vars[:a_max])
+                    unfix.(sub_vars[:d])
+                    set_lower_bound.(sub_vars[:d], sub_vars[:d_min])
+                    set_upper_bound.(sub_vars[:d], sub_vars[:d_max])
                 end
             end
 
@@ -559,6 +585,17 @@ function true_dro_benders_optimize!(td::TrueDROData;
     @warn "True-DRO Benders did not converge in $max_iter iterations"
     if verbose
         @printf("  Wall time: %.2f sec\n", wall_elapsed)
+        omp_ts = history[:omp_times]
+        sub_exact_mask = history[:sub_is_exact]
+        sub_exact_ts = history[:sub_times][sub_exact_mask]
+        @printf("  OMP  time: mean=%.3fs, median=%.3fs, max=%.3fs\n",
+                mean(omp_ts), median(omp_ts), maximum(omp_ts))
+        if !isempty(sub_exact_ts)
+            @printf("  Sub  time (exact): mean=%.3fs, median=%.3fs, q90=%.3fs, max=%.3fs (n=%d/%d)\n",
+                    mean(sub_exact_ts), median(sub_exact_ts),
+                    quantile(sub_exact_ts, 0.9), maximum(sub_exact_ts),
+                    length(sub_exact_ts), length(history[:sub_times]))
+        end
     end
     return Dict(
         :status => :MaxIter,

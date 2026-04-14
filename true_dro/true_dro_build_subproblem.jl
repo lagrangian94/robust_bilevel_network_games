@@ -52,6 +52,7 @@ function build_true_dro_subproblem(td::TrueDROData, x_bar::Vector{Float64}; opti
     if silent
         set_silent(model)
     end
+    set_optimizer_attribute(model, "DualReductions", 0)
 
     # ====================================================================
     # Tight per-scenario TV ball bounds (true_dro_v5.md §10.1)
@@ -206,6 +207,9 @@ function build_true_dro_subproblem(td::TrueDROData, x_bar::Vector{Float64}; opti
         :ω => ω, :β => β, :δ => δ,
         :ρ_tilde_1 => ρ_tilde_1, :ρ_tilde_2 => ρ_tilde_2, :ρ_tilde_3 => ρ_tilde_3,
         :ρ_psi0_1 => ρ_psi0_1, :ρ_psi0_2 => ρ_psi0_2, :ρ_psi0_3 => ρ_psi0_3,
+        # Precomputed bounds (for fix/unfix restoration)
+        :a_min => a_min, :a_max => a_max,
+        :d_min => d_min, :d_max => d_max,
     )
     return model, vars
 end
@@ -274,13 +278,14 @@ function solve_true_dro_subproblem!(model, vars, td::TrueDROData, x_bar::Vector{
                    ((st == MOI.TIME_LIMIT || st == MOI.ITERATION_LIMIT) && has_values(model))
 
     if !has_solution
+        @infiltrate
         error("True-DRO subproblem: $st (no feasible solution)")
     end
 
     is_optimal = (st == MOI.OPTIMAL)
 
     Z0_val = objective_value(model)
-    α_val = [value(vars[:α][k]) for k in 1:K]
+    α_val = max.([value(vars[:α][k]) for k in 1:K], 0.0)
     ρ̂1 = [value(vars[:ρ_hat_1][k, s]) for k in 1:K, s in 1:S]
     ρ̂3 = [value(vars[:ρ_hat_3][k, s]) for k in 1:K, s in 1:S]
     ρ̃1 = [value(vars[:ρ_tilde_1][k, s]) for k in 1:K, s in 1:S]
