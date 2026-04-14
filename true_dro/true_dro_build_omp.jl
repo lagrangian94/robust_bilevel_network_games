@@ -19,15 +19,15 @@ using LinearAlgebra
 
 
 """
-    build_true_dro_omp(td::TrueDROData; optimizer)
+    build_true_dro_omp(td::TrueDROData; optimizer, silent=true)
 
 Build OMP MILP. Returns (model, vars).
 """
-function build_true_dro_omp(td::TrueDROData; optimizer)
+function build_true_dro_omp(td::TrueDROData; optimizer, silent::Bool=true)
     K = td.num_arcs
     γ = td.gamma
 
-    model = Model(optimizer_with_attributes(optimizer, MOI.Silent() => true))
+    model = Model(optimizer_with_attributes(optimizer, MOI.Silent() => silent))
 
     @variable(model, t_0 >= -1e+4)
     @variable(model, x[1:K], Bin)

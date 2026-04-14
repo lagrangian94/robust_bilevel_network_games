@@ -1,0 +1,60 @@
+Log file: C:\Users\user\robust_bilevel_network_games\true_dro\log_polska_S10_20260414_172494.txt
+Started: 2026-04-14T17:24:06.101
+
+
+======================================================================
+INSTANCE: polska (S=10, ε̂=0.1, ε̃=0.1)
+======================================================================
+============================================================
+POLSKA Network Summary
+============================================================
+Number of nodes: 12
+Number of arcs (incl. dummy): 37
+Number of regular arcs: 36
+Number of interdictable arcs: 28
+Source node: s (Szczecin)
+Sink node: t (Rzeszow)
+Node-incidence matrix N dimensions: (11, 37)
+
+Sparsity Information:
+  Arc-arc adjacency: 384 / 1296 pairs (70.4% sparse)
+  Node-arc incidence: 68 / 396 pairs (82.8% sparse)
+
+First 15 arcs:
+  Arc 1: ("Bialystok", "Gdansk") [Interdictable: ✓]
+  Arc 2: ("Bialystok", "Warsaw") [Interdictable: ✓]
+  Arc 3: ("Bialystok", "t") [Interdictable: ✗]
+  Arc 4: ("Bydgoszcz", "Kolobrzeg") [Interdictable: ✓]
+  Arc 5: ("Bydgoszcz", "Poznan") [Interdictable: ✓]
+  Arc 6: ("Bydgoszcz", "Warsaw") [Interdictable: ✓]
+  Arc 7: ("Gdansk", "Bialystok") [Interdictable: ✓]
+  Arc 8: ("Gdansk", "Kolobrzeg") [Interdictable: ✓]
+  Arc 9: ("Gdansk", "Warsaw") [Interdictable: ✓]
+  Arc 10: ("Katowice", "Krakow") [Interdictable: ✓]
+  Arc 11: ("Katowice", "Lodz") [Interdictable: ✓]
+  Arc 12: ("Katowice", "Wroclaw") [Interdictable: ✓]
+  Arc 13: ("Kolobrzeg", "Bydgoszcz") [Interdictable: ✓]
+  Arc 14: ("Kolobrzeg", "Gdansk") [Interdictable: ✓]
+  Arc 15: ("Kolobrzeg", "s") [Interdictable: ✗]
+============================================================
+  |A|=36, S=10, γ=3, w=3.1321, λU=2.0
+  ε̂=0.1, ε̃=0.1
+
+======================================================================
+1. True-DRO Benders (bilinear subproblem via Gurobi NonConvex=2)
+======================================================================
+Set parameter Username
+Set parameter LicenseID to value 2742039
+Academic license - for non-commercial use only - expires 2026-11-20
+Set parameter Username
+Set parameter LicenseID to value 2742039
+Academic license - for non-commercial use only - expires 2026-11-20
+Set parameter DualReductions to value 0
+Set parameter NonConvex to value 2
+Set parameter Username
+Set parameter LicenseID to value 2742039
+Academic license - for non-commercial use only - expires 2026-11-20
+Set parameter Username
+Set parameter LicenseID to value 2742039
+Academic license - for non-commercial use only - expires 2026-11-20
+Set parameter OutputFlag to value 1

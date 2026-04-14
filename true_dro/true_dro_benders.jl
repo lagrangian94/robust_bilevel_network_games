@@ -90,7 +90,7 @@ function true_dro_benders_optimize!(td::TrueDROData;
     end
 
     # ---- Build OMP ----
-    omp_model, omp_vars = build_true_dro_omp(td; optimizer=mip_optimizer)
+    omp_model, omp_vars = build_true_dro_omp(td; optimizer=mip_optimizer, silent=!sub_verbose)
 
     # ---- Min-cut valid inequality: Phase 1 (all S, 1회) ----
     local arc_topo
@@ -164,7 +164,7 @@ function true_dro_benders_optimize!(td::TrueDROData;
 
         if verbose
             x_int = round.(Int, x_sol)
-            @printf("  OMP: t₀=%.6f, x=%s\n", t0_val, string(x_int))
+            @printf("  OMP: t₀=%.6f, x=%s (%.3fs)\n", t0_val, string(x_int), t_omp)
         end
 
         # ---- Set subproblem time limit ----
@@ -364,7 +364,8 @@ function true_dro_benders_optimize!(td::TrueDROData;
 
                 for j in 1:max_mini_benders_iter
                     # Re-solve OMP with accumulated cuts → new x̄
-                    optimize!(omp_model)
+                    t_omp_mb = @elapsed optimize!(omp_model)
+                    push!(history[:omp_times], t_omp_mb)
                     st_mb = termination_status(omp_model)
                     if st_mb != MOI.OPTIMAL
                         if verbose
@@ -536,7 +537,8 @@ function true_dro_benders_optimize!(td::TrueDROData;
                     end
 
                     # OMP x̄ for objective
-                    optimize!(omp_model)
+                    t_omp_alt = @elapsed optimize!(omp_model)
+                    push!(history[:omp_times], t_omp_alt)
                     if termination_status(omp_model) != MOI.OPTIMAL
                         # Unfix and restore bounds, skip phase 2
                         unfix.(sub_vars[:a])
@@ -574,9 +576,13 @@ function true_dro_benders_optimize!(td::TrueDROData;
             end
 
             # Update lower_bound from final OMP state after mini-benders
-            optimize!(omp_model)
+            t_omp_final = @elapsed optimize!(omp_model)
+            push!(history[:omp_times], t_omp_final)
             if termination_status(omp_model) == MOI.OPTIMAL
                 lower_bound = max(lower_bound, objective_value(omp_model))
+            end
+            if verbose
+                @printf("  OMP re-solve: %.3fs\n", t_omp_final)
             end
         end
     end

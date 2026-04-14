@@ -80,6 +80,9 @@ using HiGHS
 using Printf
 using LinearAlgebra
 using Infiltrator
+using Serialization
+using Dates
+using Logging
 
 # ---- Load modules ----
 if !@isdefined(NetworkGenerator)
@@ -144,7 +147,9 @@ function setup_true_dro_instance(config_key::Symbol;
     num_interdictable = sum(network.interdictable_arcs[1:num_arcs])
     γ = ceil(Int, γ_ratio * num_interdictable)
 
-    capacities, _ = generate_capacity_scenarios_uniform_model(length(network.arcs), S; seed=seed)
+    # capacities, _ = generate_capacity_scenarios_uniform_model(length(network.arcs), S; seed=seed)
+    capacities, _ = generate_capacity_scenarios_factor_model(length(network.arcs), S;
+        interdictable_arcs=network.interdictable_arcs, seed=seed)
 
     interdictable_idx = findall(network.interdictable_arcs[1:num_arcs])
     c_bar = sum(capacities[interdictable_idx, :]) / (length(interdictable_idx) * S)
@@ -209,6 +214,31 @@ strengthen_cuts = isempty(sc_str) || sc_str == "none" ? :none : Symbol(sc_str)
 print("Valid inequality? (none/mincut) [none]: "); vi_str = strip(readline())
 vi_sym = isempty(vi_str) || vi_str == "none" ? :none : Symbol(vi_str)
 
+# ===== Log file setup (pipe-based tee: stdout + file 동시) =====
+log_timestamp = Dates.format(now(), "yyyymmdd_HHMMss")
+log_filename = joinpath(@__DIR__, "log_$(instance_key)_S$(S)_$(log_timestamp).txt")
+log_io = open(log_filename, "w")
+original_stdout = stdout
+rd, wr = redirect_stdout()
+log_task = @async begin
+    try
+        while isopen(rd)
+            data = readavailable(rd)
+            isempty(data) && break
+            write(original_stdout, data)
+            flush(original_stdout)
+            write(log_io, data)
+            flush(log_io)
+        end
+    catch e
+        e isa EOFError || rethrow()
+    end
+end
+
+println("Log file: $log_filename")
+println("Started: $(now())")
+println()
+
 println("\n" * "=" ^ 70)
 println("INSTANCE: $instance_key (S=$S, ε̂=$ε_hat, ε̃=$ε_tilde)")
 println("=" ^ 70)
@@ -261,6 +291,13 @@ println("  Profile saved → $profile_path ($(length(profiles)) entries)")
 # ===== Primal Recovery =====
 rec = recover_and_print(td, result; optimizer=HiGHS.Optimizer)
 
+# ===== Close log =====
+println("\nFinished: $(now())")
+redirect_stdout(original_stdout)
+close(wr)
+wait(log_task)
+close(log_io)
+println("Log saved → $log_filename")
 @infiltrate
 
 # ===== 2. Sandwich: TV-DRO (V^Dir) =====
@@ -323,3 +360,4 @@ if is_mono
 else
     println("  ✗ Z₀ not monotone — check!")
 end
+

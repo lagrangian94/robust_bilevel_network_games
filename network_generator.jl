@@ -255,110 +255,103 @@ function generate_grid_network(m::Int, n::Int; seed::Union{Int,Nothing}=nothing)
     return GridNetworkData(m, n, nodes, arcs, N, interdictable, arc_directions, arc_adjacency, node_arc_incidence)
 end
 """
-    generate_capacity_scenarios(num_arcs::Int, num_scenarios::Int; seed::Union{Int,Nothing}=nothing)
+    generate_capacity_scenarios_factor_model(num_arcs, num_scenarios; interdictable_arcs, seed, non_interdictable_cap)
 
 Generate capacity scenarios using the factor model from Sadana & Delage (2022).
 
-*** CORRECTED VERSION ***
-The factor loading matrix F is generated ONLY for regular arcs (excluding dummy arc).
-
-The factor model is: c = F * ξ, where
-- F ∈ R^{|A| × 2}_+ is a randomly generated factor loading matrix (REGULAR ARCS ONLY)
-- ξ_i ~ Exponential(μ_i) for i=1,2 are independent factor realizations
-- μ ∈ R^2_+ is randomly generated mean vector
+Factor model: c = F * ξ (interdictable arcs only)
+- F ∈ R₊^{num_interdictable × k}, entries ~ Uniform{1,...,10}
+- ξᵢ ~ Exponential(μᵢ), μ ~ Uniform(0,1), k=2 factors
+- Non-interdictable arcs: constant capacity (default 100, following Sadana)
+- Dummy arc: sum of all regular arc capacities
 
 # Arguments
-- `num_arcs::Int`: number of arcs in the network (|E|) INCLUDING dummy arc
-- `num_scenarios::Int`: number of scenarios to generate (|K|)
-- `seed::Union{Int,Nothing}`: random seed for reproducibility (optional)
+- `num_arcs`: total arcs INCLUDING dummy arc
+- `num_scenarios`: number of scenarios |K|
+- `interdictable_arcs`: Bool vector (length ≥ num_arcs-1). If nothing, all regular arcs treated as interdictable (하위호환)
+- `seed`: random seed (optional)
+- `non_interdictable_cap`: constant capacity for non-interdictable arcs (default 100.0)
 
 # Returns
-- `capacity_scenarios::Matrix{Float64}`: matrix of size |E| × |K| where each column is a scenario
-- `F::Matrix{Float64}`: factor loading matrix (|A| × 2, for regular arcs only)
-- `μ::Vector{Float64}`: mean vector (for reference)
-
-# Fix Summary
-- OLD (WRONG): F = rand(num_arcs, k)  # included dummy arc → dimension (|E|, 2)
-- NEW (CORRECT): F = rand(num_arcs - 1, k)  # excludes dummy arc → dimension (|A|, 2)
-
-This matches Sadana's MATLAB code: F = rand(E-size_set_non_rem, k)
+- `capacity_scenarios`: |E| × |K| matrix
+- `F`: factor loading matrix (num_interdictable × k)
 """
-function generate_capacity_scenarios_factor_model(num_arcs::Int, num_scenarios::Int; 
-                                     seed::Union{Int,Nothing}=nothing)
+function generate_capacity_scenarios_factor_model(num_arcs::Int, num_scenarios::Int;
+                                     interdictable_arcs::Union{Vector{Bool},Nothing}=nothing,
+                                     seed::Union{Int,Nothing}=nothing,
+                                     non_interdictable_cap::Float64=100.0)
     if !isnothing(seed)
         Random.seed!(seed)
     end
-    
 
-    
-    # ============================================================
-    # CRITICAL FIX: F matrix는 regular arcs (더미 arc 제외)에 대해서만 생성
-    # ============================================================
-    # Number of REGULAR arcs (excluding dummy arc)
     num_regular_arcs = num_arcs - 1
-    
-    # Randomly generate factor loading matrix F from Uniform(0,1)
-    # F ∈ R^{|A| × 2}_+ where |A| = num_regular_arcs
-    # F = rand(num_regular_arcs, k)
-    # Number of factors
-    k = 1
-    F = rand(1:10, num_regular_arcs, k)
-    
-    # Randomly generate mean vector μ from Uniform(0,1)
-    μ = rand(k)
-    
-    # Generate scenarios: c^k = F * ξ^k for k = 1, ..., |K|
-    capacity_scenarios = zeros(Float64, num_arcs, num_scenarios)
-    
-    for scenario in 1:num_scenarios
-        # Generate independent ξ_i ~ Exponential(μ_i) for i=1,2
-        ξ = [rand(Exponential(μ[i])) for i in 1:k]
-        # ξ = ones(k)
-        
-        # Apply factor model ONLY to regular arcs
-        scenarios = F * ξ
-        # scenarios = scenarios ./mean(scenarios, dims=1)
-        capacity_scenarios[1:num_regular_arcs, scenario] = scenarios
 
-        # 만약 scenarios가 행렬이고, 각 column별 평균을 구하려면:
-        # col_means = mean(scenarios, dims=1)  # 결과는 1행 N열 (여러 시나리오의 열 평균)
-        
-        # Set dummy arc (last arc) capacity to sum of all regular arc capacities
-        # This is large enough but numerically stable
-        regular_arcs_capacity_sum = sum(capacity_scenarios[1:num_regular_arcs, scenario])
-        capacity_scenarios[end, scenario] = regular_arcs_capacity_sum
+    # Interdictable arc indices (regular arcs only, excluding dummy)
+    if isnothing(interdictable_arcs)
+        # 기본: 모든 regular arcs가 interdictable (하위호환)
+        intd_idx = collect(1:num_regular_arcs)
+    else
+        intd_idx = findall(interdictable_arcs[1:num_regular_arcs])
     end
-    
+    non_intd_idx = setdiff(1:num_regular_arcs, intd_idx)
+    num_intd = length(intd_idx)
+
+    # Factor model: c = F * ξ, k=2 factors (Sadana & Delage 2022)
+    k = 2
+    F = rand(1:10, num_intd, k)
+    μ = rand(k)
+
+    capacity_scenarios = zeros(Float64, num_arcs, num_scenarios)
+
+    for scenario in 1:num_scenarios
+        ξ = [rand(Exponential(μ[i])) for i in 1:k]
+
+        # Interdictable arcs: factor model
+        capacity_scenarios[intd_idx, scenario] = F * ξ
+
+        # Non-interdictable arcs: constant capacity (Sadana: 100)
+        capacity_scenarios[non_intd_idx, scenario] .= non_interdictable_cap
+
+        # Dummy arc (last): sum of all regular arc capacities
+        capacity_scenarios[end, scenario] = sum(capacity_scenarios[1:num_regular_arcs, scenario])
+    end
+
     return capacity_scenarios, F
 end
 
-function generate_capacity_scenarios_uniform_model(num_arcs::Int, num_scenarios::Int; 
-    seed::Union{Int,Nothing}=nothing)
+function generate_capacity_scenarios_uniform_model(num_arcs::Int, num_scenarios::Int;
+    interdictable_arcs::Union{Vector{Bool},Nothing}=nothing,
+    seed::Union{Int,Nothing}=nothing,
+    non_interdictable_cap::Float64=100.0)
     if !isnothing(seed)
-    Random.seed!(seed)
+        Random.seed!(seed)
     end
 
-
-
-    # ============================================================
-    # CRITICAL FIX: F matrix는 regular arcs (더미 arc 제외)에 대해서만 생성
-    # ============================================================
-    # Number of REGULAR arcs (excluding dummy arc)
     num_regular_arcs = num_arcs - 1
 
-    # Randomly generate factor loading matrix F from Uniform(0,1)
-    # F ∈ R^{|A| × 2}_+ where |A| = num_regular_arcs
-    # F = rand(num_regular_arcs, k)
-    
-    F = rand(1:10, num_regular_arcs, num_scenarios)
+    # Interdictable arc indices (regular arcs only, excluding dummy)
+    if isnothing(interdictable_arcs)
+        # 기본: 모든 regular arcs (하위호환)
+        intd_idx = collect(1:num_regular_arcs)
+    else
+        intd_idx = findall(interdictable_arcs[1:num_regular_arcs])
+    end
+    non_intd_idx = setdiff(1:num_regular_arcs, intd_idx)
 
-    # Generate scenarios: c^k = F * ξ^k for k = 1, ..., |K|
+    # Interdictable arcs: Uniform(1,10) i.i.d.
+    F = rand(1:10, length(intd_idx), num_scenarios)
+
     capacity_scenarios = zeros(Float64, num_arcs, num_scenarios)
 
     for scenario in 1:num_scenarios
-        capacity_scenarios[1:num_regular_arcs, scenario] = F[:, scenario]
-        regular_arcs_capacity_sum = sum(capacity_scenarios[1:num_regular_arcs, scenario])
-        capacity_scenarios[end, scenario] = regular_arcs_capacity_sum
+        # Interdictable arcs: random
+        capacity_scenarios[intd_idx, scenario] = F[:, scenario]
+
+        # Non-interdictable arcs: constant capacity (Sadana: 100)
+        capacity_scenarios[non_intd_idx, scenario] .= non_interdictable_cap
+
+        # Dummy arc: sum of all regular arc capacities
+        capacity_scenarios[end, scenario] = sum(capacity_scenarios[1:num_regular_arcs, scenario])
     end
 
     return capacity_scenarios, F
@@ -543,8 +536,14 @@ function _build_realworld_network(name::String, nodes::Vector{String},
     num_arcs = length(arcs)
     num_regular_arcs = num_arcs - 1
 
-    # All regular arcs interdictable, dummy arc not
-    interdictable = vcat(fill(true, num_regular_arcs), [false])
+    # Source/sink 연결 arcs: non-interdictable (Cormican et al. 1998, Sadana & Delage 2022)
+    # Dummy arc: non-interdictable
+    interdictable = Vector{Bool}(undef, num_arcs)
+    for i in 1:num_regular_arcs
+        from, to = arcs[i]
+        interdictable[i] = !(from == "s" || to == "s" || from == "t" || to == "t")
+    end
+    interdictable[end] = false  # dummy arc
 
     # Build node-incidence matrix (source="s" is first node after remap)
     # Ensure "s" is the first node
