@@ -189,6 +189,91 @@ function true_dro_benders_optimize!(td::TrueDROData;
         Z0_val = sub_info[:Z0_val]
         is_exact = sub_info[:is_optimal]
 
+        # ---- Alternating opt refinement (cut explosion 방지) ----
+        # NLP (Gurobi NonConvex=2) local opt에서 ρ dual이 O(10⁵)로 폭발하는 문제 완화.
+        # α 고정 → LP(a,d,ρ) → (a,d) 고정 → LP(α,ρ) 반복으로 well-conditioned dual 획득.
+        # 이 블록을 주석처리하면 원래 동작과 동일.
+        if inexact && !is_global_iter
+            alt_max_iter = 5
+            alt_tol = 1e-4
+            prev_obj = Z0_val
+            S_loc = td.S
+            # 값 추출은 OptimalityTarget 변경 전에 (Gurobi 모델 상태 보존)
+            a_vals = [value(sub_vars[:a][s]) for s in 1:S_loc]
+            d_vals = [value(sub_vars[:d][s]) for s in 1:S_loc]
+            α_vals = sub_info[:α_val]
+
+            # Alternating opt는 LP를 풀므로 OptimalityTarget=0 (global)
+            set_optimizer_attribute(sub_model, "OptimalityTarget", 0)
+            alt_info_2 = sub_info  # fallback (overwritten in loop)
+
+            for alt_it in 1:alt_max_iter
+                # Step 1: Fix α → LP over (a, d, ρ, ...)
+                for k in 1:K
+                    fix(sub_vars[:α][k], α_vals[k]; force=true)
+                end
+                # ζL = α·a, ζF = α·d become linear when α is fixed
+                alt_info_1 = solve_true_dro_subproblem!(sub_model, sub_vars, td, x_sol)
+
+                a_vals = [value(sub_vars[:a][s]) for s in 1:S_loc]
+                d_vals = [value(sub_vars[:d][s]) for s in 1:S_loc]
+
+                # Unfix α, restore bounds
+                for k in 1:K
+                    unfix(sub_vars[:α][k])
+                    set_lower_bound(sub_vars[:α][k], 0.0)
+                    set_upper_bound(sub_vars[:α][k], td.w)
+                end
+
+                # Step 2: Fix (a, d) → LP over (α, ρ, ...)
+                for s in 1:S_loc
+                    fix(sub_vars[:a][s], a_vals[s]; force=true)
+                    fix(sub_vars[:d][s], d_vals[s]; force=true)
+                end
+                alt_info_2 = solve_true_dro_subproblem!(sub_model, sub_vars, td, x_sol)
+
+                α_vals = alt_info_2[:α_val]
+                cur_obj = alt_info_2[:Z0_val]
+
+                # Unfix (a, d), restore bounds
+                for s in 1:S_loc
+                    unfix(sub_vars[:a][s])
+                    set_lower_bound(sub_vars[:a][s], sub_vars[:a_min][s])
+                    set_upper_bound(sub_vars[:a][s], sub_vars[:a_max][s])
+                    unfix(sub_vars[:d][s])
+                    set_lower_bound(sub_vars[:d][s], sub_vars[:d_min][s])
+                    set_upper_bound(sub_vars[:d][s], sub_vars[:d_max][s])
+                end
+
+                if verbose
+                    @printf("    AltOpt[%d]: obj=%.6f (Δ=%.2e)\n",
+                            alt_it, cur_obj, abs(cur_obj - prev_obj))
+                end
+
+                # Convergence check
+                if abs(cur_obj - prev_obj) < alt_tol * max(abs(cur_obj), 1.0)
+                    break
+                end
+                prev_obj = cur_obj
+            end
+
+            # Replace sub_info with refined solution (well-conditioned ρ)
+            sub_info = alt_info_2
+            Z0_val = sub_info[:Z0_val]
+
+            # OptimalityTarget 복원 (다음 iter의 inexact 판별에 필요)
+            set_optimizer_attribute(sub_model, "OptimalityTarget", 1)
+        end
+        # ---- End alternating opt refinement ----
+        # 대안 (3): NLP solution을 global solver의 MIPStart로 활용 (loose MIPGap)
+        # if inexact && !is_global_iter
+        #     set_optimizer_attribute(sub_model, "OptimalityTarget", 0)
+        #     set_optimizer_attribute(sub_model, "MIPGap", 0.10)  # 10% gap tolerance
+        #     # NLP solution이 warm start로 작동 (incumbent)
+        #     sub_info = solve_true_dro_subproblem!(sub_model, sub_vars, td, x_sol)
+        #     set_optimizer_attribute(sub_model, "MIPGap", 1e-4)  # restore
+        # end
+
         # UB는 OPTIMAL + global solve일 때만 갱신
         # (local opt of max subproblem ≤ global opt → UB 과소평가 위험)
         if is_exact && is_global_iter && Z0_val < upper_bound
