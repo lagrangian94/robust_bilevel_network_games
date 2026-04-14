@@ -300,64 +300,64 @@ close(log_io)
 println("Log saved → $log_filename")
 @infiltrate
 
-# ===== 2. Sandwich: TV-DRO (V^Dir) =====
-println("\n" * "=" ^ 70)
-println("2. Sandwich comparison: V*(true) ≤ V^Dir(TV-DRO)")
-println("=" ^ 70)
+# # ===== 2. Sandwich: TV-DRO (V^Dir) =====
+# println("\n" * "=" ^ 70)
+# println("2. Sandwich comparison: V*(true) ≤ V^Dir(TV-DRO)")
+# println("=" ^ 70)
 
-tv = make_tv_data(network, td.xi_bar, td.q_hat, td.eps_hat, td.eps_tilde;
-                  w=td.w, lambda_U=td.lambda_U, gamma=td.gamma)
+# tv = make_tv_data(network, td.xi_bar, td.q_hat, td.eps_hat, td.eps_tilde;
+#                   w=td.w, lambda_U=td.lambda_U, gamma=td.gamma)
 
-# TV-DRO full model (direct route)
-full_model, full_vars = build_full_tv_model(tv; optimizer=Gurobi.Optimizer)
-optimize!(full_model)
+# # TV-DRO full model (direct route)
+# full_model, full_vars = build_full_tv_model(tv; optimizer=Gurobi.Optimizer)
+# optimize!(full_model)
 
-V_true = result[:Z0]
-if termination_status(full_model) == MOI.OPTIMAL
-    V_dir = objective_value(full_model)
-    @printf("  V*(true)  = %.6f\n", V_true)
-    @printf("  V^Dir(TV) = %.6f\n", V_dir)
-    @printf("  Gap       = %.6f (%.2f%%)\n", V_dir - V_true,
-            100 * (V_dir - V_true) / max(abs(V_true), 1e-10))
-    if V_true <= V_dir + 1e-4
-        println("  ✓ V* ≤ V^Dir")
-    else
-        println("  ✗ V* > V^Dir — violation!")
-    end
-else
-    println("  TV-DRO full model: $(termination_status(full_model))")
-end
+# V_true = result[:Z0]
+# if termination_status(full_model) == MOI.OPTIMAL
+#     V_dir = objective_value(full_model)
+#     @printf("  V*(true)  = %.6f\n", V_true)
+#     @printf("  V^Dir(TV) = %.6f\n", V_dir)
+#     @printf("  Gap       = %.6f (%.2f%%)\n", V_dir - V_true,
+#             100 * (V_dir - V_true) / max(abs(V_true), 1e-10))
+#     if V_true <= V_dir + 1e-4
+#         println("  ✓ V* ≤ V^Dir")
+#     else
+#         println("  ✗ V* > V^Dir — violation!")
+#     end
+# else
+#     println("  TV-DRO full model: $(termination_status(full_model))")
+# end
 
 
-# ===== 3. ε→0 nominal convergence =====
-println("\n" * "=" ^ 70)
-println("3. ε→0 nominal convergence")
-println("=" ^ 70)
+# # ===== 3. ε→0 nominal convergence =====
+# println("\n" * "=" ^ 70)
+# println("3. ε→0 nominal convergence")
+# println("=" ^ 70)
 
-epsilons = [0.3, 0.1, 0.05, 0.01, 0.001]
-eps_results = []
+# epsilons = [0.3, 0.1, 0.05, 0.01, 0.001]
+# eps_results = []
 
-for ε in epsilons
-    network_eps, td_eps = setup_true_dro_instance(instance_key; S=S,
-        epsilon_hat=ε, epsilon_tilde=ε)
-    r = true_dro_benders_optimize!(td_eps;
-        mip_optimizer=Gurobi.Optimizer,
-        nlp_optimizer=Gurobi.Optimizer,
-        max_iter=1000, tol=1e-4, verbose=false,
-        sub_time_limit=sub_tl,
-        mini_benders=use_mini_benders,
-        lp_optimizer=(use_mini_benders ? Gurobi.Optimizer : nothing),
-        max_mini_benders_iter=max_mb_iter)
-    push!(eps_results, (ε=ε, Z0=r[:Z0], status=r[:status], iters=r[:iters]))
-    @printf("  ε=%.4f → Z₀=%.6f  (%s, %d iters)\n", ε, r[:Z0], r[:status], r[:iters])
-end
+# for ε in epsilons
+#     network_eps, td_eps = setup_true_dro_instance(instance_key; S=S,
+#         epsilon_hat=ε, epsilon_tilde=ε)
+#     r = true_dro_benders_optimize!(td_eps;
+#         mip_optimizer=Gurobi.Optimizer,
+#         nlp_optimizer=Gurobi.Optimizer,
+#         max_iter=1000, tol=1e-4, verbose=false,
+#         sub_time_limit=sub_tl,
+#         mini_benders=use_mini_benders,
+#         lp_optimizer=(use_mini_benders ? Gurobi.Optimizer : nothing),
+#         max_mini_benders_iter=max_mb_iter)
+#     push!(eps_results, (ε=ε, Z0=r[:Z0], status=r[:status], iters=r[:iters]))
+#     @printf("  ε=%.4f → Z₀=%.6f  (%s, %d iters)\n", ε, r[:Z0], r[:status], r[:iters])
+# end
 
-# ε 작아질수록 Z₀ monotone non-increasing (tighter ambiguity → smaller worst-case)
-objs = [r.Z0 for r in eps_results]
-is_mono = all(objs[i] >= objs[i+1] - 1e-4 for i in 1:length(objs)-1)
-if is_mono
-    println("  ✓ Z₀ monotone non-increasing as ε→0")
-else
-    println("  ✗ Z₀ not monotone — check!")
-end
+# # ε 작아질수록 Z₀ monotone non-increasing (tighter ambiguity → smaller worst-case)
+# objs = [r.Z0 for r in eps_results]
+# is_mono = all(objs[i] >= objs[i+1] - 1e-4 for i in 1:length(objs)-1)
+# if is_mono
+#     println("  ✓ Z₀ monotone non-increasing as ε→0")
+# else
+#     println("  ✗ Z₀ not monotone — check!")
+# end
 

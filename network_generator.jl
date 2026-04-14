@@ -255,14 +255,14 @@ function generate_grid_network(m::Int, n::Int; seed::Union{Int,Nothing}=nothing)
     return GridNetworkData(m, n, nodes, arcs, N, interdictable, arc_directions, arc_adjacency, node_arc_incidence)
 end
 """
-    generate_capacity_scenarios_factor_model(num_arcs, num_scenarios; interdictable_arcs, seed, non_interdictable_cap)
+    generate_capacity_scenarios_factor_model(num_arcs, num_scenarios; interdictable_arcs, seed)
 
 Generate capacity scenarios using the factor model from Sadana & Delage (2022).
 
 Factor model: c = F * ξ (interdictable arcs only)
 - F ∈ R₊^{num_interdictable × k}, entries ~ Uniform{1,...,10}
 - ξᵢ ~ Exponential(μᵢ), μ ~ Uniform(0,1), k=2 factors
-- Non-interdictable arcs: constant capacity (default 100, following Sadana)
+- Non-interdictable arcs: max(interdictable capacities) — 스케일 통일, big-M 폭발 방지
 - Dummy arc: sum of all regular arc capacities
 
 # Arguments
@@ -270,7 +270,6 @@ Factor model: c = F * ξ (interdictable arcs only)
 - `num_scenarios`: number of scenarios |K|
 - `interdictable_arcs`: Bool vector (length ≥ num_arcs-1). If nothing, all regular arcs treated as interdictable (하위호환)
 - `seed`: random seed (optional)
-- `non_interdictable_cap`: constant capacity for non-interdictable arcs (default 100.0)
 
 # Returns
 - `capacity_scenarios`: |E| × |K| matrix
@@ -278,8 +277,7 @@ Factor model: c = F * ξ (interdictable arcs only)
 """
 function generate_capacity_scenarios_factor_model(num_arcs::Int, num_scenarios::Int;
                                      interdictable_arcs::Union{Vector{Bool},Nothing}=nothing,
-                                     seed::Union{Int,Nothing}=nothing,
-                                     non_interdictable_cap::Float64=100.0)
+                                     seed::Union{Int,Nothing}=nothing)
     if !isnothing(seed)
         Random.seed!(seed)
     end
@@ -303,16 +301,20 @@ function generate_capacity_scenarios_factor_model(num_arcs::Int, num_scenarios::
 
     capacity_scenarios = zeros(Float64, num_arcs, num_scenarios)
 
+    # 1) Interdictable arcs: factor model
     for scenario in 1:num_scenarios
         ξ = [rand(Exponential(μ[i])) for i in 1:k]
-
-        # Interdictable arcs: factor model
         capacity_scenarios[intd_idx, scenario] = F * ξ
+    end
 
-        # Non-interdictable arcs: constant capacity (Sadana: 100)
-        capacity_scenarios[non_intd_idx, scenario] .= non_interdictable_cap
+    # 2) Non-interdictable arcs: max of interdictable capacities (스케일 통일)
+    if !isempty(non_intd_idx) && !isempty(intd_idx)
+        max_intd_cap = maximum(capacity_scenarios[intd_idx, :])
+        capacity_scenarios[non_intd_idx, :] .= max_intd_cap
+    end
 
-        # Dummy arc (last): sum of all regular arc capacities
+    # 3) Dummy arc: sum of all regular arc capacities
+    for scenario in 1:num_scenarios
         capacity_scenarios[end, scenario] = sum(capacity_scenarios[1:num_regular_arcs, scenario])
     end
 
@@ -321,8 +323,7 @@ end
 
 function generate_capacity_scenarios_uniform_model(num_arcs::Int, num_scenarios::Int;
     interdictable_arcs::Union{Vector{Bool},Nothing}=nothing,
-    seed::Union{Int,Nothing}=nothing,
-    non_interdictable_cap::Float64=100.0)
+    seed::Union{Int,Nothing}=nothing)
     if !isnothing(seed)
         Random.seed!(seed)
     end
@@ -343,12 +344,18 @@ function generate_capacity_scenarios_uniform_model(num_arcs::Int, num_scenarios:
 
     capacity_scenarios = zeros(Float64, num_arcs, num_scenarios)
 
+    # 1) Interdictable arcs: random
     for scenario in 1:num_scenarios
-        # Interdictable arcs: random
         capacity_scenarios[intd_idx, scenario] = F[:, scenario]
+    end
 
-        # Non-interdictable arcs: constant capacity (Sadana: 100)
-        capacity_scenarios[non_intd_idx, scenario] .= non_interdictable_cap
+    # 2) Non-interdictable arcs: max of interdictable capacities (스케일 통일)
+    if !isempty(non_intd_idx) && !isempty(intd_idx)
+        max_intd_cap = maximum(capacity_scenarios[intd_idx, :])
+        capacity_scenarios[non_intd_idx, :] .= max_intd_cap
+    end
+
+    for scenario in 1:num_scenarios
 
         # Dummy arc: sum of all regular arc capacities
         capacity_scenarios[end, scenario] = sum(capacity_scenarios[1:num_regular_arcs, scenario])
