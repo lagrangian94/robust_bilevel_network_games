@@ -165,6 +165,7 @@ function true_dro_benders_optimize!(td::TrueDROData;
         if verbose
             x_int = round.(Int, x_sol)
             @printf("  OMP: t₀=%.6f, x=%s (%.3fs)\n", t0_val, string(x_int), t_omp)
+            flush(stdout)
         end
 
         # ---- Set subproblem time limit ----
@@ -248,6 +249,7 @@ function true_dro_benders_optimize!(td::TrueDROData;
                 if verbose
                     @printf("    AltOpt[%d]: obj=%.6f (Δ=%.2e)\n",
                             alt_it, cur_obj, abs(cur_obj - prev_obj))
+                    flush(stdout)
                 end
 
                 # Convergence check
@@ -303,6 +305,7 @@ function true_dro_benders_optimize!(td::TrueDROData;
             @printf("  Sub: Z₀=%.6f%s, α=[%s]\n", Z0_val, status_str, α_str)
             @printf("  Iter %d: LB=%.6f  UB=%.6f  gap=%.2e\n",
                     iter, lower_bound, upper_bound, gap)
+            flush(stdout)
         end
 
         if gap <= tol
@@ -366,6 +369,7 @@ function true_dro_benders_optimize!(td::TrueDROData;
             @printf("  Cut: intercept=%.6f, π_x_range=[%.4f, %.4f]\n",
                     outer_cut[:intercept],
                     minimum(outer_cut[:π_x]), maximum(outer_cut[:π_x]))
+            flush(stdout)
         end
 
         # ---- Min-cut valid inequality: Phase 2B (comp-min + α*) ----
@@ -599,6 +603,7 @@ function true_dro_benders_optimize!(td::TrueDROData;
                     if verbose
                         @printf("  %s-Benders[%d] (%s): LB=%.6f, Z₀(α*)=%.6f, intercept=%.6f\n",
                                 phase_tag, j, cut_tag, lb_mb, Z0_mini, final_cut[:intercept])
+                        flush(stdout)
                     end
 
                     # Gap check (mini LB vs outer UB)
@@ -668,6 +673,7 @@ function true_dro_benders_optimize!(td::TrueDROData;
             end
             if verbose
                 @printf("  OMP re-solve: %.3fs\n", t_omp_final)
+                flush(stdout)
             end
         end
     end
