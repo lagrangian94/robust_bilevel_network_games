@@ -32,7 +32,8 @@ Build merged bilinear subproblem.
 Returns (model, vars). Caller must use `Gurobi.Optimizer` (or any QCP solver
 supporting non-convex bilinear) and set `NonConvex=2` separately.
 """
-function build_true_dro_subproblem(td::TrueDROData, x_bar::Vector{Float64}; optimizer, silent=true)
+function build_true_dro_subproblem(td::TrueDROData, x_bar::Vector{Float64};
+                                   optimizer, silent=true, rho_upper_bound::Union{Float64,Nothing}=nothing)
     S = td.S
     K = td.num_arcs
     m = td.nv1
@@ -80,6 +81,15 @@ function build_true_dro_subproblem(td::TrueDROData, x_bar::Vector{Float64}; opti
     @variable(model, ρ_hat_1[1:K, 1:S] >= 0)
     @variable(model, ρ_hat_2[1:K, 1:S] >= 0)
     @variable(model, ρ_hat_3[1:K, 1:S] >= 0)
+
+    # ρ upper bound: local opt에서 ρ 폭발 방지 (local_opt_cut_explosion.md 참조)
+    if rho_upper_bound !== nothing
+        for k in 1:K, s in 1:S
+            set_upper_bound(ρ_hat_1[k, s], rho_upper_bound)
+            set_upper_bound(ρ_hat_2[k, s], rho_upper_bound)
+            set_upper_bound(ρ_hat_3[k, s], rho_upper_bound)
+        end
+    end
 
     # Auxiliary bilinear: ζL_{ks} = α_k · a_s, tight per-(k,s) bound (§10.1-§10.2)
     @variable(model, 0 <= ζL[k=1:K, s=1:S] <= w * a_max[s])
@@ -129,6 +139,19 @@ function build_true_dro_subproblem(td::TrueDROData, x_bar::Vector{Float64}; opti
     @variable(model, ρ_psi0_1[1:K] >= 0)       # ρ⁰¹
     @variable(model, ρ_psi0_2[1:K] >= 0)       # ρ⁰²
     @variable(model, ρ_psi0_3[1:K] >= 0)       # ρ⁰³
+
+    if rho_upper_bound !== nothing
+        for k in 1:K, s in 1:S
+            set_upper_bound(ρ_tilde_1[k, s], rho_upper_bound)
+            set_upper_bound(ρ_tilde_2[k, s], rho_upper_bound)
+            set_upper_bound(ρ_tilde_3[k, s], rho_upper_bound)
+        end
+        for k in 1:K
+            set_upper_bound(ρ_psi0_1[k], rho_upper_bound)
+            set_upper_bound(ρ_psi0_2[k], rho_upper_bound)
+            set_upper_bound(ρ_psi0_3[k], rho_upper_bound)
+        end
+    end
 
     # Auxiliary bilinear: ζF_{ks} = α_k · d_s, tight per-(k,s) bound (§10.1-§10.2)
     @variable(model, 0 <= ζF[k=1:K, s=1:S] <= w * d_max[s])
@@ -264,7 +287,8 @@ Update obj for x̄, solve, return Dict with:
 TIME_LIMIT with feasible incumbent → :is_optimal=false, incumbent 값 반환.
 Cut은 valid (feasible point의 obj ≤ Z₀*), 다만 UB 갱신에는 사용 불가.
 """
-function solve_true_dro_subproblem!(model, vars, td::TrueDROData, x_bar::Vector{Float64})
+function solve_true_dro_subproblem!(model, vars, td::TrueDROData, x_bar::Vector{Float64};
+                                    is_global::Bool=true)
     S = td.S
     K = td.num_arcs
 
@@ -293,8 +317,16 @@ function solve_true_dro_subproblem!(model, vars, td::TrueDROData, x_bar::Vector{
     ρ01 = [value(vars[:ρ_psi0_1][k]) for k in 1:K]
     ρ03 = [value(vars[:ρ_psi0_3][k]) for k in 1:K]
 
+    # global solver의 TIME_LIMIT 시 BestBd = Z₀(x̄) 상한 → Benders UB 갱신 가능
+    Z0_bound = if is_global && !is_optimal
+        objective_bound(model)
+    else
+        Z0_val
+    end
+
     return Dict(
         :Z0_val => Z0_val,
+        :Z0_bound => Z0_bound,
         :α_val => α_val,
         :rho_hat_1_val => ρ̂1, :rho_hat_3_val => ρ̂3,
         :rho_tilde_1_val => ρ̃1, :rho_tilde_3_val => ρ̃3,

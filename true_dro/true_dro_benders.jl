@@ -38,7 +38,7 @@ Run outer Benders.
 - `nonconvex_attr`: defaults to `"NonConvex" => 2`
 - `sub_time_limit`: initial time limit (seconds) for bilinear subproblem.
   `nothing` = no limit. Incumbent에서 valid cut 생성, UB는 OPTIMAL만.
-- `stagnation_window`: LB/UB 변화 없는 연속 iter 수 → time limit 해제 (default 3)
+  Boost (same x + TIME_LIMIT 반복): time limit 해제 + MIPGap=0.5%, 수렴 tol도 0.5%로 완화.
 - `mini_benders`: LP-based inner loop with fixed α
 - `lp_optimizer`: LP solver for mini-benders
 - `max_mini_benders_iter`: mini-benders phase 반복 횟수 (default 5)
@@ -59,7 +59,6 @@ function true_dro_benders_optimize!(td::TrueDROData;
         sub_verbose=false,
         nonconvex_attr=("NonConvex" => 2),
         sub_time_limit=nothing,
-        stagnation_window::Int=3,
         mini_benders::Bool=false,
         lp_optimizer=nothing,
         max_mini_benders_iter::Int=5,
@@ -90,7 +89,7 @@ function true_dro_benders_optimize!(td::TrueDROData;
     end
 
     # ---- Build OMP ----
-    omp_model, omp_vars = build_true_dro_omp(td; optimizer=mip_optimizer, silent=!sub_verbose)
+    omp_model, omp_vars = build_true_dro_omp(td; optimizer=mip_optimizer, silent=true)
 
     # ---- Min-cut valid inequality: Phase 1 (all S, 1회) ----
     local arc_topo
@@ -102,7 +101,7 @@ function true_dro_benders_optimize!(td::TrueDROData;
         end
     end
 
-    # ---- Build subproblem once with x_bar = 0 (objective will be updated each iter) ----
+    # ---- Build subproblem: global model (no ρ bound) ----
     x_init = zeros(K)
     sub_model, sub_vars = build_true_dro_subproblem(td, x_init; optimizer=nlp_optimizer, silent=!sub_verbose)
     if nonconvex_attr !== nothing
@@ -113,10 +112,29 @@ function true_dro_benders_optimize!(td::TrueDROData;
         end
     end
 
+    # ---- Build subproblem: local model (ρ ≤ M, local opt에서 ρ 폭발 방지) ----
+    local sub_model_local, sub_vars_local
+    const_rho_bound = 10.0
+    if inexact
+        sub_model_local, sub_vars_local = build_true_dro_subproblem(td, x_init;
+            optimizer=nlp_optimizer, silent=!sub_verbose, rho_upper_bound=const_rho_bound)
+        if nonconvex_attr !== nothing
+            try
+                set_optimizer_attribute(sub_model_local, nonconvex_attr.first, nonconvex_attr.second)
+            catch err
+                @warn "Could not set $(nonconvex_attr.first) on local subproblem: $err"
+            end
+        end
+        set_optimizer_attribute(sub_model_local, "OptimalityTarget", 1)
+    end
+
     # ---- Adaptive time limit state ----
     current_time_limit = sub_time_limit  # nothing = unlimited
-    stagnation_count = 0
-    prev_gap = Inf
+    is_boost = false                     # boost 상태 플래그
+    const_boost_mipgap = 5e-3           # boost 시 MIPGap (0.5%)
+    prev_x_global = nothing      # 이전 global iter의 x_sol
+    prev_t0_global = -Inf        # 이전 global iter의 t₀
+    prev_global_was_timelimit = false  # 이전 global iter TIME_LIMIT 여부
 
     # ---- Mini-Benders: build ISP-L and ISP-F LP models once ----
     local isp_l_model, isp_l_vars, isp_f_model, isp_f_vars
@@ -148,7 +166,8 @@ function true_dro_benders_optimize!(td::TrueDROData;
 
     for iter in 1:max_iter
         if verbose
-            @info "=== True-DRO Benders iter $iter ==="
+            @printf("\n=== True-DRO Benders iter %d ===\n", iter)
+            flush(stdout)
         end
 
         # ---- Solve OMP ----
@@ -164,124 +183,69 @@ function true_dro_benders_optimize!(td::TrueDROData;
 
         if verbose
             x_int = round.(Int, x_sol)
-            @printf("  OMP: t₀=%.6f, x=%s (%.3fs)\n", t0_val, string(x_int), t_omp)
+            @printf("  OMP: t₀=%.6f, UB=%.6f, gap=%.2e, x=%s (%.3fs)\n",
+                    t0_val, upper_bound, abs(upper_bound - t0_val) / max(abs(upper_bound), 1e-10),
+                    string(x_int), t_omp)
             flush(stdout)
         end
 
-        # ---- Set subproblem time limit ----
-        if current_time_limit !== nothing
-            set_time_limit_sec(sub_model, current_time_limit)
-        else
-            set_time_limit_sec(sub_model, nothing)
-        end
-
-        # ---- Inexact mode: set OptimalityTarget ----
+        # ---- Inexact mode: select model (global vs local with ρ bound) ----
         is_global_iter = true
         if inexact
             is_global_iter = (iter % const_inexact_cycle == 0)
-            opt_target = is_global_iter ? 0 : 1
-            set_optimizer_attribute(sub_model, "OptimalityTarget", opt_target)
+        end
+        cur_sub_model = is_global_iter ? sub_model : sub_model_local
+        cur_sub_vars  = is_global_iter ? sub_vars  : sub_vars_local
+
+        # ---- Adaptive boost 판정 (subproblem solve 전) ----
+        # Boost: same x 반복 + prev TIME_LIMIT → time limit 해제 + MIPGap=0.5%
+        # 비-boost: 기본 time limit + MIPGap=0 (global opt)
+        is_boost = false
+        if sub_time_limit !== nothing && is_global_iter
+            t0_change = abs(t0_val - prev_t0_global) / max(abs(prev_t0_global), 1e-10)
+            if prev_x_global !== nothing && x_sol == prev_x_global && prev_global_was_timelimit && t0_change < 1e-3
+                is_boost = true
+                if verbose
+                    @printf("  → Boost: time limit off + MIPGap=%.1f%% (same x + prev TIME_LIMIT)\n",
+                            const_boost_mipgap * 100)
+                    flush(stdout)
+                end
+            end
+        end
+
+        # ---- Set subproblem time limit & MIPGap ----
+        if is_boost
+            set_time_limit_sec(cur_sub_model, nothing)
+            set_optimizer_attribute(cur_sub_model, "MIPGap", const_boost_mipgap)
+        else
+            effective_time_limit = is_global_iter ? current_time_limit : sub_time_limit
+            if effective_time_limit !== nothing
+                set_time_limit_sec(cur_sub_model, effective_time_limit)
+            else
+                set_time_limit_sec(cur_sub_model, nothing)
+            end
+            set_optimizer_attribute(cur_sub_model, "MIPGap", 0.0)
         end
 
         # ---- Solve subproblem ----
         t_sub = @elapsed begin
-            sub_info = solve_true_dro_subproblem!(sub_model, sub_vars, td, x_sol)
+            sub_info = solve_true_dro_subproblem!(cur_sub_model, cur_sub_vars, td, x_sol;
+                                                is_global=is_global_iter)
         end
         Z0_val = sub_info[:Z0_val]
         is_exact = sub_info[:is_optimal]
 
-        # ---- Alternating opt refinement (cut explosion 방지) ----
-        # NLP (Gurobi NonConvex=2) local opt에서 ρ dual이 O(10⁵)로 폭발하는 문제 완화.
-        # α 고정 → LP(a,d,ρ) → (a,d) 고정 → LP(α,ρ) 반복으로 well-conditioned dual 획득.
-        # 이 블록을 주석처리하면 원래 동작과 동일.
-        if inexact && !is_global_iter
-            alt_max_iter = 5
-            alt_tol = 1e-4
-            prev_obj = Z0_val
-            S_loc = td.S
-            # 값 추출은 OptimalityTarget 변경 전에 (Gurobi 모델 상태 보존)
-            a_vals = [value(sub_vars[:a][s]) for s in 1:S_loc]
-            d_vals = [value(sub_vars[:d][s]) for s in 1:S_loc]
-            α_vals = sub_info[:α_val]
-
-            # Alternating opt는 LP를 풀므로 OptimalityTarget=0 (global)
-            set_optimizer_attribute(sub_model, "OptimalityTarget", 0)
-            alt_info_2 = sub_info  # fallback (overwritten in loop)
-
-            for alt_it in 1:alt_max_iter
-                # Step 1: Fix α → LP over (a, d, ρ, ...)
-                for k in 1:K
-                    fix(sub_vars[:α][k], α_vals[k]; force=true)
-                end
-                # ζL = α·a, ζF = α·d become linear when α is fixed
-                alt_info_1 = solve_true_dro_subproblem!(sub_model, sub_vars, td, x_sol)
-
-                a_vals = [value(sub_vars[:a][s]) for s in 1:S_loc]
-                d_vals = [value(sub_vars[:d][s]) for s in 1:S_loc]
-
-                # Unfix α, restore bounds
-                for k in 1:K
-                    unfix(sub_vars[:α][k])
-                    set_lower_bound(sub_vars[:α][k], 0.0)
-                    set_upper_bound(sub_vars[:α][k], td.w)
-                end
-
-                # Step 2: Fix (a, d) → LP over (α, ρ, ...)
-                for s in 1:S_loc
-                    fix(sub_vars[:a][s], a_vals[s]; force=true)
-                    fix(sub_vars[:d][s], d_vals[s]; force=true)
-                end
-                alt_info_2 = solve_true_dro_subproblem!(sub_model, sub_vars, td, x_sol)
-
-                α_vals = alt_info_2[:α_val]
-                cur_obj = alt_info_2[:Z0_val]
-
-                # Unfix (a, d), restore bounds
-                for s in 1:S_loc
-                    unfix(sub_vars[:a][s])
-                    set_lower_bound(sub_vars[:a][s], sub_vars[:a_min][s])
-                    set_upper_bound(sub_vars[:a][s], sub_vars[:a_max][s])
-                    unfix(sub_vars[:d][s])
-                    set_lower_bound(sub_vars[:d][s], sub_vars[:d_min][s])
-                    set_upper_bound(sub_vars[:d][s], sub_vars[:d_max][s])
-                end
-
-                if verbose
-                    @printf("    AltOpt[%d]: obj=%.6f (Δ=%.2e)\n",
-                            alt_it, cur_obj, abs(cur_obj - prev_obj))
-                    flush(stdout)
-                end
-
-                # Convergence check
-                if abs(cur_obj - prev_obj) < alt_tol * max(abs(cur_obj), 1.0)
-                    break
-                end
-                prev_obj = cur_obj
+        # UB 갱신 (global iter만)
+        # - OPTIMAL: Z₀ exact → UB, best_x, best_α 모두 갱신
+        # - TIME_LIMIT: Z0_bound (BestBd) = Z₀(x̄) 상한 → UB만 갱신
+        if is_global_iter
+            if is_exact && Z0_val < upper_bound
+                upper_bound = Z0_val
+                best_x = copy(x_sol)
+                best_α = copy(sub_info[:α_val])
+            elseif !is_exact && sub_info[:Z0_bound] < upper_bound
+                upper_bound = sub_info[:Z0_bound]
             end
-
-            # Replace sub_info with refined solution (well-conditioned ρ)
-            sub_info = alt_info_2
-            Z0_val = sub_info[:Z0_val]
-
-            # OptimalityTarget 복원 (다음 iter의 inexact 판별에 필요)
-            set_optimizer_attribute(sub_model, "OptimalityTarget", 1)
-        end
-        # ---- End alternating opt refinement ----
-        # 대안 (3): NLP solution을 global solver의 MIPStart로 활용 (loose MIPGap)
-        # if inexact && !is_global_iter
-        #     set_optimizer_attribute(sub_model, "OptimalityTarget", 0)
-        #     set_optimizer_attribute(sub_model, "MIPGap", 0.10)  # 10% gap tolerance
-        #     # NLP solution이 warm start로 작동 (incumbent)
-        #     sub_info = solve_true_dro_subproblem!(sub_model, sub_vars, td, x_sol)
-        #     set_optimizer_attribute(sub_model, "MIPGap", 1e-4)  # restore
-        # end
-
-        # UB는 OPTIMAL + global solve일 때만 갱신
-        # (local opt of max subproblem ≤ global opt → UB 과소평가 위험)
-        if is_exact && is_global_iter && Z0_val < upper_bound
-            upper_bound = Z0_val
-            best_x = copy(x_sol)
-            best_α = copy(sub_info[:α_val])
         end
 
         push!(history[:lower_bounds], lower_bound)
@@ -308,10 +272,13 @@ function true_dro_benders_optimize!(td::TrueDROData;
             flush(stdout)
         end
 
-        if gap <= tol
+        effective_tol = (is_boost && gap > tol) ? const_boost_mipgap : tol
+        if gap <= effective_tol
             wall_elapsed = time() - wall_start
             if verbose
-                @info "True-DRO Benders converged at iter $iter (gap=$gap)"
+                boost_tag = is_boost && effective_tol > tol ? " [boost-tol]" : ""
+                @printf("True-DRO Benders converged at iter %d (gap=%.2e)%s\n", iter, gap, boost_tag)
+                flush(stdout)
                 @printf("  Wall time: %.2f sec\n", wall_elapsed)
                 omp_ts = history[:omp_times]
                 sub_exact_mask = history[:sub_is_exact]
@@ -338,26 +305,11 @@ function true_dro_benders_optimize!(td::TrueDROData;
             )
         end
 
-        # ---- Adaptive time limit: gap stagnation in near-convergence zone ----
-        if current_time_limit !== nothing
-            # gap이 1e-3 이하 진입 후에만 stagnation 체크
-            if gap <= 1e-3
-                gap_change = abs(prev_gap - gap)
-                if gap_change < 1e-5
-                    stagnation_count += 1
-                else
-                    stagnation_count = 0
-                end
-            end
-            prev_gap = gap
-
-            if stagnation_count >= stagnation_window
-                current_time_limit = nothing
-                if verbose
-                    @printf("  → Time limit removed (gap stagnation %d iters in near-convergence zone)\n",
-                            stagnation_count)
-                end
-            end
+        # ---- Adaptive: prev state 업데이트 ----
+        if is_global_iter
+            prev_x_global = copy(x_sol)
+            prev_t0_global = t0_val
+            prev_global_was_timelimit = !is_exact
         end
 
         # ---- Add outer cut from bilinear solve ----

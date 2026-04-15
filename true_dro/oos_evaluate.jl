@@ -13,6 +13,7 @@ using LinearAlgebra
 using Statistics
 using Printf
 using Random
+using Distributions
 
 
 """
@@ -186,5 +187,116 @@ function oos_evaluate(x_star::Vector{Float64}, network, capacity_scenarios::Matr
         :follower_share => follower_share,
         :Y_bar => Y_bar_outer,
         :evals => Y_all,
+    )
+end
+
+
+"""
+    oos_evaluate_scenario_L(x_star, network, capacity_scenarios, β_L, β_H, v, w;
+                             M=100, L=1000, seed=nothing) -> Dict
+
+Scenario L (Leader Advantage): P* ≈ q̂, P̃ 부정확.
+  Outer: q̃ ~ Dir(β_L·1_K) → follower 부정확
+  Inner: q_true ~ Dir(β_H·1_K) → truth ≈ q̂
+
+Variance decomposition 활성: 양쪽 loop 모두 stochastic.
+"""
+function oos_evaluate_scenario_L(x_star::Vector{Float64}, network, capacity_scenarios::Matrix{Float64},
+                                   β_L::Float64, β_H::Float64, v::Float64, w::Float64;
+                                   M::Int=100, L::Int=1000, seed=nothing)
+    K = size(capacity_scenarios, 2)
+
+    rng = seed === nothing ? Random.default_rng() : MersenneTwister(seed)
+    dir_follower = Dirichlet(K, β_L)     # q̃ ~ Dir(β_L·1) — follower 부정확
+    dir_true = Dirichlet(K, β_H)          # q_true ~ Dir(β_H·1) — truth ≈ q̂
+
+    Y_bar_outer = Vector{Float64}(undef, M)
+    Y_all = Matrix{Float64}(undef, M, L)
+    var_inner_per_j = Vector{Float64}(undef, M)
+
+    for j in 1:M
+        q_follower = rand(rng, dir_follower)
+        h_star_j = solve_follower_weighted(network, x_star, v, w, capacity_scenarios, q_follower)
+        flows_j = compute_maxflow_per_scenario(network, x_star, h_star_j, v, capacity_scenarios)
+
+        for ℓ in 1:L
+            q_true = rand(rng, dir_true)
+            Y_all[j, ℓ] = dot(q_true, flows_j)
+        end
+
+        Y_bar_outer[j] = mean(Y_all[j, :])
+        var_inner_per_j[j] = var(Y_all[j, :])
+
+        if j % 20 == 0
+            @printf("  OOS-L outer %d/%d: Y_bar=%.4f\n", j, M, Y_bar_outer[j])
+        end
+    end
+
+    Y_bar = mean(Y_bar_outer)
+    var_outer = var(Y_bar_outer)
+    var_inner = mean(var_inner_per_j)
+    total_var = var_outer + var_inner
+    follower_share = total_var > 0 ? var_outer / total_var : 0.0
+    p95 = quantile(Y_bar_outer, 0.95)
+
+    @printf("  OOS-L result: mean=%.4f, p95=%.4f, Var_outer=%.2e, Var_inner=%.2e, follower_share=%.4f\n",
+            Y_bar, p95, var_outer, var_inner, follower_share)
+
+    return Dict(
+        :mean => Y_bar, :p95 => p95,
+        :var_outer => var_outer, :var_inner => var_inner,
+        :follower_share => follower_share,
+        :Y_bar => Y_bar_outer, :evals => Y_all,
+    )
+end
+
+
+"""
+    oos_evaluate_scenario_F(x_star, network, capacity_scenarios, β_L, κ, v, w;
+                             M=100, seed=nothing) -> Dict
+
+Scenario F (Follower Advantage): q̃ ≈ q_true, q_true ≠ q̂.
+  Outer: q_true ~ Dir(β_L·1_K), q̃ ~ Dir(κ·q_true) → q̃ ≈ q_true
+  Inner: deterministic (q_true 고정) → L=1, nature effect = 0
+
+Variance decomposition: nature effect = 0 by design (follower가 truth를 알면
+nature uncertainty가 follower의 recovery를 통해 이미 흡수됨).
+"""
+function oos_evaluate_scenario_F(x_star::Vector{Float64}, network, capacity_scenarios::Matrix{Float64},
+                                   β_L::Float64, κ::Float64, v::Float64, w::Float64;
+                                   M::Int=100, seed=nothing)
+    K = size(capacity_scenarios, 2)
+
+    rng = seed === nothing ? Random.default_rng() : MersenneTwister(seed)
+    dir_true = Dirichlet(K, β_L)
+
+    Y_outer = Vector{Float64}(undef, M)
+
+    for j in 1:M
+        q_true = rand(rng, dir_true)
+        q_follower = rand(rng, Dirichlet(κ * q_true))
+
+        h_star_j = solve_follower_weighted(network, x_star, v, w, capacity_scenarios, q_follower)
+        flows_j = compute_maxflow_per_scenario(network, x_star, h_star_j, v, capacity_scenarios)
+
+        # Inner loop deterministic: eval = dot(q_true, flows)
+        Y_outer[j] = dot(q_true, flows_j)
+
+        if j % 20 == 0
+            @printf("  OOS-F outer %d/%d: Y=%.4f\n", j, M, Y_outer[j])
+        end
+    end
+
+    Y_bar = mean(Y_outer)
+    var_outer = var(Y_outer)
+    p95 = quantile(Y_outer, 0.95)
+
+    @printf("  OOS-F result: mean=%.4f, p95=%.4f, Var=%.2e\n", Y_bar, p95, var_outer)
+
+    return Dict(
+        :mean => Y_bar, :p95 => p95,
+        :var_outer => var_outer, :var_inner => 0.0,
+        :follower_share => 1.0,    # nature effect = 0 by design
+        :Y_bar => Y_outer,
     )
 end

@@ -57,9 +57,10 @@ includet("oos_dirichlet.jl")
 includet("oos_evaluate.jl")
 
 
-# ===== Network configs (test_benders.jl과 동일) =====
+# ===== Network configs =====
 network_configs = Dict(
     :grid_3x3   => Dict(:type => :grid, :m => 3, :n => 3),
+    :grid_4x4   => Dict(:type => :grid, :m => 4, :n => 4),
     :grid_5x5   => Dict(:type => :grid, :m => 5, :n => 5),
     :abilene    => Dict(:type => :real_world, :generator => NetworkGenerator.generate_abilene_network),
     :polska     => Dict(:type => :real_world, :generator => NetworkGenerator.generate_polska_network),
@@ -67,7 +68,7 @@ network_configs = Dict(
 
 
 # ===== Default experiment parameters (spec §8) =====
-const OOS_NETWORKS = [:grid_3x3, :grid_5x5, :abilene]
+const OOS_NETWORKS = [:grid_3x3, :grid_4x4, :grid_5x5, :abilene, :polska]
 const OOS_BETA_VALUES = [0.1, 0.3, 0.5, 0.8]
 const OOS_S = 10              # K (=S) scenarios
 const OOS_GAMMA_RATIO = 0.10
@@ -518,21 +519,23 @@ function _run_oos_test(net_key::Symbol; S=2, β=0.5, M=10, L=100, seed=1)
 end
 
 
-# ===== Entry point =====
-println("\nSelect mode:")
-println("  1) Full experiment (inst_seed=1 only)")
-println("  2) Full experiment + generalize (inst_seed=1..10)")
-println("  3) Quick test (Grid 3x3, S=2, β=0.5)")
-println("  4) Custom test (user input)")
-print("Choice [3]: ")
-choice = strip(readline())
+# ===== Entry point (직접 실행 시에만) =====
+if abspath(PROGRAM_FILE) == @__FILE__
+    println("\nSelect mode:")
+    println("  1) Full experiment (inst_seed=1 only)")
+    println("  2) Full experiment + generalize (inst_seed=1..10)")
+    println("  3) Quick test (Grid 3x3, S=2, β=0.5)")
+    println("  4) Custom test (user input)")
+    print("Choice [3]: ")
+    choice = strip(readline())
 
-if choice == "1"
-    run_oos_experiment(generalize=false)
-elseif choice == "2"
-    run_oos_experiment(generalize=true)
-elseif choice == "4"
-    run_oos_custom_test()
-else
-    run_oos_quick_test()
+    if choice == "1"
+        run_oos_experiment(generalize=false)
+    elseif choice == "2"
+        run_oos_experiment(generalize=true)
+    elseif choice == "4"
+        run_oos_custom_test()
+    else
+        run_oos_quick_test()
+    end
 end

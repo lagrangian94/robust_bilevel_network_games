@@ -86,6 +86,10 @@ function compute_true_dro_outer_cut(td::TrueDROData, sub_info, x_sol)
 
     intercept = Z0 - dot(π_x, x_sol)
 
+    # 수치 잔차 (O(10⁻¹⁰)) → OMP matrix range 경고 방지
+    π_x = round.(π_x; digits=7)
+    intercept = round(intercept; digits=7)
+
     return Dict(:intercept => intercept, :π_x => π_x, :Z0_val => Z0)
 end
 
