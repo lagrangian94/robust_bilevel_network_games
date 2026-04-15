@@ -122,6 +122,19 @@ network_configs = Dict(
 
 
 """
+    compute_interdict_budget(config_key, num_interdictable, γ_ratio) → γ
+
+네트워크별 interdiction budget. Sioux Falls: source 근처 sparse → γ=2로 고정.
+"""
+function compute_interdict_budget(config_key::Symbol, num_interdictable::Int, γ_ratio::Float64)
+    if config_key == :sioux_falls
+        return 2
+    end
+    return ceil(Int, γ_ratio * num_interdictable)
+end
+
+
+"""
     setup_true_dro_instance(config_key; S, γ_ratio, ρ, v, seed, epsilon_hat, epsilon_tilde)
 
 네트워크 + 파라미터 → TrueDROData 생성. compare_benders.jl의 setup_instance 패턴.
@@ -145,7 +158,7 @@ function setup_true_dro_instance(config_key::Symbol;
 
     # --- Parameters (compare_benders.jl 기준) ---
     num_interdictable = sum(network.interdictable_arcs[1:num_arcs])
-    γ = ceil(Int, γ_ratio * num_interdictable)
+    γ = compute_interdict_budget(config_key, num_interdictable, γ_ratio)
 
     # capacities, _ = generate_capacity_scenarios_uniform_model(length(network.arcs), S; seed=seed)
     capacities, _ = generate_capacity_scenarios_factor_model(length(network.arcs), S;
@@ -174,25 +187,35 @@ end
 println("=" ^ 70)
 println("True-DRO Benders Test")
 println("=" ^ 70)
-println("  1. Grid network")
-println("  2. Sioux Falls (24 nodes, 76 arcs)")
-println("  3. Nobel US")
-println("  4. Abilene")
-println("  5. Polska")
-print("선택 (1-5): "); net_choice = parse(Int, readline())
+println("  1. Grid 3x3 (11 nodes, 17 arcs)")
+println("  2. Grid 4x4 (18 nodes, 31 arcs)")
+println("  3. Grid 5x5 (27 nodes, 47 arcs)")
+println("  4. Grid other")
+println("  5. Sioux Falls (24 nodes, 76 arcs)")
+println("  6. Nobel US (14 nodes, 42 arcs)")
+println("  7. Abilene (12 nodes, 30 arcs)")
+println("  8. Polska (12 nodes, 36 arcs)")
+print("선택 (1-8): "); net_choice = parse(Int, readline())
 
 if net_choice == 1
+    instance_key = :grid_3x3
+elseif net_choice == 2
+    instance_key = :grid_4x4
+    network_configs[:grid_4x4] = Dict(:type => :grid, :m => 4, :n => 4)
+elseif net_choice == 3
+    instance_key = :grid_5x5
+elseif net_choice == 4
     print("Grid rows (m): "); m = parse(Int, readline())
     print("Grid cols (n): "); n = parse(Int, readline())
     network_configs[Symbol("grid_$(m)x$(n)")] = Dict(:type => :grid, :m => m, :n => n)
     instance_key = Symbol("grid_$(m)x$(n)")
-elseif net_choice == 2
-    instance_key = :sioux_falls
-elseif net_choice == 3
-    instance_key = :nobel_us
-elseif net_choice == 4
-    instance_key = :abilene
 elseif net_choice == 5
+    instance_key = :sioux_falls
+elseif net_choice == 6
+    instance_key = :nobel_us
+elseif net_choice == 7
+    instance_key = :abilene
+elseif net_choice == 8
     instance_key = :polska
 else
     error("잘못된 선택: $net_choice")
@@ -211,6 +234,8 @@ use_mini_benders = lowercase(mb_str) == "y"
 max_mb_iter = 5
 print("Strengthen cuts? (none/mw) [none]: "); sc_str = strip(readline())
 strengthen_cuts = isempty(sc_str) || sc_str == "none" ? :none : Symbol(sc_str)
+print("Inexact mode? (y/n) [y]: "); inexact_str = strip(readline())
+use_inexact = isempty(inexact_str) || lowercase(inexact_str) == "y"
 print("Valid inequality? (none/mincut) [none]: "); vi_str = strip(readline())
 vi_sym = isempty(vi_str) || vi_str == "none" ? :none : Symbol(vi_str)
 
@@ -248,6 +273,24 @@ network, td = setup_true_dro_instance(instance_key; S=S,
 
 
 # ===== 1. True-DRO Benders =====
+# ===== VI-only OMP diagnostic =====
+if vi_sym == :mincut
+    println("\n" * "-" ^ 40)
+    println("VI-only OMP diagnostic (no Benders cuts)")
+    vi_omp, vi_vars = build_true_dro_omp(td; optimizer=Gurobi.Optimizer, silent=false)
+    add_phase1_mincut_vi!(vi_omp, vi_vars, td)
+    optimize!(vi_omp)
+    vi_st = termination_status(vi_omp)
+    if vi_st == MOI.OPTIMAL
+        vi_lb = objective_value(vi_omp)
+        vi_x = round.(Int, [value(vi_vars[:x][k]) for k in 1:td.num_arcs])
+        @printf("  VI-only LB = %.6f, x = %s\n", vi_lb, string(vi_x))
+    else
+        println("  VI-only OMP: $vi_st")
+    end
+    println("-" ^ 40)
+end
+
 println("\n" * "=" ^ 70)
 println("1. True-DRO Benders (bilinear subproblem via Gurobi NonConvex=2)")
 println("=" ^ 70)
@@ -255,7 +298,7 @@ println("=" ^ 70)
 result = true_dro_benders_optimize!(td;
     mip_optimizer=Gurobi.Optimizer,
     nlp_optimizer=Gurobi.Optimizer,
-    inexact=true,
+    inexact=use_inexact,
     max_iter=1000,
     tol=1e-4,
     verbose=true,

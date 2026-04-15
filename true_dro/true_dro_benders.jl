@@ -111,6 +111,8 @@ function true_dro_benders_optimize!(td::TrueDROData;
             @warn "Could not set $(nonconvex_attr.first) on subproblem: $err"
         end
     end
+    # set_optimizer_attribute(sub_model, "MIQCPMethod", 1)
+    set_optimizer_attribute(sub_model, "LogFile", "global_miqcp.log")
 
     # ---- Build subproblem: local model (ρ ≤ M, local opt에서 ρ 폭발 방지) ----
     local sub_model_local, sub_vars_local
@@ -217,6 +219,7 @@ function true_dro_benders_optimize!(td::TrueDROData;
         if is_boost
             set_time_limit_sec(cur_sub_model, nothing)
             set_optimizer_attribute(cur_sub_model, "MIPGap", const_boost_mipgap)
+            set_optimizer_attribute(cur_sub_model, "MIPFocus", 3)
         else
             effective_time_limit = is_global_iter ? current_time_limit : sub_time_limit
             if effective_time_limit !== nothing
@@ -224,7 +227,8 @@ function true_dro_benders_optimize!(td::TrueDROData;
             else
                 set_time_limit_sec(cur_sub_model, nothing)
             end
-            set_optimizer_attribute(cur_sub_model, "MIPGap", 0.0)
+            set_optimizer_attribute(cur_sub_model, "MIPGap", 1e-4)
+            set_optimizer_attribute(cur_sub_model, "MIPFocus", 0)
         end
 
         # ---- Solve subproblem ----
@@ -236,14 +240,15 @@ function true_dro_benders_optimize!(td::TrueDROData;
         is_exact = sub_info[:is_optimal]
 
         # UB 갱신 (global iter만)
-        # - OPTIMAL: Z₀ exact → UB, best_x, best_α 모두 갱신
+        # - OPTIMAL (exact): Z₀ exact → UB, best_x, best_α 모두 갱신
         # - TIME_LIMIT: Z0_bound (BestBd) = Z₀(x̄) 상한 → UB만 갱신
+        # - Boost (MIPGap 종료): OPTIMAL이지만 gap>0 → BestBd를 UB로 사용
         if is_global_iter
-            if is_exact && Z0_val < upper_bound
+            if is_exact && !is_boost && Z0_val < upper_bound
                 upper_bound = Z0_val
                 best_x = copy(x_sol)
                 best_α = copy(sub_info[:α_val])
-            elseif !is_exact && sub_info[:Z0_bound] < upper_bound
+            elseif (!is_exact || is_boost) && sub_info[:Z0_bound] < upper_bound
                 upper_bound = sub_info[:Z0_bound]
             end
         end
