@@ -1,0 +1,1036 @@
+Log file: C:\Users\user\robust_bilevel_network_games\true_dro\log_abilene_S10_20260415_2127307.txt
+Started: 2026-04-15T21:27:18.326
+
+
+======================================================================
+INSTANCE: abilene (S=10, ε̂=0.1, ε̃=0.1)
+======================================================================
+============================================================
+ABILENE Network Summary
+============================================================
+Number of nodes: 12
+Number of arcs (incl. dummy): 31
+Number of regular arcs: 30
+Number of interdictable arcs: 22
+Source node: s (STTLng)
+Sink node: t (NYCMng)
+Node-incidence matrix N dimensions: (11, 31)
+
+Sparsity Information:
+  Arc-arc adjacency: 268 / 900 pairs (70.2% sparse)
+  Node-arc incidence: 56 / 330 pairs (83.0% sparse)
+
+First 15 arcs:
+  Arc 1: ("ATLAM5", "ATLAng") [Interdictable: ✓]
+  Arc 2: ("ATLAng", "ATLAM5") [Interdictable: ✓]
+  Arc 3: ("ATLAng", "HSTNng") [Interdictable: ✓]
+  Arc 4: ("ATLAng", "IPLSng") [Interdictable: ✓]
+  Arc 5: ("ATLAng", "WASHng") [Interdictable: ✓]
+  Arc 6: ("CHINng", "IPLSng") [Interdictable: ✓]
+  Arc 7: ("CHINng", "t") [Interdictable: ✗]
+  Arc 8: ("DNVRng", "KSCYng") [Interdictable: ✓]
+  Arc 9: ("DNVRng", "SNVAng") [Interdictable: ✓]
+  Arc 10: ("DNVRng", "s") [Interdictable: ✗]
+  Arc 11: ("HSTNng", "ATLAng") [Interdictable: ✓]
+  Arc 12: ("HSTNng", "KSCYng") [Interdictable: ✓]
+  Arc 13: ("HSTNng", "LOSAng") [Interdictable: ✓]
+  Arc 14: ("IPLSng", "ATLAng") [Interdictable: ✓]
+  Arc 15: ("IPLSng", "CHINng") [Interdictable: ✓]
+============================================================
+  |A|=30, S=10, γ=2, w=2.4538, λU=2.0
+  ε̂=0.1, ε̃=0.1
+
+----------------------------------------
+VI-only OMP diagnostic (no Benders cuts)
+Set parameter Username
+Set parameter LicenseID to value 2742039
+Academic license - for non-commercial use only - expires 2026-11-20
+Set parameter OutputFlag to value 1
+Set parameter OutputFlag to value 1
+Gurobi Optimizer version 13.0.0 build v13.0.0rc1 (win64 - Windows 10.0 (19045.2))
+
+CPU model: AMD Ryzen 9 5900X 12-Core Processor, instruction set [SSE2|AVX|AVX2]
+Thread count: 12 physical cores, 24 logical processors, using up to 24 threads
+
+Optimize a model with 1220 rows, 741 columns and 3529 nonzeros (Min)
+Model fingerprint: 0xa1dd1a0c
+Model has 1 linear objective coefficients
+Variable types: 711 continuous, 30 integer (30 binary)
+Coefficient statistics:
+  Matrix range     [2e-02, 3e+00]
+  Objective range  [1e+00, 1e+00]
+  Bounds range     [1e+00, 1e+04]
+  RHS range        [1e+00, 2e+00]
+Found heuristic solution: objective 32.5922461
+Presolve removed 679 rows and 283 columns
+Presolve time: 0.02s
+Presolved: 541 rows, 458 columns, 1268 nonzeros
+Found heuristic solution: objective 32.5922461
+Variable types: 440 continuous, 18 integer (18 binary)
+
+Root relaxation: objective -7.105427e-15, 112 iterations, 0.00 seconds (0.00 work units)
+
+    Nodes    |    Current Node    |     Objective Bounds      |     Work
+ Expl Unexpl |  Obj  Depth IntInf | Incumbent    BestBd   Gap | It/Node Time
+
+*    0     0               0      -0.0000000   -0.00000  0.00%     -    0s
+
+Explored 1 nodes (112 simplex iterations) in 0.02 seconds (0.01 work units)
+Thread count was 24 (of 24 available processors)
+
+Solution count 2: -1.11022e-16 32.5922 
+
+Optimal solution found (tolerance 1.00e-04)
+Best objective -1.221245327088e-15, best bound -7.105427357601e-15, gap 0.0000%
+
+User-callback calls 37, time in user-callback 0.00 sec
+  VI-only LB = -0.000000, x = [0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
+----------------------------------------
+
+======================================================================
+1. True-DRO Benders (bilinear subproblem via Gurobi NonConvex=2)
+======================================================================
+Set parameter Username
+Set parameter LicenseID to value 2742039
+Academic license - for non-commercial use only - expires 2026-11-20
+Set parameter Username
+Set parameter LicenseID to value 2742039
+Academic license - for non-commercial use only - expires 2026-11-20
+Set parameter DualReductions to value 0
+Set parameter NonConvex to value 2
+Set parameter LogFile to value "global_miqcp.log"
+Set parameter Username
+Set parameter LicenseID to value 2742039
+Academic license - for non-commercial use only - expires 2026-11-20
+Set parameter DualReductions to value 0
+Set parameter NonConvex to value 2
+Set parameter OptimalityTarget to value 1
+Set parameter Username
+Set parameter LicenseID to value 2742039
+Academic license - for non-commercial use only - expires 2026-11-20
+Set parameter Username
+Set parameter LicenseID to value 2742039
+Academic license - for non-commercial use only - expires 2026-11-20
+
+=== True-DRO Benders iter 1 ===
+  OMP: t₀=-0.000000, UB=Inf, gap=NaN, x=[0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0] (0.023s)
+Set parameter TimeLimit to value 30
+Set parameter MIPGap to value 0.0001
+Set parameter MIPFocus to value 0
+Set parameter NonConvex to value 2
+Set parameter MIPGap to value 0.0001
+Set parameter DualReductions to value 0
+Set parameter OptimalityTarget to value 1
+Set parameter MIPFocus to value 0
+Set parameter TimeLimit to value 30
+Gurobi Optimizer version 13.0.0 build v13.0.0rc1 (win64 - Windows 10.0 (19045.2))
+
+CPU model: AMD Ryzen 9 5900X 12-Core Processor, instruction set [SSE2|AVX|AVX2]
+Thread count: 12 physical cores, 24 logical processors, using up to 24 threads
+
+Non-default parameters:
+TimeLimit  30
+OptimalityTarget  1
+DualReductions  0
+NonConvex  2
+
+Optimize a model with 1836 rows, 3591 columns and 8421 nonzeros (Max)
+Model fingerprint: 0x11d47fb0
+Model has 640 linear objective coefficients
+Model has 600 quadratic constraints
+Coefficient statistics:
+  Matrix range     [2e-01, 3e+01]
+  QMatrix range    [1e+00, 1e+00]
+  QLMatrix range   [1e+00, 1e+00]
+  Objective range  [1e+00, 2e+00]
+  Bounds range     [2e-01, 1e+01]
+  RHS range        [1e-01, 2e+00]
+Presolve removed 20 rows and 20 columns
+
+Continuous model is non-convex -- solving with NL barrier
+
+Presolve removed 620 rows and 620 columns
+Presolve time: 0.02s
+Presolved: 1216 rows, 2971 columns, 5341 nonzeros
+Presolved model has 600 quadratic constraint(s)
+Ordering time: 0.00s
+
+NL barrier statistics:
+  Hessian NZ  : 6.000e+02
+  Jacobian NZ : 8.341e+03
+  Factor NZ   : 5.216e+04
+  Factor Ops  : 6.501e+05
+  Threads     : 1
+
+                           Residuals
+Iter     Objective      Primal     Dual      Compl     Step     Time
+   0  -4.70504999e+03  3.40e+04  2.41e+03  1.92e+02  0.00e+00     0s
+   1  -4.92473403e+03  2.22e+04  2.01e+03  1.57e+02  3.48e-01     0s
+   2  -5.18698502e+03  1.15e+04  1.53e+03  1.21e+02  4.83e-01     0s
+   3  -5.23098442e+03  9.80e+03  6.44e+02  5.16e+01  1.46e-01     0s
+   4  -5.25372450e+03  4.87e+03  2.93e+02  2.35e+01  5.03e-01     0s
+   5  -4.81514646e+03  1.90e+03  9.24e+01  8.03e+00  6.09e-01     0s
+   6  -3.26935032e+03  3.07e+02  1.14e+01  1.95e+00  8.39e-01     0s
+   7  -2.55990707e+03  1.59e+02  4.52e+00  1.45e+00  4.81e-01     0s
+   8  -1.91882525e+03  1.40e+01  1.97e+00  1.13e+00  9.12e-01     0s
+   9  -1.91775410e+03  4.77e+00  1.47e+00  1.10e+00  6.60e-01     0s
+  10  -1.93302326e+03  4.42e-06  1.82e-01  1.01e+00  1.00e+00     0s
+  11  -1.92767678e+03  9.31e-08  5.31e-05  1.00e+00  1.00e+00     0s
+  12  -1.92267856e+03  1.24e-08  2.07e-07  1.00e+00  1.00e+00     0s
+  13  -1.92359146e+03  1.20e-09  6.12e-09  1.00e+00  1.00e+00     0s
+  14  -8.52270391e+02  2.25e-05  1.58e-02  5.60e-01  8.08e-01     0s
+  15  -6.24179796e+02  2.12e-05  5.91e-03  3.55e-01  3.99e-01     0s
+  16  -4.50609560e+02  4.24e-05  2.42e-02  2.18e-01  4.84e-01     0s
+  17  -2.81944795e+02  2.68e-04  1.48e-02  1.52e-01  9.16e-01     0s
+  18  -2.70801101e+02  7.14e-05  3.52e-03  1.50e-01  1.00e+00     0s
+  19  -2.70798339e+02  3.98e-07  8.23e-06  1.50e-01  1.00e+00     0s
+  20  -2.70775506e+02  4.01e-10  2.61e-09  1.50e-01  1.00e+00     0s
+  21  -1.58665238e+02  4.30e-04  4.92e-02  9.59e-02  4.36e-01     0s
+  22  -6.95694277e+01  3.99e-03  1.47e-01  4.58e-02  6.52e-01     0s
+  23  -3.41383050e+01  4.22e-03  5.55e-02  2.32e-02  8.67e-01     0s
+  24  -3.14267247e+01  6.90e-05  3.84e-03  2.25e-02  1.00e+00     0s
+  25  -3.13721729e+01  3.61e-06  1.25e-04  2.25e-02  1.00e+00     0s
+  26  -1.15756478e+01  8.17e-04  4.73e-02  8.61e-03  6.43e-01     0s
+  27  -2.61606090e+00  3.38e-04  1.95e-02  3.42e-03  9.60e-01     0s
+  28  -2.37392790e+00  1.72e-04  1.98e-03  3.37e-03  1.00e+00     0s
+  29  -2.37407347e+00  2.44e-06  7.40e-05  3.38e-03  1.00e+00     0s
+  30   1.20406104e+00  6.32e-04  9.67e-03  1.14e-03  8.29e-01     0s
+  31   1.91167056e+00  1.57e-04  3.65e-03  3.46e-04  1.00e+00     0s
+  32   1.92671461e+00  1.33e-05  1.83e-04  3.46e-04  1.00e+00     0s
+  33   1.92627250e+00  2.34e-07  2.03e-06  3.46e-04  1.00e+00     0s
+  34   2.35944533e+00  2.88e-05  7.56e-04  5.36e-05  9.08e-01     0s
+  35   2.40642361e+00  4.31e-06  8.86e-05  1.43e-05  1.00e+00     0s
+  36   2.40663337e+00  1.81e-08  3.49e-07  1.43e-05  1.00e+00     0s
+  37   2.42727905e+00  1.57e-07  1.55e-06  1.65e-07  1.00e+00     0s
+  38   2.42729043e+00  1.65e-11  1.13e-09  1.65e-07  1.00e+00     0s
+  39   2.42753025e+00  2.22e-11  2.20e-10  1.00e-09  1.00e+00     0s
+
+NL barrier solved model in 39 iterations and 0.15 seconds (0.10 work units)
+First-order optimal solution
+Solution objective 2.427530246721e+00
+
+User-callback calls 111, time in user-callback 0.00 sec
+  Sub: Z₀=2.427530 [LOCAL], α=[0.000,0.000,0.000,0.000,0.000,0.000,0.000,1.683,0.000,0.000,0.000,0.000,0.000,0.000,0.000,0.000,0.000,0.000,0.000,0.771,0.000,0.000,0.000,0.000,0.000,0.000,0.000,0.000,0.000,0.000]
+  Iter 1: LB=-0.000000  UB=Inf  gap=NaN
+  Cut: intercept=-311.204269, π_x_range=[-216.8082, 157.8612]
+  [ρ-diag] φ̂U=1.00, φ̃U=2.00, λU=2.00
+    π_L range=[-67.9659, 47.9729], |π_L|_∞=67.9659
+    π_F range=[-135.5091, 97.4272], |π_F|_∞=135.5091
+    π_ψ range=[-13.3333, 15.7011], |π_ψ|_∞=15.7011
+    ρ̂1: [0.0000, 6.9947], ρ̂3: [0.0000, 5.0000]
+    ρ̃1: [0.0000, 6.9279], ρ̃3: [0.0000, 4.9765]
+    ρ⁰1: [0.0000, 6.6667], ρ⁰3: [0.0000, 7.8506]
+  [φ-diag] φ̂ actual: [0.0000, 1.0000], φ̂U=1.00
+  [φ-diag] φ̃ actual: [0.0000, 2.0000], φ̃U=2.00
+  Mini-Benders[1] (mw): LB=0.000000, Z₀(α*)=-4.224922, intercept=-9.205621
+  Mini-Benders[2] (mw): LB=0.000000, Z₀(α*)=-4.224922, intercept=-9.205621
+  Mini-Benders[3]: LB stagnated, break
+Set parameter NonConvex to value 2
+Set parameter DualReductions to value 0
+Set parameter LogFile to value "global_miqcp.log"
+Gurobi Optimizer version 13.0.0 build v13.0.0rc1 (win64 - Windows 10.0 (19045.2))
+
+CPU model: AMD Ryzen 9 5900X 12-Core Processor, instruction set [SSE2|AVX|AVX2]
+Thread count: 12 physical cores, 24 logical processors, using up to 24 threads
+
+Non-default parameters:
+DualReductions  0
+NonConvex  2
+
+Optimize a model with 1836 rows, 3591 columns and 8421 nonzeros (Max)
+Model fingerprint: 0xd69862e7
+Model has 640 linear objective coefficients
+Model has 600 quadratic constraints
+Coefficient statistics:
+  Matrix range     [2e-01, 3e+01]
+  QMatrix range    [1e+00, 1e+00]
+  QLMatrix range   [1e+00, 1e+00]
+  Objective range  [1e+00, 2e+00]
+  Bounds range     [1e-01, 2e+00]
+  RHS range        [1e-01, 2e+00]
+Presolve removed 72 rows and 100 columns
+Presolve time: 0.00s
+Presolved: 2304 rows, 3491 columns, 8201 nonzeros
+Ordering time: 0.02s
+
+Barrier statistics:
+ Free vars  : 100
+ AA' NZ     : 1.007e+04
+ Factor NZ  : 7.012e+04 (roughly 3 MB of memory)
+ Factor Ops : 3.965e+06 (less than 1 second per iteration)
+ Threads    : 1
+
+                  Objective                Residual
+Iter       Primal          Dual         Primal    Dual     Compl     Time
+   0  -6.79954897e+03 -0.00000000e+00  9.67e+02 1.00e+00  3.36e+01     0s
+   1  -6.29897814e+03  9.37308212e+02  2.90e+02 3.89e+00  1.44e+01     0s
+   2  -4.55249155e+03  6.83056583e+02  5.49e+01 9.38e-01  3.66e+00     0s
+   3  -1.79562734e+03  4.94596216e+02  2.94e+00 1.49e-01  7.09e-01     0s
+   4  -8.44946057e+01  1.66379469e+02  7.38e-02 8.08e-03  5.70e-02     0s
+   5  -1.56552481e+01  3.99994906e+01  1.13e-02 1.46e-03  1.22e-02     0s
+   6  -7.79050830e+00  2.60551474e+01  6.22e-03 8.80e-04  7.42e-03     0s
+   7  -1.10426253e+00  9.75076540e+00  2.08e-03 2.38e-04  2.35e-03     0s
+   8   6.93368384e-01  6.17381093e+00  9.92e-04 1.16e-04  1.19e-03     0s
+   9   2.09474026e+00  3.10643974e+00  1.36e-04 1.51e-05  2.18e-04     0s
+  10   2.41136170e+00  2.41319568e+00  2.12e-08 7.32e-09  3.46e-07     0s
+  11   2.41202529e+00  2.41202665e+00  2.79e-10 8.06e-12  2.54e-10     0s
+  12   2.41202620e+00  2.41202620e+00  1.96e-11 2.64e-14  8.25e-13     0s
+
+Barrier solved model in 12 iterations and 0.07 seconds (0.03 work units)
+Optimal objective 2.41202620e+00
+
+
+User-callback calls 56, time in user-callback 0.00 sec
+  α-step: Z₀=2.412026, α=[0.000,0.000,0.000,0.000,0.000,0.000,0.000,0.000,0.000,0.000,1.151,0.000,0.000,0.000,0.000,0.000,0.000,0.000,1.303,0.000,0.000,0.000,0.000,0.000,0.000,0.000,0.000,0.000,0.000,0.000]
+  Alt-Benders[1] (mw): LB=-0.000000, Z₀(α*)=-4.224922, intercept=-1.883984
+  Alt-Benders[2] (mw): LB=-0.000000, Z₀(α*)=-4.224922, intercept=-1.883984
+  Alt-Benders[3]: LB stagnated, break
+  OMP re-solve: 0.000s
+
+=== True-DRO Benders iter 2 ===
+  OMP: t₀=-0.000000, UB=Inf, gap=NaN, x=[0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0] (0.000s)
+Set parameter TimeLimit to value 30
+Set parameter MIPGap to value 0.0001
+Set parameter MIPFocus to value 0
+Gurobi Optimizer version 13.0.0 build v13.0.0rc1 (win64 - Windows 10.0 (19045.2))
+
+CPU model: AMD Ryzen 9 5900X 12-Core Processor, instruction set [SSE2|AVX|AVX2]
+Thread count: 12 physical cores, 24 logical processors, using up to 24 threads
+
+Non-default parameters:
+TimeLimit  30
+OptimalityTarget  1
+DualReductions  0
+NonConvex  2
+
+Optimize a model with 1836 rows, 3591 columns and 8421 nonzeros (Max)
+Model fingerprint: 0x496e7fd2
+Model has 640 linear objective coefficients
+Model has 600 quadratic constraints
+Variable types: 3591 continuous, 0 integer (0 binary)
+Coefficient statistics:
+  Matrix range     [2e-01, 3e+01]
+  QMatrix range    [1e+00, 1e+00]
+  QLMatrix range   [1e+00, 1e+00]
+  Objective range  [1e+00, 2e+00]
+  Bounds range     [2e-01, 1e+01]
+  RHS range        [1e-01, 2e+00]
+Presolve removed 620 rows and 620 columns
+Presolve time: 0.01s
+Presolved: 1216 rows, 2971 columns, 5341 nonzeros
+Presolved model has 600 quadratic constraint(s)
+
+Solving NLP to local optimality
+
+Ordering time: 0.00s
+
+NL barrier statistics:
+  Hessian NZ  : 6.000e+02
+  Jacobian NZ : 8.341e+03
+  Factor NZ   : 5.216e+04
+  Factor Ops  : 6.501e+05
+  Threads     : 1
+
+                           Residuals
+Iter     Objective      Primal     Dual      Compl     Step     Time
+   0  -4.70904579e+03  3.40e+04  2.41e+03  1.92e+02  0.00e+00     0s
+   1  -4.92763033e+03  2.22e+04  2.01e+03  1.57e+02  3.48e-01     0s
+   2  -5.18883087e+03  1.15e+04  1.53e+03  1.21e+02  4.83e-01     0s
+   3  -5.23272428e+03  9.80e+03  6.44e+02  5.16e+01  1.46e-01     0s
+   4  -5.25588512e+03  4.87e+03  2.93e+02  2.35e+01  5.03e-01     0s
+   5  -4.81821065e+03  1.90e+03  9.24e+01  8.03e+00  6.09e-01     0s
+   6  -3.27377392e+03  3.08e+02  9.99e+00  1.87e+00  8.38e-01     0s
+   7  -2.55414247e+03  1.60e+02  4.03e+00  1.42e+00  4.81e-01     0s
+   8  -1.91780329e+03  1.39e+01  1.56e+00  1.11e+00  9.13e-01     0s
+   9  -1.92987104e+03  2.19e+00  1.08e+00  1.08e+00  8.43e-01     0s
+  10  -1.92509999e+03  1.55e+00  2.78e-01  1.02e+00  2.94e-01     0s
+  11  -1.93376862e+03  1.03e-06  4.00e-04  1.00e+00  1.00e+00     0s
+  12  -1.92397546e+03  1.28e-08  3.67e-06  1.00e+00  1.00e+00     0s
+  13  -1.92541902e+03  3.42e-09  1.90e-08  1.00e+00  1.00e+00     0s
+  14  -8.54638229e+02  2.21e-05  1.58e-02  5.59e-01  8.09e-01     0s
+  15  -5.27858042e+02  2.73e-05  1.79e-02  3.41e-01  5.74e-01     0s
+  16  -2.69511507e+02  1.17e-04  5.70e-02  2.08e-01  1.00e+00     0s
+  17  -2.71684260e+02  9.83e-05  1.53e-02  1.50e-01  1.00e+00     0s
+  18  -2.70701193e+02  6.92e-05  1.34e-03  1.50e-01  1.00e+00     0s
+  19  -1.35509121e+02  6.35e-04  1.13e-01  9.16e-02  5.22e-01     0s
+  20  -6.59119520e+01  3.32e-03  4.69e-01  3.59e-02  6.15e-01     0s
+  21  -3.21322322e+01  6.34e-03  5.50e-02  2.29e-02  9.24e-01     0s
+  22  -3.13646059e+01  3.45e-04  9.47e-03  2.25e-02  1.00e+00     0s
+  23  -3.12694329e+01  1.52e-05  8.20e-04  2.25e-02  1.00e+00     0s
+  24  -1.07148766e+01  7.42e-04  4.29e-02  1.04e-02  6.71e-01     0s
+  25  -2.34215654e+00  1.54e-04  1.92e-02  3.39e-03  9.91e-01     0s
+  26  -2.37733254e+00  1.46e-04  1.60e-03  3.37e-03  1.00e+00     0s
+  27  -2.37862425e+00  2.90e-06  1.76e-05  3.37e-03  1.00e+00     0s
+  28   1.23136779e+00  2.32e-04  1.23e-02  1.14e-03  8.39e-01     0s
+  29   1.89748268e+00  1.45e-04  3.44e-03  3.46e-04  1.00e+00     0s
+  30   1.91237524e+00  1.16e-05  1.24e-04  3.46e-04  1.00e+00     0s
+  31   1.91153483e+00  9.91e-08  5.57e-06  3.46e-04  1.00e+00     0s
+  32   2.30667462e+00  3.20e-05  4.83e-04  5.86e-05  8.30e-01     0s
+  33   2.39089704e+00  4.62e-06  6.23e-05  1.43e-05  1.00e+00     0s
+  34   2.39112942e+00  7.04e-09  4.02e-07  1.43e-05  1.00e+00     0s
+  35   2.41177214e+00  1.62e-07  1.36e-06  1.65e-07  1.00e+00     0s
+  36   2.41178492e+00  6.88e-12  1.74e-09  1.65e-07  1.00e+00     0s
+  37   2.41202474e+00  2.24e-11  1.88e-10  1.00e-09  1.00e+00     0s
+
+NL barrier solved model in 37 iterations and 0.13 seconds (0.09 work units)
+First-order optimal solution
+Solution objective 2.412024739347e+00
+
+User-callback calls 96, time in user-callback 0.00 sec
+  Sub: Z₀=2.412025 [LOCAL], α=[0.000,0.000,0.000,0.000,1.074,0.000,0.000,0.000,0.000,0.000,0.000,0.000,0.000,0.000,1.379,0.000,0.000,0.000,0.000,0.000,0.000,0.000,0.000,0.000,0.000,0.000,0.000,0.000,0.000,0.000]
+  Iter 2: LB=-0.000000  UB=Inf  gap=NaN
+  Cut: intercept=-310.912739, π_x_range=[-216.6548, 158.0675]
+  [ρ-diag] φ̂U=1.00, φ̃U=2.00, λU=2.00
+    π_L range=[-67.9003, 48.1813], |π_L|_∞=67.9003
+    π_F range=[-135.4292, 97.8778], |π_F|_∞=135.4292
+    π_ψ range=[-13.3333, 16.6684], |π_ψ|_∞=16.6684
+    ρ̂1: [0.0000, 6.9840], ρ̂3: [0.0000, 5.0000]
+    ρ̃1: [0.0000, 6.9257], ρ̃3: [0.0000, 4.9734]
+    ρ⁰1: [0.0000, 6.6667], ρ⁰3: [0.0000, 8.3342]
+  [φ-diag] φ̂ actual: [-0.0000, 1.0000], φ̂U=1.00
+  [φ-diag] φ̃ actual: [0.0000, 2.0000], φ̃U=2.00
+  Mini-Benders[1] (mw): LB=0.000000, Z₀(α*)=-4.281892, intercept=-11.297542
+  Mini-Benders[2] (mw): LB=0.000000, Z₀(α*)=-4.281892, intercept=-11.297542
+  Mini-Benders[3]: LB stagnated, break
+Gurobi Optimizer version 13.0.0 build v13.0.0rc1 (win64 - Windows 10.0 (19045.2))
+
+CPU model: AMD Ryzen 9 5900X 12-Core Processor, instruction set [SSE2|AVX|AVX2]
+Thread count: 12 physical cores, 24 logical processors, using up to 24 threads
+
+Non-default parameters:
+DualReductions  0
+NonConvex  2
+
+Optimize a model with 1836 rows, 3591 columns and 8421 nonzeros (Max)
+Model fingerprint: 0xda8bfa7c
+Model has 640 linear objective coefficients
+Model has 600 quadratic constraints
+Coefficient statistics:
+  Matrix range     [2e-01, 3e+01]
+  QMatrix range    [1e+00, 1e+00]
+  QLMatrix range   [1e+00, 1e+00]
+  Objective range  [1e+00, 2e+00]
+  Bounds range     [1e-01, 2e+00]
+  RHS range        [1e-01, 2e+00]
+Presolve removed 72 rows and 100 columns
+Presolve time: 0.00s
+Presolved: 2304 rows, 3491 columns, 8201 nonzeros
+Ordering time: 0.03s
+
+Barrier statistics:
+ Free vars  : 100
+ AA' NZ     : 1.007e+04
+ Factor NZ  : 7.012e+04 (roughly 3 MB of memory)
+ Factor Ops : 3.965e+06 (less than 1 second per iteration)
+ Threads    : 1
+
+                  Objective                Residual
+Iter       Primal          Dual         Primal    Dual     Compl     Time
+   0  -6.80116716e+03 -0.00000000e+00  9.67e+02 1.00e+00  3.36e+01     0s
+   1  -6.29437082e+03  9.36691964e+02  2.91e+02 3.90e+00  1.44e+01     0s
+   2  -4.56200222e+03  6.83974718e+02  5.66e+01 9.74e-01  3.77e+00     0s
+   3  -1.78346598e+03  4.82912772e+02  4.84e+00 1.35e-01  7.01e-01     0s
+   4  -1.49630627e+02  1.68542672e+02  1.98e-01 9.34e-03  7.21e-02     0s
+   5  -2.23394845e+01  3.64133188e+01  2.57e-02 1.12e-03  1.25e-02     0s
+   6  -1.36417872e+01  2.30556024e+01  1.70e-02 6.23e-04  7.74e-03     0s
+   7  -3.61443245e+00  1.15933256e+01  6.87e-03 2.50e-04  3.22e-03     0s
+   8   6.03225688e-01  6.28999707e+00  2.03e-03 9.92e-05  1.22e-03     0s
+   9   1.39258467e+00  4.13768618e+00  1.16e-03 4.03e-05  5.80e-04     0s
+  10   2.39358945e+00  2.52377199e+00  1.48e-05 1.04e-06  2.72e-05     0s
+  11   2.42749363e+00  2.42758433e+00  1.58e-09 2.64e-10  1.71e-08     0s
+  12   2.42753165e+00  2.42753174e+00  3.11e-11 2.48e-13  1.52e-11     0s
+  13   2.42753171e+00  2.42753171e+00  8.61e-13 7.11e-15  8.90e-14     0s
+
+Barrier solved model in 13 iterations and 0.07 seconds (0.03 work units)
+Optimal objective 2.42753171e+00
+
+
+User-callback calls 60, time in user-callback 0.00 sec
+  α-step: Z₀=2.427532, α=[0.000,0.000,0.000,0.000,0.000,0.000,0.000,2.043,0.000,0.000,0.000,0.000,0.000,0.000,0.000,0.000,0.000,0.000,0.000,0.000,0.000,0.000,0.411,0.000,0.000,0.000,0.000,0.000,0.000,0.000]
+  Alt-Benders[1] (mw): LB=1.950690, Z₀(α*)=0.729044, intercept=-5.538311
+  Alt-Benders[2] (mw): LB=1.950690, Z₀(α*)=0.729044, intercept=-5.538311
+  Alt-Benders[3] (mw): LB=1.950690, Z₀(α*)=0.729044, intercept=-5.538311
+  Alt-Benders[4]: LB stagnated, break
+  OMP re-solve: 0.000s
+
+=== True-DRO Benders iter 3 ===
+  OMP: t₀=1.950690, UB=Inf, gap=NaN, x=[0, 0, 0, 0, 1, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0] (0.001s)
+Set parameter TimeLimit to value 30
+Set parameter MIPGap to value 0.0001
+Set parameter MIPFocus to value 0
+Gurobi Optimizer version 13.0.0 build v13.0.0rc1 (win64 - Windows 10.0 (19045.2))
+
+CPU model: AMD Ryzen 9 5900X 12-Core Processor, instruction set [SSE2|AVX|AVX2]
+Thread count: 12 physical cores, 24 logical processors, using up to 24 threads
+
+Non-default parameters:
+TimeLimit  30
+DualReductions  0
+NonConvex  2
+
+Optimize a model with 1836 rows, 3591 columns and 8421 nonzeros (Max)
+Model fingerprint: 0xda649968
+Model has 640 linear objective coefficients
+Model has 600 quadratic constraints
+Coefficient statistics:
+  Matrix range     [2e-01, 3e+01]
+  QMatrix range    [1e+00, 1e+00]
+  QLMatrix range   [1e+00, 1e+00]
+  Objective range  [1e+00, 2e+00]
+  Bounds range     [2e-01, 2e+00]
+  RHS range        [1e-01, 2e+00]
+Presolve removed 20 rows and 20 columns
+
+Continuous model is non-convex -- solving as a MIP
+
+Presolve removed 20 rows and 20 columns
+Presolve time: 0.02s
+Presolved: 4216 rows, 3572 columns, 13141 nonzeros
+Presolved model has 600 bilinear constraint(s)
+Variable types: 3572 continuous, 0 integer (0 binary)
+Found heuristic solution: objective 3.8780213
+
+Root relaxation: objective 5.846248e+00, 1464 iterations, 0.02 seconds (0.04 work units)
+
+    Nodes    |    Current Node    |     Objective Bounds      |     Work
+ Expl Unexpl |  Obj  Depth IntInf | Incumbent    BestBd   Gap | It/Node Time
+
+     0     0    5.84625    0   72    3.87802    5.84625  50.8%     -    0s
+     0     0    4.13874    0   52    3.87802    4.13874  6.72%     -    0s
+     0     0    4.13874    0   54    3.87802    4.13874  6.72%     -    0s
+     0     0    4.05339    0   65    3.87802    4.05339  4.52%     -    0s
+     0     0    4.05339    0   64    3.87802    4.05339  4.52%     -    0s
+     0     0    4.03315    0   76    3.87802    4.03315  4.00%     -    1s
+     0     0    4.03315    0   76    3.87802    4.03315  4.00%     -    1s
+     0     0    4.02102    0   78    3.87802    4.02102  3.69%     -    1s
+     0     0    4.02036    0   77    3.87802    4.02036  3.67%     -    1s
+     0     0    4.02036    0   77    3.87802    4.02036  3.67%     -    1s
+     0     0    4.00756    0   97    3.87802    4.00756  3.34%     -    1s
+     0     0    4.00738    0   97    3.87802    4.00738  3.34%     -    1s
+     0     0    3.98741    0   80    3.87802    3.98741  2.82%     -    2s
+     0     0    3.97160    0   97    3.87802    3.97160  2.41%     -    2s
+H    0     0                       3.8780216    3.97053  2.39%     -    2s
+     0     0    3.97053    0   77    3.87802    3.97053  2.39%     -    2s
+     0     0    3.96366    0   78    3.87802    3.96366  2.21%     -    2s
+     0     0    3.96366    0   77    3.87802    3.96366  2.21%     -    3s
+     0     0    3.95875    0   78    3.87802    3.95875  2.08%     -    3s
+     0     0    3.95875    0   78    3.87802    3.95875  2.08%     -    3s
+     0     0    3.95875    0   78    3.87802    3.95875  2.08%     -    3s
+     0     0    3.95875    0   76    3.87802    3.95875  2.08%     -    4s
+     0     0    3.95875    0   76    3.87802    3.95875  2.08%     -    4s
+     0     0    3.95875    0   76    3.87802    3.95875  2.08%     -    4s
+     0     0    3.95875    0   76    3.87802    3.95875  2.08%     -    4s
+     0     0    3.95813    0   80    3.87802    3.95813  2.07%     -    4s
+     0     0    3.95813    0   80    3.87802    3.95813  2.07%     -    4s
+H    0     0                       3.8780220    3.95813  2.07%     -    5s
+     0     2    3.95813    0   80    3.87802    3.95813  2.07%     -    5s
+   205   156    3.88577   10   74    3.87802    3.93448  1.46%  81.2   10s
+*  326   205              28       3.8780226    3.93446  1.46%  71.0   11s
+*  400   244              36       3.8780229    3.93446  1.46%  67.2   13s
+*  401   244              36       3.8780233    3.93446  1.46%  67.0   13s
+   465   265     cutoff    8         3.87802    3.91767  1.02%  64.6   15s
+   704   392     cutoff    8         3.87802    3.91082  0.85%  55.3   20s
+*  807   433              44       3.8780235    3.91082  0.85%  53.2   22s
+*  829   433              46       3.8780241    3.91082  0.85%  52.5   22s
+   937   477    3.88018   14   95    3.87802    3.90875  0.79%  50.8   25s
+  1186   579    3.87947   13   68    3.87802    3.90649  0.73%  48.1   30s
+
+Cutting planes:
+  RLT: 129
+
+Explored 1226 nodes (61627 simplex iterations) in 30.23 seconds (2.14 work units)
+Thread count was 24 (of 24 available processors)
+
+Solution count 6: 3.87802 3.87802 3.87802 ... 3.87802
+
+Time limit reached
+Best objective 3.878024145554e+00, best bound 3.905658698545e+00, gap 0.7126%
+
+User-callback calls 787, time in user-callback 0.00 sec
+  Sub: Z₀=3.878024 [TIME_LIMIT], α=[0.000,0.000,0.000,0.000,0.197,0.000,0.000,0.952,0.000,0.000,0.000,0.000,0.000,0.000,1.304,0.000,0.000,0.000,0.000,0.000,0.000,0.000,0.000,0.000,0.000,0.000,0.000,0.000,0.000,0.000]
+  Iter 3: LB=1.950690  UB=3.905659  gap=5.01e-01
+  Cut: intercept=-5.938228, π_x_range=[-24.8389, 6.6424]
+  [ρ-diag] φ̂U=1.00, φ̃U=2.00, λU=2.00
+    π_L range=[-12.4411, 0.0000], |π_L|_∞=12.4411
+    π_F range=[-12.3977, 0.0000], |π_F|_∞=12.3977
+    π_ψ range=[0.0000, 6.8168], |π_ψ|_∞=6.8168
+    ρ̂1: [0.0000, 5.1267], ρ̂3: [0.0000, 0.0000]
+    ρ̃1: [0.0000, 1.4639], ρ̃3: [0.0000, 0.0000]
+    ρ⁰1: [0.0000, 0.0000], ρ⁰3: [0.0000, 3.4084]
+  [φ-diag] φ̂ actual: [-0.0000, 1.0000], φ̂U=1.00
+  [φ-diag] φ̃ actual: [-0.0000, 2.0000], φ̃U=2.00
+  Mini-Benders[1] (mw): LB=2.077700, Z₀(α*)=2.797100, intercept=-3.228269
+  Mini-Benders[2] (mw): LB=2.092468, Z₀(α*)=2.896232, intercept=0.495858
+  Mini-Benders[3] (mw): LB=2.092468, Z₀(α*)=2.214694, intercept=-9.078948
+  Mini-Benders[4] (mw): LB=2.100747, Z₀(α*)=3.452873, intercept=-1.659685
+  Mini-Benders[5] (mw): LB=2.194580, Z₀(α*)=2.805757, intercept=-1.178134
+Gurobi Optimizer version 13.0.0 build v13.0.0rc1 (win64 - Windows 10.0 (19045.2))
+
+CPU model: AMD Ryzen 9 5900X 12-Core Processor, instruction set [SSE2|AVX|AVX2]
+Thread count: 12 physical cores, 24 logical processors, using up to 24 threads
+
+Non-default parameters:
+TimeLimit  30
+DualReductions  0
+NonConvex  2
+
+Optimize a model with 1836 rows, 3591 columns and 8421 nonzeros (Max)
+Model fingerprint: 0x9e8c556e
+Model has 640 linear objective coefficients
+Model has 600 quadratic constraints
+Variable types: 3591 continuous, 0 integer (0 binary)
+Coefficient statistics:
+  Matrix range     [2e-01, 3e+01]
+  QMatrix range    [1e+00, 1e+00]
+  QLMatrix range   [1e+00, 1e+00]
+  Objective range  [1e+00, 2e+00]
+  Bounds range     [1e-01, 2e+00]
+  RHS range        [1e-01, 2e+00]
+
+MIP start from previous solve did not produce a new incumbent solution
+
+Presolve removed 74 rows and 660 columns
+Presolve time: 0.02s
+Presolved: 1762 rows, 2931 columns, 7101 nonzeros
+Variable types: 2931 continuous, 0 integer (0 binary)
+
+Root relaxation: objective 4.904243e+00, 993 iterations, 0.00 seconds (0.01 work units)
+
+    Nodes    |    Current Node    |     Objective Bounds      |     Work
+ Expl Unexpl |  Obj  Depth IntInf | Incumbent    BestBd   Gap | It/Node Time
+
+*    0     0               0       4.9042427    4.90424  0.00%     -    0s
+
+Explored 1 nodes (993 simplex iterations) in 0.08 seconds (0.02 work units)
+Thread count was 24 (of 24 available processors)
+
+Solution count 1: 4.90424 
+
+Optimal solution found (tolerance 1.00e-04)
+Best objective 4.904242719505e+00, best bound 4.904242719505e+00, gap 0.0000%
+
+User-callback calls 48, time in user-callback 0.00 sec
+  α-step: Z₀=4.904243, α=[0.000,0.000,0.000,0.000,0.000,0.000,0.000,0.000,0.000,0.000,0.000,0.000,0.000,0.000,2.454,0.000,0.000,0.000,0.000,0.000,0.000,0.000,0.000,0.000,0.000,0.000,0.000,0.000,0.000,0.000]
+  Alt-Benders[1] (mw): LB=2.214693, Z₀(α*)=4.786417, intercept=-9.936057
+  Alt-Benders[2] (mw): LB=2.400310, Z₀(α*)=4.818170, intercept=-1.839763
+  Alt-Benders[3] (mw): LB=2.412025, Z₀(α*)=2.412026, intercept=-1.986689
+  Alt-Benders[4] (mw): LB=2.412025, Z₀(α*)=2.412026, intercept=-1.986689
+  Alt-Benders[5] (mw): LB=2.412025, Z₀(α*)=2.412026, intercept=-1.986689
+  OMP re-solve: 0.163s
+
+=== True-DRO Benders iter 4 ===
+  OMP: t₀=2.412025, UB=3.905659, gap=3.82e-01, x=[0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0] (0.001s)
+Set parameter TimeLimit to value 30
+Set parameter MIPGap to value 0.0001
+Set parameter MIPFocus to value 0
+Gurobi Optimizer version 13.0.0 build v13.0.0rc1 (win64 - Windows 10.0 (19045.2))
+
+CPU model: AMD Ryzen 9 5900X 12-Core Processor, instruction set [SSE2|AVX|AVX2]
+Thread count: 12 physical cores, 24 logical processors, using up to 24 threads
+
+Non-default parameters:
+TimeLimit  30
+OptimalityTarget  1
+DualReductions  0
+NonConvex  2
+
+Optimize a model with 1836 rows, 3591 columns and 8421 nonzeros (Max)
+Model fingerprint: 0x496e7fd2
+Model has 640 linear objective coefficients
+Model has 600 quadratic constraints
+Variable types: 3591 continuous, 0 integer (0 binary)
+Coefficient statistics:
+  Matrix range     [2e-01, 3e+01]
+  QMatrix range    [1e+00, 1e+00]
+  QLMatrix range   [1e+00, 1e+00]
+  Objective range  [1e+00, 2e+00]
+  Bounds range     [2e-01, 1e+01]
+  RHS range        [1e-01, 2e+00]
+Presolve removed 620 rows and 620 columns
+Presolve time: 0.02s
+Presolved: 1216 rows, 2971 columns, 5341 nonzeros
+Presolved model has 600 quadratic constraint(s)
+
+Solving NLP to local optimality
+
+Ordering time: 0.01s
+
+NL barrier statistics:
+  Hessian NZ  : 6.000e+02
+  Jacobian NZ : 8.341e+03
+  Factor NZ   : 5.216e+04
+  Factor Ops  : 6.501e+05
+  Threads     : 1
+
+                           Residuals
+Iter     Objective      Primal     Dual      Compl     Step     Time
+   0  -4.70904579e+03  3.40e+04  2.41e+03  1.92e+02  0.00e+00     0s
+   1  -4.92763033e+03  2.22e+04  2.01e+03  1.57e+02  3.48e-01     0s
+   2  -5.18883087e+03  1.15e+04  1.53e+03  1.21e+02  4.83e-01     0s
+   3  -5.23272428e+03  9.80e+03  6.44e+02  5.16e+01  1.46e-01     0s
+   4  -5.25588512e+03  4.87e+03  2.93e+02  2.35e+01  5.03e-01     0s
+   5  -4.81821065e+03  1.90e+03  9.24e+01  8.03e+00  6.09e-01     0s
+   6  -3.27377392e+03  3.08e+02  9.99e+00  1.87e+00  8.38e-01     0s
+   7  -2.55414247e+03  1.60e+02  4.03e+00  1.42e+00  4.81e-01     0s
+   8  -1.91780329e+03  1.39e+01  1.56e+00  1.11e+00  9.13e-01     0s
+   9  -1.92987104e+03  2.19e+00  1.08e+00  1.08e+00  8.43e-01     0s
+  10  -1.92509999e+03  1.55e+00  2.78e-01  1.02e+00  2.94e-01     0s
+  11  -1.93376862e+03  1.03e-06  4.00e-04  1.00e+00  1.00e+00     0s
+  12  -1.92397546e+03  1.28e-08  3.67e-06  1.00e+00  1.00e+00     0s
+  13  -1.92541902e+03  3.42e-09  1.90e-08  1.00e+00  1.00e+00     0s
+  14  -8.54638229e+02  2.21e-05  1.58e-02  5.59e-01  8.09e-01     0s
+  15  -5.27858042e+02  2.73e-05  1.79e-02  3.41e-01  5.74e-01     0s
+  16  -2.69511507e+02  1.17e-04  5.70e-02  2.08e-01  1.00e+00     0s
+  17  -2.71684260e+02  9.83e-05  1.53e-02  1.50e-01  1.00e+00     0s
+  18  -2.70701193e+02  6.92e-05  1.34e-03  1.50e-01  1.00e+00     0s
+  19  -1.35509121e+02  6.35e-04  1.13e-01  9.16e-02  5.22e-01     0s
+  20  -6.59119520e+01  3.32e-03  4.69e-01  3.59e-02  6.15e-01     0s
+  21  -3.21322322e+01  6.34e-03  5.50e-02  2.29e-02  9.24e-01     0s
+  22  -3.13646059e+01  3.45e-04  9.47e-03  2.25e-02  1.00e+00     0s
+  23  -3.12694329e+01  1.52e-05  8.20e-04  2.25e-02  1.00e+00     0s
+  24  -1.07148766e+01  7.42e-04  4.29e-02  1.04e-02  6.71e-01     0s
+  25  -2.34215654e+00  1.54e-04  1.92e-02  3.39e-03  9.91e-01     0s
+  26  -2.37733254e+00  1.46e-04  1.60e-03  3.37e-03  1.00e+00     0s
+  27  -2.37862425e+00  2.90e-06  1.76e-05  3.37e-03  1.00e+00     0s
+  28   1.23136779e+00  2.32e-04  1.23e-02  1.14e-03  8.39e-01     0s
+  29   1.89748268e+00  1.45e-04  3.44e-03  3.46e-04  1.00e+00     0s
+  30   1.91237524e+00  1.16e-05  1.24e-04  3.46e-04  1.00e+00     0s
+  31   1.91153483e+00  9.91e-08  5.57e-06  3.46e-04  1.00e+00     0s
+  32   2.30667462e+00  3.20e-05  4.83e-04  5.86e-05  8.30e-01     0s
+  33   2.39089704e+00  4.62e-06  6.23e-05  1.43e-05  1.00e+00     0s
+  34   2.39112942e+00  7.04e-09  4.02e-07  1.43e-05  1.00e+00     0s
+  35   2.41177214e+00  1.62e-07  1.36e-06  1.65e-07  1.00e+00     0s
+  36   2.41178492e+00  6.88e-12  1.74e-09  1.65e-07  1.00e+00     0s
+  37   2.41202474e+00  2.24e-11  1.88e-10  1.00e-09  1.00e+00     0s
+
+NL barrier solved model in 37 iterations and 0.13 seconds (0.09 work units)
+First-order optimal solution
+Solution objective 2.412024739347e+00
+
+User-callback calls 113, time in user-callback 0.00 sec
+  Sub: Z₀=2.412025 [LOCAL], α=[0.000,0.000,0.000,0.000,1.074,0.000,0.000,0.000,0.000,0.000,0.000,0.000,0.000,0.000,1.379,0.000,0.000,0.000,0.000,0.000,0.000,0.000,0.000,0.000,0.000,0.000,0.000,0.000,0.000,0.000]
+  Iter 4: LB=2.412025  UB=3.905659  gap=3.82e-01
+  Cut: intercept=-310.912739, π_x_range=[-216.6548, 158.0675]
+  [ρ-diag] φ̂U=1.00, φ̃U=2.00, λU=2.00
+    π_L range=[-67.9003, 48.1813], |π_L|_∞=67.9003
+    π_F range=[-135.4292, 97.8778], |π_F|_∞=135.4292
+    π_ψ range=[-13.3333, 16.6684], |π_ψ|_∞=16.6684
+    ρ̂1: [0.0000, 6.9840], ρ̂3: [0.0000, 5.0000]
+    ρ̃1: [0.0000, 6.9257], ρ̃3: [0.0000, 4.9734]
+    ρ⁰1: [0.0000, 6.6667], ρ⁰3: [0.0000, 8.3342]
+  [φ-diag] φ̂ actual: [-0.0000, 1.0000], φ̂U=1.00
+  [φ-diag] φ̃ actual: [-0.0000, 0.0000], φ̃U=2.00
+  Mini-Benders[1] (mw): LB=2.412025, Z₀(α*)=2.412026, intercept=-1.986693
+  Mini-Benders[2] (mw): LB=2.412025, Z₀(α*)=2.412026, intercept=-1.986693
+  Mini-Benders[3]: LB stagnated, break
+Gurobi Optimizer version 13.0.0 build v13.0.0rc1 (win64 - Windows 10.0 (19045.2))
+
+CPU model: AMD Ryzen 9 5900X 12-Core Processor, instruction set [SSE2|AVX|AVX2]
+Thread count: 12 physical cores, 24 logical processors, using up to 24 threads
+
+Non-default parameters:
+TimeLimit  30
+DualReductions  0
+NonConvex  2
+
+Optimize a model with 1836 rows, 3591 columns and 8421 nonzeros (Max)
+Model fingerprint: 0xd33c3932
+Model has 640 linear objective coefficients
+Model has 600 quadratic constraints
+Variable types: 3591 continuous, 0 integer (0 binary)
+Coefficient statistics:
+  Matrix range     [2e-01, 3e+01]
+  QMatrix range    [1e+00, 1e+00]
+  QLMatrix range   [1e+00, 1e+00]
+  Objective range  [1e+00, 2e+00]
+  Bounds range     [1e-01, 2e+00]
+  RHS range        [1e-01, 2e+00]
+
+MIP start from previous solve did not produce a new incumbent solution
+
+Presolve removed 74 rows and 660 columns
+Presolve time: 0.02s
+Presolved: 1762 rows, 2931 columns, 7101 nonzeros
+Variable types: 2931 continuous, 0 integer (0 binary)
+
+Root relaxation: objective 2.412026e+00, 1040 iterations, 0.02 seconds (0.01 work units)
+
+    Nodes    |    Current Node    |     Objective Bounds      |     Work
+ Expl Unexpl |  Obj  Depth IntInf | Incumbent    BestBd   Gap | It/Node Time
+
+*    0     0               0       2.4120262    2.41203  0.00%     -    0s
+
+Explored 1 nodes (1040 simplex iterations) in 0.07 seconds (0.02 work units)
+Thread count was 24 (of 24 available processors)
+
+Solution count 1: 2.41203 
+
+Optimal solution found (tolerance 1.00e-04)
+Best objective 2.412026203097e+00, best bound 2.412026203097e+00, gap 0.0000%
+
+User-callback calls 48, time in user-callback 0.00 sec
+  α-step: Z₀=2.412026, α=[0.000,0.000,0.000,0.000,2.343,0.000,0.000,0.000,0.000,0.000,0.000,0.000,0.000,0.000,0.111,0.000,0.000,0.000,0.000,0.000,0.000,0.000,0.000,0.000,0.000,0.000,0.000,0.000,0.000,0.000]
+  Alt-Benders[1] (mw): LB=2.412026, Z₀(α*)=2.412026, intercept=-1.986693
+  Alt-Benders[2] (mw): LB=2.412026, Z₀(α*)=2.412026, intercept=-1.986693
+  Alt-Benders[3] (mw): LB=2.412026, Z₀(α*)=2.412026, intercept=-1.986693
+  Alt-Benders[4]: LB stagnated, break
+  OMP re-solve: 0.001s
+
+=== True-DRO Benders iter 5 ===
+  OMP: t₀=2.412026, UB=3.905659, gap=3.82e-01, x=[0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0] (0.000s)
+Set parameter TimeLimit to value 30
+Set parameter MIPGap to value 0.0001
+Set parameter MIPFocus to value 0
+Gurobi Optimizer version 13.0.0 build v13.0.0rc1 (win64 - Windows 10.0 (19045.2))
+
+CPU model: AMD Ryzen 9 5900X 12-Core Processor, instruction set [SSE2|AVX|AVX2]
+Thread count: 12 physical cores, 24 logical processors, using up to 24 threads
+
+Non-default parameters:
+TimeLimit  30
+OptimalityTarget  1
+DualReductions  0
+NonConvex  2
+
+Optimize a model with 1836 rows, 3591 columns and 8421 nonzeros (Max)
+Model fingerprint: 0x496e7fd2
+Model has 640 linear objective coefficients
+Model has 600 quadratic constraints
+Variable types: 3591 continuous, 0 integer (0 binary)
+Coefficient statistics:
+  Matrix range     [2e-01, 3e+01]
+  QMatrix range    [1e+00, 1e+00]
+  QLMatrix range   [1e+00, 1e+00]
+  Objective range  [1e+00, 2e+00]
+  Bounds range     [2e-01, 1e+01]
+  RHS range        [1e-01, 2e+00]
+Presolve removed 620 rows and 620 columns
+Presolve time: 0.03s
+Presolved: 1216 rows, 2971 columns, 5341 nonzeros
+Presolved model has 600 quadratic constraint(s)
+
+Solving NLP to local optimality
+
+Ordering time: 0.00s
+
+NL barrier statistics:
+  Hessian NZ  : 6.000e+02
+  Jacobian NZ : 8.341e+03
+  Factor NZ   : 5.216e+04
+  Factor Ops  : 6.501e+05
+  Threads     : 1
+
+                           Residuals
+Iter     Objective      Primal     Dual      Compl     Step     Time
+   0  -4.70904579e+03  3.40e+04  2.41e+03  1.92e+02  0.00e+00     0s
+   1  -4.92763033e+03  2.22e+04  2.01e+03  1.57e+02  3.48e-01     0s
+   2  -5.18883087e+03  1.15e+04  1.53e+03  1.21e+02  4.83e-01     0s
+   3  -5.23272428e+03  9.80e+03  6.44e+02  5.16e+01  1.46e-01     0s
+   4  -5.25588512e+03  4.87e+03  2.93e+02  2.35e+01  5.03e-01     0s
+   5  -4.81821065e+03  1.90e+03  9.24e+01  8.03e+00  6.09e-01     0s
+   6  -3.27377392e+03  3.08e+02  9.99e+00  1.87e+00  8.38e-01     0s
+   7  -2.55414247e+03  1.60e+02  4.03e+00  1.42e+00  4.81e-01     0s
+   8  -1.91780329e+03  1.39e+01  1.56e+00  1.11e+00  9.13e-01     0s
+   9  -1.92987104e+03  2.19e+00  1.08e+00  1.08e+00  8.43e-01     0s
+  10  -1.92509999e+03  1.55e+00  2.78e-01  1.02e+00  2.94e-01     0s
+  11  -1.93376862e+03  1.03e-06  4.00e-04  1.00e+00  1.00e+00     0s
+  12  -1.92397546e+03  1.28e-08  3.67e-06  1.00e+00  1.00e+00     0s
+  13  -1.92541902e+03  3.42e-09  1.90e-08  1.00e+00  1.00e+00     0s
+  14  -8.54638229e+02  2.21e-05  1.58e-02  5.59e-01  8.09e-01     0s
+  15  -5.27858042e+02  2.73e-05  1.79e-02  3.41e-01  5.74e-01     0s
+  16  -2.69511507e+02  1.17e-04  5.70e-02  2.08e-01  1.00e+00     0s
+  17  -2.71684260e+02  9.83e-05  1.53e-02  1.50e-01  1.00e+00     0s
+  18  -2.70701193e+02  6.92e-05  1.34e-03  1.50e-01  1.00e+00     0s
+  19  -1.35509121e+02  6.35e-04  1.13e-01  9.16e-02  5.22e-01     0s
+  20  -6.59119520e+01  3.32e-03  4.69e-01  3.59e-02  6.15e-01     0s
+  21  -3.21322322e+01  6.34e-03  5.50e-02  2.29e-02  9.24e-01     0s
+  22  -3.13646059e+01  3.45e-04  9.47e-03  2.25e-02  1.00e+00     0s
+  23  -3.12694329e+01  1.52e-05  8.20e-04  2.25e-02  1.00e+00     0s
+  24  -1.07148766e+01  7.42e-04  4.29e-02  1.04e-02  6.71e-01     0s
+  25  -2.34215654e+00  1.54e-04  1.92e-02  3.39e-03  9.91e-01     0s
+  26  -2.37733254e+00  1.46e-04  1.60e-03  3.37e-03  1.00e+00     0s
+  27  -2.37862425e+00  2.90e-06  1.76e-05  3.37e-03  1.00e+00     0s
+  28   1.23136779e+00  2.32e-04  1.23e-02  1.14e-03  8.39e-01     0s
+  29   1.89748268e+00  1.45e-04  3.44e-03  3.46e-04  1.00e+00     0s
+  30   1.91237524e+00  1.16e-05  1.24e-04  3.46e-04  1.00e+00     0s
+  31   1.91153483e+00  9.91e-08  5.57e-06  3.46e-04  1.00e+00     0s
+  32   2.30667462e+00  3.20e-05  4.83e-04  5.86e-05  8.30e-01     0s
+  33   2.39089704e+00  4.62e-06  6.23e-05  1.43e-05  1.00e+00     0s
+  34   2.39112942e+00  7.04e-09  4.02e-07  1.43e-05  1.00e+00     0s
+  35   2.41177214e+00  1.62e-07  1.36e-06  1.65e-07  1.00e+00     0s
+  36   2.41178492e+00  6.88e-12  1.74e-09  1.65e-07  1.00e+00     0s
+  37   2.41202474e+00  2.24e-11  1.88e-10  1.00e-09  1.00e+00     0s
+
+NL barrier solved model in 37 iterations and 0.13 seconds (0.09 work units)
+First-order optimal solution
+Solution objective 2.412024739347e+00
+
+User-callback calls 112, time in user-callback 0.00 sec
+  Sub: Z₀=2.412025 [LOCAL], α=[0.000,0.000,0.000,0.000,1.074,0.000,0.000,0.000,0.000,0.000,0.000,0.000,0.000,0.000,1.379,0.000,0.000,0.000,0.000,0.000,0.000,0.000,0.000,0.000,0.000,0.000,0.000,0.000,0.000,0.000]
+  Iter 5: LB=2.412026  UB=3.905659  gap=3.82e-01
+  Cut: intercept=-310.912739, π_x_range=[-216.6548, 158.0675]
+  [ρ-diag] φ̂U=1.00, φ̃U=2.00, λU=2.00
+    π_L range=[-67.9003, 48.1813], |π_L|_∞=67.9003
+    π_F range=[-135.4292, 97.8778], |π_F|_∞=135.4292
+    π_ψ range=[-13.3333, 16.6684], |π_ψ|_∞=16.6684
+    ρ̂1: [0.0000, 6.9840], ρ̂3: [0.0000, 5.0000]
+    ρ̃1: [0.0000, 6.9257], ρ̃3: [0.0000, 4.9734]
+    ρ⁰1: [0.0000, 6.6667], ρ⁰3: [0.0000, 8.3342]
+  [φ-diag] φ̂ actual: [0.0000, 1.0000], φ̂U=1.00
+  [φ-diag] φ̃ actual: [-0.0000, 0.0000], φ̃U=2.00
+  Mini-Benders[1] (mw): LB=2.412026, Z₀(α*)=2.412026, intercept=-1.986693
+  Mini-Benders[2] (mw): LB=2.412026, Z₀(α*)=2.412026, intercept=-1.986693
+  Mini-Benders[3]: LB stagnated, break
+Gurobi Optimizer version 13.0.0 build v13.0.0rc1 (win64 - Windows 10.0 (19045.2))
+
+CPU model: AMD Ryzen 9 5900X 12-Core Processor, instruction set [SSE2|AVX|AVX2]
+Thread count: 12 physical cores, 24 logical processors, using up to 24 threads
+
+Non-default parameters:
+TimeLimit  30
+DualReductions  0
+NonConvex  2
+
+Optimize a model with 1836 rows, 3591 columns and 8421 nonzeros (Max)
+Model fingerprint: 0x1ceab1e0
+Model has 640 linear objective coefficients
+Model has 600 quadratic constraints
+Variable types: 3591 continuous, 0 integer (0 binary)
+Coefficient statistics:
+  Matrix range     [2e-01, 3e+01]
+  QMatrix range    [1e+00, 1e+00]
+  QLMatrix range   [1e+00, 1e+00]
+  Objective range  [1e+00, 2e+00]
+  Bounds range     [1e-01, 2e+00]
+  RHS range        [1e-01, 2e+00]
+
+MIP start from previous solve did not produce a new incumbent solution
+
+Presolve removed 74 rows and 660 columns
+Presolve time: 0.02s
+Presolved: 1762 rows, 2931 columns, 7101 nonzeros
+Variable types: 2931 continuous, 0 integer (0 binary)
+
+Root relaxation: objective 2.412026e+00, 1036 iterations, 0.02 seconds (0.01 work units)
+
+    Nodes    |    Current Node    |     Objective Bounds      |     Work
+ Expl Unexpl |  Obj  Depth IntInf | Incumbent    BestBd   Gap | It/Node Time
+
+*    0     0               0       2.4120262    2.41203  0.00%     -    0s
+
+Explored 1 nodes (1036 simplex iterations) in 0.08 seconds (0.02 work units)
+Thread count was 24 (of 24 available processors)
+
+Solution count 1: 2.41203 
+
+Optimal solution found (tolerance 1.00e-04)
+Best objective 2.412026203097e+00, best bound 2.412026203097e+00, gap 0.0000%
+
+User-callback calls 50, time in user-callback 0.00 sec
+  α-step: Z₀=2.412026, α=[0.000,0.000,0.000,0.000,2.343,0.000,0.000,0.000,0.000,0.000,0.000,0.000,0.000,0.000,0.111,0.000,0.000,0.000,0.000,0.000,0.000,0.000,0.000,0.000,0.000,0.000,0.000,0.000,0.000,0.000]
+  Alt-Benders[1] (mw): LB=2.412026, Z₀(α*)=2.412026, intercept=-1.986693
+  Alt-Benders[2] (mw): LB=2.412026, Z₀(α*)=2.412026, intercept=-1.986693
+  Alt-Benders[3]: LB stagnated, break
+  OMP re-solve: 0.001s
+
+=== True-DRO Benders iter 6 ===
+  OMP: t₀=2.412026, UB=3.905659, gap=3.82e-01, x=[0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0] (0.000s)
+Set parameter TimeLimit to value 30
+Set parameter MIPGap to value 0.0001
+Set parameter MIPFocus to value 0
+Gurobi Optimizer version 13.0.0 build v13.0.0rc1 (win64 - Windows 10.0 (19045.2))
+
+CPU model: AMD Ryzen 9 5900X 12-Core Processor, instruction set [SSE2|AVX|AVX2]
+Thread count: 12 physical cores, 24 logical processors, using up to 24 threads
+
+Non-default parameters:
+TimeLimit  30
+DualReductions  0
+NonConvex  2
+
+Optimize a model with 1836 rows, 3591 columns and 8421 nonzeros (Max)
+Model fingerprint: 0x6c429e48
+Model has 640 linear objective coefficients
+Model has 600 quadratic constraints
+Variable types: 3591 continuous, 0 integer (0 binary)
+Coefficient statistics:
+  Matrix range     [2e-01, 3e+01]
+  QMatrix range    [1e+00, 1e+00]
+  QLMatrix range   [1e+00, 1e+00]
+  Objective range  [1e+00, 2e+00]
+  Bounds range     [2e-01, 2e+00]
+  RHS range        [1e-01, 2e+00]
+
+Loaded MIP start from previous solve with objective 2.41203
+
+Presolve removed 20 rows and 20 columns
+Presolve time: 0.02s
+Presolved: 4216 rows, 3572 columns, 13141 nonzeros
+Presolved model has 600 bilinear constraint(s)
+
+Solving non-convex QCP to global optimality
+
+Variable types: 3572 continuous, 0 integer (0 binary)
+
+Root relaxation: objective 4.778726e+00, 1326 iterations, 0.03 seconds (0.03 work units)
+
+    Nodes    |    Current Node    |     Objective Bounds      |     Work
+ Expl Unexpl |  Obj  Depth IntInf | Incumbent    BestBd   Gap | It/Node Time
+
+     0     0    4.77873    0   95    2.41203    4.77873  98.1%     -    0s
+     0     0     cutoff    0         2.41203    2.41203  0.00%     -    0s
+
+Cutting planes:
+  RLT: 46
+
+Explored 1 nodes (1630 simplex iterations) in 0.52 seconds (0.12 work units)
+Thread count was 24 (of 24 available processors)
+
+Solution count 1: 2.41203 
+
+Optimal solution found (tolerance 1.00e-04)
+Best objective 2.412026203097e+00, best bound 2.412026203097e+00, gap 0.0000%
+
+User-callback calls 75, time in user-callback 0.00 sec
+  Sub: Z₀=2.412026, α=[0.000,0.000,0.000,0.000,2.343,0.000,0.000,0.000,0.000,0.000,0.000,0.000,0.000,0.000,0.111,0.000,0.000,0.000,0.000,0.000,0.000,0.000,0.000,0.000,0.000,0.000,0.000,0.000,0.000,0.000]
+  Iter 6: LB=2.412026  UB=2.412026  gap=1.28e-09
+True-DRO Benders converged at iter 6 (gap=1.28e-09)
+  Wall time: 37.95 sec
+  OMP  time: mean=0.104s, median=0.131s, max=0.243s
+  Sub  time (exact): mean=0.529s, median=0.529s, q90=0.529s, max=0.529s (n=1/6)
+
+----------------------------------------
+True-DRO: status=Optimal, Z₀=2.412026, iters=6, time=37.95s
+  LB=2.412026, UB=2.412026, gap=1.28e-09
+  x* = [0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
+  α* = [0.000, 0.000, 0.000, 0.000, 2.343, 0.000, 0.000, 0.000, 0.000, 0.000, 0.000, 0.000, 0.000, 0.000, 0.111, 0.000, 0.000, 0.000, 0.000, 0.000, 0.000, 0.000, 0.000, 0.000, 0.000, 0.000, 0.000, 0.000, 0.000, 0.000]
+  Profile saved → C:\Users\user\robust_bilevel_network_games\true_dro\profiles.jls (9 entries)
+============================================================
+Primal Recovery: x* → α* → (h*, λ*, ψ⁰*)
+============================================================
+  x* = [0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
+  α* = [0.0000, 0.0000, 0.0000, 0.0000, 2.3428, 0.0000, 0.0000, 0.0000, 0.0000, 0.0000, 0.0000, 0.0000, 0.0000, 0.0000, 0.1110, 0.0000, 0.0000, 0.0000, 0.0000, 0.0000, 0.0000, 0.0000, 0.0000, 0.0000, 0.0000, 0.0000, 0.0000, 0.0000, 0.0000, 0.0000]
+
+  Piece-F obj = 0.000000
+  λ*   = -0.000000
+  Σh*  = 0.000000  (budget: λw = -0.000000)
+
+  h* (nonzero arcs):
+  ψ⁰* (nonzero arcs):
+
+  Per-scenario sink flow ỹ_ts:
+    s=1: ỹ_ts=-0.000000
+    s=2: ỹ_ts=-0.000000
+    s=3: ỹ_ts=-0.000000
+    s=4: ỹ_ts=-0.000000
+    s=5: ỹ_ts=0.000000
+    s=6: ỹ_ts=-0.000000
+    s=7: ỹ_ts=-0.000000
+    s=8: ỹ_ts=-0.000000
+    s=9: ỹ_ts=-0.000000
+    s=10: ỹ_ts=-0.000000
+
+  Z₀(Benders) = 2.412026
+  Piece-F(recovered) = 0.000000
+
+Finished: 2026-04-15T21:27:56.462

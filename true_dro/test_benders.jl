@@ -124,10 +124,10 @@ network_configs = Dict(
 """
     compute_interdict_budget(config_key, num_interdictable, γ_ratio) → γ
 
-네트워크별 interdiction budget. Sioux Falls: source 근처 sparse → γ=2로 고정.
+네트워크별 interdiction budget. Sioux Falls/Abilene: source 근처 sparse → γ=2로 고정.
 """
 function compute_interdict_budget(config_key::Symbol, num_interdictable::Int, γ_ratio::Float64)
-    if config_key == :sioux_falls
+    if config_key in (:sioux_falls, :abilene)
         return 2
     end
     return ceil(Int, γ_ratio * num_interdictable)
