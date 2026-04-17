@@ -143,6 +143,8 @@ function oos_evaluate(x_star::Vector{Float64}, network, capacity_scenarios::Matr
     Y_bar_outer = Vector{Float64}(undef, M)      # inner mean per outer sample
     Y_all = Matrix{Float64}(undef, M, L)          # all evaluations
     var_inner_per_j = Vector{Float64}(undef, M)   # inner variance per outer sample
+    h_all = Vector{Vector{Float64}}(undef, M)     # h*_j per outer sample
+    flows_all = Matrix{Float64}(undef, M, K)      # flows_j per outer sample
 
     for j in 1:M
         # Outer: follower's belief
@@ -151,6 +153,9 @@ function oos_evaluate(x_star::Vector{Float64}, network, capacity_scenarios::Matr
 
         # Compute max-flow for each scenario given h*_j
         flows_j = compute_maxflow_per_scenario(network, x_star, h_star_j, v, capacity_scenarios)
+
+        h_all[j] = copy(h_star_j)
+        flows_all[j, :] .= flows_j
 
         # Inner: true distribution realizations
         for ℓ in 1:L
@@ -187,6 +192,8 @@ function oos_evaluate(x_star::Vector{Float64}, network, capacity_scenarios::Matr
         :follower_share => follower_share,
         :Y_bar => Y_bar_outer,
         :evals => Y_all,
+        :h_all => h_all,
+        :flows_all => flows_all,
     )
 end
 

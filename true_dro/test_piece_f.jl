@@ -16,6 +16,7 @@ using .NetworkGenerator
 include("true_dro_data.jl")
 include("true_dro_build_omp.jl")
 include("true_dro_build_subproblem.jl")
+include("true_dro_build_isp_follower.jl")
 include("true_dro_recover.jl")
 
 # --- γ=3 케이스 재현 (compute_interdict_budget 수정 전) ---
@@ -136,4 +137,21 @@ if st2 == MOI.OPTIMAL
     for s in 1:td.S
         @printf("    s=%d: ỹ_ts=%.6f\n", s, y_ts2[s])
     end
+end
+
+# --- Test 3: ISP-F dual (§7.2) 직접 풀기 ---
+println("\n" * "=" ^ 60)
+println("Test 3: ISP-F dual (same α*, x*)")
+println("=" ^ 60)
+
+ispf_model, ispf_vars = build_true_dro_isp_follower(td, x_sol, α_sol; optimizer=Gurobi.Optimizer)
+unset_silent(ispf_model)
+optimize!(ispf_model)
+
+st3 = termination_status(ispf_model)
+println("\n  Status: $st3")
+if st3 == MOI.OPTIMAL
+    @printf("  ISP-F dual obj = %.6f\n", objective_value(ispf_model))
+    println("\n  → Primal Piece-F = 0  vs  Dual ISP-F = $(round(objective_value(ispf_model), digits=6))")
+    println("  → Strong duality 위반 여부: $(abs(objective_value(ispf_model)) > 1e-6 ? "YES ⚠️" : "no")")
 end

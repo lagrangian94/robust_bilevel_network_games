@@ -100,6 +100,9 @@ includet("true_dro_benders.jl")
 includet("true_dro_mincut_vi.jl")
 includet("true_dro_recover.jl")
 
+# ε calibration table
+includet("oos_dirichlet.jl")
+
 # TV-DRO (for sandwich comparison)
 includet("../TV_DRO/tv_data.jl")
 includet("../TV_DRO/tv_build_isp_leader.jl")
@@ -183,65 +186,111 @@ function setup_true_dro_instance(config_key::Symbol;
 end
 
 
-# ===== Interactive Instance 선택 =====
+# ===== Interactive 설정 =====
 println("=" ^ 70)
 println("True-DRO Benders Test")
 println("=" ^ 70)
-println("  1. Grid 3x3 (11 nodes, 17 arcs)")
-println("  2. Grid 4x4 (18 nodes, 31 arcs)")
-println("  3. Grid 5x5 (27 nodes, 47 arcs)")
-println("  4. Grid other")
-println("  5. Sioux Falls (24 nodes, 76 arcs)")
-println("  6. Nobel US (14 nodes, 42 arcs)")
-println("  7. Abilene (12 nodes, 30 arcs)")
-println("  8. Polska (12 nodes, 36 arcs)")
-print("선택 (1-8): "); net_choice = parse(Int, readline())
 
-if net_choice == 1
-    instance_key = :grid_3x3
-elseif net_choice == 2
-    instance_key = :grid_4x4
-    network_configs[:grid_4x4] = Dict(:type => :grid, :m => 4, :n => 4)
-elseif net_choice == 3
-    instance_key = :grid_5x5
-elseif net_choice == 4
-    print("Grid rows (m): "); m = parse(Int, readline())
-    print("Grid cols (n): "); n = parse(Int, readline())
-    network_configs[Symbol("grid_$(m)x$(n)")] = Dict(:type => :grid, :m => m, :n => n)
-    instance_key = Symbol("grid_$(m)x$(n)")
-elseif net_choice == 5
-    instance_key = :sioux_falls
-elseif net_choice == 6
-    instance_key = :nobel_us
-elseif net_choice == 7
-    instance_key = :abilene
-elseif net_choice == 8
-    instance_key = :polska
-else
-    error("잘못된 선택: $net_choice")
+# --- 입력 검증 헬퍼 ---
+function _parse_yn(prompt::String, default::Bool)::Bool
+    print(prompt); s = strip(readline()) |> lowercase
+    isempty(s) && return default
+    s in ("y", "n") || error("잘못된 입력: '$s' (y/n만 허용)")
+    return s == "y"
 end
 
+function _parse_choice(prompt::String, allowed::Vector{String}, default::String)::String
+    print(prompt); s = strip(readline()) |> lowercase
+    isempty(s) && return default
+    s in allowed || error("잘못된 입력: '$s' (허용: $(join(allowed, ", ")))")
+    return s
+end
+
+# --- 네트워크 선택 ---
+const DEFAULT_NETWORK_ORDER = [:grid_5x5, :polska, :abilene, :nobel_us, :sioux_falls]
+
+# 축약 이름 → instance key 매핑
+const NET_ALIAS = Dict(
+    "3x3" => :grid_3x3, "grid_3x3" => :grid_3x3,
+    "4x4" => :grid_4x4, "grid_4x4" => :grid_4x4,
+    "5x5" => :grid_5x5, "grid_5x5" => :grid_5x5,
+    "sioux_falls" => :sioux_falls, "sioux" => :sioux_falls, "sf" => :sioux_falls,
+    "nobel_us" => :nobel_us, "nobel" => :nobel_us,
+    "abilene" => :abilene, "ab" => :abilene,
+    "polska" => :polska, "pl" => :polska,
+)
+
+println("네트워크 (Enter=기본순서: 5x5→polska→abilene→nobel_us→sioux_falls)")
+println("  또는 직접 입력 (comma 구분, e.g. '5x5, polska' or 'abilene')")
+print("선택: "); net_input = strip(readline())
+
+if isempty(net_input)
+    instance_keys = copy(DEFAULT_NETWORK_ORDER)
+else
+    tokens = [strip(t) |> lowercase for t in split(net_input, ",")]
+    instance_keys = Symbol[]
+    for tok in tokens
+        haskey(NET_ALIAS, tok) || error("알 수 없는 네트워크: '$tok'  (허용: $(join(sort(collect(keys(NET_ALIAS))), ", ")))")
+        key = NET_ALIAS[tok]
+        # 4x4는 동적으로 추가
+        if key == :grid_4x4 && !haskey(network_configs, :grid_4x4)
+            network_configs[:grid_4x4] = Dict(:type => :grid, :m => 4, :n => 4)
+        end
+        push!(instance_keys, key)
+    end
+end
+println("  → 풀 네트워크: $(instance_keys)")
+
+# --- 파라미터 입력 ---
 print("시나리오 수 S: "); S = parse(Int, readline())
-print("ε̂ (leader TV radius) [0.1]: "); ε_hat_str = strip(readline())
-ε_hat = isempty(ε_hat_str) ? 0.1 : parse(Float64, ε_hat_str)
-print("ε̃ (follower TV radius) [ε̂]: "); ε_tilde_str = strip(readline())
-ε_tilde = isempty(ε_tilde_str) ? ε_hat : parse(Float64, ε_tilde_str)
+S > 0 || error("S는 양수여야 합니다: $S")
+
+println("β (Dirichlet concentration):")
+println("  1. 0.1   2. 0.3   3. 0.5   4. 0.8")
+print("선택 (1-4) [3]: "); β_choice_str = strip(readline())
+β_choice = isempty(β_choice_str) ? 3 : parse(Int, β_choice_str)
+β_map = Dict(1 => 0.1, 2 => 0.3, 3 => 0.5, 4 => 0.8)
+haskey(β_map, β_choice) || error("잘못된 β 선택: $β_choice")
+β_val = β_map[β_choice]
+
+# ε lookup from calibration table (coverage=95%, round to 2 decimals)
+ε_raw = lookup_epsilon(S, β_val; coverage=0.95)
+ε_hat = round(ε_raw; digits=2)
+ε_tilde = ε_hat
+@printf("β=%.1f, S=%d → ε_raw=%.8f → ε=%.2f (leader=follower)\n", β_val, S, ε_raw, ε_hat)
+
 print("Sub time limit (sec, 0=none) [30]: "); tl_str = strip(readline())
 sub_tl = isempty(tl_str) ? 30.0 : parse(Float64, tl_str)
+sub_tl >= 0 || error("time limit은 0 이상이어야 합니다: $sub_tl")
 sub_tl = sub_tl <= 0 ? nothing : sub_tl
-print("Mini-Benders? (y/n) [n]: "); mb_str = strip(readline())
-use_mini_benders = lowercase(mb_str) == "y"
+
+use_mini_benders = _parse_yn("Mini-Benders? (y/n) [n]: ", false)
 max_mb_iter = 5
-print("Strengthen cuts? (none/mw) [none]: "); sc_str = strip(readline())
-strengthen_cuts = isempty(sc_str) || sc_str == "none" ? :none : Symbol(sc_str)
-print("Inexact mode? (y/n) [y]: "); inexact_str = strip(readline())
-use_inexact = isempty(inexact_str) || lowercase(inexact_str) == "y"
-print("Valid inequality? (none/mincut) [none]: "); vi_str = strip(readline())
-vi_sym = isempty(vi_str) || vi_str == "none" ? :none : Symbol(vi_str)
+
+strengthen_cuts = Symbol(_parse_choice("Strengthen cuts? (none/mw) [none]: ",
+    ["none", "mw"], "none"))
+
+use_inexact = _parse_yn("Inexact mode? (y/n) [y]: ", true)
+
+vi_sym = Symbol(_parse_choice("Valid inequality? (none/mincut) [none]: ",
+    ["none", "mincut"], "none"))
+
+# --- Log 폴더 ---
+β_str = replace(@sprintf("%.1f", β_val), "." => "p")
+log_dir = joinpath(@__DIR__, "S$(S)_beta$(β_str)_cov95")
+mkpath(log_dir)
+
+
+# ===== 네트워크 순차 루프 =====
+for (net_idx, instance_key) in enumerate(instance_keys)
+
+println("\n" * "#" ^ 70)
+@printf("# [%d/%d] Network: %s\n", net_idx, length(instance_keys), instance_key)
+println("#" ^ 70)
 
 # ===== Log file setup (pipe-based tee: stdout + file 동시) =====
 log_timestamp = Dates.format(now(), "yyyymmdd_HHMMss")
-log_filename = joinpath(@__DIR__, "log_$(instance_key)_S$(S)_$(log_timestamp).txt")
+log_filename = joinpath(log_dir, "log_$(instance_key)_$(log_timestamp).txt")
 log_io = open(log_filename, "w")
 original_stdout = stdout
 rd, wr = redirect_stdout()
@@ -265,7 +314,7 @@ println("Started: $(now())")
 println()
 
 println("\n" * "=" ^ 70)
-println("INSTANCE: $instance_key (S=$S, ε̂=$ε_hat, ε̃=$ε_tilde)")
+println("INSTANCE: $instance_key (S=$S, β=$β_val, ε̂=$ε_hat, ε̃=$ε_tilde)")
 println("=" ^ 70)
 
 network, td = setup_true_dro_instance(instance_key; S=S,
@@ -341,6 +390,12 @@ close(wr)
 wait(log_task)
 close(log_io)
 println("Log saved → $log_filename")
+
+end  # for instance_key
+
+println("\n" * "=" ^ 70)
+println("All $(length(instance_keys)) networks done.")
+println("=" ^ 70)
 @infiltrate
 
 # # ===== 2. Sandwich: TV-DRO (V^Dir) =====

@@ -64,7 +64,8 @@ function true_dro_benders_optimize!(td::TrueDROData;
         max_mini_benders_iter::Int=5,
         inexact::Bool=false,
         strengthen_cuts::Symbol=:none,
-        valid_inequality::Symbol=:none)
+        valid_inequality::Symbol=:none,
+        add_objF_vi::Bool=false)
 
     K = td.num_arcs
 
@@ -103,7 +104,8 @@ function true_dro_benders_optimize!(td::TrueDROData;
 
     # ---- Build subproblem: global model (no ρ bound) ----
     x_init = zeros(K)
-    sub_model, sub_vars = build_true_dro_subproblem(td, x_init; optimizer=nlp_optimizer, silent=!sub_verbose)
+    sub_model, sub_vars = build_true_dro_subproblem(td, x_init; optimizer=nlp_optimizer, silent=!sub_verbose,
+                                                    add_objF_vi=add_objF_vi)
     if nonconvex_attr !== nothing
         try
             set_optimizer_attribute(sub_model, nonconvex_attr.first, nonconvex_attr.second)
@@ -118,8 +120,11 @@ function true_dro_benders_optimize!(td::TrueDROData;
     local sub_model_local, sub_vars_local
     const_rho_bound = 10.0
     if inexact
+        # Local solve (OptimalityTarget=1)에는 VI 넣지 않음: Gurobi local opt가 VI 하에서
+        # feasible point 탐색 실패 (ITERATION_LIMIT) 관측됨.
         sub_model_local, sub_vars_local = build_true_dro_subproblem(td, x_init;
-            optimizer=nlp_optimizer, silent=!sub_verbose, rho_upper_bound=const_rho_bound)
+            optimizer=nlp_optimizer, silent=!sub_verbose, rho_upper_bound=const_rho_bound,
+            add_objF_vi=false)
         if nonconvex_attr !== nothing
             try
                 set_optimizer_attribute(sub_model_local, nonconvex_attr.first, nonconvex_attr.second)
@@ -140,10 +145,17 @@ function true_dro_benders_optimize!(td::TrueDROData;
 
     # ---- Mini-Benders: build ISP-L and ISP-F LP models once ----
     local isp_l_model, isp_l_vars, isp_f_model, isp_f_vars
+    # α-step LP fallback: QCP fix() infeasible 오판 시 사용
+    local astep_lp_model, astep_lp_vars
     if mini_benders
         α_init = zeros(K)
         isp_l_model, isp_l_vars = build_true_dro_isp_leader(td, x_init, α_init; optimizer=lp_optimizer)
         isp_f_model, isp_f_vars = build_true_dro_isp_follower(td, x_init, α_init; optimizer=lp_optimizer)
+        # α-step LP: a,d 파라미터로 고정한 순수 LP (pre-build)
+        a_dummy = fill(1.0 / td.S, td.S)
+        d_dummy = fill(1.0 / td.S, td.S)
+        astep_lp_model, astep_lp_vars = build_alpha_step_lp(td, x_init, a_dummy, d_dummy;
+                                                              optimizer=lp_optimizer)
         if verbose
             @info "Mini-Benders enabled: max_mini_iter=$max_mini_benders_iter"
         end
@@ -573,33 +585,64 @@ function true_dro_benders_optimize!(td::TrueDROData;
                     end
                 end
 
-                # ---- α-step: fix (a*, d*) in sub_model → LP over α → new α' ----
+                # ---- α-step: fix (a*, d*) → solve over α → new α' ----
+                # 1차: QCP sub_model에 fix(a,d) 시도.
+                # Gurobi NonConvex=2 + fix()가 infeasible 오판하면
+                # 2차: 별도 LP model (quadratic 없음)로 fallback.
                 if phase == 1 && last_a_val !== nothing
                     S = td.S
 
-                    # Fix a, d → bilinear ζ=α·a becomes linear in α
-                    for s in 1:S
-                        fix(sub_vars[:a][s], last_a_val[s]; force=true)
-                        fix(sub_vars[:d][s], last_d_val[s]; force=true)
-                    end
+                    # Clamp (ISP LP numerical noise 방지)
+                    a_clamped = [max(last_a_val[s], sub_vars[:a_min][s]) for s in 1:S]
+                    d_clamped = [max(last_d_val[s], sub_vars[:d_min][s]) for s in 1:S]
 
                     # OMP x̄ for objective
                     t_omp_alt = @elapsed optimize!(omp_model)
                     push!(history[:omp_times], t_omp_alt)
                     if termination_status(omp_model) != MOI.OPTIMAL
-                        # Unfix and restore bounds, skip phase 2
+                        break
+                    end
+                    x_alt = round.([value(omp_vars[:x][k]) for k in 1:K])
+
+                    # 1차: QCP fix 시도
+                    local alt_info
+                    qcp_ok = true
+                    try
+                        for s in 1:S
+                            fix(sub_vars[:a][s], a_clamped[s]; force=true)
+                            fix(sub_vars[:d][s], d_clamped[s]; force=true)
+                        end
+                        alt_info = solve_true_dro_subproblem!(sub_model, sub_vars, td, x_alt)
+                    catch e
+                        qcp_ok = false
+                        if verbose
+                            @printf("  α-step QCP failed (%s), fallback to LP\n",
+                                    sprint(showerror, e))
+                        end
+                    finally
+                        # 반드시 unfix (QCP 성공/실패 무관)
                         unfix.(sub_vars[:a])
                         set_lower_bound.(sub_vars[:a], sub_vars[:a_min])
                         set_upper_bound.(sub_vars[:a], sub_vars[:a_max])
                         unfix.(sub_vars[:d])
                         set_lower_bound.(sub_vars[:d], sub_vars[:d_min])
                         set_upper_bound.(sub_vars[:d], sub_vars[:d_max])
-                        break
                     end
-                    x_alt = round.([value(omp_vars[:x][k]) for k in 1:K])
 
-                    # Solve α-step (sub_model with a,d fixed → LP)
-                    alt_info = solve_true_dro_subproblem!(sub_model, sub_vars, td, x_alt)
+                    # 2차: LP fallback
+                    if !qcp_ok
+                        try
+                            alt_info = solve_alpha_step_lp!(astep_lp_model, astep_lp_vars,
+                                                            td, x_alt, a_clamped, d_clamped)
+                        catch e2
+                            if verbose
+                                @printf("  α-step LP also failed (%s), skip\n",
+                                        sprint(showerror, e2))
+                            end
+                            break
+                        end
+                    end
+
                     α_fixed = alt_info[:α_val]
 
                     # Cut from α-step
@@ -609,16 +652,9 @@ function true_dro_benders_optimize!(td::TrueDROData;
 
                     if verbose
                         α_str = join([@sprintf("%.3f", a) for a in α_fixed], ",")
-                        @printf("  α-step: Z₀=%.6f, α=[%s]\n", alt_info[:Z0_val], α_str)
+                        @printf("  α-step: Z₀=%.6f, α=[%s]%s\n",
+                                alt_info[:Z0_val], α_str, qcp_ok ? "" : " [LP-fallback]")
                     end
-
-                    # Unfix a, d and restore bounds for future bilinear solves
-                    unfix.(sub_vars[:a])
-                    set_lower_bound.(sub_vars[:a], sub_vars[:a_min])
-                    set_upper_bound.(sub_vars[:a], sub_vars[:a_max])
-                    unfix.(sub_vars[:d])
-                    set_lower_bound.(sub_vars[:d], sub_vars[:d_min])
-                    set_upper_bound.(sub_vars[:d], sub_vars[:d_max])
                 end
             end
 

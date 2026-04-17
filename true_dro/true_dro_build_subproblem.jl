@@ -32,8 +32,54 @@ Build merged bilinear subproblem.
 Returns (model, vars). Caller must use `Gurobi.Optimizer` (or any QCP solver
 supporting non-convex bilinear) and set `NonConvex=2` separately.
 """
+# Arcwise VI 고정 규칙 (obj_F의 각 term = 0을 직접 강제):
+#   x_k = 1 → ρ̃₁[k,:] = 0, ρ⁰₁[k] = 0
+#   x_k = 0 → ρ̃₃[k,:] = 0, ρ⁰₃[k] = 0
+# set_upper_bound(v, 0) / 복원으로 per-iter 전환.
+# ⚠️ global opt에서만 타당 — local solve(OptimalityTarget=1)에서 사용 금지.
+function _apply_arcwise_vi_fixings!(vars, td, x_bar)
+    K = td.num_arcs
+    S = td.S
+    ρ̃1 = vars[:ρ_tilde_1]
+    ρ̃3 = vars[:ρ_tilde_3]
+    ρ⁰1 = vars[:ρ_psi0_1]
+    ρ⁰3 = vars[:ρ_psi0_3]
+    orig_ub = vars[:rho_orig_ub]  # Float64 or nothing
+
+    function _restore!(v)
+        if orig_ub === nothing
+            if has_upper_bound(v)
+                delete_upper_bound(v)
+            end
+        else
+            set_upper_bound(v, orig_ub)
+        end
+    end
+
+    for k in 1:K
+        if x_bar[k] > 0.5  # x_k = 1
+            for s in 1:S
+                set_upper_bound(ρ̃1[k, s], 0.0)
+                _restore!(ρ̃3[k, s])
+            end
+            set_upper_bound(ρ⁰1[k], 0.0)
+            _restore!(ρ⁰3[k])
+        else  # x_k = 0
+            for s in 1:S
+                _restore!(ρ̃1[k, s])
+                set_upper_bound(ρ̃3[k, s], 0.0)
+            end
+            _restore!(ρ⁰1[k])
+            set_upper_bound(ρ⁰3[k], 0.0)
+        end
+    end
+end
+
+
 function build_true_dro_subproblem(td::TrueDROData, x_bar::Vector{Float64};
-                                   optimizer, silent=true, rho_upper_bound::Union{Float64,Nothing}=nothing)
+                                   optimizer, silent=true, rho_upper_bound::Union{Float64,Nothing}=nothing,
+                                   add_objF_vi::Bool=false,
+                                   add_objF_vi_arcwise::Bool=false)
     S = td.S
     K = td.num_arcs
     m = td.nv1
@@ -218,6 +264,30 @@ function build_true_dro_subproblem(td::TrueDROData, x_bar::Vector{Float64};
 
     @objective(model, Max, obj_L + obj_F)
 
+    # ====================================================================
+    # Valid Inequality: obj_F의 **각 term ≥ 0**  (per-term, aggregate ≥ 0 아님).
+    #
+    # obj_F = Σ(≤0 term). 각 term 자체가 구조적으로 ≤ 0:
+    #   -φ̃U·x_k·ρ̃₁[k,s] ≤ 0,  -φ̃U·(1-x_k)·ρ̃₃[k,s] ≤ 0,
+    #   -λU·x_k·ρ⁰₁[k] ≤ 0,    -λU·(1-x_k)·ρ⁰₃[k] ≤ 0.
+    # global optimum에서는 obj_F(x*) = 0 → 각 term = 0 (≤0 합이 0).
+    # 따라서 각 term ≥ 0 을 개별 constraint로 추가 가능.
+    #
+    # ⚠️ 이 VI는 **global optimum에서만** 타당. Local opt(OptimalityTarget=1)
+    #    에서는 obj_F < 0 가능 → cut-off 발생. **local solve에서는 사용 금지**.
+    # Total: 2·K·S + 2·K 제약식.
+    # ====================================================================
+    if add_objF_vi
+        @constraint(model, objF_vi_rho_tilde_1[k=1:K, s=1:S],
+            -φ̃U * x_bar[k] * ρ_tilde_1[k, s] >= 0)
+        @constraint(model, objF_vi_rho_tilde_3[k=1:K, s=1:S],
+            -φ̃U * (1.0 - x_bar[k]) * ρ_tilde_3[k, s] >= 0)
+        @constraint(model, objF_vi_rho_psi0_1[k=1:K],
+            -λU * x_bar[k] * ρ_psi0_1[k] >= 0)
+        @constraint(model, objF_vi_rho_psi0_3[k=1:K],
+            -λU * (1.0 - x_bar[k]) * ρ_psi0_3[k] >= 0)
+    end
+
     vars = Dict(
         :α => α,
         # Auxiliary bilinear
@@ -234,6 +304,19 @@ function build_true_dro_subproblem(td::TrueDROData, x_bar::Vector{Float64};
         :a_min => a_min, :a_max => a_max,
         :d_min => d_min, :d_max => d_max,
     )
+    if add_objF_vi
+        vars[:objF_vi_rho_tilde_1] = objF_vi_rho_tilde_1
+        vars[:objF_vi_rho_tilde_3] = objF_vi_rho_tilde_3
+        vars[:objF_vi_rho_psi0_1] = objF_vi_rho_psi0_1
+        vars[:objF_vi_rho_psi0_3] = objF_vi_rho_psi0_3
+    end
+
+    # Arcwise per-arc 변수 고정 (obj_F 각 term = 0 강제)
+    if add_objF_vi_arcwise
+        vars[:rho_orig_ub] = rho_upper_bound  # Float64 or nothing, 복원용
+        vars[:add_objF_vi_arcwise] = true
+        _apply_arcwise_vi_fixings!(vars, td, x_bar)
+    end
     return model, vars
 end
 
@@ -270,6 +353,27 @@ function update_true_dro_subproblem_objective!(model, vars, td::TrueDROData,
              λU * sum((1.0 - x_bar_new[k]) * ρ_psi0_3[k] for k in 1:K)
 
     @objective(model, Max, obj_L + obj_F)
+
+    # Per-term VI 계수 업데이트: 각 제약에서 해당 변수의 coef만 갱신
+    if haskey(vars, :objF_vi_rho_tilde_1)
+        c_t1 = vars[:objF_vi_rho_tilde_1]
+        c_t3 = vars[:objF_vi_rho_tilde_3]
+        c_p1 = vars[:objF_vi_rho_psi0_1]
+        c_p3 = vars[:objF_vi_rho_psi0_3]
+        for k in 1:K, s in 1:S
+            set_normalized_coefficient(c_t1[k, s], ρ_tilde_1[k, s], -φ̃U * x_bar_new[k])
+            set_normalized_coefficient(c_t3[k, s], ρ_tilde_3[k, s], -φ̃U * (1.0 - x_bar_new[k]))
+        end
+        for k in 1:K
+            set_normalized_coefficient(c_p1[k], ρ_psi0_1[k], -λU * x_bar_new[k])
+            set_normalized_coefficient(c_p3[k], ρ_psi0_3[k], -λU * (1.0 - x_bar_new[k]))
+        end
+    end
+
+    # Arcwise VI 재적용
+    if get(vars, :add_objF_vi_arcwise, false)
+        _apply_arcwise_vi_fixings!(vars, td, x_bar_new)
+    end
 end
 
 
@@ -302,7 +406,7 @@ function solve_true_dro_subproblem!(model, vars, td::TrueDROData, x_bar::Vector{
                    ((st == MOI.TIME_LIMIT || st == MOI.ITERATION_LIMIT) && has_values(model))
 
     if !has_solution
-        @infiltrate
+        # @infiltrate
         error("True-DRO subproblem: $st (no feasible solution)")
     end
 
@@ -332,5 +436,243 @@ function solve_true_dro_subproblem!(model, vars, td::TrueDROData, x_bar::Vector{
         :rho_tilde_1_val => ρ̃1, :rho_tilde_3_val => ρ̃3,
         :rho_psi0_1_val => ρ01, :rho_psi0_3_val => ρ03,
         :is_optimal => is_optimal,
+    )
+end
+
+
+# ====================================================================
+# α-step LP: a,d를 파라미터로 고정 → quadratic constraint 없이 순수 LP.
+# Gurobi NonConvex=2 + fix() 조합이 infeasible 오판하는 경우의 fallback.
+# 한번 빌드하고, update_alpha_step_lp!로 a,d,x 갱신하여 재사용.
+# ====================================================================
+
+"""
+    build_alpha_step_lp(td, x_bar, a_val, d_val; optimizer)
+
+a,d를 파라미터(상수)로 넣은 α-step LP. bilinear subproblem과 동일 구조이나
+ζL=α·a, ζF=α·d가 linear constraint.
+Returns (model, vars). vars에 constraint ref 포함 (update용).
+"""
+function build_alpha_step_lp(td::TrueDROData, x_bar::Vector{Float64},
+                              a_val::Vector{Float64}, d_val::Vector{Float64};
+                              optimizer)
+    S = td.S; K = td.num_arcs; m = td.nv1
+    Ny = td.Ny; Nts = td.Nts; q = td.q_hat
+    ε̂ = td.eps_hat; ε̃ = td.eps_tilde
+    ξ = td.xi_bar; v = td.v; w = td.w
+    φ̂U = td.phi_hat_U; φ̃U = td.phi_tilde_U; λU = td.lambda_U
+
+    a_max = [min(1.0, q[s] + 2ε̂) for s in 1:S]
+    d_max = [min(1.0, q[s] + 2ε̃) for s in 1:S]
+
+    model = Model(optimizer)
+    set_silent(model)
+
+    # α
+    @variable(model, 0 <= α[1:K] <= w)
+    @constraint(model, sum(α) <= w)
+
+    # ζL[k,s] = α[k] * a_val[s]  (linear: a is parameter)
+    @variable(model, 0 <= ζL[k=1:K, s=1:S] <= w * a_max[s])
+    @constraint(model, ζL_def[k=1:K, s=1:S], ζL[k, s] == α[k] * a_val[s])
+
+    # ISP-L variables
+    @variable(model, σ_hat[1:S] >= 0)
+    @variable(model, u_hat[1:K, 1:S] >= 0)
+    @variable(model, 0 <= b[1:S] <= 2ε̂)
+    @variable(model, ρ_hat_1[1:K, 1:S] >= 0)
+    @variable(model, ρ_hat_2[1:K, 1:S] >= 0)
+    @variable(model, ρ_hat_3[1:K, 1:S] >= 0)
+
+    # (DL-1)
+    @constraint(model, DL1[j=1:m, s=1:S],
+        sum(Ny[j, k] * u_hat[k, s] for k in 1:K) + Nts[j] * σ_hat[s] == 0)
+    # (DL-2): -ξ*a - ζL + u + ρ̂₂ - ρ̂₃ ≤ 0   (a is constant → ξ*a in RHS)
+    @constraint(model, DL2[k=1:K, s=1:S],
+        -ζL[k, s] + u_hat[k, s] + ρ_hat_2[k, s] - ρ_hat_3[k, s] <= ξ[k, s] * a_val[s])
+    # (DL-3): v*ξ*a - ρ̂₁ - ρ̂₂ + ρ̂₃ ≤ 0
+    @constraint(model, DL3[k=1:K, s=1:S],
+        -ρ_hat_1[k, s] - ρ_hat_2[k, s] + ρ_hat_3[k, s] <= -v[k] * ξ[k, s] * a_val[s])
+    # (DL-4~7): b ≥ |a-q̂|, Σb ≤ 2ε̂  (a is constant)
+    @constraint(model, DL4[s=1:S], -b[s] <= q[s] - a_val[s])
+    @constraint(model, DL5[s=1:S],  b[s] >= q[s] - a_val[s])
+    @constraint(model, DL6_con, sum(b) <= 2ε̂)
+
+    # ζF[k,s] = α[k] * d_val[s]  (linear)
+    @variable(model, 0 <= ζF[k=1:K, s=1:S] <= w * d_max[s])
+    @constraint(model, ζF_def[k=1:K, s=1:S], ζF[k, s] == α[k] * d_val[s])
+
+    # ISP-F variables
+    @variable(model, u_tilde[1:K, 1:S] >= 0)
+    @variable(model, σ_tilde[1:S] >= 0)
+    @variable(model, ω[1:m, 1:S])
+    @variable(model, β[1:K, 1:S] >= 0)
+    @variable(model, δ >= 0)
+    @variable(model, 0 <= e_var[1:S] <= 2ε̃)
+    @variable(model, ρ_tilde_1[1:K, 1:S] >= 0)
+    @variable(model, ρ_tilde_2[1:K, 1:S] >= 0)
+    @variable(model, ρ_tilde_3[1:K, 1:S] >= 0)
+    @variable(model, ρ_psi0_1[1:K] >= 0)
+    @variable(model, ρ_psi0_2[1:K] >= 0)
+    @variable(model, ρ_psi0_3[1:K] >= 0)
+
+    # (DF-1~3): e ≥ |d-q̂|, Σe ≤ 2ε̃
+    @constraint(model, DF1[s=1:S], -e_var[s] <= q[s] - d_val[s])
+    @constraint(model, DF2[s=1:S],  e_var[s] >= q[s] - d_val[s])
+    @constraint(model, DF3_con, sum(e_var) <= 2ε̃)
+    @constraint(model, DF4_con, sum(d_val) == 1)  # trivially satisfied, for completeness
+    # (DF-5)
+    @constraint(model, DF5[j=1:m, s=1:S],
+        sum(Ny[j, k] * u_tilde[k, s] for k in 1:K) + Nts[j] * σ_tilde[s] == 0)
+    # (DF-6): -ξ*d - ζF + ũ + ρ̃₂ - ρ̃₃ ≤ 0
+    @constraint(model, DF6[k=1:K, s=1:S],
+        -ζF[k, s] + u_tilde[k, s] + ρ_tilde_2[k, s] - ρ_tilde_3[k, s] <= ξ[k, s] * d_val[s])
+    # (DF-7): v*ξ*d - ρ̃₁ - ρ̃₂ + ρ̃₃ ≤ 0
+    @constraint(model, DF7[k=1:K, s=1:S],
+        -ρ_tilde_1[k, s] - ρ_tilde_2[k, s] + ρ_tilde_3[k, s] <= -v[k] * ξ[k, s] * d_val[s])
+    # (DF-8)
+    @constraint(model, DF8[k=1:K, s=1:S],
+        sum(Ny[j, k] * ω[j, s] for j in 1:m) - β[k, s] <= 0)
+    # (DF-9): d + Nts^T ω ≤ 0  (d is constant)
+    @constraint(model, DF9[s=1:S],
+        sum(Nts[j] * ω[j, s] for j in 1:m) <= -d_val[s])
+    # (DF-h)
+    @constraint(model, DFh[k=1:K], sum(β[k, s] for s in 1:S) <= δ)
+    # (DF-λ)
+    @constraint(model, DFlam,
+        sum(σ_tilde) >= sum(ξ[k, s] * β[k, s] for k in 1:K, s in 1:S)
+            + w * δ + sum(ρ_psi0_2) - sum(ρ_psi0_3))
+    # (DF-ψ)
+    @constraint(model, DFpsi[k=1:K],
+        v[k] * sum(ξ[k, s] * β[k, s] for s in 1:S) + ρ_psi0_1[k] + ρ_psi0_2[k]
+        >= ρ_psi0_3[k])
+
+    # Objective
+    obj_L = sum(σ_hat) -
+            φ̂U * sum(x_bar[k] * ρ_hat_1[k, s] for k in 1:K, s in 1:S) -
+            φ̂U * sum((1 - x_bar[k]) * ρ_hat_3[k, s] for k in 1:K, s in 1:S)
+    obj_F = -φ̃U * sum(x_bar[k] * ρ_tilde_1[k, s] for k in 1:K, s in 1:S) -
+             φ̃U * sum((1 - x_bar[k]) * ρ_tilde_3[k, s] for k in 1:K, s in 1:S) -
+             λU * sum(x_bar[k] * ρ_psi0_1[k] for k in 1:K) -
+             λU * sum((1 - x_bar[k]) * ρ_psi0_3[k] for k in 1:K)
+    @objective(model, Max, obj_L + obj_F)
+
+    vars = Dict(
+        :α => α, :ζL => ζL, :ζF => ζF,
+        :σ_hat => σ_hat, :u_hat => u_hat, :b => b,
+        :ρ_hat_1 => ρ_hat_1, :ρ_hat_2 => ρ_hat_2, :ρ_hat_3 => ρ_hat_3,
+        :u_tilde => u_tilde, :σ_tilde => σ_tilde,
+        :ω => ω, :β => β, :δ => δ, :e_var => e_var,
+        :ρ_tilde_1 => ρ_tilde_1, :ρ_tilde_2 => ρ_tilde_2, :ρ_tilde_3 => ρ_tilde_3,
+        :ρ_psi0_1 => ρ_psi0_1, :ρ_psi0_2 => ρ_psi0_2, :ρ_psi0_3 => ρ_psi0_3,
+        # Constraint refs for update
+        :ζL_def => ζL_def, :ζF_def => ζF_def,
+        :DL2 => DL2, :DL3 => DL3, :DL4 => DL4, :DL5 => DL5,
+        :DF1 => DF1, :DF2 => DF2, :DF6 => DF6, :DF7 => DF7, :DF9 => DF9,
+    )
+    return model, vars
+end
+
+
+"""
+    update_alpha_step_lp!(model, vars, td, x_bar, a_val, d_val)
+
+α-step LP의 a,d 파라미터 및 x̄ 목적함수 계수를 갱신.
+"""
+function update_alpha_step_lp!(model, vars, td::TrueDROData,
+                                x_bar::Vector{Float64},
+                                a_val::Vector{Float64}, d_val::Vector{Float64})
+    S = td.S; K = td.num_arcs
+    ξ = td.xi_bar; v = td.v
+    φ̂U = td.phi_hat_U; φ̃U = td.phi_tilde_U; λU = td.lambda_U
+
+    α = vars[:α]
+
+    # ---- a 관련 계수 갱신 ----
+    for s in 1:S
+        # ζL_def: ζL[k,s] == α[k] * a[s]  →  α[k] coef = a[s]
+        for k in 1:K
+            set_normalized_coefficient(vars[:ζL_def][k, s], α[k], -a_val[s])
+        end
+        # DL2: ... ≤ ξ*a  →  RHS = ξ[k,s]*a[s]
+        for k in 1:K
+            set_normalized_rhs(vars[:DL2][k, s], ξ[k, s] * a_val[s])
+        end
+        # DL3: ... ≤ -v*ξ*a  →  RHS = -v[k]*ξ[k,s]*a[s]
+        for k in 1:K
+            set_normalized_rhs(vars[:DL3][k, s], -v[k] * ξ[k, s] * a_val[s])
+        end
+        # DL4: -b ≤ q-a  →  RHS = q-a
+        set_normalized_rhs(vars[:DL4][s], td.q_hat[s] - a_val[s])
+        # DL5: b ≥ q-a  →  RHS = q-a
+        set_normalized_rhs(vars[:DL5][s], td.q_hat[s] - a_val[s])
+    end
+
+    # ---- d 관련 계수 갱신 ----
+    for s in 1:S
+        for k in 1:K
+            set_normalized_coefficient(vars[:ζF_def][k, s], α[k], -d_val[s])
+        end
+        for k in 1:K
+            set_normalized_rhs(vars[:DF6][k, s], ξ[k, s] * d_val[s])
+        end
+        for k in 1:K
+            set_normalized_rhs(vars[:DF7][k, s], -v[k] * ξ[k, s] * d_val[s])
+        end
+        set_normalized_rhs(vars[:DF1][s], td.q_hat[s] - d_val[s])
+        set_normalized_rhs(vars[:DF2][s], td.q_hat[s] - d_val[s])
+        # DF9: Nts^T ω ≤ -d  →  RHS = -d[s]
+        set_normalized_rhs(vars[:DF9][s], -d_val[s])
+    end
+
+    # ---- x̄ 목적함수 갱신 ----
+    for k in 1:K, s in 1:S
+        set_objective_coefficient(model, vars[:ρ_hat_1][k, s], -φ̂U * x_bar[k])
+        set_objective_coefficient(model, vars[:ρ_hat_3][k, s], -φ̂U * (1 - x_bar[k]))
+        set_objective_coefficient(model, vars[:ρ_tilde_1][k, s], -φ̃U * x_bar[k])
+        set_objective_coefficient(model, vars[:ρ_tilde_3][k, s], -φ̃U * (1 - x_bar[k]))
+    end
+    for k in 1:K
+        set_objective_coefficient(model, vars[:ρ_psi0_1][k], -λU * x_bar[k])
+        set_objective_coefficient(model, vars[:ρ_psi0_3][k], -λU * (1 - x_bar[k]))
+    end
+end
+
+
+"""
+    solve_alpha_step_lp!(model, vars, td, x_bar, a_val, d_val)
+
+α-step LP 갱신 + solve. 반환 형식은 solve_true_dro_subproblem!과 동일.
+"""
+function solve_alpha_step_lp!(model, vars, td::TrueDROData,
+                               x_bar::Vector{Float64},
+                               a_val::Vector{Float64}, d_val::Vector{Float64})
+    S = td.S; K = td.num_arcs
+
+    update_alpha_step_lp!(model, vars, td, x_bar, a_val, d_val)
+    optimize!(model)
+    st = termination_status(model)
+
+    if st != MOI.OPTIMAL
+        error("α-step LP: $st")
+    end
+
+    Z0_val = objective_value(model)
+    α_val = max.([value(vars[:α][k]) for k in 1:K], 0.0)
+    ρ̂1 = [value(vars[:ρ_hat_1][k, s]) for k in 1:K, s in 1:S]
+    ρ̂3 = [value(vars[:ρ_hat_3][k, s]) for k in 1:K, s in 1:S]
+    ρ̃1 = [value(vars[:ρ_tilde_1][k, s]) for k in 1:K, s in 1:S]
+    ρ̃3 = [value(vars[:ρ_tilde_3][k, s]) for k in 1:K, s in 1:S]
+    ρ01 = [value(vars[:ρ_psi0_1][k]) for k in 1:K]
+    ρ03 = [value(vars[:ρ_psi0_3][k]) for k in 1:K]
+
+    return Dict(
+        :Z0_val => Z0_val,
+        :Z0_bound => Z0_val,
+        :α_val => α_val,
+        :rho_hat_1_val => ρ̂1, :rho_hat_3_val => ρ̂3,
+        :rho_tilde_1_val => ρ̃1, :rho_tilde_3_val => ρ̃3,
+        :rho_psi0_1_val => ρ01, :rho_psi0_3_val => ρ03,
+        :is_optimal => true,
     )
 end
