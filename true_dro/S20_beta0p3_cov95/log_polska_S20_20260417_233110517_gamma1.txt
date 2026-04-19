@@ -1,0 +1,177 @@
+Log file: C:\Users\user\robust_bilevel_network_games\true_dro\S20_beta0p3_cov95\log_polska_S20_20260417_233110517_gamma1.txt
+Started: 2026-04-17T23:31:10.517
+
+======================================================================
+INSTANCE: polska (S=20, β=0.3, γ=1, ε̂=0.67, ε̃=0.67)
+  Settings: MW cuts, mincut VI, inexact=false, mini-benders
+======================================================================
+============================================================
+POLSKA Network Summary
+============================================================
+Number of nodes: 12
+Number of arcs (incl. dummy): 37
+Number of regular arcs: 36
+Number of interdictable arcs: 28
+Source node: s (Szczecin)
+Sink node: t (Rzeszow)
+Node-incidence matrix N dimensions: (11, 37)
+
+Sparsity Information:
+  Arc-arc adjacency: 384 / 1296 pairs (70.4% sparse)
+  Node-arc incidence: 68 / 396 pairs (82.8% sparse)
+
+First 15 arcs:
+  Arc 1: ("Bialystok", "Gdansk") [Interdictable: ✓]
+  Arc 2: ("Bialystok", "Warsaw") [Interdictable: ✓]
+  Arc 3: ("Bialystok", "t") [Interdictable: ✗]
+  Arc 4: ("Bydgoszcz", "Kolobrzeg") [Interdictable: ✓]
+  Arc 5: ("Bydgoszcz", "Poznan") [Interdictable: ✓]
+  Arc 6: ("Bydgoszcz", "Warsaw") [Interdictable: ✓]
+  Arc 7: ("Gdansk", "Bialystok") [Interdictable: ✓]
+  Arc 8: ("Gdansk", "Kolobrzeg") [Interdictable: ✓]
+  Arc 9: ("Gdansk", "Warsaw") [Interdictable: ✓]
+  Arc 10: ("Katowice", "Krakow") [Interdictable: ✓]
+  Arc 11: ("Katowice", "Lodz") [Interdictable: ✓]
+  Arc 12: ("Katowice", "Wroclaw") [Interdictable: ✓]
+  Arc 13: ("Kolobrzeg", "Bydgoszcz") [Interdictable: ✓]
+  Arc 14: ("Kolobrzeg", "Gdansk") [Interdictable: ✓]
+  Arc 15: ("Kolobrzeg", "s") [Interdictable: ✗]
+============================================================
+  |A|=36, S=20, γ=1, w=1.0457, λU=2.0
+  ε̂=0.67, ε̃=0.67
+
+----------------------------------------
+VI-only OMP diagnostic (no Benders cuts)
+Set parameter Username
+Set parameter LicenseID to value 2742039
+Academic license - for non-commercial use only - expires 2026-11-20
+Set parameter OutputFlag to value 1
+Set parameter OutputFlag to value 1
+Gurobi Optimizer version 13.0.0 build v13.0.0rc1 (win64 - Windows 10.0 (19045.2))
+
+CPU model: AMD Ryzen 9 5900X 12-Core Processor, instruction set [SSE2|AVX|AVX2]
+Thread count: 12 physical cores, 24 logical processors, using up to 24 threads
+
+Optimize a model with 2910 rows, 1697 columns and 8465 nonzeros (Min)
+Model fingerprint: 0x40b185d3
+Model has 1 linear objective coefficients
+Variable types: 1661 continuous, 36 integer (36 binary)
+Coefficient statistics:
+  Matrix range     [1e-02, 1e+00]
+  Objective range  [1e+00, 1e+00]
+  Bounds range     [1e+00, 1e+04]
+  RHS range        [1e+00, 1e+00]
+Found heuristic solution: objective 26.2956887
+Presolve removed 1369 rows and 392 columns
+Presolve time: 0.00s
+Presolved: 1541 rows, 1305 columns, 3625 nonzeros
+Found heuristic solution: objective 26.2956887
+Variable types: 1280 continuous, 25 integer (25 binary)
+
+Root relaxation: objective 1.120899e+01, 569 iterations, 0.00 seconds (0.01 work units)
+
+    Nodes    |    Current Node    |     Objective Bounds      |     Work
+ Expl Unexpl |  Obj  Depth IntInf | Incumbent    BestBd   Gap | It/Node Time
+
+*    0     0               0      11.2089911   11.20899  0.00%     -    0s
+
+Explored 1 nodes (569 simplex iterations) in 0.02 seconds (0.02 work units)
+Thread count was 24 (of 24 available processors)
+
+Solution count 2: 11.209 26.2957 
+
+Optimal solution found (tolerance 1.00e-04)
+Best objective 1.120899113300e+01, best bound 1.120899113300e+01, gap 0.0000%
+
+User-callback calls 37, time in user-callback 0.00 sec
+  VI-only LB = 11.208991, x = [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
+----------------------------------------
+
+======================================================================
+True-DRO Benders
+======================================================================
+Set parameter Username
+Set parameter LicenseID to value 2742039
+Academic license - for non-commercial use only - expires 2026-11-20
+Set parameter Username
+Set parameter LicenseID to value 2742039
+Academic license - for non-commercial use only - expires 2026-11-20
+Set parameter Username
+Set parameter LicenseID to value 2742039
+Academic license - for non-commercial use only - expires 2026-11-20
+Set parameter Username
+Set parameter LicenseID to value 2742039
+Academic license - for non-commercial use only - expires 2026-11-20
+Set parameter Username
+Set parameter LicenseID to value 2742039
+Academic license - for non-commercial use only - expires 2026-11-20
+
+=== True-DRO Benders iter 1 ===
+  OMP: t₀=11.208991, UB=Inf, gap=NaN, x=[0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0] (0.022s)
+  Sub: Z₀=31.046621, α=[0.000,0.000,0.000,0.000,0.000,0.000,0.000,0.000,0.000,0.000,0.000,0.000,0.000,0.000,0.000,0.000,0.000,0.000,0.000,0.000,0.000,0.000,1.046,0.000,0.000,0.000,0.000,0.000,0.000,0.000,0.000,0.000,0.000,0.000,0.000,0.000]
+  Iter 1: LB=11.208991  UB=31.046621  gap=6.39e-01
+  Cut: intercept=18.281446, π_x_range=[-92.0000, 12.7652]
+  Sherali-Cut: intercept=44.423113, π_x_range=[-62.0000, -0.0023]
+  Mini-Benders[1] (mw): LB=23.969360, Z₀(α*)=35.959274, intercept=38.477684
+  Mini-Benders[2] (mw): LB=26.097788, Z₀(α*)=35.442390, intercept=44.097908
+  Mini-Benders[3] (mw): LB=28.076610, Z₀(α*)=33.440483, intercept=40.970085
+  Mini-Benders[4] (mw): LB=28.994322, Z₀(α*)=36.002189, intercept=45.445816
+  Mini-Benders[5] (mw): LB=31.046621, Z₀(α*)=31.046625, intercept=44.424191
+  Mini-Benders[5]: gap=9.97e-10 ≤ tol, break
+  α-step: Z₀=31.046625, α=[0.000,0.000,0.000,0.000,0.000,0.000,0.000,0.000,0.000,0.000,0.000,0.000,0.000,0.000,0.000,0.000,0.000,0.000,0.000,0.000,0.000,0.000,1.046,0.000,0.000,0.000,0.000,0.000,0.000,0.000,0.000,0.000,0.000,0.000,0.000,0.000]
+  Alt-Benders[1] (mw): LB=31.046625, Z₀(α*)=31.046625, intercept=44.424193
+  Alt-Benders[1]: gap=1.27e-07 ≤ tol, break
+  OMP re-solve: 0.024s
+
+=== True-DRO Benders iter 2 ===
+  OMP: t₀=31.046625, UB=31.046621, gap=1.27e-07, x=[0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0] (0.000s)
+  Sub: Z₀=31.046625, α=[0.000,0.000,0.000,0.000,0.000,0.000,0.000,0.000,0.000,0.000,0.000,0.000,0.000,0.000,0.000,0.000,0.000,0.000,0.000,0.000,0.000,0.000,1.046,0.000,0.000,0.000,0.000,0.000,0.000,0.000,0.000,0.000,0.000,0.000,0.000,0.000]
+  Iter 2: LB=31.046625  UB=31.046621  gap=1.27e-07
+True-DRO Benders converged at iter 2 (gap=1.27e-07)
+  Wall time: 2.30 sec
+  OMP  time: mean=0.023s, median=0.025s, max=0.029s
+  Sub  time (exact): mean=0.419s, median=0.419s, q90=0.428s, max=0.430s (n=2/2)
+
+----------------------------------------
+True-DRO: status=Optimal, Z₀=31.046621, iters=2, time=2.30s
+  LB=31.046625, UB=31.046621, gap=1.27e-07
+  x* = [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
+============================================================
+Primal Recovery: x* → α* → (h*, λ*, ψ⁰*)
+============================================================
+  x* = [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
+  α* = [0.0000, 0.0000, 0.0000, 0.0000, 0.0000, 0.0000, 0.0000, 0.0000, 0.0000, 0.0000, 0.0000, 0.0000, 0.0000, 0.0000, 0.0000, 0.0000, 0.0000, 0.0000, 0.0000, 0.0000, 0.0000, 0.0000, 1.0457, 0.0000, 0.0000, 0.0000, 0.0000, 0.0000, 0.0000, 0.0000, 0.0000, 0.0000, 0.0000, 0.0000, 0.0000, 0.0000]
+
+  Piece-F obj = 0.000000
+  λ*   = -0.000000
+  Σh*  = 0.000000  (budget: λw = -0.000000)
+
+  h* (nonzero arcs):
+  ψ⁰* (nonzero arcs):
+
+  Per-scenario sink flow ỹ_ts:
+    s=1: ỹ_ts=-0.000000
+    s=2: ỹ_ts=-0.000000
+    s=3: ỹ_ts=-0.000000
+    s=4: ỹ_ts=-0.000000
+    s=5: ỹ_ts=-0.000000
+    s=6: ỹ_ts=-0.000000
+    s=7: ỹ_ts=-0.000000
+    s=8: ỹ_ts=-0.000000
+    s=9: ỹ_ts=-0.000000
+    s=10: ỹ_ts=-0.000000
+    s=11: ỹ_ts=-0.000000
+    s=12: ỹ_ts=-0.000000
+    s=13: ỹ_ts=-0.000000
+    s=14: ỹ_ts=-0.000000
+    s=15: ỹ_ts=-0.000000
+    s=16: ỹ_ts=-0.000000
+    s=17: ỹ_ts=-0.000000
+    s=18: ỹ_ts=-0.000000
+    s=19: ỹ_ts=-0.000000
+    s=20: ỹ_ts=-0.000000
+
+  Z₀(Benders) = 31.046621
+  Piece-F(recovered) = 0.000000
+
+Finished: 2026-04-17T23:31:12.940

@@ -1,0 +1,182 @@
+Log file: C:\Users\user\robust_bilevel_network_games\true_dro\S20_beta0p3_wmax\log_grid_5x5_S20_20260418_004224876_wmax.txt
+Started: 2026-04-18T00:42:24.878
+
+======================================================================
+============================================================
+Grid Network Summary
+============================================================
+Grid size: 5 rows × 5 columns
+Number of nodes: 27
+Number of arcs (incl. dummy): 48
+Number of regular arcs: 47
+Number of interdictable arcs: 25
+Node-incidence matrix dimensions: (26, 48)
+
+Sparsity Information:
+  Arc-arc adjacency: 291 / 2209 pairs (86.8% sparse)
+  Node-arc incidence: 89 / 1222 pairs (92.7% sparse)
+
+Nodes: ["s", "node_1_1", "node_2_1", "node_3_1", "node_4_1", "node_5_1", "node_1_2", "node_2_2", "node_3_2", "node_4_2", "node_5_2", "node_1_3", "node_2_3", "node_3_3", "node_4_3", "node_5_3", "node_1_4", "node_2_4", "node_3_4", "node_4_4", "node_5_4", "node_1_5", "node_2_5", "node_3_5", "node_4_5", "node_5_5", "t"]
+
+First 10 arcs:
+  Arc 1: ("s", "node_1_1") [Interdictable: ✗]
+  Arc 2: ("s", "node_2_1") [Interdictable: ✗]
+  Arc 3: ("s", "node_3_1") [Interdictable: ✗]
+  Arc 4: ("s", "node_4_1") [Interdictable: ✗]
+  Arc 5: ("s", "node_5_1") [Interdictable: ✗]
+  Arc 6: ("node_1_1", "node_2_1") [Interdictable: ✗]
+  Arc 7: ("node_2_1", "node_1_1") [Interdictable: ✗]
+  Arc 8: ("node_3_1", "node_2_1") [Interdictable: ✗]
+  Arc 9: ("node_4_1", "node_5_1") [Interdictable: ✗]
+  Arc 10: ("node_1_2", "node_2_2") [Interdictable: ✓]
+============================================================
+  |A|=47, S=20, γ=3, w=11.5491 (=max cap), λU=2.0
+  ε̂=0.67, ε̃=0.67
+INSTANCE: grid_5x5 (S=20, β=0.3, γ=3, w=11.5491, ε̂=0.67, ε̃=0.67)
+  Settings: MW cuts, mincut VI, inexact=false, mini-benders, w=max(cap)
+======================================================================
+
+----------------------------------------
+VI-only OMP diagnostic (no Benders cuts)
+Set parameter Username
+Set parameter LicenseID to value 2742039
+Academic license - for non-commercial use only - expires 2026-11-20
+Set parameter OutputFlag to value 1
+Set parameter OutputFlag to value 1
+Gurobi Optimizer version 13.0.0 build v13.0.0rc1 (win64 - Windows 10.0 (19045.2))
+
+CPU model: AMD Ryzen 9 5900X 12-Core Processor, instruction set [SSE2|AVX|AVX2]
+Thread count: 12 physical cores, 24 logical processors, using up to 24 threads
+
+Optimize a model with 3804 rows, 2448 columns and 10830 nonzeros (Min)
+Model fingerprint: 0x8655ced2
+Model has 1 linear objective coefficients
+Variable types: 2401 continuous, 47 integer (47 binary)
+Coefficient statistics:
+  Matrix range     [8e-03, 1e+00]
+  Objective range  [1e+00, 1e+00]
+  Bounds range     [1e+00, 1e+04]
+  RHS range        [1e+00, 3e+00]
+Presolve removed 2243 rows and 983 columns
+Presolve time: 0.01s
+Presolved: 1561 rows, 1465 columns, 3685 nonzeros
+Variable types: 1440 continuous, 25 integer (25 binary)
+Found heuristic solution: objective 11.0781101
+Found heuristic solution: objective 4.7408034
+
+Root relaxation: objective 4.148260e+00, 766 iterations, 0.01 seconds (0.01 work units)
+
+    Nodes    |    Current Node    |     Objective Bounds      |     Work
+ Expl Unexpl |  Obj  Depth IntInf | Incumbent    BestBd   Gap | It/Node Time
+
+*    0     0               0       4.1482596    4.14826  0.00%     -    0s
+
+Explored 1 nodes (766 simplex iterations) in 0.02 seconds (0.03 work units)
+Thread count was 24 (of 24 available processors)
+
+Solution count 3: 4.14826 4.7408 11.0781 
+
+Optimal solution found (tolerance 1.00e-04)
+Best objective 4.148259556659e+00, best bound 4.148259556659e+00, gap 0.0000%
+
+User-callback calls 47, time in user-callback 0.00 sec
+  VI-only LB = 4.148260, x = [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
+----------------------------------------
+
+======================================================================
+True-DRO Benders
+======================================================================
+Set parameter Username
+Set parameter LicenseID to value 2742039
+Academic license - for non-commercial use only - expires 2026-11-20
+Set parameter Username
+Set parameter LicenseID to value 2742039
+Academic license - for non-commercial use only - expires 2026-11-20
+
+ERROR: InterruptException()
+InterruptException:
+Stacktrace:
+  [1] GenericMemory
+    @ .\boot.jl:516 [inlined]
+  [2] array_new_memory
+    @ .\array.jl:1058 [inlined]
+  [3] (::Base.var"#133#134"{Vector{VariableRef}, Int64, Int64, Int64, Int64, Int64, Memory{VariableRef}, MemoryRef{VariableRef}})()
+    @ Base .\array.jl:1129
+  [4] _growend!
+    @ .\array.jl:1116 [inlined]
+  [5] push!
+    @ .\array.jl:1261 [inlined]
+  [6] _setindex!(h::OrderedCollections.OrderedDict{VariableRef, Float64}, v::Float64, key::VariableRef, index::Int64)
+    @ OrderedCollections C:\Users\user\.julia\packages\OrderedCollections\5e4BO\src\ordered_dict.jl:312
+  [7] setindex!
+    @ C:\Users\user\.julia\packages\OrderedCollections\5e4BO\src\ordered_dict.jl:340 [inlined]
+  [8] mergewith!(combine::typeof(+), d1::OrderedCollections.OrderedDict{VariableRef, Float64}, d2::OrderedCollections.OrderedDict{VariableRef, Float64})
+    @ Base .\abstractdict.jl:284
+  [9] merge!
+    @ .\abstractdict.jl:291 [inlined]
+ [10] add_to_expression!
+    @ C:\Users\user\.julia\packages\JuMP\i68GU\src\aff_expr.jl:561 [inlined]
+ [11] +(lhs::AffExpr, rhs::AffExpr)
+    @ JuMP C:\Users\user\.julia\packages\JuMP\i68GU\src\operators.jl:305
+ [12] add_sum
+    @ .\reduce.jl:24 [inlined]
+ [13] BottomRF
+    @ .\reduce.jl:86 [inlined]
+ [14] MappingRF
+    @ .\reduce.jl:100 [inlined]
+ [15] _foldl_impl(op::Base.MappingRF{var"#4461#4514"{Vector{Float64}, Matrix{VariableRef}}, Base.BottomRF{typeof(Base.add_sum)}}, init::Base._InitialValue, itr::Base.Iterators.ProductIterator{Tuple{UnitRange{Int64}, UnitRange{Int64}}})
+    @ Base .\reduce.jl:62
+ [16] foldl_impl
+    @ .\reduce.jl:48 [inlined]
+ [17] mapfoldl_impl
+    @ .\reduce.jl:44 [inlined]
+ [18] mapfoldl
+    @ .\reduce.jl:175 [inlined]
+ [19] mapreduce
+    @ .\reduce.jl:307 [inlined]
+ [20] sum
+    @ .\reduce.jl:532 [inlined]
+ [21] sum
+    @ .\reduce.jl:561 [inlined]
+ [22] build_true_dro_subproblem(td::TrueDROData, x_bar::Vector{Float64}; optimizer::Type, silent::Bool, rho_upper_bound::Nothing, add_objF_vi::Bool, add_objF_vi_arcwise::Bool)
+    @ Main C:\Users\user\robust_bilevel_network_games\true_dro\true_dro_build_subproblem.jl:256
+ [23] build_true_dro_subproblem
+    @ C:\Users\user\robust_bilevel_network_games\true_dro\true_dro_build_subproblem.jl:79 [inlined]
+ [24] true_dro_benders_optimize!(td::TrueDROData; mip_optimizer::Type, nlp_optimizer::Type, max_iter::Int64, tol::Float64, verbose::Bool, sub_verbose::Bool, nonconvex_attr::Pair{String, Int64}, sub_time_limit::Float64, mini_benders::Bool, lp_optimizer::Type, max_mini_benders_iter::Int64, inexact::Bool, strengthen_cuts::Symbol, valid_inequality::Symbol, add_objF_vi::Bool)
+    @ Main C:\Users\user\robust_bilevel_network_games\true_dro\true_dro_benders.jl:107
+ [25] true_dro_benders_optimize!
+    @ C:\Users\user\robust_bilevel_network_games\true_dro\true_dro_benders.jl:56 [inlined]
+ [26] run_one(instance_key::Symbol, β::Float64, ε_hat::Float64)
+    @ Main C:\Users\user\robust_bilevel_network_games\true_dro\run_wmax_batch.jl:162
+ [27] top-level scope
+    @ C:\Users\user\robust_bilevel_network_games\true_dro\run_wmax_batch.jl:235
+ [28] include(fname::String)
+    @ Main .\sysimg.jl:38
+ [29] top-level scope
+    @ REPL[15]:1
+ [30] top-level scope
+    @ none:1
+ [31] eval
+    @ .\boot.jl:430 [inlined]
+ [32] eval_user_input(ast::Any, backend::REPL.REPLBackend, mod::Module)
+    @ REPL C:\Users\user\AppData\Local\Programs\Julia-1.11.2\share\julia\stdlib\v1.11\REPL\src\REPL.jl:245
+ [33] repl_backend_loop(backend::REPL.REPLBackend, get_module::Function)
+    @ REPL C:\Users\user\AppData\Local\Programs\Julia-1.11.2\share\julia\stdlib\v1.11\REPL\src\REPL.jl:342
+ [34] start_repl_backend(backend::REPL.REPLBackend, consumer::Any; get_module::Function)
+    @ REPL C:\Users\user\AppData\Local\Programs\Julia-1.11.2\share\julia\stdlib\v1.11\REPL\src\REPL.jl:327
+ [35] run_repl(repl::REPL.AbstractREPL, consumer::Any; backend_on_current_task::Bool, backend::Any)
+    @ REPL C:\Users\user\AppData\Local\Programs\Julia-1.11.2\share\julia\stdlib\v1.11\REPL\src\REPL.jl:483
+ [36] run_repl(repl::REPL.AbstractREPL, consumer::Any)
+    @ REPL C:\Users\user\AppData\Local\Programs\Julia-1.11.2\share\julia\stdlib\v1.11\REPL\src\REPL.jl:469
+ [37] (::Base.var"#1150#1152"{Bool, Symbol, Bool})(REPL::Module)
+    @ Base .\client.jl:446
+ [38] #invokelatest#2
+    @ .\essentials.jl:1055 [inlined]
+ [39] invokelatest
+    @ .\essentials.jl:1052 [inlined]
+ [40] run_main_repl(interactive::Bool, quiet::Bool, banner::Symbol, history_file::Bool, color_set::Bool)
+    @ Base .\client.jl:430
+ [41] repl_main
+    @ .\client.jl:567 [inlined]
+ [42] _start()
+    @ Base .\client.jl:541

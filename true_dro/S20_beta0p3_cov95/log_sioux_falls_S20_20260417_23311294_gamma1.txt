@@ -1,0 +1,177 @@
+Log file: C:\Users\user\robust_bilevel_network_games\true_dro\S20_beta0p3_cov95\log_sioux_falls_S20_20260417_23311294_gamma1.txt
+Started: 2026-04-17T23:31:12.940
+
+======================================================================
+INSTANCE: sioux_falls (S=20, β=0.3, γ=1, ε̂=0.67, ε̃=0.67)
+  Settings: MW cuts, mincut VI, inexact=false, mini-benders
+======================================================================
+============================================================
+Sioux-Falls Network Summary
+============================================================
+Number of nodes: 24
+Number of arcs (incl. dummy): 77
+Number of regular arcs: 76
+Number of interdictable arcs: 66
+Source node: s (1)
+Sink node: t (24)
+Node-incidence matrix N dimensions: (23, 77)
+
+Sparsity Information:
+  Arc-arc adjacency: 864 / 5776 pairs (85.0% sparse)
+  Node-arc incidence: 148 / 1748 pairs (91.5% sparse)
+
+First 15 arcs:
+  Arc 1: ("10", "11") [Interdictable: ✓]
+  Arc 2: ("10", "15") [Interdictable: ✓]
+  Arc 3: ("10", "16") [Interdictable: ✓]
+  Arc 4: ("10", "17") [Interdictable: ✓]
+  Arc 5: ("10", "9") [Interdictable: ✓]
+  Arc 6: ("11", "10") [Interdictable: ✓]
+  Arc 7: ("11", "12") [Interdictable: ✓]
+  Arc 8: ("11", "14") [Interdictable: ✓]
+  Arc 9: ("11", "4") [Interdictable: ✓]
+  Arc 10: ("12", "11") [Interdictable: ✓]
+  Arc 11: ("12", "13") [Interdictable: ✓]
+  Arc 12: ("12", "3") [Interdictable: ✓]
+  Arc 13: ("13", "12") [Interdictable: ✓]
+  Arc 14: ("13", "t") [Interdictable: ✗]
+  Arc 15: ("14", "11") [Interdictable: ✓]
+============================================================
+  |A|=76, S=20, γ=1, w=0.9902, λU=2.0
+  ε̂=0.67, ε̃=0.67
+
+----------------------------------------
+VI-only OMP diagnostic (no Benders cuts)
+Set parameter Username
+Set parameter LicenseID to value 2742039
+Academic license - for non-commercial use only - expires 2026-11-20
+Set parameter OutputFlag to value 1
+Set parameter OutputFlag to value 1
+Gurobi Optimizer version 13.0.0 build v13.0.0rc1 (win64 - Windows 10.0 (19045.2))
+
+CPU model: AMD Ryzen 9 5900X 12-Core Processor, instruction set [SSE2|AVX|AVX2]
+Thread count: 12 physical cores, 24 logical processors, using up to 24 threads
+
+Optimize a model with 6112 rows, 3577 columns and 18067 nonzeros (Min)
+Model fingerprint: 0xdf7bf1fb
+Model has 1 linear objective coefficients
+Variable types: 3501 continuous, 76 integer (76 binary)
+Coefficient statistics:
+  Matrix range     [2e-02, 1e+00]
+  Objective range  [1e+00, 1e+00]
+  Bounds range     [1e+00, 1e+04]
+  RHS range        [1e+00, 1e+00]
+Found heuristic solution: objective 75.8358076
+Presolve removed 2271 rows and 553 columns
+Presolve time: 0.02s
+Presolved: 3841 rows, 3024 columns, 8984 nonzeros
+Found heuristic solution: objective 55.7240525
+Variable types: 2960 continuous, 64 integer (64 binary)
+
+Root relaxation: objective 8.351084e+00, 1351 iterations, 0.00 seconds (0.02 work units)
+
+    Nodes    |    Current Node    |     Objective Bounds      |     Work
+ Expl Unexpl |  Obj  Depth IntInf | Incumbent    BestBd   Gap | It/Node Time
+
+*    0     0               0       8.3510839    8.35108  0.00%     -    0s
+
+Explored 1 nodes (1351 simplex iterations) in 0.05 seconds (0.06 work units)
+Thread count was 24 (of 24 available processors)
+
+Solution count 3: 8.35108 55.7241 75.8358 
+
+Optimal solution found (tolerance 1.00e-04)
+Best objective 8.351083865569e+00, best bound 8.351083865569e+00, gap 0.0000%
+
+User-callback calls 39, time in user-callback 0.00 sec
+  VI-only LB = 8.351084, x = [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
+----------------------------------------
+
+======================================================================
+True-DRO Benders
+======================================================================
+Set parameter Username
+Set parameter LicenseID to value 2742039
+Academic license - for non-commercial use only - expires 2026-11-20
+Set parameter Username
+Set parameter LicenseID to value 2742039
+Academic license - for non-commercial use only - expires 2026-11-20
+Set parameter Username
+Set parameter LicenseID to value 2742039
+Academic license - for non-commercial use only - expires 2026-11-20
+Set parameter Username
+Set parameter LicenseID to value 2742039
+Academic license - for non-commercial use only - expires 2026-11-20
+Set parameter Username
+Set parameter LicenseID to value 2742039
+Academic license - for non-commercial use only - expires 2026-11-20
+
+=== True-DRO Benders iter 1 ===
+  OMP: t₀=8.351084, UB=Inf, gap=NaN, x=[0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0] (0.061s)
+  Sub: Z₀=21.963503, α=[0.000,0.000,0.000,0.000,0.000,0.000,0.000,0.000,0.000,0.000,0.000,0.000,0.000,0.000,0.000,0.000,0.000,0.000,0.000,0.000,0.000,0.000,0.000,0.000,0.000,0.000,0.000,0.000,0.000,0.000,0.000,0.000,0.000,0.000,0.000,0.000,0.000,0.000,0.000,0.000,0.000,0.000,0.000,0.000,0.000,0.000,0.000,0.000,0.000,0.000,0.037,0.953,0.000,0.000,0.000,0.000,0.000,0.000,0.000,0.000,0.000,0.000,0.000,0.000,0.000,0.000,0.000,0.000,0.000,0.000,0.000,0.000,0.000,0.000,0.000,0.000]
+  Iter 1: LB=8.351084  UB=21.963503  gap=6.20e-01
+  Cut: intercept=9.968890, π_x_range=[-80.0000, 11.9946]
+  Sherali-Cut: intercept=26.860578, π_x_range=[-62.0000, -0.0054]
+  Mini-Benders[1] (mw): LB=10.436154, Z₀(α*)=26.535849, intercept=28.630523
+  Mini-Benders[2] (mw): LB=14.043610, Z₀(α*)=31.165140, intercept=26.354449
+  Mini-Benders[3] (mw): LB=16.375124, Z₀(α*)=28.977208, intercept=29.107209
+  Mini-Benders[4] (mw): LB=17.408870, Z₀(α*)=31.038224, intercept=28.096740
+  Mini-Benders[5] (mw): LB=18.194613, Z₀(α*)=23.515127, intercept=29.465652
+  α-step: Z₀=31.789733, α=[0.000,0.000,0.000,0.000,0.000,0.000,0.000,0.000,0.000,0.000,0.000,0.000,0.000,0.000,0.000,0.000,0.000,0.000,0.000,0.000,0.000,0.000,0.000,0.000,0.000,0.000,0.000,0.000,0.000,0.000,0.000,0.000,0.000,0.000,0.380,0.000,0.000,0.000,0.000,0.000,0.000,0.000,0.000,0.000,0.000,0.000,0.000,0.000,0.000,0.000,0.610,0.000,0.000,0.000,0.000,0.000,0.000,0.000,0.000,0.000,0.000,0.000,0.000,0.000,0.000,0.000,0.000,0.000,0.000,0.000,0.000,0.000,0.000,0.000,0.000,0.000]
+  Alt-Benders[1] (mw): LB=20.289974, Z₀(α*)=31.676888, intercept=31.807437
+  Alt-Benders[2] (mw): LB=21.963503, Z₀(α*)=21.944512, intercept=25.522297
+  Alt-Benders[2]: gap=5.00e-10 ≤ tol, break
+  OMP re-solve: 0.041s
+
+=== True-DRO Benders iter 2 ===
+  OMP: t₀=21.963503, UB=21.963503, gap=5.00e-10, x=[0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0] (0.000s)
+  Sub: Z₀=21.963503, α=[0.000,0.000,0.000,0.000,0.000,0.000,0.000,0.000,0.000,0.000,0.000,0.000,0.000,0.000,0.000,0.000,0.000,0.000,0.000,0.000,0.000,0.000,0.000,0.000,0.000,0.000,0.000,0.000,0.000,0.000,0.000,0.000,0.000,0.000,0.000,0.000,0.000,0.000,0.000,0.000,0.000,0.000,0.000,0.000,0.000,0.000,0.000,0.000,0.000,0.000,0.037,0.953,0.000,0.000,0.000,0.000,0.000,0.000,0.000,0.000,0.000,0.000,0.000,0.000,0.000,0.000,0.000,0.000,0.000,0.000,0.000,0.000,0.000,0.000,0.000,0.000]
+  Iter 2: LB=21.963503  UB=21.963503  gap=5.00e-10
+True-DRO Benders converged at iter 2 (gap=5.00e-10)
+  Wall time: 5.84 sec
+  OMP  time: mean=0.063s, median=0.068s, max=0.099s
+  Sub  time (exact): mean=0.903s, median=0.903s, q90=0.924s, max=0.929s (n=2/2)
+
+----------------------------------------
+True-DRO: status=Optimal, Z₀=21.963503, iters=2, time=5.84s
+  LB=21.963503, UB=21.963503, gap=5.00e-10
+  x* = [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
+============================================================
+Primal Recovery: x* → α* → (h*, λ*, ψ⁰*)
+============================================================
+  x* = [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
+  α* = [0.0000, 0.0000, 0.0000, 0.0000, 0.0000, 0.0000, 0.0000, 0.0000, 0.0000, 0.0000, 0.0000, 0.0000, 0.0000, 0.0000, 0.0000, 0.0000, 0.0000, 0.0000, 0.0000, 0.0000, 0.0000, 0.0000, 0.0000, 0.0000, 0.0000, 0.0000, 0.0000, 0.0000, 0.0000, 0.0000, 0.0000, 0.0000, 0.0000, 0.0000, 0.0000, 0.0000, 0.0000, 0.0000, 0.0000, 0.0000, 0.0000, 0.0000, 0.0000, 0.0000, 0.0000, 0.0000, 0.0000, 0.0000, 0.0000, 0.0000, 0.0373, 0.9529, 0.0000, 0.0000, 0.0000, 0.0000, 0.0000, 0.0000, 0.0000, 0.0000, 0.0000, 0.0000, 0.0000, 0.0000, 0.0000, 0.0000, 0.0000, 0.0000, 0.0000, 0.0000, 0.0000, 0.0000, 0.0000, 0.0000, 0.0000, 0.0000]
+
+  Piece-F obj = 0.000000
+  λ*   = -0.000000
+  Σh*  = 0.000000  (budget: λw = -0.000000)
+
+  h* (nonzero arcs):
+  ψ⁰* (nonzero arcs):
+
+  Per-scenario sink flow ỹ_ts:
+    s=1: ỹ_ts=-0.000000
+    s=2: ỹ_ts=-0.000000
+    s=3: ỹ_ts=-0.000000
+    s=4: ỹ_ts=-0.000000
+    s=5: ỹ_ts=-0.000000
+    s=6: ỹ_ts=-0.000000
+    s=7: ỹ_ts=-0.000000
+    s=8: ỹ_ts=-0.000000
+    s=9: ỹ_ts=-0.000000
+    s=10: ỹ_ts=-0.000000
+    s=11: ỹ_ts=-0.000000
+    s=12: ỹ_ts=-0.000000
+    s=13: ỹ_ts=-0.000000
+    s=14: ỹ_ts=-0.000000
+    s=15: ỹ_ts=-0.000000
+    s=16: ỹ_ts=-0.000000
+    s=17: ỹ_ts=-0.000000
+    s=18: ỹ_ts=-0.000000
+    s=19: ỹ_ts=-0.000000
+    s=20: ỹ_ts=-0.000000
+
+  Z₀(Benders) = 21.963503
+  Piece-F(recovered) = 0.000000
+
+Finished: 2026-04-17T23:31:19.096

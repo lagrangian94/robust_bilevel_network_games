@@ -1,0 +1,179 @@
+Log file: C:\Users\user\robust_bilevel_network_games\true_dro\S20_beta0p3_wmax\log_sioux_falls_S20_20260418_004226613_wmax.txt
+Started: 2026-04-18T00:42:26.615
+
+======================================================================
+============================================================
+Sioux-Falls Network Summary
+============================================================
+Number of nodes: 24
+Number of arcs (incl. dummy): 77
+Number of regular arcs: 76
+Number of interdictable arcs: 66
+Source node: s (1)
+Sink node: t (24)
+Node-incidence matrix N dimensions: (23, 77)
+
+Sparsity Information:
+  Arc-arc adjacency: 864 / 5776 pairs (85.0% sparse)
+  Node-arc incidence: 148 / 1748 pairs (91.5% sparse)
+
+First 15 arcs:
+  Arc 1: ("10", "11") [Interdictable: ✓]
+  Arc 2: ("10", "15") [Interdictable: ✓]
+  Arc 3: ("10", "16") [Interdictable: ✓]
+  Arc 4: ("10", "17") [Interdictable: ✓]
+  Arc 5: ("10", "9") [Interdictable: ✓]
+  Arc 6: ("11", "10") [Interdictable: ✓]
+  Arc 7: ("11", "12") [Interdictable: ✓]
+  Arc 8: ("11", "14") [Interdictable: ✓]
+  Arc 9: ("11", "4") [Interdictable: ✓]
+  Arc 10: ("12", "11") [Interdictable: ✓]
+  Arc 11: ("12", "13") [Interdictable: ✓]
+  Arc 12: ("12", "3") [Interdictable: ✓]
+  Arc 13: ("13", "12") [Interdictable: ✓]
+  Arc 14: ("13", "t") [Interdictable: ✗]
+  Arc 15: ("14", "11") [Interdictable: ✓]
+============================================================
+  |A|=76, S=20, γ=2, w=25.2786 (=max cap), λU=2.0
+  ε̂=0.67, ε̃=0.67
+INSTANCE: sioux_falls (S=20, β=0.3, γ=2, w=25.2786, ε̂=0.67, ε̃=0.67)
+  Settings: MW cuts, mincut VI, inexact=false, mini-benders, w=max(cap)
+======================================================================
+
+----------------------------------------
+VI-only OMP diagnostic (no Benders cuts)
+Set parameter Username
+Set parameter LicenseID to value 2742039
+Academic license - for non-commercial use only - expires 2026-11-20
+Set parameter OutputFlag to value 1
+Set parameter OutputFlag to value 1
+Gurobi Optimizer version 13.0.0 build v13.0.0rc1 (win64 - Windows 10.0 (19045.2))
+
+CPU model: AMD Ryzen 9 5900X 12-Core Processor, instruction set [SSE2|AVX|AVX2]
+Thread count: 12 physical cores, 24 logical processors, using up to 24 threads
+
+Optimize a model with 6112 rows, 3577 columns and 18067 nonzeros (Min)
+Model fingerprint: 0x8ba74a64
+Model has 1 linear objective coefficients
+Variable types: 3501 continuous, 76 integer (76 binary)
+Coefficient statistics:
+  Matrix range     [2e-02, 1e+00]
+  Objective range  [1e+00, 1e+00]
+  Bounds range     [1e+00, 1e+04]
+  RHS range        [1e+00, 2e+00]
+Found heuristic solution: objective 75.8358076
+Presolve removed 2271 rows and 553 columns
+Presolve time: 0.01s
+Presolved: 3841 rows, 3024 columns, 8984 nonzeros
+Found heuristic solution: objective 55.7240525
+Variable types: 2960 continuous, 64 integer (64 binary)
+
+Root relaxation: objective 3.230065e+00, 1334 iterations, 0.01 seconds (0.03 work units)
+
+    Nodes    |    Current Node    |     Objective Bounds      |     Work
+ Expl Unexpl |  Obj  Depth IntInf | Incumbent    BestBd   Gap | It/Node Time
+
+*    0     0               0       3.2300654    3.23007  0.00%     -    0s
+
+Explored 1 nodes (1334 simplex iterations) in 0.03 seconds (0.05 work units)
+Thread count was 24 (of 24 available processors)
+
+Solution count 3: 3.23007 55.7241 75.8358 
+
+Optimal solution found (tolerance 1.00e-04)
+Best objective 3.230065405688e+00, best bound 3.230065405688e+00, gap 0.0000%
+
+User-callback calls 54, time in user-callback 0.00 sec
+  VI-only LB = 3.230065, x = [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
+----------------------------------------
+
+======================================================================
+True-DRO Benders
+======================================================================
+Set parameter Username
+Set parameter LicenseID to value 2742039
+Academic license - for non-commercial use only - expires 2026-11-20
+Set parameter Username
+Set parameter LicenseID to value 2742039
+Academic license - for non-commercial use only - expires 2026-11-20
+Set parameter Username
+Set parameter LicenseID to value 2742039
+Academic license - for non-commercial use only - expires 2026-11-20
+Set parameter Username
+Set parameter LicenseID to value 2742039
+Academic license - for non-commercial use only - expires 2026-11-20
+Set parameter Username
+Set parameter LicenseID to value 2742039
+Academic license - for non-commercial use only - expires 2026-11-20
+
+ERROR: InterruptException()
+InterruptException:
+Stacktrace:
+  [1] add_variable(model::Model, v::ScalarVariable{Int64, Float64, Float64, Float64}, name::String)
+    @ JuMP C:\Users\user\.julia\packages\JuMP\i68GU\src\variables.jl:1961
+  [2] macro expansion
+    @ C:\Users\user\.julia\packages\JuMP\i68GU\src\macros\@variable.jl:278 [inlined]
+  [3] #4563
+    @ C:\Users\user\.julia\packages\JuMP\i68GU\src\Containers\macro.jl:545 [inlined]
+  [4] #84
+    @ C:\Users\user\.julia\packages\JuMP\i68GU\src\Containers\container.jl:85 [inlined]
+  [5] iterate
+    @ .\generator.jl:48 [inlined]
+  [6] collect_to!(dest::Matrix{VariableRef}, itr::Base.Generator{JuMP.Containers.VectorizedProductIterator{Tuple{Base.OneTo{Int64}, Base.OneTo{Int64}}}, JuMP.Containers.var"#84#85"{var"#4563#4607"{Model}}}, offs::Int64, st::Tuple{Tuple{Int64, Int64}, Tuple{Int64, Int64}})
+    @ Base .\array.jl:849
+  [7] collect_to_with_first!
+    @ .\array.jl:827 [inlined]
+  [8] collect(itr::Base.Generator{JuMP.Containers.VectorizedProductIterator{Tuple{Base.OneTo{Int64}, Base.OneTo{Int64}}}, JuMP.Containers.var"#84#85"{var"#4563#4607"{Model}}})
+    @ Base .\array.jl:801
+  [9] map
+    @ .\abstractarray.jl:3399 [inlined]
+ [10] container
+    @ C:\Users\user\.julia\packages\JuMP\i68GU\src\Containers\container.jl:85 [inlined]
+ [11] container
+    @ C:\Users\user\.julia\packages\JuMP\i68GU\src\Containers\container.jl:71 [inlined]
+ [12] container
+    @ C:\Users\user\.julia\packages\JuMP\i68GU\src\Containers\container.jl:75 [inlined]
+ [13] macro expansion
+    @ C:\Users\user\.julia\packages\JuMP\i68GU\src\macros.jl:400 [inlined]
+ [14] build_alpha_step_lp(td::TrueDROData, x_bar::Vector{Float64}, a_val::Vector{Float64}, d_val::Vector{Float64}; optimizer::Type)
+    @ Main C:\Users\user\robust_bilevel_network_games\true_dro\true_dro_build_subproblem.jl:485
+ [15] build_alpha_step_lp
+    @ C:\Users\user\robust_bilevel_network_games\true_dro\true_dro_build_subproblem.jl:456 [inlined]
+ [16] true_dro_benders_optimize!(td::TrueDROData; mip_optimizer::Type, nlp_optimizer::Type, max_iter::Int64, tol::Float64, verbose::Bool, sub_verbose::Bool, nonconvex_attr::Pair{String, Int64}, sub_time_limit::Float64, mini_benders::Bool, lp_optimizer::Type, max_mini_benders_iter::Int64, inexact::Bool, strengthen_cuts::Symbol, valid_inequality::Symbol, add_objF_vi::Bool)
+    @ Main C:\Users\user\robust_bilevel_network_games\true_dro\true_dro_benders.jl:157
+ [17] true_dro_benders_optimize!
+    @ C:\Users\user\robust_bilevel_network_games\true_dro\true_dro_benders.jl:56 [inlined]
+ [18] run_one(instance_key::Symbol, β::Float64, ε_hat::Float64)
+    @ Main C:\Users\user\robust_bilevel_network_games\true_dro\run_wmax_batch.jl:162
+ [19] top-level scope
+    @ C:\Users\user\robust_bilevel_network_games\true_dro\run_wmax_batch.jl:235
+ [20] include(fname::String)
+    @ Main .\sysimg.jl:38
+ [21] top-level scope
+    @ REPL[15]:1
+ [22] top-level scope
+    @ none:1
+ [23] eval
+    @ .\boot.jl:430 [inlined]
+ [24] eval_user_input(ast::Any, backend::REPL.REPLBackend, mod::Module)
+    @ REPL C:\Users\user\AppData\Local\Programs\Julia-1.11.2\share\julia\stdlib\v1.11\REPL\src\REPL.jl:245
+ [25] repl_backend_loop(backend::REPL.REPLBackend, get_module::Function)
+    @ REPL C:\Users\user\AppData\Local\Programs\Julia-1.11.2\share\julia\stdlib\v1.11\REPL\src\REPL.jl:342
+ [26] start_repl_backend(backend::REPL.REPLBackend, consumer::Any; get_module::Function)
+    @ REPL C:\Users\user\AppData\Local\Programs\Julia-1.11.2\share\julia\stdlib\v1.11\REPL\src\REPL.jl:327
+ [27] run_repl(repl::REPL.AbstractREPL, consumer::Any; backend_on_current_task::Bool, backend::Any)
+    @ REPL C:\Users\user\AppData\Local\Programs\Julia-1.11.2\share\julia\stdlib\v1.11\REPL\src\REPL.jl:483
+ [28] run_repl(repl::REPL.AbstractREPL, consumer::Any)
+    @ REPL C:\Users\user\AppData\Local\Programs\Julia-1.11.2\share\julia\stdlib\v1.11\REPL\src\REPL.jl:469
+ [29] (::Base.var"#1150#1152"{Bool, Symbol, Bool})(REPL::Module)
+    @ Base .\client.jl:446
+ [30] #invokelatest#2
+    @ .\essentials.jl:1055 [inlined]
+ [31] invokelatest
+    @ .\essentials.jl:1052 [inlined]
+ [32] run_main_repl(interactive::Bool, quiet::Bool, banner::Symbol, history_file::Bool, color_set::Bool)
+    @ Base .\client.jl:430
+ [33] repl_main
+    @ .\client.jl:567 [inlined]
+ [34] _start()
+    @ Base .\client.jl:541

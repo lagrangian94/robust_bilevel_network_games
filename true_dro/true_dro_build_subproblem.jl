@@ -676,3 +676,225 @@ function solve_alpha_step_lp!(model, vars, td::TrueDROData,
         :is_optimal => true,
     )
 end
+
+
+# ====================================================================
+# Single-layer compact subproblem (ε̃=0)
+#
+# ε̃=0 → d[s] = q̂[s] (고정), e=0, ζF[k,s] = α[k]·q̂[s] (linear).
+# Bilinear term이 ζL (K×S개)만 남음. 기존 대비 bilinear constraint 절반 제거.
+#
+# ISP-F의 d 관련 변수/제약 전부 제거:
+#   - d, e 변수 제거
+#   - ζF 변수 + ζF_def quadratic constraint 제거
+#   - DF1~DF4 (d의 TV ball) 제거
+#   - DF6, DF7, DF9에서 d[s] → q[s] 상수 대입
+#
+# vars dict는 기존과 호환: update_true_dro_subproblem_objective!,
+# solve_true_dro_subproblem!, _apply_arcwise_vi_fixings! 모두 그대로 사용 가능.
+# (이들은 d, e, ζF를 참조하지 않음)
+# ====================================================================
+
+"""
+    build_true_dro_subproblem_single(td::TrueDROData, x_bar::Vector{Float64}; optimizer, ...)
+
+ε̃=0 전용 compact subproblem. ISP-F의 bilinear term (ζF = α·d) 제거.
+Bilinear은 ζL = α·a (K×S개)만 남음.
+
+Returns (model, vars). 기존 solve/update 함수와 호환.
+"""
+function build_true_dro_subproblem_single(td::TrueDROData, x_bar::Vector{Float64};
+                                          optimizer, silent=true,
+                                          rho_upper_bound::Union{Float64,Nothing}=nothing,
+                                          add_objF_vi::Bool=false,
+                                          add_objF_vi_arcwise::Bool=false)
+    @assert td.eps_tilde == 0.0 "build_true_dro_subproblem_single requires ε̃=0 (got $(td.eps_tilde))"
+
+    S = td.S
+    K = td.num_arcs
+    m = td.nv1
+    Ny = td.Ny
+    Nts = td.Nts
+    q = td.q_hat
+    ε̂ = td.eps_hat
+    ξ = td.xi_bar
+    v = td.v
+    w = td.w
+    φ̂U = td.phi_hat_U
+    φ̃U = td.phi_tilde_U
+    λU = td.lambda_U
+
+    model = Model(optimizer)
+    if silent
+        set_silent(model)
+    end
+    set_optimizer_attribute(model, "DualReductions", 0)
+
+    # ====================================================================
+    # ISP-L: 기존과 동일 (a, ζL bilinear 유지)
+    # ====================================================================
+    a_min = [max(0.0, q[s] - 2 * ε̂) for s in 1:S]
+    a_max = [min(1.0, q[s] + 2 * ε̂) for s in 1:S]
+
+    @variable(model, 0 <= α[1:K] <= w)
+    @constraint(model, sum(α[k] for k in 1:K) <= w)
+
+    @variable(model, σ_hat[1:S] >= 0)
+    @variable(model, u_hat[1:K, 1:S] >= 0)
+    @variable(model, a_min[s] <= a[s=1:S] <= a_max[s])
+    @variable(model, 0 <= b[1:S] <= 2 * ε̂)
+    @variable(model, ρ_hat_1[1:K, 1:S] >= 0)
+    @variable(model, ρ_hat_2[1:K, 1:S] >= 0)
+    @variable(model, ρ_hat_3[1:K, 1:S] >= 0)
+
+    if rho_upper_bound !== nothing
+        for k in 1:K, s in 1:S
+            set_upper_bound(ρ_hat_1[k, s], rho_upper_bound)
+            set_upper_bound(ρ_hat_2[k, s], rho_upper_bound)
+            set_upper_bound(ρ_hat_3[k, s], rho_upper_bound)
+        end
+    end
+
+    # Bilinear: ζL_{ks} = α_k · a_s (유일한 bilinear term)
+    @variable(model, 0 <= ζL[k=1:K, s=1:S] <= w * a_max[s])
+    @constraint(model, ζL_def[k=1:K, s=1:S], ζL[k, s] == α[k] * a[s])
+
+    # (DL-1)
+    @constraint(model, DL1[j=1:m, s=1:S],
+        sum(Ny[j, k] * u_hat[k, s] for k in 1:K) + Nts[j] * σ_hat[s] == 0)
+    # (DL-2): bilinear via ζL
+    @constraint(model, DL2[k=1:K, s=1:S],
+        -ξ[k, s] * a[s] - ζL[k, s]
+        + u_hat[k, s] + ρ_hat_2[k, s] - ρ_hat_3[k, s] <= 0)
+    # (DL-3)
+    @constraint(model, DL3[k=1:K, s=1:S],
+        v[k] * ξ[k, s] * a[s]
+        - ρ_hat_1[k, s] - ρ_hat_2[k, s] + ρ_hat_3[k, s] <= 0)
+    # (DL-4~7)
+    @constraint(model, DL4[s=1:S], a[s] - b[s] <= q[s])
+    @constraint(model, DL5[s=1:S], a[s] + b[s] >= q[s])
+    @constraint(model, DL6, sum(b[s] for s in 1:S) <= 2 * ε̂)
+    @constraint(model, DL7, sum(a[s] for s in 1:S) == 1)
+
+    # ====================================================================
+    # ISP-F: d[s] = q[s] 상수 대입, ζF = α·q (linear), d/e/DF1~4 제거
+    # ====================================================================
+    @variable(model, u_tilde[1:K, 1:S] >= 0)
+    @variable(model, σ_tilde[1:S] >= 0)
+    @variable(model, ω[1:m, 1:S])              # FREE
+    @variable(model, β[1:K, 1:S] >= 0)
+    @variable(model, δ >= 0)
+    @variable(model, ρ_tilde_1[1:K, 1:S] >= 0)
+    @variable(model, ρ_tilde_2[1:K, 1:S] >= 0)
+    @variable(model, ρ_tilde_3[1:K, 1:S] >= 0)
+    @variable(model, ρ_psi0_1[1:K] >= 0)
+    @variable(model, ρ_psi0_2[1:K] >= 0)
+    @variable(model, ρ_psi0_3[1:K] >= 0)
+
+    if rho_upper_bound !== nothing
+        for k in 1:K, s in 1:S
+            set_upper_bound(ρ_tilde_1[k, s], rho_upper_bound)
+            set_upper_bound(ρ_tilde_2[k, s], rho_upper_bound)
+            set_upper_bound(ρ_tilde_3[k, s], rho_upper_bound)
+        end
+        for k in 1:K
+            set_upper_bound(ρ_psi0_1[k], rho_upper_bound)
+            set_upper_bound(ρ_psi0_2[k], rho_upper_bound)
+            set_upper_bound(ρ_psi0_3[k], rho_upper_bound)
+        end
+    end
+
+    # (DF-5): flow conservation (동일)
+    @constraint(model, DF5[j=1:m, s=1:S],
+        sum(Ny[j, k] * u_tilde[k, s] for k in 1:K) + Nts[j] * σ_tilde[s] == 0)
+
+    # (DF-6): -(ξ_k^s + α_k)·q_s + ũ + ρ̃₂ - ρ̃₃ ≤ 0   [LINEAR in α]
+    @constraint(model, DF6[k=1:K, s=1:S],
+        -ξ[k, s] * q[s] - α[k] * q[s]
+        + u_tilde[k, s] + ρ_tilde_2[k, s] - ρ_tilde_3[k, s] <= 0)
+
+    # (DF-7): v_k·ξ_k^s·q_s - ρ̃₁ - ρ̃₂ + ρ̃₃ ≤ 0   [상수 RHS]
+    @constraint(model, DF7[k=1:K, s=1:S],
+        v[k] * ξ[k, s] * q[s]
+        - ρ_tilde_1[k, s] - ρ_tilde_2[k, s] + ρ_tilde_3[k, s] <= 0)
+
+    # (DF-8)
+    @constraint(model, DF8[k=1:K, s=1:S],
+        sum(Ny[j, k] * ω[j, s] for j in 1:m) - β[k, s] <= 0)
+
+    # (DF-9): q_s + N_ts^T ω ≤ 0
+    @constraint(model, DF9[s=1:S],
+        q[s] + sum(Nts[j] * ω[j, s] for j in 1:m) <= 0)
+
+    # (DF-h)
+    @constraint(model, DFh[k=1:K], sum(β[k, s] for s in 1:S) <= δ)
+
+    # (DF-λ)
+    @constraint(model, DFlam,
+        sum(σ_tilde[s] for s in 1:S)
+        >= sum(ξ[k, s] * β[k, s] for k in 1:K, s in 1:S)
+           + w * δ
+           + sum(ρ_psi0_2[k] for k in 1:K)
+           - sum(ρ_psi0_3[k] for k in 1:K))
+
+    # (DF-ψ)
+    @constraint(model, DFpsi[k=1:K],
+        v[k] * sum(ξ[k, s] * β[k, s] for s in 1:S) + ρ_psi0_1[k] + ρ_psi0_2[k]
+        >= ρ_psi0_3[k])
+
+    # ====================================================================
+    # Objective (동일 구조)
+    # ====================================================================
+    obj_L = sum(σ_hat[s] for s in 1:S) -
+            φ̂U * sum(x_bar[k] * ρ_hat_1[k, s] for k in 1:K, s in 1:S) -
+            φ̂U * sum((1.0 - x_bar[k]) * ρ_hat_3[k, s] for k in 1:K, s in 1:S)
+
+    obj_F = -φ̃U * sum(x_bar[k] * ρ_tilde_1[k, s] for k in 1:K, s in 1:S) -
+             φ̃U * sum((1.0 - x_bar[k]) * ρ_tilde_3[k, s] for k in 1:K, s in 1:S) -
+             λU * sum(x_bar[k] * ρ_psi0_1[k] for k in 1:K) -
+             λU * sum((1.0 - x_bar[k]) * ρ_psi0_3[k] for k in 1:K)
+
+    @objective(model, Max, obj_L + obj_F)
+
+    # Valid Inequality (동일)
+    if add_objF_vi
+        @constraint(model, objF_vi_rho_tilde_1[k=1:K, s=1:S],
+            -φ̃U * x_bar[k] * ρ_tilde_1[k, s] >= 0)
+        @constraint(model, objF_vi_rho_tilde_3[k=1:K, s=1:S],
+            -φ̃U * (1.0 - x_bar[k]) * ρ_tilde_3[k, s] >= 0)
+        @constraint(model, objF_vi_rho_psi0_1[k=1:K],
+            -λU * x_bar[k] * ρ_psi0_1[k] >= 0)
+        @constraint(model, objF_vi_rho_psi0_3[k=1:K],
+            -λU * (1.0 - x_bar[k]) * ρ_psi0_3[k] >= 0)
+    end
+
+    vars = Dict(
+        :α => α,
+        :ζL => ζL,
+        # ISP-L
+        :σ_hat => σ_hat, :u_hat => u_hat, :a => a, :b => b,
+        :ρ_hat_1 => ρ_hat_1, :ρ_hat_2 => ρ_hat_2, :ρ_hat_3 => ρ_hat_3,
+        # ISP-F (d, e, ζF 없음)
+        :u_tilde => u_tilde, :σ_tilde => σ_tilde,
+        :ω => ω, :β => β, :δ => δ,
+        :ρ_tilde_1 => ρ_tilde_1, :ρ_tilde_2 => ρ_tilde_2, :ρ_tilde_3 => ρ_tilde_3,
+        :ρ_psi0_1 => ρ_psi0_1, :ρ_psi0_2 => ρ_psi0_2, :ρ_psi0_3 => ρ_psi0_3,
+        # Bounds (a만, d는 없음)
+        :a_min => a_min, :a_max => a_max,
+        :is_single_compact => true,
+    )
+    if add_objF_vi
+        vars[:objF_vi_rho_tilde_1] = objF_vi_rho_tilde_1
+        vars[:objF_vi_rho_tilde_3] = objF_vi_rho_tilde_3
+        vars[:objF_vi_rho_psi0_1] = objF_vi_rho_psi0_1
+        vars[:objF_vi_rho_psi0_3] = objF_vi_rho_psi0_3
+    end
+
+    if add_objF_vi_arcwise
+        vars[:rho_orig_ub] = rho_upper_bound
+        vars[:add_objF_vi_arcwise] = true
+        _apply_arcwise_vi_fixings!(vars, td, x_bar)
+    end
+
+    return model, vars
+end

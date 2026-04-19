@@ -1,0 +1,211 @@
+Log file: C:\Users\user\robust_bilevel_network_games\true_dro\S20_beta0p1_wmax\log_grid_5x5_S20_20260418_00405377_wmax.txt
+Started: 2026-04-18T00:40:53.782
+
+======================================================================
+============================================================
+Grid Network Summary
+============================================================
+Grid size: 5 rows × 5 columns
+Number of nodes: 27
+Number of arcs (incl. dummy): 48
+Number of regular arcs: 47
+Number of interdictable arcs: 25
+Node-incidence matrix dimensions: (26, 48)
+
+Sparsity Information:
+  Arc-arc adjacency: 291 / 2209 pairs (86.8% sparse)
+  Node-arc incidence: 89 / 1222 pairs (92.7% sparse)
+
+Nodes: ["s", "node_1_1", "node_2_1", "node_3_1", "node_4_1", "node_5_1", "node_1_2", "node_2_2", "node_3_2", "node_4_2", "node_5_2", "node_1_3", "node_2_3", "node_3_3", "node_4_3", "node_5_3", "node_1_4", "node_2_4", "node_3_4", "node_4_4", "node_5_4", "node_1_5", "node_2_5", "node_3_5", "node_4_5", "node_5_5", "t"]
+
+First 10 arcs:
+  Arc 1: ("s", "node_1_1") [Interdictable: ✗]
+  Arc 2: ("s", "node_2_1") [Interdictable: ✗]
+  Arc 3: ("s", "node_3_1") [Interdictable: ✗]
+  Arc 4: ("s", "node_4_1") [Interdictable: ✗]
+  Arc 5: ("s", "node_5_1") [Interdictable: ✗]
+  Arc 6: ("node_1_1", "node_2_1") [Interdictable: ✗]
+  Arc 7: ("node_2_1", "node_1_1") [Interdictable: ✗]
+  Arc 8: ("node_3_1", "node_2_1") [Interdictable: ✗]
+  Arc 9: ("node_4_1", "node_5_1") [Interdictable: ✗]
+  Arc 10: ("node_1_2", "node_2_2") [Interdictable: ✓]
+============================================================
+  |A|=47, S=20, γ=3, w=11.5491 (=max cap), λU=2.0
+  ε̂=0.84, ε̃=0.84
+INSTANCE: grid_5x5 (S=20, β=0.1, γ=3, w=11.5491, ε̂=0.84, ε̃=0.84)
+  Settings: MW cuts, mincut VI, inexact=false, mini-benders, w=max(cap)
+======================================================================
+
+----------------------------------------
+VI-only OMP diagnostic (no Benders cuts)
+Set parameter Username
+Set parameter LicenseID to value 2742039
+Academic license - for non-commercial use only - expires 2026-11-20
+Set parameter OutputFlag to value 1
+Set parameter OutputFlag to value 1
+Gurobi Optimizer version 13.0.0 build v13.0.0rc1 (win64 - Windows 10.0 (19045.2))
+
+CPU model: AMD Ryzen 9 5900X 12-Core Processor, instruction set [SSE2|AVX|AVX2]
+Thread count: 12 physical cores, 24 logical processors, using up to 24 threads
+
+Optimize a model with 3804 rows, 2448 columns and 10830 nonzeros (Min)
+Model fingerprint: 0x8655ced2
+Model has 1 linear objective coefficients
+Variable types: 2401 continuous, 47 integer (47 binary)
+Coefficient statistics:
+  Matrix range     [8e-03, 1e+00]
+  Objective range  [1e+00, 1e+00]
+  Bounds range     [1e+00, 1e+04]
+  RHS range        [1e+00, 3e+00]
+Presolve removed 2243 rows and 983 columns
+Presolve time: 0.01s
+Presolved: 1561 rows, 1465 columns, 3685 nonzeros
+Variable types: 1440 continuous, 25 integer (25 binary)
+Found heuristic solution: objective 11.0781101
+Found heuristic solution: objective 4.7408034
+
+Root relaxation: objective 4.148260e+00, 766 iterations, 0.01 seconds (0.01 work units)
+
+    Nodes    |    Current Node    |     Objective Bounds      |     Work
+ Expl Unexpl |  Obj  Depth IntInf | Incumbent    BestBd   Gap | It/Node Time
+
+*    0     0               0       4.1482596    4.14826  0.00%     -    0s
+
+Explored 1 nodes (766 simplex iterations) in 0.02 seconds (0.03 work units)
+Thread count was 24 (of 24 available processors)
+
+Solution count 3: 4.14826 4.7408 11.0781 
+
+Optimal solution found (tolerance 1.00e-04)
+Best objective 4.148259556659e+00, best bound 4.148259556659e+00, gap 0.0000%
+
+User-callback calls 47, time in user-callback 0.00 sec
+  VI-only LB = 4.148260, x = [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
+----------------------------------------
+
+======================================================================
+True-DRO Benders
+======================================================================
+Set parameter Username
+Set parameter LicenseID to value 2742039
+Academic license - for non-commercial use only - expires 2026-11-20
+Set parameter Username
+Set parameter LicenseID to value 2742039
+Academic license - for non-commercial use only - expires 2026-11-20
+Set parameter Username
+Set parameter LicenseID to value 2742039
+Academic license - for non-commercial use only - expires 2026-11-20
+Set parameter Username
+Set parameter LicenseID to value 2742039
+Academic license - for non-commercial use only - expires 2026-11-20
+Set parameter Username
+Set parameter LicenseID to value 2742039
+Academic license - for non-commercial use only - expires 2026-11-20
+
+=== True-DRO Benders iter 1 ===
+  OMP: t₀=4.148260, UB=Inf, gap=NaN, x=[0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0] (0.027s)
+  Sub: Z₀=19.189980, α=[0.000,0.000,0.000,0.000,0.000,0.000,0.000,0.000,0.000,0.000,0.000,0.000,0.000,0.000,0.000,0.000,0.000,0.000,0.000,0.000,0.000,0.000,0.000,0.970,4.963,0.000,0.000,0.000,0.000,0.000,1.466,0.000,0.000,0.000,0.000,0.000,4.150,0.000,0.000,0.000,0.000,0.000,0.000,0.000,0.000,0.000,0.000]
+  Iter 1: LB=4.148260  UB=19.189980  gap=7.84e-01
+  Cut: intercept=-22.859670, π_x_range=[-34.0000, 16.7106]
+  Sherali-Cut: intercept=9.721507, π_x_range=[-12.9113, 4.6306]
+  Mini-Benders[1] (mw): LB=4.291631, Z₀(α*)=4.010074, intercept=14.171344
+  Mini-Benders[2] (mw): LB=4.291631, Z₀(α*)=4.010074, intercept=14.171344
+  Mini-Benders[3] (mw): LB=4.291631, Z₀(α*)=4.010074, intercept=14.171344
+  Mini-Benders[4]: LB stagnated, break
+  α-step: Z₀=16.078192, α=[0.000,0.000,0.000,0.000,0.000,0.000,0.000,0.000,0.000,0.000,0.000,0.000,0.000,0.000,0.000,0.000,0.000,0.000,0.000,0.000,0.000,0.000,1.250,0.000,0.126,0.190,0.184,0.250,0.030,1.782,3.068,4.669,0.000,0.000,0.000,0.000,0.000,0.000,0.000,0.000,0.000,0.000,0.000,0.000,0.000,0.000,0.000]
+  Alt-Benders[1] (mw): LB=4.338030, Z₀(α*)=14.574760, intercept=22.134220
+  Alt-Benders[2] (mw): LB=4.510666, Z₀(α*)=9.909063, intercept=23.037000
+  Alt-Benders[3] (mw): LB=4.558805, Z₀(α*)=2.362474, intercept=25.361040
+  Alt-Benders[4] (mw): LB=4.558805, Z₀(α*)=2.362474, intercept=25.361040
+  Alt-Benders[5] (mw): LB=4.558805, Z₀(α*)=2.362474, intercept=25.361040
+  OMP re-solve: 0.144s
+
+=== True-DRO Benders iter 2 ===
+  OMP: t₀=4.558805, UB=19.189980, gap=7.62e-01, x=[0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0] (0.001s)
+  Sub: Z₀=21.721790, α=[0.000,0.000,0.000,0.000,0.000,0.000,0.000,0.000,0.000,0.000,0.000,0.000,0.000,0.000,0.000,0.000,0.000,0.000,0.000,0.000,0.000,0.000,0.000,0.000,4.899,2.290,0.000,0.099,4.261,0.000,0.000,0.000,0.000,0.000,0.000,0.000,0.000,0.000,0.000,0.000,0.000,0.000,0.000,0.000,0.000,0.000,0.000]
+  Iter 2: LB=4.558805  UB=19.189980  gap=7.62e-01
+  Cut: intercept=6.800955, π_x_range=[-74.0000, 7.1932]
+  Sherali-Cut: intercept=17.327162, π_x_range=[-16.3136, 3.2281]
+  Mini-Benders[1] (mw): LB=4.740803, Z₀(α*)=4.629106, intercept=18.999869
+  Mini-Benders[2] (mw): LB=4.740803, Z₀(α*)=4.629106, intercept=18.999869
+  Mini-Benders[3] (mw): LB=4.740803, Z₀(α*)=4.629106, intercept=18.999869
+  Mini-Benders[4]: LB stagnated, break
+  α-step: Z₀=21.576153, α=[0.000,0.000,0.000,0.000,0.000,0.000,0.000,0.000,0.000,0.000,0.000,0.000,0.000,0.000,0.000,0.000,0.000,0.000,0.000,0.000,0.000,0.000,0.000,0.000,0.000,0.000,0.000,0.000,0.464,0.000,0.000,0.000,0.000,0.000,1.656,5.259,4.170,0.000,0.000,0.000,0.000,0.000,0.000,0.000,0.000,0.000,0.000]
+  Alt-Benders[1] (mw): LB=5.029995, Z₀(α*)=0.058578, intercept=16.206206
+  Alt-Benders[2] (mw): LB=5.029995, Z₀(α*)=0.058578, intercept=16.206206
+  Alt-Benders[3] (mw): LB=5.029995, Z₀(α*)=0.058578, intercept=16.206206
+  Alt-Benders[4]: LB stagnated, break
+  OMP re-solve: 0.000s
+
+=== True-DRO Benders iter 3 ===
+  OMP: t₀=5.029995, UB=19.189980, gap=7.38e-01, x=[0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0] (0.000s)
+  Sub: Z₀=21.000906, α=[0.000,0.000,0.000,0.000,0.000,0.000,0.000,0.000,0.000,0.000,0.000,0.000,0.000,0.000,0.000,0.000,0.000,0.000,0.000,0.000,0.000,0.000,1.009,2.679,2.629,2.931,2.301,0.000,0.000,0.000,0.000,0.000,0.000,0.000,0.000,0.000,0.000,0.000,0.000,0.000,0.000,0.000,0.000,0.000,0.000,0.000,0.000]
+  Iter 3: LB=5.029995  UB=19.189980  gap=7.38e-01
+  Cut: intercept=2.707869, π_x_range=[-76.0000, 7.5793]
+  Sherali-Cut: intercept=14.501997, π_x_range=[-15.7610, 3.8648]
+  Mini-Benders[1] (mw): LB=5.080618, Z₀(α*)=11.331160, intercept=11.397005
+  Mini-Benders[2] (mw): LB=5.187044, Z₀(α*)=3.212025, intercept=16.235585
+  Mini-Benders[3] (mw): LB=5.187044, Z₀(α*)=3.212025, intercept=16.235585
+  Mini-Benders[4] (mw): LB=5.187044, Z₀(α*)=3.212025, intercept=16.235585
+  Mini-Benders[5]: LB stagnated, break
+  α-step: Z₀=18.294453, α=[0.000,0.000,0.000,0.000,0.000,0.000,0.000,0.000,0.000,0.000,0.000,0.000,0.000,0.000,0.000,0.000,0.000,0.000,0.000,0.000,0.000,0.000,0.000,0.000,4.758,0.000,0.000,0.122,0.000,0.000,1.763,0.300,3.800,0.401,0.000,0.000,0.405,0.000,0.000,0.000,0.000,0.000,0.000,0.000,0.000,0.000,0.000]
+  Alt-Benders[1] (mw): LB=5.384522, Z₀(α*)=11.245025, intercept=11.549237
+  Alt-Benders[2] (mw): LB=5.579302, Z₀(α*)=3.240975, intercept=15.356150
+  Alt-Benders[3] (mw): LB=5.579302, Z₀(α*)=3.240975, intercept=15.356150
+  Alt-Benders[4] (mw): LB=5.579302, Z₀(α*)=3.240975, intercept=15.356150
+  Alt-Benders[5]: LB stagnated, break
+  OMP re-solve: 0.000s
+
+=== True-DRO Benders iter 4 ===
+  OMP: t₀=5.579302, UB=19.189980, gap=7.09e-01, x=[0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0] (0.000s)
+  Sub: Z₀=22.658190, α=[0.000,0.000,0.000,0.000,0.000,0.000,0.000,0.000,0.000,0.000,0.000,0.000,0.000,0.000,0.000,0.000,0.000,0.000,0.000,0.000,0.000,0.000,2.204,4.224,0.000,0.000,0.000,0.000,0.000,5.121,0.000,0.000,0.000,0.000,0.000,0.000,0.000,0.000,0.000,0.000,0.000,0.000,0.000,0.000,0.000,0.000,0.000]
+  Iter 4: LB=5.579302  UB=19.189980  gap=7.09e-01
+  Cut: intercept=-0.605633, π_x_range=[-77.0000, 9.4862]
+
+ERROR: ErrorException("True-DRO subproblem: INTERRUPTED (no feasible solution)")
+True-DRO subproblem: INTERRUPTED (no feasible solution)
+Stacktrace:
+  [1] error(s::String)
+    @ Base .\error.jl:35
+  [2] solve_true_dro_subproblem!(model::Model, vars::Dict{Symbol, Any}, td::TrueDROData, x_bar::Vector{Float64}; is_global::Bool)
+    @ Main C:\Users\user\robust_bilevel_network_games\true_dro\true_dro_build_subproblem.jl:410
+  [3] solve_true_dro_subproblem!(model::Model, vars::Dict{Symbol, Any}, td::TrueDROData, x_bar::Vector{Float64})
+    @ Main C:\Users\user\robust_bilevel_network_games\true_dro\true_dro_build_subproblem.jl:394
+  [4] true_dro_benders_optimize!(td::TrueDROData; mip_optimizer::Type, nlp_optimizer::Type, max_iter::Int64, tol::Float64, verbose::Bool, sub_verbose::Bool, nonconvex_attr::Pair{String, Int64}, sub_time_limit::Float64, mini_benders::Bool, lp_optimizer::Type, max_mini_benders_iter::Int64, inexact::Bool, strengthen_cuts::Symbol, valid_inequality::Symbol, add_objF_vi::Bool)
+    @ Main C:\Users\user\robust_bilevel_network_games\true_dro\true_dro_benders.jl:393
+  [5] true_dro_benders_optimize!
+    @ C:\Users\user\robust_bilevel_network_games\true_dro\true_dro_benders.jl:56 [inlined]
+  [6] run_one(instance_key::Symbol, β::Float64, ε_hat::Float64)
+    @ Main C:\Users\user\robust_bilevel_network_games\true_dro\run_wmax_batch.jl:162
+  [7] top-level scope
+    @ C:\Users\user\robust_bilevel_network_games\true_dro\run_wmax_batch.jl:235
+  [8] include(fname::String)
+    @ Main .\sysimg.jl:38
+  [9] top-level scope
+    @ REPL[15]:1
+ [10] top-level scope
+    @ none:1
+ [11] eval
+    @ .\boot.jl:430 [inlined]
+ [12] eval_user_input(ast::Any, backend::REPL.REPLBackend, mod::Module)
+    @ REPL C:\Users\user\AppData\Local\Programs\Julia-1.11.2\share\julia\stdlib\v1.11\REPL\src\REPL.jl:245
+ [13] repl_backend_loop(backend::REPL.REPLBackend, get_module::Function)
+    @ REPL C:\Users\user\AppData\Local\Programs\Julia-1.11.2\share\julia\stdlib\v1.11\REPL\src\REPL.jl:342
+ [14] start_repl_backend(backend::REPL.REPLBackend, consumer::Any; get_module::Function)
+    @ REPL C:\Users\user\AppData\Local\Programs\Julia-1.11.2\share\julia\stdlib\v1.11\REPL\src\REPL.jl:327
+ [15] run_repl(repl::REPL.AbstractREPL, consumer::Any; backend_on_current_task::Bool, backend::Any)
+    @ REPL C:\Users\user\AppData\Local\Programs\Julia-1.11.2\share\julia\stdlib\v1.11\REPL\src\REPL.jl:483
+ [16] run_repl(repl::REPL.AbstractREPL, consumer::Any)
+    @ REPL C:\Users\user\AppData\Local\Programs\Julia-1.11.2\share\julia\stdlib\v1.11\REPL\src\REPL.jl:469
+ [17] (::Base.var"#1150#1152"{Bool, Symbol, Bool})(REPL::Module)
+    @ Base .\client.jl:446
+ [18] #invokelatest#2
+    @ .\essentials.jl:1055 [inlined]
+ [19] invokelatest
+    @ .\essentials.jl:1052 [inlined]
+ [20] run_main_repl(interactive::Bool, quiet::Bool, banner::Symbol, history_file::Bool, color_set::Bool)
+    @ Base .\client.jl:430
+ [21] repl_main
+    @ .\client.jl:567 [inlined]
+ [22] _start()
+    @ Base .\client.jl:541

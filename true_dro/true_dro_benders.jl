@@ -104,8 +104,13 @@ function true_dro_benders_optimize!(td::TrueDROData;
 
     # ---- Build subproblem: global model (no ρ bound) ----
     x_init = zeros(K)
-    sub_model, sub_vars = build_true_dro_subproblem(td, x_init; optimizer=nlp_optimizer, silent=!sub_verbose,
-                                                    add_objF_vi=add_objF_vi)
+    _use_single_compact = (td.eps_tilde == 0.0)
+    _sub_builder = _use_single_compact ? build_true_dro_subproblem_single : build_true_dro_subproblem
+    if _use_single_compact && verbose
+        @info "ε̃=0 detected → using compact single-layer subproblem (no ζF bilinear)"
+    end
+    sub_model, sub_vars = _sub_builder(td, x_init; optimizer=nlp_optimizer, silent=!sub_verbose,
+                                       add_objF_vi=add_objF_vi)
     if nonconvex_attr !== nothing
         try
             set_optimizer_attribute(sub_model, nonconvex_attr.first, nonconvex_attr.second)
@@ -122,7 +127,7 @@ function true_dro_benders_optimize!(td::TrueDROData;
     if inexact
         # Local solve (OptimalityTarget=1)에는 VI 넣지 않음: Gurobi local opt가 VI 하에서
         # feasible point 탐색 실패 (ITERATION_LIMIT) 관측됨.
-        sub_model_local, sub_vars_local = build_true_dro_subproblem(td, x_init;
+        sub_model_local, sub_vars_local = _sub_builder(td, x_init;
             optimizer=nlp_optimizer, silent=!sub_verbose, rho_upper_bound=const_rho_bound,
             add_objF_vi=false)
         if nonconvex_attr !== nothing
@@ -253,8 +258,7 @@ function true_dro_benders_optimize!(td::TrueDROData;
 
         # UB 갱신 (global iter만)
         # - OPTIMAL (exact): Z₀ exact → UB, best_x, best_α 모두 갱신
-        # - TIME_LIMIT: Z0_bound (BestBd) = Z₀(x̄) 상한 → UB만 갱신
-        # - Boost (MIPGap 종료): OPTIMAL이지만 gap>0 → BestBd를 UB로 사용
+        # - TIME_LIMIT / Boost: Z0_bound 상한 → UB + best_x, best_α 갱신
         if is_global_iter
             if is_exact && !is_boost && Z0_val < upper_bound
                 upper_bound = Z0_val
@@ -262,6 +266,8 @@ function true_dro_benders_optimize!(td::TrueDROData;
                 best_α = copy(sub_info[:α_val])
             elseif (!is_exact || is_boost) && sub_info[:Z0_bound] < upper_bound
                 upper_bound = sub_info[:Z0_bound]
+                best_x = copy(x_sol)
+                best_α = copy(sub_info[:α_val])
             end
         end
 
@@ -421,6 +427,7 @@ function true_dro_benders_optimize!(td::TrueDROData;
                 stag_mb = 0
 
                 for j in 1:max_mini_benders_iter
+                    t_mini_iter_start = time()
                     # Re-solve OMP with accumulated cuts → new x̄
                     t_omp_mb = @elapsed optimize!(omp_model)
                     push!(history[:omp_times], t_omp_mb)
@@ -455,12 +462,13 @@ function true_dro_benders_optimize!(td::TrueDROData;
                     # ISP-F를 DUAL_INFEASIBLE (unbounded)로 만들 수 있음.
                     # 이 경우 mini-benders phase만 중단하고 outer loop은 계속 진행.
                     local l_info, f_info
+                    local t_isp_l, t_isp_f
                     try
                         update_isp_leader_objective!(isp_l_model, isp_l_vars, td, x_mb)
-                        l_info = solve_isp_leader!(isp_l_model, isp_l_vars, td)
+                        t_isp_l = @elapsed (l_info = solve_isp_leader!(isp_l_model, isp_l_vars, td))
 
                         update_isp_follower_objective!(isp_f_model, isp_f_vars, td, x_mb)
-                        f_info = solve_isp_follower!(isp_f_model, isp_f_vars, td)
+                        t_isp_f = @elapsed (f_info = solve_isp_follower!(isp_f_model, isp_f_vars, td))
                     catch e
                         if verbose
                             @printf("  %s-Benders[%d]: ISP failed (%s), break\n",
@@ -500,6 +508,8 @@ function true_dro_benders_optimize!(td::TrueDROData;
                     # ---- Cut 추가: base 또는 MW ----
                     # MW: ISP-L/F 독립 적용 (joint Pareto-optimality 미보장, valid cut 보장)
                     local cut_tag, final_cut
+                    local t_mw_l, t_mw_f
+                    t_mw_l = 0.0; t_mw_f = 0.0
                     if strengthen_cuts == :mw
                         S = td.S
                         φ̂U = td.phi_hat_U
@@ -507,6 +517,7 @@ function true_dro_benders_optimize!(td::TrueDROData;
                         λU = td.lambda_U
 
                         # ISP-L MW Phase 2
+                        t_mw_l = @elapsed begin
                         z_star_l = l_info[:obj_val]
                         orig_obj_l = sum(isp_l_vars[:σ_hat][s] for s in 1:S) -
                             φ̂U * sum(x_mb[k] * isp_l_vars[:ρ_hat_1][k, s] for k in 1:K, s in 1:S) -
@@ -522,8 +533,10 @@ function true_dro_benders_optimize!(td::TrueDROData;
                         ) : nothing
                         delete(isp_l_model, mw_con_l)
                         update_isp_leader_objective!(isp_l_model, isp_l_vars, td, x_mb)
+                        end  # @elapsed t_mw_l
 
                         # ISP-F MW Phase 2
+                        t_mw_f = @elapsed begin
                         z_star_f = f_info[:obj_val]
                         orig_obj_f = -φ̃U * sum(x_mb[k] * isp_f_vars[:ρ_tilde_1][k, s] for k in 1:K, s in 1:S) -
                             φ̃U * sum((1.0 - x_mb[k]) * isp_f_vars[:ρ_tilde_3][k, s] for k in 1:K, s in 1:S) -
@@ -542,6 +555,7 @@ function true_dro_benders_optimize!(td::TrueDROData;
                         ) : nothing
                         delete(isp_f_model, mw_con_f)
                         update_isp_follower_objective!(isp_f_model, isp_f_vars, td, x_mb)
+                        end  # @elapsed t_mw_f
 
                         if mw_l_ok && mw_f_ok
                             mw_mini_info = Dict(
@@ -570,8 +584,10 @@ function true_dro_benders_optimize!(td::TrueDROData;
                     add_true_dro_optimality_cut!(omp_model, omp_vars, final_cut, cut_count)
 
                     if verbose
-                        @printf("  %s-Benders[%d] (%s): LB=%.6f, Z₀(α*)=%.6f, intercept=%.6f\n",
-                                phase_tag, j, cut_tag, lb_mb, Z0_mini, final_cut[:intercept])
+                        t_mini_iter = time() - t_mini_iter_start
+                        @printf("  %s-Benders[%d] (%s): LB=%.6f, Z₀(α*)=%.6f, intercept=%.6f (%.3fs) [OMP=%.3f ISP-L=%.3f ISP-F=%.3f MW-L=%.3f MW-F=%.3f]\n",
+                                phase_tag, j, cut_tag, lb_mb, Z0_mini, final_cut[:intercept], t_mini_iter,
+                                t_omp_mb, t_isp_l, t_isp_f, t_mw_l, t_mw_f)
                         flush(stdout)
                     end
 
@@ -594,7 +610,7 @@ function true_dro_benders_optimize!(td::TrueDROData;
 
                     # Clamp (ISP LP numerical noise 방지)
                     a_clamped = [max(last_a_val[s], sub_vars[:a_min][s]) for s in 1:S]
-                    d_clamped = [max(last_d_val[s], sub_vars[:d_min][s]) for s in 1:S]
+                    d_clamped = _use_single_compact ? td.q_hat : [max(last_d_val[s], sub_vars[:d_min][s]) for s in 1:S]
 
                     # OMP x̄ for objective
                     t_omp_alt = @elapsed optimize!(omp_model)
@@ -610,7 +626,11 @@ function true_dro_benders_optimize!(td::TrueDROData;
                     try
                         for s in 1:S
                             fix(sub_vars[:a][s], a_clamped[s]; force=true)
-                            fix(sub_vars[:d][s], d_clamped[s]; force=true)
+                        end
+                        if !_use_single_compact
+                            for s in 1:S
+                                fix(sub_vars[:d][s], d_clamped[s]; force=true)
+                            end
                         end
                         alt_info = solve_true_dro_subproblem!(sub_model, sub_vars, td, x_alt)
                     catch e
@@ -624,9 +644,11 @@ function true_dro_benders_optimize!(td::TrueDROData;
                         unfix.(sub_vars[:a])
                         set_lower_bound.(sub_vars[:a], sub_vars[:a_min])
                         set_upper_bound.(sub_vars[:a], sub_vars[:a_max])
-                        unfix.(sub_vars[:d])
-                        set_lower_bound.(sub_vars[:d], sub_vars[:d_min])
-                        set_upper_bound.(sub_vars[:d], sub_vars[:d_max])
+                        if !_use_single_compact
+                            unfix.(sub_vars[:d])
+                            set_lower_bound.(sub_vars[:d], sub_vars[:d_min])
+                            set_upper_bound.(sub_vars[:d], sub_vars[:d_max])
+                        end
                     end
 
                     # 2차: LP fallback
