@@ -9,10 +9,13 @@ analytical calibration으로 [ε^S, ε^D] range를 찾는 bisection.
   PO - PP = f_ε(x_neut) - f_ε(x_rob)     (싸다: evaluate_f만)
   NR - WR = [f_0(x*)-f_0(x_neut)] - [f_1(x*)-f_1(x_rob)]  (비싸다: DRO 풀어야)
 
-Bisection:
-  PO-PP < 0  →  ε < ε^S  →  lo = ε
-  PO-PP ≥ 0 & NR-WR < 0  →  ε ∈ [ε^S, ε^D]  →  STOP
-  PO-PP ≥ 0 & NR-WR ≥ 0  →  ε > ε^D  →  hi = ε
+Two-phase bisection (v2):
+  Phase 1: PO-PP bisection → ε^S 찾기 (DRO solve 없이, evaluate_f 2회/iter)
+    PO-PP < 0 → ε < ε^S → go right
+    PO-PP ≥ 0 → ε ≥ ε^S → go left
+  Phase 2: NR-WR bisection → ε^D 찾기 (ε^S 오른쪽부터, DRO solve 필요)
+    NR-WR < 0 → ε < ε^D → go right
+    NR-WR ≥ 0 → ε > ε^D → go left
 
 Usage:
     include("run_experiment2_calibration.jl")
@@ -400,12 +403,17 @@ end
 """
     find_epsilon_range(network, capacities, q_hat, w, γ; kwargs...) → Dict
 
-Combined bisection으로 [ε^S, ε^D] 구간을 찾는다.
+Two-phase bisection으로 [ε^S, ε^D] 구간을 찾는다.
+
+  Phase 1: PO-PP만으로 ε^S bisection (DRO solve 없이, 빠름)
+  Phase 2: ε^S부터 오른쪽으로 ε^D bisection (NR-WR, DRO solve 필요)
 
 Returns Dict with:
-  :eps_recommended  — bisection으로 찾은 ε (ε^S ≤ ε ≤ ε^D 구간 내)
-  :eps_lo, :eps_hi  — final bisection bounds
-  :region           — :in_range, :below_eps_S, :above_eps_D
+  :eps_recommended  — ε^S 또는 [ε^S, ε^D] 내 ε
+  :eps_S_lo, :eps_S_hi  — Phase 1 ε^S bounds
+  :eps_D_lo, :eps_D_hi  — Phase 2 ε^D bounds (Phase 2 실행 시)
+  :eps_lo, :eps_hi  — final bounds ([ε^S_lo, ε^D_hi] or ε^S bounds)
+  :region           — :in_range, :below_eps_S, :converged
   :history          — Vector of per-iteration Dicts
   :x_neut, :x_rob   — nominal/robust solutions
   :f0_neut, :f1_rob  — baseline values
@@ -415,7 +423,8 @@ function find_epsilon_range(network, capacities, q_hat, w, γ, net_key::Symbol;
         eps_max::Float64 = 1.0,
         lambda_U::Float64 = EXP2_LAMBDA_U,
         tol::Float64 = 0.01,
-        max_iter::Int = 15,
+        max_iter_phase1::Int = 15,
+        max_iter_phase2::Int = 10,
         benders_sub_time_limit::Float64 = 30.0,
         benders_max_iter::Int = 500,
         verbose::Bool = true)
@@ -430,14 +439,12 @@ function find_epsilon_range(network, capacities, q_hat, w, γ, net_key::Symbol;
         println("=" ^ 70)
     end
 
-    # x_neut: load from S20_nominal_wmax/ log (이미 풀어놓은 결과)
     td_0 = make_true_dro_data(network, capacities, q_hat, 0.0, 0.0;
                                w=w, lambda_U=lambda_U, gamma=γ)
 
     if verbose; println("\n--- Loading x_neut (ε=0) from log ---"); end
     x_neut, Z0_neut_log = load_nominal_x(net_key; S=S)
 
-    # x_rob: load from S20_robust_wmax/ or solve & save
     td_1 = make_true_dro_data(network, capacities, q_hat, eps_max, eps_max;
                                w=w, lambda_U=lambda_U, gamma=γ)
 
@@ -446,12 +453,10 @@ function find_epsilon_range(network, capacities, q_hat, w, γ, net_key::Symbol;
         S=S, sub_time_limit=benders_sub_time_limit,
         max_iter=benders_max_iter, verbose=verbose)
 
-    # Baseline evaluations: f_0(x_neut), f_1(x_rob) — 상수
-    # f_0(x_neut): subproblem at ε=0, evaluate x_neut
+    # Baseline evaluations
     model_0, vars_0, _ = build_evaluate_f_model(td_0)
     f0_neut = evaluate_f(model_0, vars_0, td_0, x_neut)
 
-    # f_1(x_rob): subproblem at ε=1.0, evaluate x_rob
     model_1, vars_1, _ = build_evaluate_f_model(td_1)
     f1_rob = evaluate_f(model_1, vars_1, td_1, x_rob)
 
@@ -459,88 +464,60 @@ function find_epsilon_range(network, capacities, q_hat, w, γ, net_key::Symbol;
         @printf("\nBaselines: f_0(x_neut)=%.6f, f_1(x_rob)=%.6f\n", f0_neut, f1_rob)
     end
 
-    # ---- Step 2: Bisection loop ----
-    if verbose
-        println("\n" * "=" ^ 70)
-        println("Step 2: Bisection (tol=$(tol), max_iter=$(max_iter))")
-        println("=" ^ 70)
-    end
-
-    lo = 0.0
-    hi = eps_max
-    ε = (lo + hi) / 2.0
-
-    history = Vector{Dict}()
-    dro_solves = Dict{Float64, Dict}()
-    found_region = :max_iter_reached
-    eps_recommended = ε
-
-    # Checkpoint 파일: 중단 후 재개용
+    # Checkpoint
     checkpoint_dir = joinpath(@__DIR__, "exp2_checkpoints")
     mkpath(checkpoint_dir)
     checkpoint_path = joinpath(checkpoint_dir, "checkpoint_$(net_key).jls")
 
-    # 기존 checkpoint 있으면 로드하여 이어서 진행
-    if isfile(checkpoint_path)
-        ckpt = deserialize(checkpoint_path)
-        lo = ckpt[:lo]
-        hi = ckpt[:hi]
-        ε = ckpt[:next_eps]
-        history = ckpt[:history]
-        dro_solves = ckpt[:dro_solves]
-        start_iter = length(history) + 1
-        if verbose
-            @printf("  Checkpoint loaded: %d iters done, lo=%.4f, hi=%.4f, next ε=%.4f\n",
-                    length(history), lo, hi, ε)
-        end
-    else
-        start_iter = 1
+    history = Vector{Dict}()
+    dro_solves = Dict{Float64, Dict}()
+
+    function _save_checkpoint(phase, lo, hi, ε)
+        serialize(checkpoint_path, Dict(
+            :net_key => net_key, :phase => phase,
+            :lo => lo, :hi => hi, :next_eps => ε,
+            :history => history, :dro_solves => dro_solves,
+            :x_neut => x_neut, :x_rob => x_rob,
+            :f0_neut => f0_neut, :f1_rob => f1_rob,
+        ))
     end
 
-    function _save_checkpoint()
-        ckpt = Dict(
-            :net_key    => net_key,
-            :lo         => lo,
-            :hi         => hi,
-            :next_eps   => ε,
-            :history    => history,
-            :dro_solves => dro_solves,
-            :x_neut     => x_neut,
-            :x_rob      => x_rob,
-            :f0_neut    => f0_neut,
-            :f1_rob     => f1_rob,
-        )
-        serialize(checkpoint_path, ckpt)
+    # ================================================================
+    # Phase 1: PO-PP bisection → find ε^S (cheap, no DRO solve)
+    # ================================================================
+    if verbose
+        println("\n" * "=" ^ 70)
+        println("Phase 1: Find ε^S via PO-PP bisection (no DRO solves)")
+        println("  tol=$(tol), max_iter=$(max_iter_phase1)")
+        println("=" ^ 70)
     end
 
-    for iter in start_iter:max_iter
+    lo1 = 0.0
+    hi1 = eps_max
+    ε1 = (lo1 + hi1) / 2.0
+    eps_S_found = false
+
+    for iter in 1:max_iter_phase1
         if verbose
-            @printf("\n--- Bisection iter %d: ε=%.4f [lo=%.4f, hi=%.4f] ---\n",
-                    iter, ε, lo, hi)
+            @printf("\n--- Phase 1, iter %d: ε=%.6f [lo=%.6f, hi=%.6f] ---\n",
+                    iter, ε1, lo1, hi1)
         end
 
-        # Build subproblem at current ε
-        td_ε = make_true_dro_data(network, capacities, q_hat, ε, ε;
+        td_ε = make_true_dro_data(network, capacities, q_hat, ε1, ε1;
                                    w=w, lambda_U=lambda_U, gamma=γ)
         model_ε, vars_ε, _ = build_evaluate_f_model(td_ε)
 
-        # PO - PP (싸다: evaluate_f만)
         f_ε_neut = evaluate_f(model_ε, vars_ε, td_ε, x_neut)
         f_ε_rob  = evaluate_f(model_ε, vars_ε, td_ε, x_rob)
         po_pp = f_ε_neut - f_ε_rob
 
         iter_info = Dict(
-            :iter     => iter,
-            :eps      => ε,
-            :lo       => lo,
-            :hi       => hi,
-            :f_eps_neut => f_ε_neut,
-            :f_eps_rob  => f_ε_rob,
-            :po_pp    => po_pp,
-            :nr       => NaN,
-            :wr       => NaN,
-            :nr_wr    => NaN,
-            :region   => :unknown,
+            :phase => 1, :iter => iter, :eps => ε1,
+            :lo => lo1, :hi => hi1,
+            :f_eps_neut => f_ε_neut, :f_eps_rob => f_ε_rob,
+            :po_pp => po_pp,
+            :nr => NaN, :wr => NaN, :nr_wr => NaN,
+            :region => :unknown,
         )
 
         if verbose
@@ -549,99 +526,169 @@ function find_epsilon_range(network, capacities, q_hat, w, γ, net_key::Symbol;
         end
 
         if po_pp < 0
-            # ε < ε^S → lo = ε, increase ε
             iter_info[:region] = :below_eps_S
-            lo = ε
-            ε = (ε + hi) / 2.0
-
-            if verbose
-                @printf("  PO-PP < 0 → ε < ε^S → lo=%.4f, next ε=%.4f\n", lo, ε)
-            end
-
-            push!(history, iter_info)
-            _save_checkpoint()
-
-            # 수렴 체크
-            if (hi - lo) < tol
-                found_region = :below_eps_S
-                eps_recommended = ε
-                break
-            end
-            continue
-        end
-
-        # PO-PP ≥ 0 → NR-WR 계산 필요 (비싸다: DRO solve)
-        if verbose
-            println("  PO-PP ≥ 0 → computing NR-WR (requires DRO solve)...")
-        end
-
-        # x*(ε) = solve DRO at current ε
-        t0 = time()
-        res_star = solve_dro(td_ε; sub_time_limit=benders_sub_time_limit,
-                              max_iter=benders_max_iter, verbose=verbose)
-        t_dro = time() - t0
-        x_star = res_star[:x]
-        dro_solves[ε] = res_star
-
-        if verbose
-            @printf("  x*(ε=%.4f) solved: Z₀=%.6f, iters=%d, time=%.1fs\n",
-                    ε, res_star[:Z0], res_star[:iters], t_dro)
-            println("  x* = $(round.(Int, x_star))")
-        end
-
-        # f_0(x*) and f_1(x*)
-        f0_star = evaluate_f(model_0, vars_0, td_0, x_star)
-        f1_star = evaluate_f(model_1, vars_1, td_1, x_star)
-
-        nr = f0_star - f0_neut
-        wr = f1_star - f1_rob
-        nr_wr = nr - wr
-
-        iter_info[:nr] = nr
-        iter_info[:wr] = wr
-        iter_info[:nr_wr] = nr_wr
-        iter_info[:f0_star] = f0_star
-        iter_info[:f1_star] = f1_star
-        iter_info[:x_star] = round.(Int, x_star)
-
-        if verbose
-            @printf("  f_0(x*)=%.6f, f_1(x*)=%.6f\n", f0_star, f1_star)
-            @printf("  NR=%.6f, WR=%.6f, NR-WR=%.6f\n", nr, wr, nr_wr)
-        end
-
-        if nr_wr < 0
-            # ε ∈ [ε^S, ε^D] → STOP
-            iter_info[:region] = :in_range
-            found_region = :in_range
-            eps_recommended = ε
-
-            if verbose
-                @printf("  NR-WR < 0 → ε=%.4f ∈ [ε^S, ε^D] → FOUND!\n", ε)
-            end
-
-            push!(history, iter_info)
-            _save_checkpoint()
-            break
+            lo1 = ε1
+            ε1 = (ε1 + hi1) / 2.0
+            if verbose; @printf("  PO-PP < 0 → lo=%.6f, next ε=%.6f\n", lo1, ε1); end
         else
-            # ε > ε^D → hi = ε, decrease ε
-            iter_info[:region] = :above_eps_D
-            hi = ε
-            ε = (lo + ε) / 2.0
-
-            if verbose
-                @printf("  NR-WR ≥ 0 → ε > ε^D → hi=%.4f, next ε=%.4f\n", hi, ε)
-            end
+            iter_info[:region] = :above_eps_S
+            hi1 = ε1
+            ε1 = (lo1 + ε1) / 2.0
+            if verbose; @printf("  PO-PP ≥ 0 → hi=%.6f, next ε=%.6f\n", hi1, ε1); end
         end
 
         push!(history, iter_info)
-        _save_checkpoint()
+        _save_checkpoint(1, lo1, hi1, ε1)
 
-        # 수렴 체크
-        if (hi - lo) < tol
-            found_region = :converged
-            eps_recommended = ε
+        if (hi1 - lo1) < tol
+            eps_S_found = true
+            if verbose
+                @printf("\n  Phase 1 converged: ε^S ∈ [%.6f, %.6f]\n", lo1, hi1)
+            end
             break
         end
+    end
+
+    eps_S_lo = lo1
+    eps_S_hi = hi1
+    eps_S_mid = (lo1 + hi1) / 2.0
+
+    if verbose
+        @printf("\nPhase 1 result: ε^S ≈ %.6f  [%.6f, %.6f]\n", eps_S_mid, eps_S_lo, eps_S_hi)
+    end
+
+    # ================================================================
+    # Phase 2: NR-WR bisection → find ε^D starting from ε^S
+    # ================================================================
+    if verbose
+        println("\n" * "=" ^ 70)
+        println("Phase 2: Find ε^D via NR-WR bisection (DRO solves)")
+        println("  Search range: [ε^S_hi=$(round(eps_S_hi;digits=6)), $(eps_max)]")
+        println("  tol=$(tol), max_iter=$(max_iter_phase2)")
+        println("=" ^ 70)
+    end
+
+    lo2 = eps_S_hi   # ε^S 직상방부터
+    hi2 = eps_max
+    ε2 = (lo2 + hi2) / 2.0
+    found_region = :unknown
+    eps_recommended = eps_S_mid
+
+    # 먼저 ε=eps_max (x_rob)에서 NR-WR 체크 — ε^D < eps_max인지 확인
+    if verbose; println("\n--- Phase 2 pre-check: NR-WR at ε=$(eps_max) (x_rob) ---"); end
+    f0_rob = evaluate_f(model_0, vars_0, td_0, x_rob)
+    f1_rob_at1 = f1_rob  # 이미 계산됨
+    nr_max = f0_rob - f0_neut
+    wr_max = f1_rob_at1 - f1_rob  # = 0 by definition
+    nr_wr_max = nr_max - wr_max
+
+    if verbose
+        @printf("  At ε=%.4f: NR=%.6f, WR=%.6f, NR-WR=%.6f\n",
+                eps_max, nr_max, wr_max, nr_wr_max)
+    end
+
+    if nr_wr_max < 0
+        # ε_max도 [ε^S, ε^D] 안 → ε^D ≥ ε_max
+        found_region = :in_range
+        eps_recommended = eps_S_hi  # ε^S 직상방 사용
+        if verbose
+            @printf("  NR-WR(ε_max) < 0 → ε^D ≥ %.4f, ε_recommended = %.6f\n",
+                    eps_max, eps_recommended)
+        end
+    else
+        # ε^D < ε_max → bisection으로 찾기
+        for iter in 1:max_iter_phase2
+            if verbose
+                @printf("\n--- Phase 2, iter %d: ε=%.6f [lo=%.6f, hi=%.6f] ---\n",
+                        iter, ε2, lo2, hi2)
+            end
+
+            # DRO solve at ε2
+            td_ε = make_true_dro_data(network, capacities, q_hat, ε2, ε2;
+                                       w=w, lambda_U=lambda_U, gamma=γ)
+
+            t0 = time()
+            res_star = solve_dro(td_ε; sub_time_limit=benders_sub_time_limit,
+                                  max_iter=benders_max_iter, verbose=verbose)
+            t_dro = time() - t0
+            x_star = res_star[:x]
+            dro_solves[ε2] = res_star
+
+            if verbose
+                @printf("  x*(ε=%.6f) solved: Z₀=%.6f, iters=%d, time=%.1fs\n",
+                        ε2, res_star[:Z0], res_star[:iters], t_dro)
+                println("  x* = $(round.(Int, x_star))")
+            end
+
+            f0_star = evaluate_f(model_0, vars_0, td_0, x_star)
+            f1_star = evaluate_f(model_1, vars_1, td_1, x_star)
+
+            nr = f0_star - f0_neut
+            wr = f1_star - f1_rob
+            nr_wr = nr - wr
+
+            # PO-PP도 기록 (참고용)
+            model_ε2, vars_ε2, _ = build_evaluate_f_model(td_ε)
+            f_ε_neut = evaluate_f(model_ε2, vars_ε2, td_ε, x_neut)
+            f_ε_rob  = evaluate_f(model_ε2, vars_ε2, td_ε, x_rob)
+            po_pp = f_ε_neut - f_ε_rob
+
+            iter_info = Dict(
+                :phase => 2, :iter => iter, :eps => ε2,
+                :lo => lo2, :hi => hi2,
+                :f_eps_neut => f_ε_neut, :f_eps_rob => f_ε_rob,
+                :po_pp => po_pp,
+                :nr => nr, :wr => wr, :nr_wr => nr_wr,
+                :f0_star => f0_star, :f1_star => f1_star,
+                :x_star => round.(Int, x_star),
+                :region => :unknown,
+            )
+
+            if verbose
+                @printf("  NR=%.6f, WR=%.6f, NR-WR=%.6f\n", nr, wr, nr_wr)
+            end
+
+            if nr_wr < 0
+                # ε ∈ [ε^S, ε^D] → ε^D > ε2, go right
+                iter_info[:region] = :in_range
+                lo2 = ε2
+                ε2 = (ε2 + hi2) / 2.0
+                if verbose; @printf("  NR-WR < 0 → ε < ε^D → lo=%.6f, next ε=%.6f\n", lo2, ε2); end
+            else
+                # ε > ε^D → go left
+                iter_info[:region] = :above_eps_D
+                hi2 = ε2
+                ε2 = (lo2 + ε2) / 2.0
+                if verbose; @printf("  NR-WR ≥ 0 → ε > ε^D → hi=%.6f, next ε=%.6f\n", hi2, ε2); end
+            end
+
+            push!(history, iter_info)
+            _save_checkpoint(2, lo2, hi2, ε2)
+
+            if (hi2 - lo2) < tol
+                found_region = :converged
+                eps_recommended = (lo2 + hi2) / 2.0
+                if verbose
+                    @printf("\n  Phase 2 converged: ε^D ∈ [%.6f, %.6f]\n", lo2, hi2)
+                end
+                break
+            end
+        end
+
+        if found_region == :unknown
+            found_region = :max_iter_reached
+            eps_recommended = (lo2 + hi2) / 2.0
+        end
+    end
+
+    eps_D_lo = lo2
+    eps_D_hi = hi2
+
+    if verbose
+        println("\n" * "-" ^ 70)
+        @printf("Summary: ε^S ∈ [%.6f, %.6f], ε^D ∈ [%.6f, %.6f]\n",
+                eps_S_lo, eps_S_hi, eps_D_lo, eps_D_hi)
+        @printf("ε_recommended = %.6f  (region: %s)\n", eps_recommended, found_region)
     end
 
     # ---- ε_recommended에서 x* solve (아직 안 풀었으면) ----
@@ -649,7 +696,7 @@ function find_epsilon_range(network, capacities, q_hat, w, γ, net_key::Symbol;
     Z0_star_rec = NaN
     if !haskey(dro_solves, eps_recommended)
         if verbose
-            @printf("\n--- Solving x*(ε_recommended=%.4f) ---\n", eps_recommended)
+            @printf("\n--- Solving x*(ε_recommended=%.6f) ---\n", eps_recommended)
         end
         td_rec = make_true_dro_data(network, capacities, q_hat, eps_recommended, eps_recommended;
                                      w=w, lambda_U=lambda_U, gamma=γ)
@@ -666,17 +713,20 @@ function find_epsilon_range(network, capacities, q_hat, w, γ, net_key::Symbol;
         @printf("  x*(ε_rec): Z₀=%.6f, x=%s\n", Z0_star_rec, string(round.(Int, x_star_rec)))
     end
 
-    # Checkpoint 정리 (완료 시 삭제)
+    # Checkpoint 정리
     if isfile(checkpoint_path)
         rm(checkpoint_path)
         if verbose; println("  Checkpoint removed (completed)"); end
     end
 
-    # ---- Results ----
-    result = Dict(
+    return Dict(
         :eps_recommended => eps_recommended,
-        :eps_lo          => lo,
-        :eps_hi          => hi,
+        :eps_S_lo        => eps_S_lo,
+        :eps_S_hi        => eps_S_hi,
+        :eps_D_lo        => eps_D_lo,
+        :eps_D_hi        => eps_D_hi,
+        :eps_lo          => eps_S_lo,
+        :eps_hi          => eps_D_hi,
         :region          => found_region,
         :history         => history,
         :x_neut          => x_neut,
@@ -690,8 +740,6 @@ function find_epsilon_range(network, capacities, q_hat, w, γ, net_key::Symbol;
         :rob_source      => rob_source,
         :dro_solves      => dro_solves,
     )
-
-    return result
 end
 
 
@@ -700,26 +748,28 @@ end
 # ============================================================
 
 function print_bisection_summary(net_key::Symbol, result::Dict; betas=[0.1, 0.3, 0.5])
-    println("\n" * "=" ^ 90)
+    println("\n" * "=" ^ 100)
     @printf("Experiment 2 Results: %s\n", net_key)
-    println("=" ^ 90)
+    println("=" ^ 100)
 
     # Bisection history table
-    @printf("%-5s  %8s  %8s  %8s  %12s  %12s  %12s  %-12s\n",
-            "Iter", "ε", "lo", "hi", "PO-PP", "NR-WR", "NR", "Region")
-    println("-" ^ 90)
+    @printf("%-3s  %-5s  %10s  %10s  %10s  %12s  %12s  %12s  %-12s\n",
+            "Ph", "Iter", "ε", "lo", "hi", "PO-PP", "NR-WR", "NR", "Region")
+    println("-" ^ 100)
     for h in result[:history]
-        nr_wr_str = isnan(h[:nr_wr]) ? "    ---" : @sprintf("%12.6f", h[:nr_wr])
-        nr_str    = isnan(h[:nr])    ? "    ---" : @sprintf("%12.6f", h[:nr])
-        @printf("%-5d  %8.4f  %8.4f  %8.4f  %12.6f  %s  %s  %-12s\n",
-                h[:iter], h[:eps], h[:lo], h[:hi], h[:po_pp],
+        phase = get(h, :phase, 1)
+        nr_wr_str = isnan(h[:nr_wr]) ? "      ---" : @sprintf("%12.6f", h[:nr_wr])
+        nr_str    = isnan(h[:nr])    ? "      ---" : @sprintf("%12.6f", h[:nr])
+        @printf("%-3d  %-5d  %10.6f  %10.6f  %10.6f  %12.6f  %s  %s  %-12s\n",
+                phase, h[:iter], h[:eps], h[:lo], h[:hi], h[:po_pp],
                 nr_wr_str, nr_str, h[:region])
     end
-    println("-" ^ 90)
+    println("-" ^ 100)
 
-    @printf("\nε_recommended = %.4f  (region: %s)\n",
+    @printf("\nε_recommended = %.6f  (region: %s)\n",
             result[:eps_recommended], result[:region])
-    @printf("ε bounds: [%.4f, %.4f]\n", result[:eps_lo], result[:eps_hi])
+    @printf("ε^S ∈ [%.6f, %.6f]\n", result[:eps_S_lo], result[:eps_S_hi])
+    @printf("ε^D ∈ [%.6f, %.6f]\n", result[:eps_D_lo], result[:eps_D_hi])
     @printf("f_0(x_neut)=%.6f, f_1(x_rob)=%.6f\n", result[:f0_neut], result[:f1_rob])
     println("x_neut = $(round.(Int, result[:x_neut]))")
     println("x_rob  = $(round.(Int, result[:x_rob]))")
@@ -746,7 +796,8 @@ println("=" ^ 70)
 println("Experiment 2: PO/PP/NR/WR Analytical ε Calibration")
 println("  Networks: $EXP2_NETWORKS")
 println("  S=$(EXP2_S), γ_ratio=$(EXP2_GAMMA_RATIO), λU=$(EXP2_LAMBDA_U)")
-println("  Bisection: tol=0.01, max_iter=15")
+println("  Phase 1 (PO-PP): tol=0.01, max_iter=15")
+println("  Phase 2 (NR-WR): tol=0.01, max_iter=10")
 println("=" ^ 70)
 
 batch_start = time()
@@ -770,7 +821,8 @@ for net_key in EXP2_NETWORKS
         eps_max = 1.0,
         lambda_U = EXP2_LAMBDA_U,
         tol = 0.01,
-        max_iter = 15,
+        max_iter_phase1 = 15,
+        max_iter_phase2 = 10,
         benders_sub_time_limit = 30.0,
         benders_max_iter = 500,
         verbose = true)
@@ -785,10 +837,14 @@ for net_key in EXP2_NETWORKS
     push!(summary_rows, (
         network = string(net_key),
         eps_recommended = result[:eps_recommended],
-        eps_lo = result[:eps_lo],
-        eps_hi = result[:eps_hi],
+        eps_S_lo = result[:eps_S_lo],
+        eps_S_hi = result[:eps_S_hi],
+        eps_D_lo = result[:eps_D_lo],
+        eps_D_hi = result[:eps_D_hi],
         region = string(result[:region]),
-        n_iters = length(result[:history]),
+        n_iters_p1 = count(h -> get(h, :phase, 1) == 1, result[:history]),
+        n_iters_p2 = count(h -> get(h, :phase, 2) == 2, result[:history]),
+        n_dro_solves = length(result[:dro_solves]),
         f0_neut = result[:f0_neut],
         f1_rob = result[:f1_rob],
         wall_time = t_net,
@@ -810,30 +866,35 @@ println("\nRaw results saved → $jls_path")
 
 csv_path = joinpath(@__DIR__, "exp2_calibration_summary.csv")
 open(csv_path, "w") do io
-    println(io, "network,eps_recommended,eps_lo,eps_hi,region,n_iters,f0_neut,f1_rob,wall_time")
+    println(io, "network,eps_recommended,eps_S_lo,eps_S_hi,eps_D_lo,eps_D_hi,region,iters_p1,iters_p2,n_dro,f0_neut,f1_rob,wall_time")
     for r in summary_rows
-        @printf(io, "%s,%.4f,%.4f,%.4f,%s,%d,%.6f,%.6f,%.1f\n",
-                r.network, r.eps_recommended, r.eps_lo, r.eps_hi,
-                r.region, r.n_iters, r.f0_neut, r.f1_rob, r.wall_time)
+        @printf(io, "%s,%.6f,%.6f,%.6f,%.6f,%.6f,%s,%d,%d,%d,%.6f,%.6f,%.1f\n",
+                r.network, r.eps_recommended, r.eps_S_lo, r.eps_S_hi,
+                r.eps_D_lo, r.eps_D_hi,
+                r.region, r.n_iters_p1, r.n_iters_p2, r.n_dro_solves,
+                r.f0_neut, r.f1_rob, r.wall_time)
     end
 end
 println("Summary CSV saved → $csv_path")
 
 
 # ---- Final summary table ----
-println("\n\n" * "=" ^ 100)
-println("Experiment 2 — Final Summary")
-println("=" ^ 100)
-@printf("%-14s  %10s  %8s  %8s  %-14s  %6s  %10s  %10s  %10s\n",
-        "Network", "ε_recommend", "ε_lo", "ε_hi", "Region", "Iters",
+println("\n\n" * "=" ^ 120)
+println("Experiment 2 — Final Summary (Two-Phase Bisection)")
+println("=" ^ 120)
+@printf("%-14s  %10s  %10s  %10s  %-12s  %5s  %5s  %5s  %10s  %10s  %10s\n",
+        "Network", "ε_recommend", "ε^S", "ε^D", "Region", "P1", "P2", "DRO",
         "f0(x_neut)", "f1(x_rob)", "Time(s)")
-println("-" ^ 100)
+println("-" ^ 120)
 for r in summary_rows
-    @printf("%-14s  %10.4f  %8.4f  %8.4f  %-14s  %6d  %10.4f  %10.4f  %10.1f\n",
-            r.network, r.eps_recommended, r.eps_lo, r.eps_hi,
-            r.region, r.n_iters, r.f0_neut, r.f1_rob, r.wall_time)
+    eps_S_str = @sprintf("[%.4f,%.4f]", r.eps_S_lo, r.eps_S_hi)
+    eps_D_str = @sprintf("[%.4f,%.4f]", r.eps_D_lo, r.eps_D_hi)
+    @printf("%-14s  %10.4f  %16s  %16s  %-12s  %5d  %5d  %5d  %10.4f  %10.4f  %10.1f\n",
+            r.network, r.eps_recommended, eps_S_str, eps_D_str,
+            r.region, r.n_iters_p1, r.n_iters_p2, r.n_dro_solves,
+            r.f0_neut, r.f1_rob, r.wall_time)
 end
-println("-" ^ 100)
+println("-" ^ 120)
 @printf("Total wall time: %.1f s (%.1f min)\n", batch_wall, batch_wall / 60)
 
 # Per-network ε comparison

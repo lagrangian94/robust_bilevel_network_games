@@ -1,0 +1,302 @@
+[ Info: build_full_2SP_model loaded
+polska k=3: arcs=38, intd=26, γ=1, w=9.3937
+
+============================================================
+Nominal SP (LP)
+============================================================
+Set parameter Username
+Set parameter LicenseID to value 2742039
+Academic license - for non-commercial use only - expires 2026-11-20
+Building 2SP model...
+  Nodes: 14, Arcs: 38, Scenarios: 20
+  Interdictable arcs: 26
+  Dummy arc index: 39
+  Parameters: ϕU = 2.0, γ = 1, w = 9.3937, v = 1.0
+┌ Warning: Axis contains one element: 1. If intended, you can safely ignore this warning. To explicitly pass the axis with one element, pass `[1]` instead of `1`.
+└ @ JuMP.Containers C:\Users\user\.julia\packages\JuMP\i68GU\src\Containers\DenseAxisArray.jl:185
+  ✓ Decision variables created
+Arc 3 is not interdictable
+Arc 13 is not interdictable
+Arc 18 is not interdictable
+Arc 21 is not interdictable
+Arc 24 is not interdictable
+Arc 32 is not interdictable
+Arc 33 is not interdictable
+Arc 34 is not interdictable
+Arc 35 is not interdictable
+Arc 36 is not interdictable
+Arc 37 is not interdictable
+Arc 38 is not interdictable
+  ✓ Constraints (14a-14c) added
+  Adding Big-M constraints (14j, 14k)...
+  ✓ Big-M constraints (14j, 14k) added
+  ✓ Budget constraint (14l) added
+  Adding dual constraints (14m-14p)...
+  ✓ Dual constraints (14m-14p) added for all scenarios
+  ✓ Linearization constraints (14q) added
+
+Model construction summary:
+  - Variables: 170936
+  - Constraints: 180548
+  - Binary variables: 38
+================================================================================
+Set parameter OutputFlag to value 1
+Set parameter OutputFlag to value 1
+Gurobi Optimizer version 13.0.0 build v13.0.0rc1 (win64 - Windows 10.0 (19045.2))
+
+CPU model: AMD Ryzen 9 5900X 12-Core Processor, instruction set [SSE2|AVX|AVX2]
+Thread count: 12 physical cores, 24 logical processors, using up to 24 threads
+
+Optimize a model with 185005 rows, 170936 columns and 969112 nonzeros (Min)
+Model fingerprint: 0x80b2aa9e
+Model has 41 linear objective coefficients
+Variable types: 170898 continuous, 38 integer (38 binary)
+Coefficient statistics:
+  Matrix range     [3e-01, 9e+01]
+  Objective range  [5e-02, 9e+00]
+  Bounds range     [2e+00, 2e+00]
+  RHS range        [1e-03, 2e+00]
+Presolve removed 109879 rows and 111170 columns
+Presolve time: 1.51s
+Presolved: 75126 rows, 59766 columns, 255059 nonzeros
+Variable types: 59740 continuous, 26 integer (26 binary)
+Deterministic concurrent LP optimizer: primal and dual simplex
+Showing primal log only...
+
+
+Root simplex log...
+
+Iteration    Objective       Primal Inf.    Dual Inf.      Time
+   66662   -3.4394135e+01   0.000000e+00   3.554027e+03      5s
+   71869   -9.7938184e+01   0.000000e+00   2.756398e+02     10s
+Concurrent spin time: 0.00s
+
+Solved with dual simplex
+
+Root simplex log...
+
+Iteration    Objective       Primal Inf.    Dual Inf.      Time
+   47850   -8.0302148e+00   0.000000e+00   0.000000e+00     14s
+
+Root relaxation: objective -8.030215e+00, 47850 iterations, 12.57 seconds (34.61 work units)
+
+    Nodes    |    Current Node    |     Objective Bounds      |     Work
+ Expl Unexpl |  Obj  Depth IntInf | Incumbent    BestBd   Gap | It/Node Time
+
+     0     0   -8.03021    0   10          -   -8.03021      -     -   14s
+H    0     0                       7.4882132   -8.03021   207%     -   16s
+H    0     0                       6.2168057   -8.03021   229%     -   22s
+     0     0   -6.62293    0   12    6.21681   -6.62293   207%     -   26s
+     0     0   -6.10339    0   13    6.21681   -6.10339   198%     -   27s
+     0     0   -4.55783    0   14    6.21681   -4.55783   173%     -   28s
+     0     0   -4.55783    0   14    6.21681   -4.55783   173%     -   29s
+     0     0   -3.53587    0   18    6.21681   -3.53587   157%     -   33s
+     0     0   -0.15267    0   15    6.21681   -0.15267   102%     -   35s
+     0     0    6.21681    0   13    6.21681    6.21681  0.00%     -   37s
+
+Cutting planes:
+  MIR: 333
+  Flow cover: 52
+  RLT: 2
+
+Explored 1 nodes (56939 simplex iterations) in 37.49 seconds (76.01 work units)
+Thread count was 24 (of 24 available processors)
+
+Solution count 2: 6.21681 7.48821 
+
+Optimal solution found (tolerance 1.00e-04)
+Best objective 6.216805659745e+00, best bound 6.216805659745e+00, gap 0.0000%
+
+User-callback calls 3310, time in user-callback 0.00 sec
+
+Nominal SP: Z₀=6.216806, time=38.48s
+x_nom arcs = [27]
+
+============================================================
+Robust DRO (ε=1.0, Benders)
+============================================================
+[ Info: Inexact mode: 2/3 iters use OptimalityTarget=1 (local opt)
+[ Info: MW cut enabled: core point x_core (γ/26 per interdictable arc)
+Set parameter Username
+Set parameter LicenseID to value 2742039
+Academic license - for non-commercial use only - expires 2026-11-20
+[ Info: Min-cut VI enabled: Phase 1 (all S) added
+Set parameter Username
+Set parameter LicenseID to value 2742039
+Academic license - for non-commercial use only - expires 2026-11-20
+Set parameter Username
+Set parameter LicenseID to value 2742039
+Academic license - for non-commercial use only - expires 2026-11-20
+Set parameter Username
+Set parameter LicenseID to value 2742039
+Academic license - for non-commercial use only - expires 2026-11-20
+Set parameter Username
+Set parameter LicenseID to value 2742039
+Academic license - for non-commercial use only - expires 2026-11-20
+Set parameter Username
+Set parameter LicenseID to value 2742039
+Academic license - for non-commercial use only - expires 2026-11-20
+[ Info: Mini-Benders enabled: max_mini_iter=5
+
+=== True-DRO Benders iter 1 ===
+  OMP: t₀=2.188437, UB=Inf, gap=NaN, x=[0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0] (0.049s)
+  Sub: Z₀=12.962703 [LOCAL], α=[0.000,0.000,0.000,0.000,0.000,0.804,1.360,0.000,0.297,0.000,0.000,0.000,0.000,0.000,0.000,0.000,0.000,0.000,0.000,6.592,0.000,0.124,0.000,0.000,0.000,0.000,0.217,0.000,0.000,0.000,0.000,0.000,0.000,0.000,0.000,0.000,0.000,0.000]
+  Iter 1: LB=2.188437  UB=Inf  gap=NaN
+  Cut: intercept=-291.606034, π_x_range=[-417.4431, 304.5687]
+  Mini-Benders[1] (mw): LB=2.188437, Z₀(α*)=1.580641, intercept=9.688132 (0.995s) [OMP=0.030 ISP-L=0.162 ISP-F=0.197 MW-L=0.196 MW-F=0.238]
+  Mini-Benders[2] (mw): LB=2.188437, Z₀(α*)=1.580641, intercept=9.688132 (0.110s) [OMP=0.030 ISP-L=0.002 ISP-F=0.024 MW-L=0.026 MW-F=0.026]
+  Mini-Benders[3]: LB stagnated, break
+  α-step: Z₀=12.553223, α=[0.000,0.000,0.000,0.000,0.000,0.353,1.216,0.000,6.400,0.000,0.000,0.000,0.000,0.000,0.106,0.000,0.000,0.000,0.000,0.890,0.000,0.054,0.000,0.000,0.041,0.000,0.333,0.000,0.000,0.000,0.000,0.000,0.000,0.000,0.000,0.000,0.000,0.000]
+  Alt-Benders[1] (mw): LB=2.188437, Z₀(α*)=0.905282, intercept=8.337519 (0.105s) [OMP=0.035 ISP-L=0.004 ISP-F=0.022 MW-L=0.024 MW-F=0.017]
+  Alt-Benders[2] (mw): LB=2.188437, Z₀(α*)=0.905282, intercept=8.337519 (0.100s) [OMP=0.032 ISP-L=0.003 ISP-F=0.023 MW-L=0.020 MW-F=0.020]
+  Alt-Benders[3]: LB stagnated, break
+  OMP re-solve: 0.000s
+
+=== True-DRO Benders iter 2 ===
+  OMP: t₀=2.188437, UB=Inf, gap=NaN, x=[0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0] (0.000s)
+  Sub: Z₀=12.723846 [LOCAL], α=[0.000,0.000,0.000,0.000,0.000,0.510,1.640,0.000,0.026,0.000,0.000,0.000,0.000,0.000,0.025,0.000,0.000,0.000,0.000,0.443,0.000,0.404,0.000,0.000,6.073,0.000,0.272,0.000,0.000,0.000,0.000,0.000,0.000,0.000,0.000,0.000,0.000,0.000]
+  Iter 2: LB=2.188437  UB=Inf  gap=NaN
+  Cut: intercept=-289.023981, π_x_range=[-416.9765, 301.7478]
+  Mini-Benders[1] (mw): LB=2.415833, Z₀(α*)=1.468559, intercept=4.917393 (0.118s) [OMP=0.043 ISP-L=0.003 ISP-F=0.028 MW-L=0.013 MW-F=0.027]
+  Mini-Benders[2] (mw): LB=2.415833, Z₀(α*)=1.468559, intercept=4.917393 (0.104s) [OMP=0.029 ISP-L=0.005 ISP-F=0.027 MW-L=0.013 MW-F=0.029]
+  Mini-Benders[3] (mw): LB=2.415833, Z₀(α*)=1.468559, intercept=4.917393 (0.103s) [OMP=0.027 ISP-L=0.004 ISP-F=0.027 MW-L=0.012 MW-F=0.029]
+  Mini-Benders[4]: LB stagnated, break
+  α-step: Z₀=9.481431, α=[0.000,0.000,0.000,0.000,0.000,1.172,1.662,0.000,0.836,0.000,0.000,0.000,0.000,0.000,0.159,0.000,0.000,0.000,0.000,1.014,0.000,1.172,0.000,0.000,0.166,0.000,3.212,0.000,0.000,0.000,0.000,0.000,0.000,0.000,0.000,0.000,0.000,0.000]
+  Alt-Benders[1] (mw): LB=2.555368, Z₀(α*)=2.430515, intercept=11.482942 (0.095s) [OMP=0.029 ISP-L=0.005 ISP-F=0.025 MW-L=0.012 MW-F=0.022]
+  Alt-Benders[2] (mw): LB=2.555368, Z₀(α*)=2.430515, intercept=11.482942 (0.085s) [OMP=0.024 ISP-L=0.002 ISP-F=0.025 MW-L=0.010 MW-F=0.022]
+  Alt-Benders[3] (mw): LB=2.555368, Z₀(α*)=2.430515, intercept=11.482942 (0.084s) [OMP=0.023 ISP-L=0.002 ISP-F=0.024 MW-L=0.011 MW-F=0.021]
+  Alt-Benders[4]: LB stagnated, break
+  OMP re-solve: 0.000s
+
+=== True-DRO Benders iter 3 ===
+  OMP: t₀=2.555368, UB=Inf, gap=NaN, x=[0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0] (0.000s)
+  Sub: Z₀=12.757159, α=[0.000,0.000,0.000,0.000,0.000,0.683,0.258,0.000,1.194,0.000,0.000,0.000,0.000,0.000,5.268,0.000,0.000,0.000,0.000,1.859,0.000,0.000,0.000,0.000,0.000,0.000,0.132,0.000,0.000,0.000,0.000,0.000,0.000,0.000,0.000,0.000,0.000,0.000]
+  Iter 3: LB=2.555368  UB=12.757159  gap=8.00e-01
+  Cut: intercept=8.650635, π_x_range=[-73.0000, 4.1065]
+  Sherali-Cut: intercept=8.656330, π_x_range=[-14.8225, 4.1008]
+  Mini-Benders[1] (mw): LB=4.921176, Z₀(α*)=2.922335, intercept=9.618761 (0.112s) [OMP=0.032 ISP-L=0.004 ISP-F=0.023 MW-L=0.018 MW-F=0.032]
+  Mini-Benders[2] (mw): LB=4.921176, Z₀(α*)=2.922335, intercept=9.618761 (0.102s) [OMP=0.032 ISP-L=0.003 ISP-F=0.023 MW-L=0.012 MW-F=0.031]
+  Mini-Benders[3] (mw): LB=4.921176, Z₀(α*)=2.922335, intercept=9.618761 (0.105s) [OMP=0.032 ISP-L=0.002 ISP-F=0.023 MW-L=0.012 MW-F=0.032]
+  Mini-Benders[4]: LB stagnated, break
+  α-step: Z₀=12.248681, α=[0.000,0.000,0.000,0.000,0.000,0.702,0.402,0.000,0.963,0.000,0.000,0.000,0.000,0.000,0.312,0.000,0.000,0.000,0.000,1.628,0.000,5.385,0.000,0.000,0.000,0.000,0.000,0.000,0.000,0.000,0.000,0.000,0.000,0.000,0.000,0.000,0.000,0.000]
+  Alt-Benders[1] (mw): LB=6.167878, Z₀(α*)=3.763502, intercept=10.070052 (0.107s) [OMP=0.036 ISP-L=0.002 ISP-F=0.023 MW-L=0.014 MW-F=0.029]
+  Alt-Benders[2] (mw): LB=6.167878, Z₀(α*)=3.763502, intercept=10.070052 (0.097s) [OMP=0.023 ISP-L=0.004 ISP-F=0.023 MW-L=0.015 MW-F=0.029]
+  Alt-Benders[3] (mw): LB=6.167878, Z₀(α*)=3.763502, intercept=10.070052 (0.096s) [OMP=0.023 ISP-L=0.005 ISP-F=0.022 MW-L=0.015 MW-F=0.028]
+  Alt-Benders[4]: LB stagnated, break
+  OMP re-solve: 0.000s
+
+=== True-DRO Benders iter 4 ===
+  OMP: t₀=6.167878, UB=12.757159, gap=5.17e-01, x=[0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0] (0.000s)
+  Sub: Z₀=13.169210 [LOCAL], α=[0.000,0.000,0.000,0.000,0.000,0.947,6.278,0.000,0.596,0.000,0.000,0.000,0.000,0.000,0.000,0.000,0.000,0.000,0.000,1.261,0.000,0.031,0.000,0.000,0.000,0.000,0.280,0.000,0.000,0.000,0.000,0.000,0.000,0.000,0.000,0.000,0.000,0.000]
+  Iter 4: LB=6.167878  UB=12.757159  gap=5.17e-01
+  Cut: intercept=-291.245505, π_x_range=[-418.1584, 304.4147]
+  Mini-Benders[1] (mw): LB=6.659797, Z₀(α*)=5.781665, intercept=10.048235 (0.109s) [OMP=0.027 ISP-L=0.004 ISP-F=0.025 MW-L=0.015 MW-F=0.034]
+  Mini-Benders[2] (mw): LB=6.659797, Z₀(α*)=5.781665, intercept=10.048235 (0.092s) [OMP=0.022 ISP-L=0.002 ISP-F=0.023 MW-L=0.012 MW-F=0.031]
+  Mini-Benders[3] (mw): LB=6.659797, Z₀(α*)=5.781665, intercept=10.048235 (0.094s) [OMP=0.022 ISP-L=0.002 ISP-F=0.023 MW-L=0.012 MW-F=0.033]
+  Mini-Benders[4]: LB stagnated, break
+  α-step: Z₀=11.529689, α=[0.000,0.000,0.000,0.000,0.000,4.156,1.366,0.000,0.297,0.000,0.000,0.000,0.000,0.000,0.927,0.000,0.000,0.000,0.000,0.849,0.000,0.876,0.000,0.000,0.000,0.000,0.923,0.000,0.000,0.000,0.000,0.000,0.000,0.000,0.000,0.000,0.000,0.000]
+  Alt-Benders[1] (mw): LB=9.127963, Z₀(α*)=11.632598, intercept=8.143090 (0.100s) [OMP=0.033 ISP-L=0.002 ISP-F=0.022 MW-L=0.012 MW-F=0.028]
+  Alt-Benders[2] (mw): LB=9.481431, Z₀(α*)=8.996199, intercept=10.515479 (0.098s) [OMP=0.032 ISP-L=0.002 ISP-F=0.024 MW-L=0.013 MW-F=0.024]
+  Alt-Benders[3] (mw): LB=9.481431, Z₀(α*)=8.996199, intercept=10.515479 (0.098s) [OMP=0.024 ISP-L=0.004 ISP-F=0.025 MW-L=0.016 MW-F=0.026]
+  Alt-Benders[4] (mw): LB=9.481431, Z₀(α*)=8.996199, intercept=10.515479 (0.098s) [OMP=0.025 ISP-L=0.004 ISP-F=0.026 MW-L=0.016 MW-F=0.024]
+  Alt-Benders[5]: LB stagnated, break
+  OMP re-solve: 0.000s
+
+=== True-DRO Benders iter 5 ===
+  OMP: t₀=9.481431, UB=12.757159, gap=2.57e-01, x=[0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0] (0.000s)
+  Sub: Z₀=12.054445 [LOCAL], α=[0.000,0.000,0.000,0.000,0.000,2.235,0.657,0.000,0.092,0.000,0.000,0.000,0.000,0.000,0.000,0.000,0.000,0.000,0.000,0.757,0.000,0.000,0.000,0.000,0.000,0.000,5.654,0.000,0.000,0.000,0.000,0.000,0.000,0.000,0.000,0.000,0.000,0.000]
+  Iter 5: LB=9.481431  UB=12.757159  gap=2.57e-01
+  Cut: intercept=-290.456975, π_x_range=[-417.6228, 302.5114]
+  Mini-Benders[1] (mw): LB=11.482941, Z₀(α*)=8.419627, intercept=8.419626 (0.107s) [OMP=0.038 ISP-L=0.004 ISP-F=0.024 MW-L=0.013 MW-F=0.025]
+  Mini-Benders[2] (mw): LB=11.482942, Z₀(α*)=8.419627, intercept=8.419626 (0.091s) [OMP=0.025 ISP-L=0.002 ISP-F=0.025 MW-L=0.013 MW-F=0.024]
+  Mini-Benders[3] (mw): LB=11.482942, Z₀(α*)=8.419627, intercept=8.419626 (0.090s) [OMP=0.026 ISP-L=0.002 ISP-F=0.025 MW-L=0.011 MW-F=0.023]
+  Mini-Benders[4]: LB stagnated, break
+  α-step: Z₀=14.058316, α=[0.000,0.000,0.000,0.000,0.000,1.395,2.691,0.000,0.297,0.000,0.000,0.000,0.000,0.000,1.563,0.000,0.000,0.000,0.000,0.962,0.000,1.528,0.000,0.000,0.000,0.000,0.957,0.000,0.000,0.000,0.000,0.000,0.000,0.000,0.000,0.000,0.000,0.000]
+  Alt-Benders[1] (mw): LB=11.482942, Z₀(α*)=14.294174, intercept=14.294173 (0.116s) [OMP=0.037 ISP-L=0.002 ISP-F=0.022 MW-L=0.013 MW-F=0.040]
+  Alt-Benders[2] (mw): LB=11.529689, Z₀(α*)=9.279007, intercept=13.730895 (0.107s) [OMP=0.041 ISP-L=0.002 ISP-F=0.023 MW-L=0.011 MW-F=0.026]
+┌ Warning: The addition operator has been used on JuMP expressions a large number of times. This warning is safe to ignore but may indicate that model generation is slower than necessary. For performance reasons, you should not add expressions in a loop. Instead of x += y, use add_to_expression!(x,y) to modify x in place. If y is a single variable, you may also use add_to_expression!(x, coef, y) for x += coef*y.
+└ @ JuMP C:\Users\user\.julia\packages\JuMP\i68GU\src\operators.jl:282
+  Alt-Benders[3] (mw): LB=11.529689, Z₀(α*)=9.279007, intercept=13.730895 (0.149s) [OMP=0.029 ISP-L=0.002 ISP-F=0.022 MW-L=0.063 MW-F=0.030]
+  Alt-Benders[4] (mw): LB=11.529689, Z₀(α*)=9.279007, intercept=13.730895 (0.098s) [OMP=0.029 ISP-L=0.002 ISP-F=0.022 MW-L=0.015 MW-F=0.027]
+  Alt-Benders[5]: LB stagnated, break
+  OMP re-solve: 0.000s
+
+=== True-DRO Benders iter 6 ===
+  OMP: t₀=11.529689, UB=12.757159, gap=9.62e-02, x=[0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0] (0.000s)
+  Sub: Z₀=13.450703, α=[0.000,0.000,0.000,0.000,0.000,4.145,1.366,0.000,0.779,0.000,0.000,0.000,0.000,0.000,0.000,0.000,0.000,0.000,0.000,1.444,0.000,0.130,0.000,0.000,0.000,0.000,1.530,0.000,0.000,0.000,0.000,0.000,0.000,0.000,0.000,0.000,0.000,0.000]
+  Iter 6: LB=11.529689  UB=12.757159  gap=9.62e-02
+  Cut: intercept=11.171784, π_x_range=[-79.0000, 2.2789]
+  Sherali-Cut: intercept=11.367575, π_x_range=[-62.0000, 2.0831]
+  Mini-Benders[1] (mw): LB=12.054445, Z₀(α*)=9.514093, intercept=9.562850 (0.094s) [OMP=0.031 ISP-L=0.002 ISP-F=0.022 MW-L=0.012 MW-F=0.024]
+  Mini-Benders[2] (mw): LB=12.054445, Z₀(α*)=9.514093, intercept=9.562850 (0.095s) [OMP=0.028 ISP-L=0.004 ISP-F=0.022 MW-L=0.013 MW-F=0.026]
+  Mini-Benders[3] (mw): LB=12.054445, Z₀(α*)=9.514093, intercept=9.562850 (0.107s) [OMP=0.028 ISP-L=0.004 ISP-F=0.024 MW-L=0.017 MW-F=0.031]
+  Mini-Benders[4]: LB stagnated, break
+  α-step: Z₀=11.951766, α=[0.000,0.000,0.000,0.000,0.000,2.264,0.592,0.000,0.135,0.000,0.000,0.000,0.000,0.000,0.000,0.000,0.000,0.000,0.000,0.800,0.000,0.000,0.000,0.000,0.000,0.000,5.602,0.000,0.000,0.000,0.000,0.000,0.000,0.000,0.000,0.000,0.000,0.000]
+  Alt-Benders[1] (mw): LB=12.054445, Z₀(α*)=12.032623, intercept=8.144758 (0.093s) [OMP=0.028 ISP-L=0.004 ISP-F=0.023 MW-L=0.012 MW-F=0.023]
+  Alt-Benders[2] (mw): LB=12.054445, Z₀(α*)=12.032623, intercept=8.144758 (0.094s) [OMP=0.028 ISP-L=0.002 ISP-F=0.023 MW-L=0.013 MW-F=0.025]
+  Alt-Benders[3] (mw): LB=12.054445, Z₀(α*)=12.032623, intercept=8.144758 (0.093s) [OMP=0.030 ISP-L=0.002 ISP-F=0.023 MW-L=0.012 MW-F=0.023]
+  Alt-Benders[4]: LB stagnated, break
+  OMP re-solve: 0.000s
+
+=== True-DRO Benders iter 7 ===
+  OMP: t₀=12.054445, UB=12.757159, gap=5.51e-02, x=[0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0] (0.000s)
+  Sub: Z₀=12.054445 [LOCAL], α=[0.000,0.000,0.000,0.000,0.000,2.235,0.657,0.000,0.092,0.000,0.000,0.000,0.000,0.000,0.000,0.000,0.000,0.000,0.000,0.757,0.000,0.000,0.000,0.000,0.000,0.000,5.654,0.000,0.000,0.000,0.000,0.000,0.000,0.000,0.000,0.000,0.000,0.000]
+  Iter 7: LB=12.054445  UB=12.757159  gap=5.51e-02
+  Cut: intercept=-290.456975, π_x_range=[-417.6228, 302.5114]
+  Mini-Benders[1] (mw): LB=12.054445, Z₀(α*)=12.054451, intercept=8.166586 (0.095s) [OMP=0.028 ISP-L=0.002 ISP-F=0.022 MW-L=0.012 MW-F=0.029]
+  Mini-Benders[2] (mw): LB=12.054449, Z₀(α*)=12.054451, intercept=8.166586 (0.101s) [OMP=0.028 ISP-L=0.004 ISP-F=0.022 MW-L=0.013 MW-F=0.032]
+  Mini-Benders[3] (mw): LB=12.054449, Z₀(α*)=12.054451, intercept=8.166586 (0.101s) [OMP=0.030 ISP-L=0.004 ISP-F=0.022 MW-L=0.013 MW-F=0.029]
+  Mini-Benders[4] (mw): LB=12.054449, Z₀(α*)=12.054451, intercept=8.166586 (0.097s) [OMP=0.028 ISP-L=0.004 ISP-F=0.022 MW-L=0.012 MW-F=0.028]
+  Mini-Benders[5]: LB stagnated, break
+  α-step: Z₀=12.054451, α=[0.000,0.000,0.000,0.000,0.000,0.756,0.691,0.000,0.057,0.000,0.000,0.000,0.000,0.000,0.034,0.000,0.000,0.000,0.000,0.722,0.000,0.000,0.000,0.000,0.000,0.000,7.132,0.000,0.000,0.000,0.000,0.000,0.000,0.000,0.000,0.000,0.000,0.000]
+  Alt-Benders[1] (mw): LB=12.054451, Z₀(α*)=12.054451, intercept=8.166586 (0.092s) [OMP=0.027 ISP-L=0.004 ISP-F=0.022 MW-L=0.012 MW-F=0.024]
+  Alt-Benders[2] (mw): LB=12.054451, Z₀(α*)=12.054451, intercept=8.166586 (0.104s) [OMP=0.028 ISP-L=0.004 ISP-F=0.023 MW-L=0.018 MW-F=0.028]
+  Alt-Benders[3] (mw): LB=12.054451, Z₀(α*)=12.054451, intercept=8.166586 (0.092s) [OMP=0.028 ISP-L=0.004 ISP-F=0.022 MW-L=0.012 MW-F=0.023]
+  Alt-Benders[4]: LB stagnated, break
+  OMP re-solve: 0.000s
+
+=== True-DRO Benders iter 8 ===
+  OMP: t₀=12.054451, UB=12.757159, gap=5.51e-02, x=[0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0] (0.000s)
+  Sub: Z₀=12.054445 [LOCAL], α=[0.000,0.000,0.000,0.000,0.000,2.235,0.657,0.000,0.092,0.000,0.000,0.000,0.000,0.000,0.000,0.000,0.000,0.000,0.000,0.757,0.000,0.000,0.000,0.000,0.000,0.000,5.654,0.000,0.000,0.000,0.000,0.000,0.000,0.000,0.000,0.000,0.000,0.000]
+  Iter 8: LB=12.054451  UB=12.757159  gap=5.51e-02
+  Cut: intercept=-290.456975, π_x_range=[-417.6228, 302.5114]
+  Mini-Benders[1] (mw): LB=12.054451, Z₀(α*)=12.054451, intercept=8.166586 (0.101s) [OMP=0.028 ISP-L=0.004 ISP-F=0.022 MW-L=0.013 MW-F=0.032]
+  Mini-Benders[2] (mw): LB=12.054451, Z₀(α*)=12.054451, intercept=8.166586 (0.103s) [OMP=0.031 ISP-L=0.004 ISP-F=0.023 MW-L=0.013 MW-F=0.030]
+  Mini-Benders[3]: LB stagnated, break
+  α-step: Z₀=12.054451, α=[0.000,0.000,0.000,0.000,0.000,0.756,0.691,0.000,0.057,0.000,0.000,0.000,0.000,0.000,0.034,0.000,0.000,0.000,0.000,0.722,0.000,0.000,0.000,0.000,0.000,0.000,7.132,0.000,0.000,0.000,0.000,0.000,0.000,0.000,0.000,0.000,0.000,0.000]
+  Alt-Benders[1] (mw): LB=12.054451, Z₀(α*)=12.054451, intercept=8.166586 (0.105s) [OMP=0.030 ISP-L=0.004 ISP-F=0.022 MW-L=0.016 MW-F=0.030]
+  Alt-Benders[2] (mw): LB=12.054451, Z₀(α*)=12.054451, intercept=8.166586 (0.099s) [OMP=0.030 ISP-L=0.004 ISP-F=0.022 MW-L=0.013 MW-F=0.027]
+  Alt-Benders[3]: LB stagnated, break
+  OMP re-solve: 0.000s
+
+=== True-DRO Benders iter 9 ===
+  OMP: t₀=12.054451, UB=12.757159, gap=5.51e-02, x=[0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0] (0.000s)
+  Sub: Z₀=12.100282, α=[0.000,0.000,0.000,0.000,0.000,0.889,1.174,0.000,0.000,0.000,0.000,0.000,0.000,0.000,0.000,0.000,0.000,0.000,0.000,0.285,0.000,0.000,0.000,0.000,0.000,0.000,7.045,0.000,0.000,0.000,0.000,0.000,0.000,0.000,0.000,0.000,0.000,0.000]
+  Iter 9: LB=12.054451  UB=12.100282  gap=3.79e-03
+  Cut: intercept=4.713342, π_x_range=[-27.5442, 7.3869]
+  Sherali-Cut: intercept=8.212419, π_x_range=[-14.1658, 3.8879]
+  Mini-Benders[1] (mw): LB=12.100282, Z₀(α*)=12.100282, intercept=6.916473 (0.099s) [OMP=0.031 ISP-L=0.004 ISP-F=0.022 MW-L=0.013 MW-F=0.027]
+  Mini-Benders[1]: gap=2.98e-09 ≤ tol, break
+  α-step: Z₀=12.100282, α=[0.000,0.000,0.000,0.000,0.000,0.000,1.236,0.000,0.000,0.000,0.000,0.000,0.000,0.000,0.000,0.000,0.000,0.000,0.000,0.223,0.000,0.000,0.000,0.000,0.000,0.000,7.934,0.000,0.000,0.000,0.000,0.000,0.000,0.000,0.000,0.000,0.000,0.000]
+  Alt-Benders[1] (mw): LB=12.100282, Z₀(α*)=12.100282, intercept=6.916472 (0.101s) [OMP=0.032 ISP-L=0.004 ISP-F=0.023 MW-L=0.016 MW-F=0.024]
+  Alt-Benders[1]: gap=2.98e-09 ≤ tol, break
+  OMP re-solve: 0.031s
+
+=== True-DRO Benders iter 10 ===
+  OMP: t₀=12.100282, UB=12.100282, gap=2.98e-09, x=[0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0] (0.000s)
+  Sub: Z₀=12.054445 [LOCAL], α=[0.000,0.000,0.000,0.000,0.000,2.235,0.657,0.000,0.092,0.000,0.000,0.000,0.000,0.000,0.000,0.000,0.000,0.000,0.000,0.757,0.000,0.000,0.000,0.000,0.000,0.000,5.654,0.000,0.000,0.000,0.000,0.000,0.000,0.000,0.000,0.000,0.000,0.000]
+  Iter 10: LB=12.100282  UB=12.100282  gap=2.98e-09
+True-DRO Benders converged at iter 10 (gap=2.98e-09)
+  Wall time: 51.47 sec
+  OMP  time: mean=0.022s, median=0.028s, max=0.049s
+  Sub  time (exact): mean=0.659s, median=0.597s, q90=0.818s, max=0.873s (n=3/10)
+
+Robust: Z₀=12.100282, iters=10, time=70.5s
+x_rob arcs = [27]
+
+============================================================
+x_nom arcs: [27]
+x_rob arcs: [27]
+SAME? true
+============================================================
+Saved to results/polska_k3_gamma3_test.jls
