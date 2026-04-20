@@ -65,7 +65,8 @@ function true_dro_benders_optimize!(td::TrueDROData;
         inexact::Bool=false,
         strengthen_cuts::Symbol=:none,
         valid_inequality::Symbol=:none,
-        add_objF_vi::Bool=false)
+        add_objF_vi::Bool=false,
+        phase2B_vi::Bool=false)
 
     K = td.num_arcs
 
@@ -104,10 +105,16 @@ function true_dro_benders_optimize!(td::TrueDROData;
 
     # ---- Build subproblem: global model (no ρ bound) ----
     x_init = zeros(K)
-    _use_single_compact = (td.eps_tilde == 0.0)
-    _sub_builder = _use_single_compact ? build_true_dro_subproblem_single : build_true_dro_subproblem
-    if _use_single_compact && verbose
-        @info "ε̃=0 detected → using compact single-layer subproblem (no ζF bilinear)"
+    _use_nominal_compact = (td.eps_hat == 0.0 && td.eps_tilde == 0.0)
+    _use_single_compact = (td.eps_tilde == 0.0)  # nominal도 포함
+    if _use_nominal_compact
+        _sub_builder = build_true_dro_subproblem_nominal
+        verbose && @info "ε̂=ε̃=0 detected → using nominal compact subproblem (pure LP, no bilinear)"
+    elseif _use_single_compact
+        _sub_builder = build_true_dro_subproblem_single
+        verbose && @info "ε̃=0 detected → using compact single-layer subproblem (no ζF bilinear)"
+    else
+        _sub_builder = build_true_dro_subproblem
     end
     sub_model, sub_vars = _sub_builder(td, x_init; optimizer=nlp_optimizer, silent=!sub_verbose,
                                        add_objF_vi=add_objF_vi)
@@ -143,7 +150,8 @@ function true_dro_benders_optimize!(td::TrueDROData;
     # ---- Adaptive time limit state ----
     current_time_limit = sub_time_limit  # nothing = unlimited
     is_boost = false                     # boost 상태 플래그
-    const_boost_mipgap = 5e-3           # boost 시 MIPGap (0.5%)
+    const_boost_mipgap = _use_single_compact ? 1e-2 : 5e-3  # single-layer: 1%, else: 0.5%
+    const_boost_time_limit = 3600.0  # boost 시 time limit (single/double 모두 3600s)
     prev_x_global = nothing      # 이전 global iter의 x_sol
     prev_t0_global = -Inf        # 이전 global iter의 t₀
     prev_global_was_timelimit = false  # 이전 global iter TIME_LIMIT 여부
@@ -225,8 +233,9 @@ function true_dro_benders_optimize!(td::TrueDROData;
             if prev_x_global !== nothing && x_sol == prev_x_global && prev_global_was_timelimit && t0_change < 1e-3
                 is_boost = true
                 if verbose
-                    @printf("  → Boost: time limit off + MIPGap=%.1f%% (same x + prev TIME_LIMIT)\n",
-                            const_boost_mipgap * 100)
+                    tl_str = const_boost_time_limit === nothing ? "off" : @sprintf("%.0fs", const_boost_time_limit)
+                    @printf("  → Boost: time limit %s + MIPGap=%.1f%% (same x + prev TIME_LIMIT)\n",
+                            tl_str, const_boost_mipgap * 100)
                     flush(stdout)
                 end
             end
@@ -234,7 +243,7 @@ function true_dro_benders_optimize!(td::TrueDROData;
 
         # ---- Set subproblem time limit & MIPGap ----
         if is_boost
-            set_time_limit_sec(cur_sub_model, nothing)
+            set_time_limit_sec(cur_sub_model, const_boost_time_limit)
             set_optimizer_attribute(cur_sub_model, "MIPGap", const_boost_mipgap)
             set_optimizer_attribute(cur_sub_model, "MIPFocus", 3)
         else
@@ -295,6 +304,26 @@ function true_dro_benders_optimize!(td::TrueDROData;
             flush(stdout)
         end
 
+        # Boost TIME_LIMIT 조기종료: incumbent Z0_val vs LB gap이 tol 이내면 near-optimal
+        if is_boost && !is_exact
+            boost_gap = abs(Z0_val - lower_bound) / max(abs(Z0_val), 1e-10)
+            if boost_gap <= tol
+                wall_elapsed = time() - wall_start
+                if verbose
+                    @printf("  Boost TIME_LIMIT early stop: Z0_val=%.6f, LB=%.6f, gap=%.2e ≤ tol\n",
+                            Z0_val, lower_bound, boost_gap)
+                    flush(stdout)
+                end
+                # incumbent은 valid UB (feasible point of max problem)
+                if Z0_val < upper_bound
+                    upper_bound = Z0_val
+                    best_x = copy(x_sol)
+                    best_α = copy(sub_info[:α_val])
+                end
+                gap = abs(upper_bound - lower_bound) / max(abs(upper_bound), 1e-10)
+            end
+        end
+
         effective_tol = (is_boost && gap > tol) ? const_boost_mipgap : tol
         if gap <= effective_tol
             wall_elapsed = time() - wall_start
@@ -348,13 +377,13 @@ function true_dro_benders_optimize!(td::TrueDROData;
         end
 
         # ---- Min-cut valid inequality: Phase 2B (comp-min + α*) ----
-        # if valid_inequality == :mincut && is_exact
-        #     add_phase2B_mincut_vi!(omp_model, omp_vars, td, sub_info[:α_val], iter;
-        #                            arc_topology=arc_topo)
-        #     if verbose
-        #         @printf("  Phase2B-VI added (α from iter %d)\n", iter)
-        #     end
-        # end
+        if phase2B_vi && valid_inequality == :mincut && is_exact
+            add_phase2B_mincut_vi!(omp_model, omp_vars, td, sub_info[:α_val], iter;
+                                   arc_topology=arc_topo)
+            if verbose
+                @printf("  Phase2B-VI added (α from iter %d)\n", iter)
+            end
+        end
 
         # ---- ρ diagnostic (sub_verbose) ----
         if sub_verbose
@@ -609,7 +638,7 @@ function true_dro_benders_optimize!(td::TrueDROData;
                     S = td.S
 
                     # Clamp (ISP LP numerical noise 방지)
-                    a_clamped = [max(last_a_val[s], sub_vars[:a_min][s]) for s in 1:S]
+                    a_clamped = _use_nominal_compact ? td.q_hat : [max(last_a_val[s], sub_vars[:a_min][s]) for s in 1:S]
                     d_clamped = _use_single_compact ? td.q_hat : [max(last_d_val[s], sub_vars[:d_min][s]) for s in 1:S]
 
                     # OMP x̄ for objective
@@ -620,12 +649,16 @@ function true_dro_benders_optimize!(td::TrueDROData;
                     end
                     x_alt = round.([value(omp_vars[:x][k]) for k in 1:K])
 
-                    # 1차: QCP fix 시도
+                    # Nominal compact: a,d 모두 고정 → fix 불필요, 바로 sub solve
+                    # Single compact: a만 fix, d 없음
+                    # Full: a,d 모두 fix
                     local alt_info
                     qcp_ok = true
                     try
-                        for s in 1:S
-                            fix(sub_vars[:a][s], a_clamped[s]; force=true)
+                        if !_use_nominal_compact
+                            for s in 1:S
+                                fix(sub_vars[:a][s], a_clamped[s]; force=true)
+                            end
                         end
                         if !_use_single_compact
                             for s in 1:S
@@ -641,9 +674,11 @@ function true_dro_benders_optimize!(td::TrueDROData;
                         end
                     finally
                         # 반드시 unfix (QCP 성공/실패 무관)
-                        unfix.(sub_vars[:a])
-                        set_lower_bound.(sub_vars[:a], sub_vars[:a_min])
-                        set_upper_bound.(sub_vars[:a], sub_vars[:a_max])
+                        if !_use_nominal_compact
+                            unfix.(sub_vars[:a])
+                            set_lower_bound.(sub_vars[:a], sub_vars[:a_min])
+                            set_upper_bound.(sub_vars[:a], sub_vars[:a_max])
+                        end
                         if !_use_single_compact
                             unfix.(sub_vars[:d])
                             set_lower_bound.(sub_vars[:d], sub_vars[:d_min])

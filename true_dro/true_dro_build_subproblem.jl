@@ -898,3 +898,174 @@ function build_true_dro_subproblem_single(td::TrueDROData, x_bar::Vector{Float64
 
     return model, vars
 end
+
+
+"""
+    build_true_dro_subproblem_nominal(td, x_bar; optimizer, ...)
+
+ε̂=ε̃=0 전용 compact subproblem (nominal SP).
+a[s]=d[s]=q̂[s] 상수 대입 → ζL, ζF 모두 제거 → **순수 LP**.
+bilinear constraint 0개.
+"""
+function build_true_dro_subproblem_nominal(td::TrueDROData, x_bar::Vector{Float64};
+                                          optimizer, silent=true,
+                                          rho_upper_bound::Union{Float64,Nothing}=nothing,
+                                          add_objF_vi::Bool=false,
+                                          add_objF_vi_arcwise::Bool=false)
+    @assert td.eps_hat == 0.0 "build_true_dro_subproblem_nominal requires ε̂=0 (got $(td.eps_hat))"
+    @assert td.eps_tilde == 0.0 "build_true_dro_subproblem_nominal requires ε̃=0 (got $(td.eps_tilde))"
+
+    S = td.S
+    K = td.num_arcs
+    m = td.nv1
+    Ny = td.Ny
+    Nts = td.Nts
+    q = td.q_hat
+    ξ = td.xi_bar
+    v = td.v
+    w = td.w
+    φ̂U = td.phi_hat_U
+    φ̃U = td.phi_tilde_U
+    λU = td.lambda_U
+
+    model = Model(optimizer)
+    if silent
+        set_silent(model)
+    end
+    set_optimizer_attribute(model, "DualReductions", 0)
+
+    # ====================================================================
+    # α (linear로만 등장 — bilinear 없음)
+    # ====================================================================
+    @variable(model, 0 <= α[1:K] <= w)
+    @constraint(model, sum(α[k] for k in 1:K) <= w)
+
+    # ====================================================================
+    # ISP-L: a[s]=q̂[s] 대입, a,b,ζL 제거
+    # ====================================================================
+    @variable(model, σ_hat[1:S] >= 0)
+    @variable(model, u_hat[1:K, 1:S] >= 0)
+    @variable(model, ρ_hat_1[1:K, 1:S] >= 0)
+    @variable(model, ρ_hat_2[1:K, 1:S] >= 0)
+    @variable(model, ρ_hat_3[1:K, 1:S] >= 0)
+
+    if rho_upper_bound !== nothing
+        for k in 1:K, s in 1:S
+            set_upper_bound(ρ_hat_1[k, s], rho_upper_bound)
+            set_upper_bound(ρ_hat_2[k, s], rho_upper_bound)
+            set_upper_bound(ρ_hat_3[k, s], rho_upper_bound)
+        end
+    end
+
+    # (DL-1): flow conservation
+    @constraint(model, DL1[j=1:m, s=1:S],
+        sum(Ny[j, k] * u_hat[k, s] for k in 1:K) + Nts[j] * σ_hat[s] == 0)
+
+    # (DL-2): -(ξ_k^s + α_k)·q_s + û + ρ̂₂ - ρ̂₃ ≤ 0  [LINEAR in α]
+    @constraint(model, DL2[k=1:K, s=1:S],
+        -ξ[k, s] * q[s] - α[k] * q[s]
+        + u_hat[k, s] + ρ_hat_2[k, s] - ρ_hat_3[k, s] <= 0)
+
+    # (DL-3): v_k·ξ_k^s·q_s - ρ̂₁ - ρ̂₂ + ρ̂₃ ≤ 0  [상수]
+    @constraint(model, DL3[k=1:K, s=1:S],
+        v[k] * ξ[k, s] * q[s]
+        - ρ_hat_1[k, s] - ρ_hat_2[k, s] + ρ_hat_3[k, s] <= 0)
+
+    # DL-4~7 (TV ball): a=q̂ 고정이므로 자동 만족 → 제거
+
+    # ====================================================================
+    # ISP-F: d[s]=q̂[s] 대입, d,e,ζF 제거 (single compact과 동일)
+    # ====================================================================
+    @variable(model, u_tilde[1:K, 1:S] >= 0)
+    @variable(model, σ_tilde[1:S] >= 0)
+    @variable(model, ω[1:m, 1:S])              # FREE
+    @variable(model, β[1:K, 1:S] >= 0)
+    @variable(model, δ >= 0)
+    @variable(model, ρ_tilde_1[1:K, 1:S] >= 0)
+    @variable(model, ρ_tilde_2[1:K, 1:S] >= 0)
+    @variable(model, ρ_tilde_3[1:K, 1:S] >= 0)
+    @variable(model, ρ_psi0_1[1:K] >= 0)
+    @variable(model, ρ_psi0_2[1:K] >= 0)
+    @variable(model, ρ_psi0_3[1:K] >= 0)
+
+    if rho_upper_bound !== nothing
+        for k in 1:K, s in 1:S
+            set_upper_bound(ρ_tilde_1[k, s], rho_upper_bound)
+            set_upper_bound(ρ_tilde_2[k, s], rho_upper_bound)
+            set_upper_bound(ρ_tilde_3[k, s], rho_upper_bound)
+        end
+        for k in 1:K
+            set_upper_bound(ρ_psi0_1[k], rho_upper_bound)
+            set_upper_bound(ρ_psi0_2[k], rho_upper_bound)
+            set_upper_bound(ρ_psi0_3[k], rho_upper_bound)
+        end
+    end
+
+    # (DF-5)
+    @constraint(model, DF5[j=1:m, s=1:S],
+        sum(Ny[j, k] * u_tilde[k, s] for k in 1:K) + Nts[j] * σ_tilde[s] == 0)
+
+    # (DF-6): -(ξ_k^s + α_k)·q_s + ũ + ρ̃₂ - ρ̃₃ ≤ 0  [LINEAR in α]
+    @constraint(model, DF6[k=1:K, s=1:S],
+        -ξ[k, s] * q[s] - α[k] * q[s]
+        + u_tilde[k, s] + ρ_tilde_2[k, s] - ρ_tilde_3[k, s] <= 0)
+
+    # (DF-7): v_k·ξ_k^s·q_s - ρ̃₁ - ρ̃₂ + ρ̃₃ ≤ 0  [상수]
+    @constraint(model, DF7[k=1:K, s=1:S],
+        v[k] * ξ[k, s] * q[s]
+        - ρ_tilde_1[k, s] - ρ_tilde_2[k, s] + ρ_tilde_3[k, s] <= 0)
+
+    # (DF-8)
+    @constraint(model, DF8[k=1:K, s=1:S],
+        sum(Ny[j, k] * ω[j, s] for j in 1:m) - β[k, s] <= 0)
+
+    # (DF-9): q_s + N_ts^T ω ≤ 0
+    @constraint(model, DF9[s=1:S],
+        q[s] + sum(Nts[j] * ω[j, s] for j in 1:m) <= 0)
+
+    # (DF-h)
+    @constraint(model, DFh[k=1:K], sum(β[k, s] for s in 1:S) <= δ)
+
+    # (DF-λ)
+    @constraint(model, DFlam,
+        sum(σ_tilde[s] for s in 1:S)
+        >= sum(ξ[k, s] * β[k, s] for k in 1:K, s in 1:S)
+           + w * δ
+           + sum(ρ_psi0_2[k] for k in 1:K)
+           - sum(ρ_psi0_3[k] for k in 1:K))
+
+    # (DF-ψ)
+    @constraint(model, DFpsi[k=1:K],
+        v[k] * sum(ξ[k, s] * β[k, s] for s in 1:S) + ρ_psi0_1[k] + ρ_psi0_2[k]
+        >= ρ_psi0_3[k])
+
+    # ====================================================================
+    # Objective
+    # ====================================================================
+    obj_L = sum(σ_hat[s] for s in 1:S) -
+            φ̂U * sum(x_bar[k] * ρ_hat_1[k, s] for k in 1:K, s in 1:S) -
+            φ̂U * sum((1.0 - x_bar[k]) * ρ_hat_3[k, s] for k in 1:K, s in 1:S)
+
+    obj_F = -φ̃U * sum(x_bar[k] * ρ_tilde_1[k, s] for k in 1:K, s in 1:S) -
+             φ̃U * sum((1.0 - x_bar[k]) * ρ_tilde_3[k, s] for k in 1:K, s in 1:S) -
+             λU * sum(x_bar[k] * ρ_psi0_1[k] for k in 1:K) -
+             λU * sum((1.0 - x_bar[k]) * ρ_psi0_3[k] for k in 1:K)
+
+    @objective(model, Max, obj_L + obj_F)
+
+    vars = Dict(
+        :α => α,
+        # ISP-L (a, b, ζL 없음)
+        :σ_hat => σ_hat, :u_hat => u_hat,
+        :ρ_hat_1 => ρ_hat_1, :ρ_hat_2 => ρ_hat_2, :ρ_hat_3 => ρ_hat_3,
+        # ISP-F (d, e, ζF 없음)
+        :u_tilde => u_tilde, :σ_tilde => σ_tilde,
+        :ω => ω, :β => β, :δ => δ,
+        :ρ_tilde_1 => ρ_tilde_1, :ρ_tilde_2 => ρ_tilde_2, :ρ_tilde_3 => ρ_tilde_3,
+        :ρ_psi0_1 => ρ_psi0_1, :ρ_psi0_2 => ρ_psi0_2, :ρ_psi0_3 => ρ_psi0_3,
+        :is_nominal_compact => true,
+        :is_single_compact => true,  # d 없음 guard 호환
+    )
+
+    return model, vars
+end

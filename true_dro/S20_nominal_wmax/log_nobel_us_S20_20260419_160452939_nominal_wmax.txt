@@ -1,0 +1,76 @@
+Log file: C:\Users\user\robust_bilevel_network_games\true_dro\S20_nominal_wmax\log_nobel_us_S20_20260419_160452939_nominal_wmax.txt
+Started: 2026-04-19T16:04:52.939
+
+============================================================
+NOBEL-US Network Summary
+============================================================
+Number of nodes: 14
+Number of arcs (incl. dummy): 39
+Number of regular arcs: 38
+Number of interdictable arcs: 26
+Source node: s (Seattle)
+Sink node: t (Princeton)
+Node-incidence matrix N dimensions: (13, 39)
+
+Sparsity Information:
+  Arc-arc adjacency: 356 / 1444 pairs (75.3% sparse)
+  Node-arc incidence: 72 / 494 pairs (85.4% sparse)
+
+First 15 arcs:
+  Arc 1: ("Ann_Arbor", "Ithaca") [Interdictable: ✓]
+  Arc 2: ("Ann_Arbor", "Urbana_Champaign") [Interdictable: ✓]
+  Arc 3: ("Ann_Arbor", "t") [Interdictable: ✗]
+  Arc 4: ("Atlanta", "Houston") [Interdictable: ✓]
+  Arc 5: ("Atlanta", "Urbana_Champaign") [Interdictable: ✓]
+  Arc 6: ("Atlanta", "Washington") [Interdictable: ✓]
+  Arc 7: ("Boulder", "Lincoln") [Interdictable: ✓]
+  Arc 8: ("Boulder", "Salt_Lake_City") [Interdictable: ✓]
+  Arc 9: ("Houston", "Atlanta") [Interdictable: ✓]
+  Arc 10: ("Houston", "San_Diego") [Interdictable: ✓]
+  Arc 11: ("Ithaca", "Ann_Arbor") [Interdictable: ✓]
+  Arc 12: ("Ithaca", "New_York") [Interdictable: ✓]
+  Arc 13: ("Ithaca", "t") [Interdictable: ✗]
+  Arc 14: ("Lincoln", "Boulder") [Interdictable: ✓]
+  Arc 15: ("Lincoln", "Urbana_Champaign") [Interdictable: ✓]
+============================================================
+======================================================================
+NOMINAL SP: nobel_us (S=20, γ=3, w=23.6227)
+======================================================================
+Set parameter Username
+Set parameter LicenseID to value 2742039
+Academic license - for non-commercial use only - expires 2026-11-20
+Building 2SP model...
+  Nodes: 14, Arcs: 38, Scenarios: 20
+  Interdictable arcs: 26
+  Dummy arc index: 39
+  Parameters: ϕU = 2.0, γ = 3, w = 23.6227, v = 1.0
+  ✓ Decision variables created
+Arc 3 is not interdictable
+Arc 13 is not interdictable
+Arc 18 is not interdictable
+Arc 21 is not interdictable
+Arc 24 is not interdictable
+Arc 32 is not interdictable
+Arc 33 is not interdictable
+Arc 34 is not interdictable
+Arc 35 is not interdictable
+Arc 36 is not interdictable
+Arc 37 is not interdictable
+Arc 38 is not interdictable
+  ✓ Constraints (14a-14c) added
+  Adding Big-M constraints (14j, 14k)...
+  ✓ Big-M constraints (14j, 14k) added
+  ✓ Budget constraint (14l) added
+  Adding dual constraints (14m-14p)...
+  ✓ Dual constraints (14m-14p) added for all scenarios
+  ✓ Linearization constraints (14q) added
+
+Model construction summary:
+  - Variables: 170936
+  - Constraints: 180548
+  - Binary variables: 38
+================================================================================
+Nominal SP: Z₀=9.022801, time=47.54s
+  x* = [0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
+
+Finished: 2026-04-19T16:05:41.298
