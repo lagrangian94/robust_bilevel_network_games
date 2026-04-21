@@ -1,0 +1,80 @@
+================================================================================
+OOS Phase B — λU=10.0, all-intd, γ=1 (gap<0 → rob wins)
+  β values: [0.1, 0.3, 0.5, 1.0], M=200
+================================================================================
+
+######################################################################
+# polska (γ=1, λU=10.0, all_intd)
+  x_nom=[18], x_rob=[33], w=14.2687
+######################################################################
+
+  β=0.1:
+  OOS outer 50/200
+  OOS outer 100/200
+  OOS outer 150/200
+  OOS outer 200/200
+    nom_mean=21.1823, rob_mean=21.4192
+    gap(rob-nom): mean=0.2368, [p5,p95]=[0.0605,0.3947], rob_wins=0.0%
+
+  β=0.3:
+  OOS outer 50/200
+  OOS outer 100/200
+  OOS outer 150/200
+  OOS outer 200/200
+    nom_mean=21.1826, rob_mean=21.4193
+    gap(rob-nom): mean=0.2367, [p5,p95]=[0.0560,0.3971], rob_wins=0.0%
+
+  β=0.5:
+  OOS outer 50/200
+  OOS outer 100/200
+  OOS outer 150/200
+  OOS outer 200/200
+    nom_mean=21.1827, rob_mean=21.4194
+    gap(rob-nom): mean=0.2366, [p5,p95]=[0.0534,0.3972], rob_wins=0.0%
+
+  β=1.0:
+  OOS outer 50/200
+  OOS outer 100/200
+  OOS outer 150/200
+  OOS outer 200/200
+    nom_mean=21.1828, rob_mean=21.4194
+    gap(rob-nom): mean=0.2366, [p5,p95]=[0.0520,0.3972], rob_wins=0.0%
+
+######################################################################
+# abilene (γ=1, λU=10.0, all_intd)
+  x_nom=[11], x_rob=[5], w=16.8979
+######################################################################
+
+  β=0.1:
+  OOS outer 50/200
+  OOS outer 100/200
+  OOS outer 150/200
+  OOS outer 200/200
+    nom_mean=20.1768, rob_mean=20.1928
+    gap(rob-nom): mean=0.0160, [p5,p95]=[-0.0376,0.0690], rob_wins=30.0%
+
+  β=0.3:
+  OOS outer 50/200
+  OOS outer 100/200
+  OOS outer 150/200
+  OOS outer 200/200
+    nom_mean=20.1777, rob_mean=20.1935
+    gap(rob-nom): mean=0.0158, [p5,p95]=[-0.0387,0.0690], rob_wins=30.0%
+
+  β=0.5:
+  OOS outer 50/200
+  OOS outer 100/200
+  OOS outer 150/200
+  OOS outer 200/200
+    nom_mean=20.1778, rob_mean=20.1936
+    gap(rob-nom): mean=0.0158, [p5,p95]=[-0.0387,0.0690], rob_wins=30.0%
+
+  β=1.0:
+  OOS outer 50/200
+  OOS outer 100/200
+  OOS outer 150/200
+  OOS outer 200/200
+    nom_mean=20.1780, rob_mean=20.1937
+    gap(rob-nom): mean=0.0158, [p5,p95]=[-0.0387,0.0690], rob_wins=30.5%
+
+Done! 2026-04-21T02:28:33.041

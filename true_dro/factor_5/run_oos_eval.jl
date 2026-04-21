@@ -2,7 +2,7 @@
 run_oos_eval.jl — Additive factor model에서 nom vs rob OOS Phase B 평가.
 
 x_nom, x_rob를 받아서 asymmetric Dirichlet OOS로 비교.
-gap = rob - nom (< 0 이면 rob 승, maximization이므로 > 0이면 rob 승).
+gap = rob - nom (leader minimizes max-flow이므로 gap < 0 → rob 승).
 
 Usage:
     include("true_dro/factor_3/run_oos_eval.jl")
@@ -48,13 +48,13 @@ function oos_phase_b_two_models(x_nom, x_rob, network, capacities, v, w;
         end
     end
 
-    gap = costs_rob .- costs_nom   # > 0 → rob wins (max-flow maximization)
+    gap = costs_rob .- costs_nom   # < 0 → rob wins (leader minimizes max-flow)
 
     return Dict(
         :gap_mean   => mean(gap),
         :gap_p5     => quantile(gap, 0.05),
         :gap_p95    => quantile(gap, 0.95),
-        :rob_wins   => mean(gap .> 0),    # maximization: rob > nom → rob wins
+        :rob_wins   => mean(gap .< 0),    # leader minimizes: rob < nom → rob wins
         :nom_mean   => mean(costs_nom),
         :rob_mean   => mean(costs_rob),
         :costs_nom  => costs_nom,
@@ -137,7 +137,7 @@ end
 
 # ---- Summary table ----
 println("\n" * "=" ^ 90)
-println("OOS Phase B Summary (gap = rob - nom, >0 → robust wins)")
+println("OOS Phase B Summary (gap = rob - nom, <0 → robust wins)")
 println("=" ^ 90)
 @printf("%-20s %4s  %10s  %10s  %10s  %10s  %8s\n",
         "Network", "β", "Nom Mean", "Rob Mean", "Gap Mean", "Gap p95", "Rob Win%")

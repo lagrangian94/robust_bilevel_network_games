@@ -1,0 +1,195 @@
+================================================================================
+Abilene Detailed OOS — all-intd, γ=1, λU=10.0
+  x_nom=[11], x_cal=[5] (ε=0.566), x_rob=[5] (ε=1.0)
+  Note: x_cal == x_rob here, so calibrated vs robust gap = 0
+  M=500, noise_scale=0.5
+================================================================================
+
+============================================================
+β = 0.1
+============================================================
+  OOS outer 100/500
+  OOS outer 200/500
+  OOS outer 300/500
+  OOS outer 400/500
+  OOS outer 500/500
+  nominal     : mean=20.173445, std=0.098780, [min,max]=[19.8413,20.5361]
+  calibrated  : mean=20.189388, std=0.099786, [min,max]=[19.8775,20.5337]
+  robust      : mean=20.189388, std=0.099786, [min,max]=[19.8775,20.5337]
+
+  --- calibrated vs nominal (gap = calibrated - nominal, <0 → calibrated wins) ---
+  Mean:   +0.015942
+  Std:    0.032009
+  Min:    -0.169873
+  Max:    +0.106000
+  Median: +0.016277
+  p01:    -0.063688
+  p05:    -0.035700
+  p10:    -0.022264
+  p25:    -0.002743
+  p75:    +0.036790
+  p90:    +0.053219
+  p95:    +0.067974
+  p99:    +0.088597
+  calibrated wins: 146/500 (29.2%)
+  nominal wins: 354/500 (70.8%)
+  Tail (worst 10% for calibrated): mean=-0.042259
+  Tail (worst 10% for nominal): mean=+0.071269
+
+============================================================
+β = 0.3
+============================================================
+  OOS outer 100/500
+  OOS outer 200/500
+  OOS outer 300/500
+  OOS outer 400/500
+  OOS outer 500/500
+  nominal     : mean=20.173972, std=0.100166, [min,max]=[19.8376,20.5394]
+  calibrated  : mean=20.189770, std=0.101209, [min,max]=[19.8775,20.5337]
+  robust      : mean=20.189770, std=0.101209, [min,max]=[19.8775,20.5337]
+
+  --- calibrated vs nominal (gap = calibrated - nominal, <0 → calibrated wins) ---
+  Mean:   +0.015798
+  Std:    0.032505
+  Min:    -0.186284
+  Max:    +0.107087
+  Median: +0.015980
+  p01:    -0.064412
+  p05:    -0.035467
+  p10:    -0.022700
+  p25:    -0.003394
+  p75:    +0.037149
+  p90:    +0.053527
+  p95:    +0.068396
+  p99:    +0.088597
+  calibrated wins: 145/500 (29.0%)
+  nominal wins: 355/500 (71.0%)
+  Tail (worst 10% for calibrated): mean=-0.043263
+  Tail (worst 10% for nominal): mean=+0.071574
+
+============================================================
+β = 0.5
+============================================================
+  OOS outer 100/500
+  OOS outer 200/500
+  OOS outer 300/500
+  OOS outer 400/500
+  OOS outer 500/500
+  nominal     : mean=20.174070, std=0.100404, [min,max]=[19.8368,20.5414]
+  calibrated  : mean=20.189841, std=0.101458, [min,max]=[19.8775,20.5337]
+  robust      : mean=20.189841, std=0.101458, [min,max]=[19.8775,20.5337]
+
+  --- calibrated vs nominal (gap = calibrated - nominal, <0 → calibrated wins) ---
+  Mean:   +0.015771
+  Std:    0.032606
+  Min:    -0.189970
+  Max:    +0.107305
+  Median: +0.015741
+  p01:    -0.064412
+  p05:    -0.035715
+  p10:    -0.022714
+  p25:    -0.003504
+  p75:    +0.037149
+  p90:    +0.053559
+  p95:    +0.068538
+  p99:    +0.088597
+  calibrated wins: 145/500 (29.0%)
+  nominal wins: 355/500 (71.0%)
+  Tail (worst 10% for calibrated): mean=-0.043484
+  Tail (worst 10% for nominal): mean=+0.071631
+
+============================================================
+β = 1.0
+============================================================
+  OOS outer 100/500
+  OOS outer 200/500
+  OOS outer 300/500
+  OOS outer 400/500
+  OOS outer 500/500
+  nominal     : mean=20.174138, std=0.100572, [min,max]=[19.8363,20.5421]
+  calibrated  : mean=20.189891, std=0.101640, [min,max]=[19.8775,20.5337]
+  robust      : mean=20.189891, std=0.101640, [min,max]=[19.8775,20.5337]
+
+  --- calibrated vs nominal (gap = calibrated - nominal, <0 → calibrated wins) ---
+  Mean:   +0.015753
+  Std:    0.032680
+  Min:    -0.192729
+  Max:    +0.107469
+  Median: +0.015619
+  p01:    -0.064412
+  p05:    -0.035736
+  p10:    -0.022714
+  p25:    -0.003504
+  p75:    +0.037149
+  p90:    +0.053730
+  p95:    +0.068664
+  p99:    +0.088598
+  calibrated wins: 146/500 (29.2%)
+  nominal wins: 354/500 (70.8%)
+  Tail (worst 10% for calibrated): mean=-0.043647
+  Tail (worst 10% for nominal): mean=+0.071672
+
+============================================================
+β = 2.0
+============================================================
+  OOS outer 100/500
+  OOS outer 200/500
+  OOS outer 300/500
+  OOS outer 400/500
+  OOS outer 500/500
+  nominal     : mean=20.174172, std=0.100655, [min,max]=[19.8360,20.5421]
+  calibrated  : mean=20.189917, std=0.101729, [min,max]=[19.8775,20.5337]
+  robust      : mean=20.189917, std=0.101729, [min,max]=[19.8775,20.5337]
+
+  --- calibrated vs nominal (gap = calibrated - nominal, <0 → calibrated wins) ---
+  Mean:   +0.015745
+  Std:    0.032715
+  Min:    -0.194092
+  Max:    +0.107551
+  Median: +0.015619
+  p01:    -0.064412
+  p05:    -0.035741
+  p10:    -0.022714
+  p25:    -0.003504
+  p75:    +0.037149
+  p90:    +0.053815
+  p95:    +0.068747
+  p99:    +0.088598
+  calibrated wins: 146/500 (29.2%)
+  nominal wins: 354/500 (70.8%)
+  Tail (worst 10% for calibrated): mean=-0.043723
+  Tail (worst 10% for nominal): mean=+0.071691
+
+============================================================
+β = 5.0
+============================================================
+  OOS outer 100/500
+  OOS outer 200/500
+  OOS outer 300/500
+  OOS outer 400/500
+  OOS outer 500/500
+  nominal     : mean=20.174193, std=0.100704, [min,max]=[19.8358,20.5421]
+  calibrated  : mean=20.189933, std=0.101782, [min,max]=[19.8775,20.5337]
+  robust      : mean=20.189933, std=0.101782, [min,max]=[19.8775,20.5337]
+
+  --- calibrated vs nominal (gap = calibrated - nominal, <0 → calibrated wins) ---
+  Mean:   +0.015740
+  Std:    0.032737
+  Min:    -0.194911
+  Max:    +0.107600
+  Median: +0.015619
+  p01:    -0.064412
+  p05:    -0.035744
+  p10:    -0.022714
+  p25:    -0.003504
+  p75:    +0.037187
+  p90:    +0.053866
+  p95:    +0.068797
+  p99:    +0.088598
+  calibrated wins: 146/500 (29.2%)
+  nominal wins: 354/500 (70.8%)
+  Tail (worst 10% for calibrated): mean=-0.043768
+  Tail (worst 10% for nominal): mean=+0.071702
+
+
+Done! 2026-04-21T11:07:48.281
