@@ -457,7 +457,7 @@ function generate_capacity_scenarios_factor_sparse(num_arcs::Int, num_scenarios:
     for scenario in 1:num_scenarios
         ξ = [rand(Exponential(1.0)) for _ in 1:k]
         for (idx, e) in enumerate(intd_idx)
-            val = c_bar + sum(F[idx, j] * ξ[j] for j in 1:k) / k
+            val = c_bar + sum(F[idx, j] * ξ[j] for j in 1:k)
             capacity_scenarios[e, scenario] = max(clip_eps, val)
         end
     end

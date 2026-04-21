@@ -1,0 +1,283 @@
+
+================================================================================
+>>> Abilene — mode=same_alpha
+================================================================================
+
+--- Abilene β=0.5 mode=same_alpha ---
+  OOS-B(same_alpha) outer 100/500
+  OOS-B(same_alpha) outer 200/500
+  OOS-B(same_alpha) outer 300/500
+  OOS-B(same_alpha) outer 400/500
+  OOS-B(same_alpha) outer 500/500
+
+============================================================
+Abilene OOS [same_alpha] (β=0.5, ε=0.566)
+============================================================
+  Nominal     : median=20.107741, mean=20.079260
+    [p05, p95] = [19.427709, 20.583911]  (range=1.156202)
+    [q25, q75] = [19.864337, 20.321117]  (IQR=0.456780)
+    [min, max] = [18.939273, 21.104699]  (range=2.165426)
+  Calibrated  : median=20.130011, mean=20.106532
+    [p05, p95] = [19.488629, 20.622895]  (range=1.134267)
+    [q25, q75] = [19.882649, 20.353618]  (IQR=0.470968)
+    [min, max] = [18.933871, 20.927348]  (range=1.993477)
+  Gap (cal-nom): mean=+0.027271, median=+0.020688
+    cal wins: 208/500 (41.6%)
+  Saved: true_dro/factor_5/plots/abilene_boxplot_same_alpha_beta0.5.png
+
+--- Abilene β=1.0 mode=same_alpha ---
+  OOS-B(same_alpha) outer 100/500
+  OOS-B(same_alpha) outer 200/500
+  OOS-B(same_alpha) outer 300/500
+  OOS-B(same_alpha) outer 400/500
+  OOS-B(same_alpha) outer 500/500
+
+============================================================
+Abilene OOS [same_alpha] (β=1.0, ε=0.566)
+============================================================
+  Nominal     : median=20.111390, mean=20.108755
+    [p05, p95] = [19.722507, 20.490097]  (range=0.767589)
+    [q25, q75] = [19.947917, 20.291663]  (IQR=0.343745)
+    [min, max] = [19.366039, 20.784615]  (range=1.418576)
+  Calibrated  : median=20.169090, mean=20.135327
+    [p05, p95] = [19.733519, 20.506416]  (range=0.772897)
+    [q25, q75] = [19.958673, 20.312047]  (IQR=0.353374)
+    [min, max] = [19.310159, 20.705268]  (range=1.395110)
+  Gap (cal-nom): mean=+0.026572, median=+0.018678
+    cal wins: 199/500 (39.8%)
+  Saved: true_dro/factor_5/plots/abilene_boxplot_same_alpha_beta1.0.png
+
+--- Abilene β=5.0 mode=same_alpha ---
+  OOS-B(same_alpha) outer 100/500
+  OOS-B(same_alpha) outer 200/500
+  OOS-B(same_alpha) outer 300/500
+  OOS-B(same_alpha) outer 400/500
+  OOS-B(same_alpha) outer 500/500
+
+============================================================
+Abilene OOS [same_alpha] (β=5.0, ε=0.566)
+============================================================
+  Nominal     : median=20.164532, mean=20.163913
+    [p05, p95] = [19.929361, 20.405693]  (range=0.476333)
+    [q25, q75] = [20.071533, 20.260640]  (IQR=0.189107)
+    [min, max] = [19.640025, 20.530626]  (range=0.890601)
+  Calibrated  : median=20.195681, mean=20.187576
+    [p05, p95] = [19.955804, 20.419765]  (range=0.463961)
+    [q25, q75] = [20.095868, 20.285158]  (IQR=0.189290)
+    [min, max] = [19.670881, 20.535372]  (range=0.864490)
+  Gap (cal-nom): mean=+0.023663, median=+0.023702
+    cal wins: 151/500 (30.2%)
+  Saved: true_dro/factor_5/plots/abilene_boxplot_same_alpha_beta5.0.png
+
+================================================================================
+>>> Abilene — mode=diff_alpha
+================================================================================
+
+--- Abilene β=0.5 mode=diff_alpha ---
+  OOS-B(diff_alpha) outer 100/500
+  OOS-B(diff_alpha) outer 200/500
+  OOS-B(diff_alpha) outer 300/500
+  OOS-B(diff_alpha) outer 400/500
+  OOS-B(diff_alpha) outer 500/500
+
+============================================================
+Abilene OOS [diff_alpha] (β=0.5, ε=0.566)
+============================================================
+  Nominal     : median=20.030854, mean=20.015004
+    [p05, p95] = [19.416089, 20.572489]  (range=1.156400)
+    [q25, q75] = [19.797392, 20.264592]  (IQR=0.467200)
+    [min, max] = [18.693779, 20.899213]  (range=2.205434)
+  Calibrated  : median=20.070764, mean=20.060013
+    [p05, p95] = [19.435249, 20.586219]  (range=1.150969)
+    [q25, q75] = [19.841480, 20.306036]  (IQR=0.464556)
+    [min, max] = [18.908295, 20.979104]  (range=2.070809)
+  Gap (cal-nom): mean=+0.045009, median=+0.033328
+    cal wins: 190/500 (38.0%)
+  Saved: true_dro/factor_5/plots/abilene_boxplot_diff_alpha_beta0.5.png
+
+--- Abilene β=1.0 mode=diff_alpha ---
+  OOS-B(diff_alpha) outer 100/500
+  OOS-B(diff_alpha) outer 200/500
+  OOS-B(diff_alpha) outer 300/500
+  OOS-B(diff_alpha) outer 400/500
+  OOS-B(diff_alpha) outer 500/500
+
+============================================================
+Abilene OOS [diff_alpha] (β=1.0, ε=0.566)
+============================================================
+  Nominal     : median=20.105352, mean=20.085972
+    [p05, p95] = [19.628669, 20.464805]  (range=0.836136)
+    [q25, q75] = [19.931338, 20.257175]  (IQR=0.325837)
+    [min, max] = [19.188508, 20.817419]  (range=1.628911)
+  Calibrated  : median=20.135462, mean=20.118398
+    [p05, p95] = [19.651729, 20.501094]  (range=0.849365)
+    [q25, q75] = [19.959989, 20.302483]  (IQR=0.342494)
+    [min, max] = [19.091663, 20.783451]  (range=1.691787)
+  Gap (cal-nom): mean=+0.032426, median=+0.029790
+    cal wins: 182/500 (36.4%)
+  Saved: true_dro/factor_5/plots/abilene_boxplot_diff_alpha_beta1.0.png
+
+--- Abilene β=5.0 mode=diff_alpha ---
+  OOS-B(diff_alpha) outer 100/500
+  OOS-B(diff_alpha) outer 200/500
+  OOS-B(diff_alpha) outer 300/500
+  OOS-B(diff_alpha) outer 400/500
+  OOS-B(diff_alpha) outer 500/500
+
+============================================================
+Abilene OOS [diff_alpha] (β=5.0, ε=0.566)
+============================================================
+  Nominal     : median=20.104015, mean=20.102086
+    [p05, p95] = [19.858304, 20.343632]  (range=0.485328)
+    [q25, q75] = [20.006936, 20.197477]  (IQR=0.190540)
+    [min, max] = [19.450964, 20.532944]  (range=1.081980)
+  Calibrated  : median=20.140690, mean=20.129827
+    [p05, p95] = [19.874296, 20.354094]  (range=0.479798)
+    [q25, q75] = [20.039241, 20.235994]  (IQR=0.196753)
+    [min, max] = [19.545557, 20.524666]  (range=0.979110)
+  Gap (cal-nom): mean=+0.027742, median=+0.025634
+    cal wins: 171/500 (34.2%)
+  Saved: true_dro/factor_5/plots/abilene_boxplot_diff_alpha_beta5.0.png
+
+================================================================================
+>>> Polska — mode=same_alpha
+================================================================================
+
+--- Polska β=0.5 mode=same_alpha ---
+  OOS-B(same_alpha) outer 100/500
+  OOS-B(same_alpha) outer 200/500
+  OOS-B(same_alpha) outer 300/500
+  OOS-B(same_alpha) outer 400/500
+  OOS-B(same_alpha) outer 500/500
+
+============================================================
+Polska OOS [same_alpha] (β=0.5, ε=0.148)
+============================================================
+  Nominal     : median=21.231417, mean=21.152521
+    [p05, p95] = [20.500362, 21.613903]  (range=1.113542)
+    [q25, q75] = [20.982793, 21.404137]  (IQR=0.421345)
+    [min, max] = [19.098260, 21.814214]  (range=2.715954)
+  Calibrated  : median=21.406174, mean=21.400842
+    [p05, p95] = [21.093447, 21.676924]  (range=0.583477)
+    [q25, q75] = [21.313311, 21.505110]  (IQR=0.191799)
+    [min, max] = [20.761340, 21.834300]  (range=1.072959)
+  Gap (cal-nom): mean=+0.248321, median=+0.214845
+    cal wins: 121/500 (24.2%)
+  Saved: true_dro/factor_5/plots/polska_boxplot_same_alpha_beta0.5.png
+
+--- Polska β=1.0 mode=same_alpha ---
+  OOS-B(same_alpha) outer 100/500
+  OOS-B(same_alpha) outer 200/500
+  OOS-B(same_alpha) outer 300/500
+  OOS-B(same_alpha) outer 400/500
+  OOS-B(same_alpha) outer 500/500
+
+============================================================
+Polska OOS [same_alpha] (β=1.0, ε=0.148)
+============================================================
+  Nominal     : median=21.233177, mean=21.176470
+    [p05, p95] = [20.655654, 21.530960]  (range=0.875306)
+    [q25, q75] = [21.054614, 21.359591]  (IQR=0.304977)
+    [min, max] = [19.839795, 21.659440]  (range=1.819645)
+  Calibrated  : median=21.418638, mean=21.416554
+    [p05, p95] = [21.212162, 21.611093]  (range=0.398931)
+    [q25, q75] = [21.337018, 21.497314]  (IQR=0.160295)
+    [min, max] = [21.060807, 21.766192]  (range=0.705385)
+  Gap (cal-nom): mean=+0.240084, median=+0.214908
+    cal wins: 67/500 (13.4%)
+  Saved: true_dro/factor_5/plots/polska_boxplot_same_alpha_beta1.0.png
+
+--- Polska β=5.0 mode=same_alpha ---
+  OOS-B(same_alpha) outer 100/500
+  OOS-B(same_alpha) outer 200/500
+  OOS-B(same_alpha) outer 300/500
+  OOS-B(same_alpha) outer 400/500
+  OOS-B(same_alpha) outer 500/500
+
+============================================================
+Polska OOS [same_alpha] (β=5.0, ε=0.148)
+============================================================
+  Nominal     : median=21.188255, mean=21.180331
+    [p05, p95] = [20.875888, 21.425440]  (range=0.549552)
+    [q25, q75] = [21.079953, 21.302519]  (IQR=0.222566)
+    [min, max] = [20.493811, 21.587254]  (range=1.093443)
+  Calibrated  : median=21.420760, mean=21.421799
+    [p05, p95] = [21.287812, 21.548154]  (range=0.260342)
+    [q25, q75] = [21.367470, 21.480254]  (IQR=0.112784)
+    [min, max] = [21.115552, 21.655983]  (range=0.540431)
+  Gap (cal-nom): mean=+0.241468, median=+0.225974
+    cal wins: 21/500 (4.2%)
+  Saved: true_dro/factor_5/plots/polska_boxplot_same_alpha_beta5.0.png
+
+================================================================================
+>>> Polska — mode=diff_alpha
+================================================================================
+
+--- Polska β=0.5 mode=diff_alpha ---
+  OOS-B(diff_alpha) outer 100/500
+  OOS-B(diff_alpha) outer 200/500
+  OOS-B(diff_alpha) outer 300/500
+  OOS-B(diff_alpha) outer 400/500
+  OOS-B(diff_alpha) outer 500/500
+
+============================================================
+Polska OOS [diff_alpha] (β=0.5, ε=0.148)
+============================================================
+  Nominal     : median=21.241564, mean=21.146511
+    [p05, p95] = [20.436061, 21.611927]  (range=1.175867)
+    [q25, q75] = [20.974648, 21.394797]  (IQR=0.420149)
+    [min, max] = [18.627312, 21.868658]  (range=3.241346)
+  Calibrated  : median=21.394784, mean=21.384121
+    [p05, p95] = [21.057518, 21.676235]  (range=0.618717)
+    [q25, q75] = [21.270363, 21.521585]  (IQR=0.251222)
+    [min, max] = [20.731513, 21.875105]  (range=1.143592)
+  Gap (cal-nom): mean=+0.237609, median=+0.198295
+    cal wins: 113/500 (22.6%)
+  Saved: true_dro/factor_5/plots/polska_boxplot_diff_alpha_beta0.5.png
+
+--- Polska β=1.0 mode=diff_alpha ---
+  OOS-B(diff_alpha) outer 100/500
+  OOS-B(diff_alpha) outer 200/500
+  OOS-B(diff_alpha) outer 300/500
+  OOS-B(diff_alpha) outer 400/500
+  OOS-B(diff_alpha) outer 500/500
+
+============================================================
+Polska OOS [diff_alpha] (β=1.0, ε=0.148)
+============================================================
+  Nominal     : median=21.208343, mean=21.173037
+    [p05, p95] = [20.683905, 21.552188]  (range=0.868283)
+    [q25, q75] = [21.039619, 21.357311]  (IQR=0.317691)
+    [min, max] = [19.930240, 21.790790]  (range=1.860550)
+  Calibrated  : median=21.407719, mean=21.408568
+    [p05, p95] = [21.192648, 21.605856]  (range=0.413208)
+    [q25, q75] = [21.318103, 21.510472]  (IQR=0.192369)
+    [min, max] = [21.003199, 21.822647]  (range=0.819448)
+  Gap (cal-nom): mean=+0.235530, median=+0.210814
+    cal wins: 71/500 (14.2%)
+  Saved: true_dro/factor_5/plots/polska_boxplot_diff_alpha_beta1.0.png
+
+--- Polska β=5.0 mode=diff_alpha ---
+  OOS-B(diff_alpha) outer 100/500
+  OOS-B(diff_alpha) outer 200/500
+  OOS-B(diff_alpha) outer 300/500
+  OOS-B(diff_alpha) outer 400/500
+  OOS-B(diff_alpha) outer 500/500
+
+============================================================
+Polska OOS [diff_alpha] (β=5.0, ε=0.148)
+============================================================
+  Nominal     : median=21.181156, mean=21.159386
+    [p05, p95] = [20.846657, 21.423112]  (range=0.576455)
+    [q25, q75] = [21.060082, 21.272504]  (IQR=0.212423)
+    [min, max] = [20.513363, 21.644572]  (range=1.131209)
+  Calibrated  : median=21.418255, mean=21.412500
+    [p05, p95] = [21.280525, 21.539108]  (range=0.258584)
+    [q25, q75] = [21.359582, 21.466208]  (IQR=0.106626)
+    [min, max] = [21.149585, 21.619211]  (range=0.469626)
+  Gap (cal-nom): mean=+0.253113, median=+0.245137
+    cal wins: 14/500 (2.8%)
+  Saved: true_dro/factor_5/plots/polska_boxplot_diff_alpha_beta5.0.png
+
+
+Done! 2026-04-21T12:32:59.258

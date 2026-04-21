@@ -66,7 +66,8 @@ function true_dro_benders_optimize!(td::TrueDROData;
         strengthen_cuts::Symbol=:none,
         valid_inequality::Symbol=:none,
         add_objF_vi::Bool=false,
-        phase2B_vi::Bool=false)
+        phase2B_vi::Bool=false,
+        source_sink_cut::Union{Nothing, Dict}=nothing)
 
     K = td.num_arcs
 
@@ -92,6 +93,25 @@ function true_dro_benders_optimize!(td::TrueDROData;
 
     # ---- Build OMP ----
     omp_model, omp_vars = build_true_dro_omp(td; optimizer=mip_optimizer, silent=true)
+
+    # ---- Source/Sink connectivity cut ----
+    if source_sink_cut !== nothing
+        x = omp_vars[:x]
+        if haskey(source_sink_cut, :source_arcs)
+            src_arcs = source_sink_cut[:source_arcs]
+            @constraint(omp_model, sum(x[a] for a in src_arcs) <= length(src_arcs) - 1)
+            if verbose
+                @info "Source-sink cut: Σx[source_arcs] ≤ $(length(src_arcs)-1) (arcs=$src_arcs)"
+            end
+        end
+        if haskey(source_sink_cut, :sink_arcs)
+            snk_arcs = source_sink_cut[:sink_arcs]
+            @constraint(omp_model, sum(x[a] for a in snk_arcs) <= length(snk_arcs) - 1)
+            if verbose
+                @info "Source-sink cut: Σx[sink_arcs] ≤ $(length(snk_arcs)-1) (arcs=$snk_arcs)"
+            end
+        end
+    end
 
     # ---- Min-cut valid inequality: Phase 1 (all S, 1회) ----
     local arc_topo

@@ -1,0 +1,143 @@
+
+================================================================================
+>>> Grid 5x5 — mode=same_alpha
+================================================================================
+
+--- Grid5x5 β=0.5 mode=same_alpha ---
+  OOS-B(same_alpha) outer 100/500
+  OOS-B(same_alpha) outer 200/500
+  OOS-B(same_alpha) outer 300/500
+  OOS-B(same_alpha) outer 400/500
+  OOS-B(same_alpha) outer 500/500
+
+============================================================
+Grid 5x5 OOS [same_alpha] (β=0.5, γ=1, λU=10)
+============================================================
+  Nominal     : median=53.886196, mean=53.868930
+    [p05, p95] = [52.926639, 54.714805]  (range=1.788166)
+    [q25, q75] = [53.548434, 54.227074]  (IQR=0.678639)
+    [min, max] = [51.829502, 55.335054]  (range=3.505552)
+  Robust      : median=50.491165, mean=50.464387
+    [p05, p95] = [49.690045, 51.153255]  (range=1.463209)
+    [q25, q75] = [50.186635, 50.802601]  (IQR=0.615966)
+    [min, max] = [48.444336, 51.829715]  (range=3.385379)
+  Gap (Robust-Nominal): mean=-3.404542, median=-3.422709
+    Robust wins: 500/500 (100.0%)
+  Saved: true_dro/factor_5/plots/grid5x5_boxplot_same_alpha_beta0.5.png
+
+--- Grid5x5 β=1.0 mode=same_alpha ---
+  OOS-B(same_alpha) outer 100/500
+  OOS-B(same_alpha) outer 200/500
+  OOS-B(same_alpha) outer 300/500
+  OOS-B(same_alpha) outer 400/500
+  OOS-B(same_alpha) outer 500/500
+
+============================================================
+Grid 5x5 OOS [same_alpha] (β=1.0, γ=1, λU=10)
+============================================================
+  Nominal     : median=53.969248, mean=53.966626
+    [p05, p95] = [53.315622, 54.555437]  (range=1.239815)
+    [q25, q75] = [53.712402, 54.259274]  (IQR=0.546872)
+    [min, max] = [52.350544, 54.871284]  (range=2.520740)
+  Robust      : median=50.518164, mean=50.499501
+    [p05, p95] = [49.874448, 50.995158]  (range=1.120710)
+    [q25, q75] = [50.303571, 50.734532]  (IQR=0.430961)
+    [min, max] = [49.308924, 51.422628]  (range=2.113704)
+  Gap (Robust-Nominal): mean=-3.467124, median=-3.487753
+    Robust wins: 500/500 (100.0%)
+  Saved: true_dro/factor_5/plots/grid5x5_boxplot_same_alpha_beta1.0.png
+
+--- Grid5x5 β=5.0 mode=same_alpha ---
+  OOS-B(same_alpha) outer 100/500
+  OOS-B(same_alpha) outer 200/500
+  OOS-B(same_alpha) outer 300/500
+  OOS-B(same_alpha) outer 400/500
+  OOS-B(same_alpha) outer 500/500
+
+============================================================
+Grid 5x5 OOS [same_alpha] (β=5.0, γ=1, λU=10)
+============================================================
+  Nominal     : median=54.070780, mean=54.071258
+    [p05, p95] = [53.680282, 54.444586]  (range=0.764305)
+    [q25, q75] = [53.916951, 54.229540]  (IQR=0.312589)
+    [min, max] = [53.377415, 54.718457]  (range=1.341042)
+  Robust      : median=50.562342, mean=50.565560
+    [p05, p95] = [50.241003, 50.940511]  (range=0.699509)
+    [q25, q75] = [50.423252, 50.710643]  (IQR=0.287391)
+    [min, max] = [49.903114, 51.219470]  (range=1.316356)
+  Gap (Robust-Nominal): mean=-3.505698, median=-3.507935
+    Robust wins: 500/500 (100.0%)
+  Saved: true_dro/factor_5/plots/grid5x5_boxplot_same_alpha_beta5.0.png
+
+================================================================================
+>>> Grid 5x5 — mode=diff_alpha
+================================================================================
+
+--- Grid5x5 β=0.5 mode=diff_alpha ---
+  OOS-B(diff_alpha) outer 100/500
+  OOS-B(diff_alpha) outer 200/500
+  OOS-B(diff_alpha) outer 300/500
+  OOS-B(diff_alpha) outer 400/500
+  OOS-B(diff_alpha) outer 500/500
+
+============================================================
+Grid 5x5 OOS [diff_alpha] (β=0.5, γ=1, λU=10)
+============================================================
+  Nominal     : median=53.890406, mean=53.812700
+    [p05, p95] = [52.803773, 54.624556]  (range=1.820783)
+    [q25, q75] = [53.473682, 54.198815]  (IQR=0.725133)
+    [min, max] = [51.886491, 54.966028]  (range=3.079538)
+  Robust      : median=50.482851, mean=50.410435
+    [p05, p95] = [49.499664, 51.121116]  (range=1.621452)
+    [q25, q75] = [50.088762, 50.761445]  (IQR=0.672683)
+    [min, max] = [47.070086, 51.642688]  (range=4.572602)
+  Gap (Robust-Nominal): mean=-3.402265, median=-3.443042
+    Robust wins: 500/500 (100.0%)
+  Saved: true_dro/factor_5/plots/grid5x5_boxplot_diff_alpha_beta0.5.png
+
+--- Grid5x5 β=1.0 mode=diff_alpha ---
+  OOS-B(diff_alpha) outer 100/500
+  OOS-B(diff_alpha) outer 200/500
+  OOS-B(diff_alpha) outer 300/500
+  OOS-B(diff_alpha) outer 400/500
+  OOS-B(diff_alpha) outer 500/500
+
+============================================================
+Grid 5x5 OOS [diff_alpha] (β=1.0, γ=1, λU=10)
+============================================================
+  Nominal     : median=53.934428, mean=53.926885
+    [p05, p95] = [53.295724, 54.582198]  (range=1.286475)
+    [q25, q75] = [53.696893, 54.178102]  (IQR=0.481208)
+    [min, max] = [52.878948, 55.195687]  (range=2.316739)
+  Robust      : median=50.477270, mean=50.472284
+    [p05, p95] = [49.911819, 51.008547]  (range=1.096728)
+    [q25, q75] = [50.264743, 50.695345]  (IQR=0.430602)
+    [min, max] = [49.282225, 51.357527]  (range=2.075301)
+  Gap (Robust-Nominal): mean=-3.454601, median=-3.471925
+    Robust wins: 500/500 (100.0%)
+  Saved: true_dro/factor_5/plots/grid5x5_boxplot_diff_alpha_beta1.0.png
+
+--- Grid5x5 β=5.0 mode=diff_alpha ---
+  OOS-B(diff_alpha) outer 100/500
+  OOS-B(diff_alpha) outer 200/500
+  OOS-B(diff_alpha) outer 300/500
+  OOS-B(diff_alpha) outer 400/500
+  OOS-B(diff_alpha) outer 500/500
+
+============================================================
+Grid 5x5 OOS [diff_alpha] (β=5.0, γ=1, λU=10)
+============================================================
+  Nominal     : median=54.035818, mean=54.028072
+    [p05, p95] = [53.611024, 54.371650]  (range=0.760626)
+    [q25, q75] = [53.886732, 54.175546]  (IQR=0.288815)
+    [min, max] = [53.008358, 54.816917]  (range=1.808559)
+  Robust      : median=50.551825, mean=50.538758
+    [p05, p95] = [50.188740, 50.833731]  (range=0.644992)
+    [q25, q75] = [50.416551, 50.676620]  (IQR=0.260069)
+    [min, max] = [49.824692, 51.127321]  (range=1.302629)
+  Gap (Robust-Nominal): mean=-3.489314, median=-3.486849
+    Robust wins: 500/500 (100.0%)
+  Saved: true_dro/factor_5/plots/grid5x5_boxplot_diff_alpha_beta5.0.png
+
+
+Done! 2026-04-21T13:05:46.020

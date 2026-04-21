@@ -1,0 +1,215 @@
+Sioux Falls: arcs=76, γ=2, w=15.8131, x_nom=[72,73], x_rob=[35,73]
+
+================================================================================
+>>> Sioux Falls — mode=symmetric
+================================================================================
+
+--- SiouxFalls β=0.5 mode=symmetric ---
+  OOS-B(symmetric) outer 100/500
+  OOS-B(symmetric) outer 200/500
+  OOS-B(symmetric) outer 300/500
+  OOS-B(symmetric) outer 400/500
+  OOS-B(symmetric) outer 500/500
+
+============================================================
+Sioux Falls OOS [symmetric] (β=0.5, γ=2)
+============================================================
+  Nominal     : median=15.813100, mean=15.813100
+    [p05, p95] = [15.813100, 15.813100]  (range=0.000000)
+    [q25, q75] = [15.813100, 15.813100]  (IQR=0.000000)
+    [min, max] = [15.813100, 15.813100]  (range=0.000000)
+  Robust      : median=15.813100, mean=15.813100
+    [p05, p95] = [15.813100, 15.813100]  (range=0.000000)
+    [q25, q75] = [15.813100, 15.813100]  (IQR=0.000000)
+    [min, max] = [15.813100, 15.813100]  (range=0.000000)
+  Gap (Robust-Nominal): mean=+0.000000, median=+0.000000
+    Robust wins: 66/500 (13.2%)
+  Saved: true_dro/factor_5/plots/sioux_falls_boxplot_symmetric_beta0.5.png
+
+--- SiouxFalls β=1.0 mode=symmetric ---
+  OOS-B(symmetric) outer 100/500
+  OOS-B(symmetric) outer 200/500
+  OOS-B(symmetric) outer 300/500
+  OOS-B(symmetric) outer 400/500
+  OOS-B(symmetric) outer 500/500
+
+============================================================
+Sioux Falls OOS [symmetric] (β=1.0, γ=2)
+============================================================
+  Nominal     : median=15.813100, mean=15.813100
+    [p05, p95] = [15.813100, 15.813100]  (range=0.000000)
+    [q25, q75] = [15.813100, 15.813100]  (IQR=0.000000)
+    [min, max] = [15.813100, 15.813100]  (range=0.000000)
+  Robust      : median=15.813100, mean=15.813100
+    [p05, p95] = [15.813100, 15.813100]  (range=0.000000)
+    [q25, q75] = [15.813100, 15.813100]  (IQR=0.000000)
+    [min, max] = [15.813100, 15.813100]  (range=0.000000)
+  Gap (Robust-Nominal): mean=+0.000000, median=+0.000000
+    Robust wins: 56/500 (11.2%)
+  Saved: true_dro/factor_5/plots/sioux_falls_boxplot_symmetric_beta1.0.png
+
+--- SiouxFalls β=5.0 mode=symmetric ---
+  OOS-B(symmetric) outer 100/500
+  OOS-B(symmetric) outer 200/500
+  OOS-B(symmetric) outer 300/500
+  OOS-B(symmetric) outer 400/500
+  OOS-B(symmetric) outer 500/500
+
+============================================================
+Sioux Falls OOS [symmetric] (β=5.0, γ=2)
+============================================================
+  Nominal     : median=15.813100, mean=15.813100
+    [p05, p95] = [15.813100, 15.813100]  (range=0.000000)
+    [q25, q75] = [15.813100, 15.813100]  (IQR=0.000000)
+    [min, max] = [15.813100, 15.813100]  (range=0.000000)
+  Robust      : median=15.813100, mean=15.813100
+    [p05, p95] = [15.813100, 15.813100]  (range=0.000000)
+    [q25, q75] = [15.813100, 15.813100]  (IQR=0.000000)
+    [min, max] = [15.813100, 15.813100]  (range=0.000000)
+  Gap (Robust-Nominal): mean=+0.000000, median=+0.000000
+    Robust wins: 44/500 (8.8%)
+  Saved: true_dro/factor_5/plots/sioux_falls_boxplot_symmetric_beta5.0.png
+
+================================================================================
+>>> Sioux Falls — mode=same_alpha
+================================================================================
+
+--- SiouxFalls β=0.5 mode=same_alpha ---
+  OOS-B(same_alpha) outer 100/500
+  OOS-B(same_alpha) outer 200/500
+  OOS-B(same_alpha) outer 300/500
+  OOS-B(same_alpha) outer 400/500
+  OOS-B(same_alpha) outer 500/500
+
+============================================================
+Sioux Falls OOS [same_alpha] (β=0.5, γ=2)
+============================================================
+  Nominal     : median=15.813100, mean=15.813100
+    [p05, p95] = [15.813100, 15.813100]  (range=0.000000)
+    [q25, q75] = [15.813100, 15.813100]  (IQR=0.000000)
+    [min, max] = [15.813100, 15.813100]  (range=0.000000)
+  Robust      : median=15.813100, mean=15.813100
+    [p05, p95] = [15.813100, 15.813100]  (range=0.000000)
+    [q25, q75] = [15.813100, 15.813100]  (IQR=0.000000)
+    [min, max] = [15.813100, 15.813100]  (range=0.000000)
+  Gap (Robust-Nominal): mean=+0.000000, median=+0.000000
+    Robust wins: 53/500 (10.6%)
+  Saved: true_dro/factor_5/plots/sioux_falls_boxplot_same_alpha_beta0.5.png
+
+--- SiouxFalls β=1.0 mode=same_alpha ---
+  OOS-B(same_alpha) outer 100/500
+  OOS-B(same_alpha) outer 200/500
+  OOS-B(same_alpha) outer 300/500
+  OOS-B(same_alpha) outer 400/500
+  OOS-B(same_alpha) outer 500/500
+
+============================================================
+Sioux Falls OOS [same_alpha] (β=1.0, γ=2)
+============================================================
+  Nominal     : median=15.813100, mean=15.813100
+    [p05, p95] = [15.813100, 15.813100]  (range=0.000000)
+    [q25, q75] = [15.813100, 15.813100]  (IQR=0.000000)
+    [min, max] = [15.813100, 15.813100]  (range=0.000000)
+  Robust      : median=15.813100, mean=15.813100
+    [p05, p95] = [15.813100, 15.813100]  (range=0.000000)
+    [q25, q75] = [15.813100, 15.813100]  (IQR=0.000000)
+    [min, max] = [15.813100, 15.813100]  (range=0.000000)
+  Gap (Robust-Nominal): mean=+0.000000, median=+0.000000
+    Robust wins: 73/500 (14.6%)
+  Saved: true_dro/factor_5/plots/sioux_falls_boxplot_same_alpha_beta1.0.png
+
+--- SiouxFalls β=5.0 mode=same_alpha ---
+  OOS-B(same_alpha) outer 100/500
+  OOS-B(same_alpha) outer 200/500
+  OOS-B(same_alpha) outer 300/500
+  OOS-B(same_alpha) outer 400/500
+  OOS-B(same_alpha) outer 500/500
+
+============================================================
+Sioux Falls OOS [same_alpha] (β=5.0, γ=2)
+============================================================
+  Nominal     : median=15.813100, mean=15.813100
+    [p05, p95] = [15.813100, 15.813100]  (range=0.000000)
+    [q25, q75] = [15.813100, 15.813100]  (IQR=0.000000)
+    [min, max] = [15.813100, 15.813100]  (range=0.000000)
+  Robust      : median=15.813100, mean=15.813100
+    [p05, p95] = [15.813100, 15.813100]  (range=0.000000)
+    [q25, q75] = [15.813100, 15.813100]  (IQR=0.000000)
+    [min, max] = [15.813100, 15.813100]  (range=0.000000)
+  Gap (Robust-Nominal): mean=+0.000000, median=+0.000000
+    Robust wins: 51/500 (10.2%)
+  Saved: true_dro/factor_5/plots/sioux_falls_boxplot_same_alpha_beta5.0.png
+
+================================================================================
+>>> Sioux Falls — mode=diff_alpha
+================================================================================
+
+--- SiouxFalls β=0.5 mode=diff_alpha ---
+  OOS-B(diff_alpha) outer 100/500
+  OOS-B(diff_alpha) outer 200/500
+  OOS-B(diff_alpha) outer 300/500
+  OOS-B(diff_alpha) outer 400/500
+  OOS-B(diff_alpha) outer 500/500
+
+============================================================
+Sioux Falls OOS [diff_alpha] (β=0.5, γ=2)
+============================================================
+  Nominal     : median=15.813100, mean=15.813100
+    [p05, p95] = [15.813100, 15.813100]  (range=0.000000)
+    [q25, q75] = [15.813100, 15.813100]  (IQR=0.000000)
+    [min, max] = [15.813100, 15.813100]  (range=0.000000)
+  Robust      : median=15.813100, mean=15.813100
+    [p05, p95] = [15.813100, 15.813100]  (range=0.000000)
+    [q25, q75] = [15.813100, 15.813100]  (IQR=0.000000)
+    [min, max] = [15.813100, 15.813100]  (range=0.000000)
+  Gap (Robust-Nominal): mean=+0.000000, median=+0.000000
+    Robust wins: 76/500 (15.2%)
+  Saved: true_dro/factor_5/plots/sioux_falls_boxplot_diff_alpha_beta0.5.png
+
+--- SiouxFalls β=1.0 mode=diff_alpha ---
+  OOS-B(diff_alpha) outer 100/500
+  OOS-B(diff_alpha) outer 200/500
+  OOS-B(diff_alpha) outer 300/500
+  OOS-B(diff_alpha) outer 400/500
+  OOS-B(diff_alpha) outer 500/500
+
+============================================================
+Sioux Falls OOS [diff_alpha] (β=1.0, γ=2)
+============================================================
+  Nominal     : median=15.813100, mean=15.813100
+    [p05, p95] = [15.813100, 15.813100]  (range=0.000000)
+    [q25, q75] = [15.813100, 15.813100]  (IQR=0.000000)
+    [min, max] = [15.813100, 15.813100]  (range=0.000000)
+  Robust      : median=15.813100, mean=15.813100
+    [p05, p95] = [15.813100, 15.813100]  (range=0.000000)
+    [q25, q75] = [15.813100, 15.813100]  (IQR=0.000000)
+    [min, max] = [15.813100, 15.813100]  (range=0.000000)
+  Gap (Robust-Nominal): mean=+0.000000, median=+0.000000
+    Robust wins: 72/500 (14.4%)
+  Saved: true_dro/factor_5/plots/sioux_falls_boxplot_diff_alpha_beta1.0.png
+
+--- SiouxFalls β=5.0 mode=diff_alpha ---
+  OOS-B(diff_alpha) outer 100/500
+  OOS-B(diff_alpha) outer 200/500
+  OOS-B(diff_alpha) outer 300/500
+  OOS-B(diff_alpha) outer 400/500
+  OOS-B(diff_alpha) outer 500/500
+
+============================================================
+Sioux Falls OOS [diff_alpha] (β=5.0, γ=2)
+============================================================
+  Nominal     : median=15.813100, mean=15.813100
+    [p05, p95] = [15.813100, 15.813100]  (range=0.000000)
+    [q25, q75] = [15.813100, 15.813100]  (IQR=0.000000)
+    [min, max] = [15.813100, 15.813100]  (range=0.000000)
+  Robust      : median=15.813100, mean=15.813100
+    [p05, p95] = [15.813100, 15.813100]  (range=0.000000)
+    [q25, q75] = [15.813100, 15.813100]  (IQR=0.000000)
+    [min, max] = [15.813100, 15.813100]  (range=0.000000)
+  Gap (Robust-Nominal): mean=+0.000000, median=+0.000000
+    Robust wins: 55/500 (11.0%)
+  Saved: true_dro/factor_5/plots/sioux_falls_boxplot_diff_alpha_beta5.0.png
+
+
+Done! 2026-04-21T14:00:41.042
+GKS: Possible loss of precision in routine SET_WINDOW

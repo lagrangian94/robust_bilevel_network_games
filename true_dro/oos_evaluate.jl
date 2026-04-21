@@ -462,3 +462,79 @@ function oos_evaluate_scenario_F(x_star::Vector{Float64}, network, capacity_scen
         :Y_bar => Y_outer,
     )
 end
+
+
+"""
+    oos_phase_b_generic(x_dict, network, capacities, v, w;
+                        β, M, noise_scale, seed, mode) -> Dict{Symbol, Vector{Float64}}
+
+Generic Phase B OOS. 임의의 x_dict (Dict{Symbol, Vector}) 지원.
+
+mode:
+  :same_alpha — q_tilde ~ Dir(α), p_true ~ Dir(α).  같은 α, 독립 샘플.
+  :diff_alpha — α_tilde 별도 생성, q_tilde ~ Dir(α_tilde), p_true ~ Dir(α).
+  :symmetric — q_tilde ~ Dir(β·1_K), p_true ~ Dir(β·1_K).  symmetric Dirichlet, 독립 샘플. (Phase A 방식)
+
+각 outer sample m:
+  1. α = β*(1 + noise_scale*N(0,1))  → p_true ~ Dir(α)
+  2. mode에 따라 q_tilde 생성
+  3. h* = follower(x, q_tilde), flows = maxflow(x, h*)
+  4. cost = dot(p_true, flows)
+
+Returns: Dict(model_key => Vector{Float64} of length M)
+"""
+function oos_phase_b_generic(x_dict::Dict{Symbol, Vector{Float64}},
+                              network, capacities::Matrix{Float64},
+                              v::Float64, w::Float64;
+                              β::Float64=0.5, M::Int=500,
+                              noise_scale::Float64=0.5, seed::Int=42,
+                              mode::Symbol=:same_alpha)
+    K = size(capacities, 2)
+    rng = MersenneTwister(seed)
+    model_keys = collect(keys(x_dict))
+
+    costs = Dict(k => Vector{Float64}(undef, M) for k in model_keys)
+
+    dir_sym = Dirichlet(K, β)  # symmetric Dir(β·1_K) for :symmetric mode
+
+    for m in 1:M
+        if mode == :symmetric
+            # Symmetric Dirichlet — no perturbation
+            p_true = rand(rng, dir_sym)
+        else
+            # Asymmetric — perturbed α
+            α = β .* (1.0 .+ noise_scale * randn(rng, K))
+            α = max.(α, 0.01)
+            dir_α = Dirichlet(α)
+            p_true = rand(rng, dir_α)
+        end
+
+        # Follower's belief
+        if mode == :same_alpha
+            # (1) Same α, independent sample
+            q_tilde = rand(rng, dir_α)
+        elseif mode == :diff_alpha
+            # (2) Separate α_tilde, then sample
+            α_tilde = β .* (1.0 .+ noise_scale * randn(rng, K))
+            α_tilde = max.(α_tilde, 0.01)
+            q_tilde = rand(rng, Dirichlet(α_tilde))
+        elseif mode == :symmetric
+            # (3) Symmetric Dirichlet — Phase A style, no perturbation
+            q_tilde = rand(rng, dir_sym)
+        else
+            error("Unknown mode: $mode. Use :same_alpha, :diff_alpha, or :symmetric")
+        end
+
+        for k in model_keys
+            h = solve_follower_weighted(network, x_dict[k], v, w, capacities, q_tilde)
+            flows = compute_maxflow_per_scenario(network, x_dict[k], h, v, capacities)
+            costs[k][m] = dot(p_true, flows)
+        end
+
+        if m % 100 == 0
+            @printf("  OOS-B(%s) outer %d/%d\n", mode, m, M)
+        end
+    end
+
+    return costs
+end
