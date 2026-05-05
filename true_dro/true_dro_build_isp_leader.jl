@@ -57,9 +57,9 @@ function build_true_dro_isp_leader(td::TrueDROData, x_bar::Vector{Float64},
         -(ξ[k, s] + α_bar[k]) * a[s]
         + u_hat[k, s] + ρ_hat_2[k, s] - ρ_hat_3[k, s] <= 0)
 
-    # (DL-3): v_k ξ̄_k^s a_s - ρ̂¹ - ρ̂² + ρ̂³ ≤ 0
+    # (DL-3): v_k^s ξ̄_k^s a_s - ρ̂¹ - ρ̂² + ρ̂³ ≤ 0
     @constraint(model, DL3[k=1:K, s=1:S],
-        v[k] * ξ[k, s] * a[s]
+        v[k, s] * ξ[k, s] * a[s]
         - ρ_hat_1[k, s] - ρ_hat_2[k, s] + ρ_hat_3[k, s] <= 0)
 
     # (DL-4)~(DL-7)

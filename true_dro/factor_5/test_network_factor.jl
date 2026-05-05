@@ -93,7 +93,7 @@ num_arcs = length(net.arcs) - 1
 S = 20
 λU = 10.0
 
-caps, _ = NG.generate_capacity_scenarios_factor_sparse(length(net.arcs), S;
+caps, _ = NG.generate_capacity_scenarios_factor_additive(length(net.arcs), S;
     interdictable_arcs=intd_arcs, seed=42, num_factors=5)
 intd_idx = findall(intd_arcs[1:num_arcs])
 w = round(maximum(caps[intd_idx, :]); digits=4)

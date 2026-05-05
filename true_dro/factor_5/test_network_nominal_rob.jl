@@ -1,10 +1,12 @@
 """
 test_network_nominal_rob.jl — Nominal (ε=0) + Robust (ε=1) sequential comparison
-  k=5 (additive factor), S=20, λU=10.0
+  S=20, λU=10.0
 
 Usage:
-  julia test_network_nominal_rob.jl <network_name>
+  julia test_network_nominal_rob.jl <network_name> [scenario] [qhat]
   network_name: grid5x5, abilene, nobel_us, sioux_falls, polska
+  scenario: uniform (default) or factor (factor_additive, k=5)
+  qhat: uniform (default), sample1, sample3, sample8 (non-uniform q̂ from qhat_samples.jl)
 """
 
 using JuMP, Gurobi, Printf, Dates, Serialization, LinearAlgebra
@@ -23,13 +25,28 @@ include("../true_dro_mincut_vi.jl")
 # ── parse argument ──
 if length(ARGS) >= 1
     network_name = lowercase(ARGS[1])
+    scenario = length(ARGS) >= 2 ? lowercase(ARGS[2]) : "uniform"
+    qhat_name = length(ARGS) >= 3 ? lowercase(ARGS[3]) : "uniform"
 else
     print("network (grid5x5/abilene/nobel_us/sioux_falls/polska): ")
     network_name = lowercase(strip(readline()))
+    print("scenario (uniform/factor) [uniform]: ")
+    scen_input = strip(readline())
+    scenario = isempty(scen_input) ? "uniform" : lowercase(scen_input)
+    print("qhat (uniform/sample1/sample3/sample8) [uniform]: ")
+    qhat_input = strip(readline())
+    qhat_name = isempty(qhat_input) ? "uniform" : lowercase(qhat_input)
+end
+scenario in ("uniform", "factor") || error("Unknown scenario: $scenario (uniform or factor)")
+if qhat_name != "uniform"
+    include(joinpath(@__DIR__, "qhat_samples.jl"))
+    haskey(QHAT_SAMPLES, qhat_name) || error("Unknown qhat: $qhat_name. Available: $(keys(QHAT_SAMPLES))")
 end
 
 # ── log file ──
-log_path = joinpath(@__DIR__, "logs", "$(network_name)_nominal_rob.log")
+scen_suffix = scenario == "factor" ? "_factor" : ""
+qhat_suffix = qhat_name == "uniform" ? "" : "_$(qhat_name)"
+log_path = joinpath(@__DIR__, "logs", "$(network_name)_nominal_rob$(scen_suffix)$(qhat_suffix).log")
 mkpath(dirname(log_path))
 log_io = open(log_path, "w")
 original_stdout = stdout
@@ -38,12 +55,15 @@ tee_done = Channel{Nothing}(1)
 @async begin
     try
         while isopen(tee_rd)
-            line = readline(tee_rd)
-            println(original_stdout, line)
-            println(log_io, line)
-            flush(original_stdout); flush(log_io)
+            data = readavailable(tee_rd)
+            isempty(data) && break
+            write(original_stdout, data)
+            flush(original_stdout)
+            write(log_io, data)
+            flush(log_io)
         end
-    catch
+    catch e
+        e isa EOFError || rethrow()
     end
     put!(tee_done, nothing)
 end
@@ -85,13 +105,24 @@ num_arcs = length(net.arcs) - 1
 S = 20
 λU = 10.0
 
-caps, _ = NG.generate_capacity_scenarios_factor_sparse(length(net.arcs), S;
-    interdictable_arcs=intd_arcs, seed=42, num_factors=5)
+if scenario == "factor"
+    caps, _ = NG.generate_capacity_scenarios_factor_additive(length(net.arcs), S;
+        interdictable_arcs=intd_arcs, seed=42, num_factors=5)
+else
+    caps, _ = NG.generate_capacity_scenarios_uniform_model(length(net.arcs), S;
+        interdictable_arcs=intd_arcs, seed=42)
+end
 intd_idx = findall(intd_arcs[1:num_arcs])
 w = round(maximum(caps[intd_idx, :]); digits=4)
-q_hat = fill(1.0/S, S)
+if qhat_name == "uniform"
+    q_hat = fill(1.0/S, S)
+else
+    q_hat = copy(QHAT_SAMPLES[qhat_name])
+    length(q_hat) == S || error("q̂ length mismatch: $(length(q_hat)) vs S=$S")
+    q_hat ./= sum(q_hat)  # ensure exact sum=1
+end
 
-@printf("%s k=5: arcs=%d, intd=%d, γ=%d, λU=%.1f, w=%.4f\n", network_name, num_arcs, length(intd_idx), γ, λU, w)
+@printf("%s %s (q̂=%s): arcs=%d, intd=%d, γ=%d, λU=%.1f, w=%.4f\n", network_name, scenario, qhat_name, num_arcs, length(intd_idx), γ, λU, w)
 flush(stdout)
 
 # ── source/sink connectivity cut (real networks only) ──

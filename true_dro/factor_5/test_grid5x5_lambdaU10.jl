@@ -20,7 +20,7 @@ net = generate_grid_network(5, 5)
 num_arcs = length(net.arcs) - 1
 
 # Grid: 기존 interdictable arcs 보존
-caps, F_mat = generate_capacity_scenarios_factor_sparse(length(net.arcs), 20;
+caps, F_mat = generate_capacity_scenarios_factor_additive(length(net.arcs), 20;
     interdictable_arcs=net.interdictable_arcs, seed=42, num_factors=5)
 intd_idx = findall(net.interdictable_arcs[1:num_arcs])
 w = round(maximum(caps[intd_idx, :]); digits=4)

@@ -150,9 +150,9 @@ function build_true_dro_subproblem(td::TrueDROData, x_bar::Vector{Float64};
         -ξ[k, s] * a[s] - ζL[k, s]
         + u_hat[k, s] + ρ_hat_2[k, s] - ρ_hat_3[k, s] <= 0)
 
-    # --- (DL-3): v_k ξ̄_k^s a_s - ρ̂¹ - ρ̂² + ρ̂³ ≤ 0  ∀k,s ---
+    # --- (DL-3): v_k^s ξ̄_k^s a_s - ρ̂¹ - ρ̂² + ρ̂³ ≤ 0  ∀k,s ---
     @constraint(model, DL3[k=1:K, s=1:S],
-        v[k] * ξ[k, s] * a[s]
+        v[k, s] * ξ[k, s] * a[s]
         - ρ_hat_1[k, s] - ρ_hat_2[k, s] + ρ_hat_3[k, s] <= 0)
 
     # --- (DL-4): a_s - b_s ≤ q̂_s ---
@@ -221,9 +221,9 @@ function build_true_dro_subproblem(td::TrueDROData, x_bar::Vector{Float64};
         -ξ[k, s] * d[s] - ζF[k, s]
         + u_tilde[k, s] + ρ_tilde_2[k, s] - ρ_tilde_3[k, s] <= 0)
 
-    # --- (DF-7): v_k ξ̄_k^s d_s - ρ̃¹ - ρ̃² + ρ̃³ ≤ 0  ∀k,s ---
+    # --- (DF-7): v_k^s ξ̄_k^s d_s - ρ̃¹ - ρ̃² + ρ̃³ ≤ 0  ∀k,s ---
     @constraint(model, DF7[k=1:K, s=1:S],
-        v[k] * ξ[k, s] * d[s]
+        v[k, s] * ξ[k, s] * d[s]
         - ρ_tilde_1[k, s] - ρ_tilde_2[k, s] + ρ_tilde_3[k, s] <= 0)
 
     # --- (DF-8): [N_yᵀ ω^s]_k - β_k^s ≤ 0  ∀k,s ---
@@ -245,9 +245,9 @@ function build_true_dro_subproblem(td::TrueDROData, x_bar::Vector{Float64};
            + sum(ρ_psi0_2[k] for k in 1:K)
            - sum(ρ_psi0_3[k] for k in 1:K))
 
-    # --- (DF-ψ): v_k Σ_s ξ̄ β + ρ⁰¹ + ρ⁰² ≥ ρ⁰³  ∀k ---
+    # --- (DF-ψ): Σ_s v_k^s ξ̄ β + ρ⁰¹ + ρ⁰² ≥ ρ⁰³  ∀k ---
     @constraint(model, DFpsi[k=1:K],
-        v[k] * sum(ξ[k, s] * β[k, s] for s in 1:S) + ρ_psi0_1[k] + ρ_psi0_2[k]
+        sum(v[k, s] * ξ[k, s] * β[k, s] for s in 1:S) + ρ_psi0_1[k] + ρ_psi0_2[k]
         >= ρ_psi0_3[k])
 
     # ====================================================================
@@ -492,7 +492,7 @@ function build_alpha_step_lp(td::TrueDROData, x_bar::Vector{Float64},
         -ζL[k, s] + u_hat[k, s] + ρ_hat_2[k, s] - ρ_hat_3[k, s] <= ξ[k, s] * a_val[s])
     # (DL-3): v*ξ*a - ρ̂₁ - ρ̂₂ + ρ̂₃ ≤ 0
     @constraint(model, DL3[k=1:K, s=1:S],
-        -ρ_hat_1[k, s] - ρ_hat_2[k, s] + ρ_hat_3[k, s] <= -v[k] * ξ[k, s] * a_val[s])
+        -ρ_hat_1[k, s] - ρ_hat_2[k, s] + ρ_hat_3[k, s] <= -v[k, s] * ξ[k, s] * a_val[s])
     # (DL-4~7): b ≥ |a-q̂|, Σb ≤ 2ε̂  (a is constant)
     @constraint(model, DL4[s=1:S], -b[s] <= q[s] - a_val[s])
     @constraint(model, DL5[s=1:S],  b[s] >= q[s] - a_val[s])
@@ -529,7 +529,7 @@ function build_alpha_step_lp(td::TrueDROData, x_bar::Vector{Float64},
         -ζF[k, s] + u_tilde[k, s] + ρ_tilde_2[k, s] - ρ_tilde_3[k, s] <= ξ[k, s] * d_val[s])
     # (DF-7): v*ξ*d - ρ̃₁ - ρ̃₂ + ρ̃₃ ≤ 0
     @constraint(model, DF7[k=1:K, s=1:S],
-        -ρ_tilde_1[k, s] - ρ_tilde_2[k, s] + ρ_tilde_3[k, s] <= -v[k] * ξ[k, s] * d_val[s])
+        -ρ_tilde_1[k, s] - ρ_tilde_2[k, s] + ρ_tilde_3[k, s] <= -v[k, s] * ξ[k, s] * d_val[s])
     # (DF-8)
     @constraint(model, DF8[k=1:K, s=1:S],
         sum(Ny[j, k] * ω[j, s] for j in 1:m) - β[k, s] <= 0)
@@ -544,7 +544,7 @@ function build_alpha_step_lp(td::TrueDROData, x_bar::Vector{Float64},
             + w * δ + sum(ρ_psi0_2) - sum(ρ_psi0_3))
     # (DF-ψ)
     @constraint(model, DFpsi[k=1:K],
-        v[k] * sum(ξ[k, s] * β[k, s] for s in 1:S) + ρ_psi0_1[k] + ρ_psi0_2[k]
+        sum(v[k, s] * ξ[k, s] * β[k, s] for s in 1:S) + ρ_psi0_1[k] + ρ_psi0_2[k]
         >= ρ_psi0_3[k])
 
     # Objective
@@ -598,9 +598,9 @@ function update_alpha_step_lp!(model, vars, td::TrueDROData,
         for k in 1:K
             set_normalized_rhs(vars[:DL2][k, s], ξ[k, s] * a_val[s])
         end
-        # DL3: ... ≤ -v*ξ*a  →  RHS = -v[k]*ξ[k,s]*a[s]
+        # DL3: ... ≤ -v*ξ*a  →  RHS = -v[k,s]*ξ[k,s]*a[s]
         for k in 1:K
-            set_normalized_rhs(vars[:DL3][k, s], -v[k] * ξ[k, s] * a_val[s])
+            set_normalized_rhs(vars[:DL3][k, s], -v[k, s] * ξ[k, s] * a_val[s])
         end
         # DL4: -b ≤ q-a  →  RHS = q-a
         set_normalized_rhs(vars[:DL4][s], td.q_hat[s] - a_val[s])
@@ -617,7 +617,7 @@ function update_alpha_step_lp!(model, vars, td::TrueDROData,
             set_normalized_rhs(vars[:DF6][k, s], ξ[k, s] * d_val[s])
         end
         for k in 1:K
-            set_normalized_rhs(vars[:DF7][k, s], -v[k] * ξ[k, s] * d_val[s])
+            set_normalized_rhs(vars[:DF7][k, s], -v[k, s] * ξ[k, s] * d_val[s])
         end
         set_normalized_rhs(vars[:DF1][s], td.q_hat[s] - d_val[s])
         set_normalized_rhs(vars[:DF2][s], td.q_hat[s] - d_val[s])
@@ -768,7 +768,7 @@ function build_true_dro_subproblem_single(td::TrueDROData, x_bar::Vector{Float64
         + u_hat[k, s] + ρ_hat_2[k, s] - ρ_hat_3[k, s] <= 0)
     # (DL-3)
     @constraint(model, DL3[k=1:K, s=1:S],
-        v[k] * ξ[k, s] * a[s]
+        v[k, s] * ξ[k, s] * a[s]
         - ρ_hat_1[k, s] - ρ_hat_2[k, s] + ρ_hat_3[k, s] <= 0)
     # (DL-4~7)
     @constraint(model, DL4[s=1:S], a[s] - b[s] <= q[s])
@@ -813,9 +813,9 @@ function build_true_dro_subproblem_single(td::TrueDROData, x_bar::Vector{Float64
         -ξ[k, s] * q[s] - α[k] * q[s]
         + u_tilde[k, s] + ρ_tilde_2[k, s] - ρ_tilde_3[k, s] <= 0)
 
-    # (DF-7): v_k·ξ_k^s·q_s - ρ̃₁ - ρ̃₂ + ρ̃₃ ≤ 0   [상수 RHS]
+    # (DF-7): v_k^s·ξ_k^s·q_s - ρ̃₁ - ρ̃₂ + ρ̃₃ ≤ 0   [상수 RHS]
     @constraint(model, DF7[k=1:K, s=1:S],
-        v[k] * ξ[k, s] * q[s]
+        v[k, s] * ξ[k, s] * q[s]
         - ρ_tilde_1[k, s] - ρ_tilde_2[k, s] + ρ_tilde_3[k, s] <= 0)
 
     # (DF-8)
@@ -839,7 +839,7 @@ function build_true_dro_subproblem_single(td::TrueDROData, x_bar::Vector{Float64
 
     # (DF-ψ)
     @constraint(model, DFpsi[k=1:K],
-        v[k] * sum(ξ[k, s] * β[k, s] for s in 1:S) + ρ_psi0_1[k] + ρ_psi0_2[k]
+        sum(v[k, s] * ξ[k, s] * β[k, s] for s in 1:S) + ρ_psi0_1[k] + ρ_psi0_2[k]
         >= ρ_psi0_3[k])
 
     # ====================================================================
@@ -966,9 +966,9 @@ function build_true_dro_subproblem_nominal(td::TrueDROData, x_bar::Vector{Float6
         -ξ[k, s] * q[s] - α[k] * q[s]
         + u_hat[k, s] + ρ_hat_2[k, s] - ρ_hat_3[k, s] <= 0)
 
-    # (DL-3): v_k·ξ_k^s·q_s - ρ̂₁ - ρ̂₂ + ρ̂₃ ≤ 0  [상수]
+    # (DL-3): v_k^s·ξ_k^s·q_s - ρ̂₁ - ρ̂₂ + ρ̂₃ ≤ 0  [상수]
     @constraint(model, DL3[k=1:K, s=1:S],
-        v[k] * ξ[k, s] * q[s]
+        v[k, s] * ξ[k, s] * q[s]
         - ρ_hat_1[k, s] - ρ_hat_2[k, s] + ρ_hat_3[k, s] <= 0)
 
     # DL-4~7 (TV ball): a=q̂ 고정이므로 자동 만족 → 제거
@@ -1010,9 +1010,9 @@ function build_true_dro_subproblem_nominal(td::TrueDROData, x_bar::Vector{Float6
         -ξ[k, s] * q[s] - α[k] * q[s]
         + u_tilde[k, s] + ρ_tilde_2[k, s] - ρ_tilde_3[k, s] <= 0)
 
-    # (DF-7): v_k·ξ_k^s·q_s - ρ̃₁ - ρ̃₂ + ρ̃₃ ≤ 0  [상수]
+    # (DF-7): v_k^s·ξ_k^s·q_s - ρ̃₁ - ρ̃₂ + ρ̃₃ ≤ 0  [상수]
     @constraint(model, DF7[k=1:K, s=1:S],
-        v[k] * ξ[k, s] * q[s]
+        v[k, s] * ξ[k, s] * q[s]
         - ρ_tilde_1[k, s] - ρ_tilde_2[k, s] + ρ_tilde_3[k, s] <= 0)
 
     # (DF-8)
@@ -1036,7 +1036,7 @@ function build_true_dro_subproblem_nominal(td::TrueDROData, x_bar::Vector{Float6
 
     # (DF-ψ)
     @constraint(model, DFpsi[k=1:K],
-        v[k] * sum(ξ[k, s] * β[k, s] for s in 1:S) + ρ_psi0_1[k] + ρ_psi0_2[k]
+        sum(v[k, s] * ξ[k, s] * β[k, s] for s in 1:S) + ρ_psi0_1[k] + ρ_psi0_2[k]
         >= ρ_psi0_3[k])
 
     # ====================================================================

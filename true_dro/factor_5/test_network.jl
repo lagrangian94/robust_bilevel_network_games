@@ -1,14 +1,16 @@
 """
 test_network.jl — unified test script for all networks
-  Uniform(1,10) i.i.d. capacity, S=20, λU=10.0
+  S=20, λU=10.0
   grid5x5: γ=2, original interdictable arcs
-  real-world (abilene, nobel_us, sioux_falls, polska): γ=1, all arcs interdictable
+  real-world (abilene, nobel_us, sioux_falls, polska): γ=2(polska)/1(others), all arcs interdictable
 
 Usage:
-  julia test_network.jl <network_name> [eps] [mode]
+  julia test_network.jl <network_name> [eps] [scenario] [mode] [qhat]
   network_name: grid5x5, abilene, nobel_us, sioux_falls, polska
   eps: robust ε value (default 1.0)
-  mode: double (default) or single (single-layer: ε̂=eps, ε̃=0)
+  scenario: uniform (default) or factor (factor_additive, k=5)
+  mode: double (default), single_l (ε̂=eps, ε̃=0), single_f (ε̂=0, ε̃=eps)
+  qhat: uniform (default), sample1, sample3, sample8 (non-uniform q̂ from qhat_samples.jl)
 """
 
 using JuMP, Gurobi, Printf, Dates, Serialization, LinearAlgebra
@@ -28,23 +30,39 @@ include("../true_dro_mincut_vi.jl")
 if length(ARGS) >= 1
     network_name = lowercase(ARGS[1])
     ε_rob = length(ARGS) >= 2 ? parse(Float64, ARGS[2]) : 1.0
-    mode = length(ARGS) >= 3 ? lowercase(ARGS[3]) : "double"
+    scenario = length(ARGS) >= 3 ? lowercase(ARGS[3]) : "uniform"
+    mode = length(ARGS) >= 4 ? lowercase(ARGS[4]) : "double"
+    qhat_name = length(ARGS) >= 5 ? lowercase(ARGS[5]) : "uniform"
 else
     print("network (grid5x5/abilene/nobel_us/sioux_falls/polska): ")
     network_name = lowercase(strip(readline()))
     print("eps [1.0]: ")
     eps_input = strip(readline())
     ε_rob = isempty(eps_input) ? 1.0 : parse(Float64, eps_input)
-    print("mode (double/single) [double]: ")
+    print("scenario (uniform/factor) [uniform]: ")
+    scen_input = strip(readline())
+    scenario = isempty(scen_input) ? "uniform" : lowercase(scen_input)
+    print("mode (double/single_l/single_f) [double]: ")
     mode_input = strip(readline())
     mode = isempty(mode_input) ? "double" : lowercase(mode_input)
+    print("qhat (uniform/sample1/sample3/sample8) [uniform]: ")
+    qhat_input = strip(readline())
+    qhat_name = isempty(qhat_input) ? "uniform" : lowercase(qhat_input)
 end
-mode in ("double", "single") || error("Unknown mode: $mode (double or single)")
+scenario in ("uniform", "factor") || error("Unknown scenario: $scenario (uniform or factor)")
+mode == "single" && (mode = "single_l")  # backward compat
+mode in ("double", "single_l", "single_f") || error("Unknown mode: $mode (double/single_l/single_f)")
+if qhat_name != "uniform"
+    include(joinpath(@__DIR__, "qhat_samples.jl"))
+    haskey(QHAT_SAMPLES, qhat_name) || error("Unknown qhat: $qhat_name. Available: $(keys(QHAT_SAMPLES))")
+end
 
 # ── log file (redirect stdout so Benders verbose output goes to log too) ──
 eps_str = replace(string(ε_rob), "." => "p")
-mode_suffix = mode == "single" ? "_single" : ""
-log_path = joinpath(@__DIR__, "logs", "$(network_name)_eps$(eps_str)$(mode_suffix).log")
+mode_suffix = mode == "single_l" ? "_single" : mode == "single_f" ? "_single_f" : ""
+scen_suffix = scenario == "factor" ? "_factor" : ""
+qhat_suffix = qhat_name == "uniform" ? "" : "_$(qhat_name)"
+log_path = joinpath(@__DIR__, "logs", "$(network_name)_eps$(eps_str)$(mode_suffix)$(scen_suffix)$(qhat_suffix).log")
 mkpath(dirname(log_path))
 log_io = open(log_path, "w")
 original_stdout = stdout
@@ -53,12 +71,15 @@ tee_done = Channel{Nothing}(1)
 @async begin
     try
         while isopen(tee_rd)
-            line = readline(tee_rd)
-            println(original_stdout, line)
-            println(log_io, line)
-            flush(original_stdout); flush(log_io)
+            data = readavailable(tee_rd)
+            isempty(data) && break
+            write(original_stdout, data)
+            flush(original_stdout)
+            write(log_io, data)
+            flush(log_io)
         end
-    catch
+    catch e
+        e isa EOFError || rethrow()
     end
     put!(tee_done, nothing)
 end
@@ -100,13 +121,24 @@ num_arcs = length(net.arcs) - 1
 S = 20
 λU = 10.0
 
-caps, _ = NG.generate_capacity_scenarios_uniform_model(length(net.arcs), S;
-    interdictable_arcs=intd_arcs, seed=42)
+if scenario == "factor"
+    caps, _ = NG.generate_capacity_scenarios_factor_additive(length(net.arcs), S;
+        interdictable_arcs=intd_arcs, seed=42, num_factors=5)
+else
+    caps, _ = NG.generate_capacity_scenarios_uniform_model(length(net.arcs), S;
+        interdictable_arcs=intd_arcs, seed=42)
+end
 intd_idx = findall(intd_arcs[1:num_arcs])
 w = round(maximum(caps[intd_idx, :]); digits=4)
-q_hat = fill(1.0/S, S)
+if qhat_name == "uniform"
+    q_hat = fill(1.0/S, S)
+else
+    q_hat = copy(QHAT_SAMPLES[qhat_name])
+    length(q_hat) == S || error("q̂ length mismatch: $(length(q_hat)) vs S=$S")
+    q_hat ./= sum(q_hat)  # ensure exact sum=1
+end
 
-@printf("%s uniform: arcs=%d, intd=%d, γ=%d, λU=%.1f, w=%.4f\n", network_name, num_arcs, length(intd_idx), γ, λU, w)
+@printf("%s %s (q̂=%s): arcs=%d, intd=%d, γ=%d, λU=%.1f, w=%.4f\n", network_name, scenario, qhat_name, num_arcs, length(intd_idx), γ, λU, w)
 flush(stdout)
 
 # ── source/sink connectivity cut (real networks only) ──
@@ -130,9 +162,10 @@ if network_name != "grid5x5"
 end
 
 # ── solve ──
-ε_hat = ε_rob
-ε_tilde = mode == "single" ? 0.0 : ε_rob
-mode_label = mode == "single" ? "Single-layer DRO" : "Double-layer DRO"
+ε_hat   = mode == "single_f" ? 0.0 : ε_rob
+ε_tilde = mode == "single_l" ? 0.0 : ε_rob
+mode_label = mode == "single_l" ? "Single-layer DRO (leader only)" :
+             mode == "single_f" ? "Single-layer DRO (follower only)" : "Double-layer DRO"
 
 println("\n" * "="^60)
 println("$mode_label (ε̂=$ε_hat, ε̃=$ε_tilde, λU=$λU)")

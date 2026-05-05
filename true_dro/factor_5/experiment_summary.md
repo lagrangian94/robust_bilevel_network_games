@@ -2,7 +2,7 @@
 
 ## Capacity Factor Model
 
-- **Function**: `generate_capacity_scenarios_factor_sparse` (additive factor model)
+- **Function**: `generate_capacity_scenarios_factor_additive` (additive factor model)
 - **Formula**: `c_e^s = max(ε, c_bar + (1/k) Σ_j F_{ej} ξ_j^s)`
   - `F_{ej} ~ Uniform(-a, a)`, `a = 4.0`
   - `ξ_j^s ~ Exp(mean=1)`

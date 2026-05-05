@@ -19,7 +19,7 @@ using Distributions
 using LinearAlgebra
 using Statistics
 using Revise
-export GridNetworkData, generate_grid_network, generate_capacity_scenarios_factor_model, generate_capacity_scenarios_factor_clustered, generate_capacity_scenarios_factor_sparse, generate_capacity_scenarios_uniform_model, generate_capacity_scenarios_contaminated, generate_capacity_scenarios_trunc_normal, print_network_summary
+export GridNetworkData, generate_grid_network, generate_capacity_scenarios_factor_model, generate_capacity_scenarios_factor_additive, generate_capacity_scenarios_uniform_model, generate_capacity_scenarios_contaminated, generate_capacity_scenarios_trunc_normal, print_network_summary
 export RealWorldNetworkData, generate_sioux_falls_network, generate_nobel_us_network, generate_abilene_network, generate_polska_network, print_realworld_network_summary
 using Infiltrator
 """
@@ -323,110 +323,13 @@ function generate_capacity_scenarios_factor_model(num_arcs::Int, num_scenarios::
 end
 
 """
-    generate_capacity_scenarios_factor_clustered(num_arcs, num_scenarios; ...)
-
-Factor model로 N_pool개 시나리오를 대량 생성한 뒤 k-means clustering으로
-num_scenarios개 representative scenario (centroid)를 추출.
-
-Factor model 구조 유지 + 시나리오 diversity 극대화.
-"""
-function generate_capacity_scenarios_factor_clustered(num_arcs::Int, num_scenarios::Int;
-        interdictable_arcs::Union{Vector{Bool},Nothing}=nothing,
-        seed::Union{Int,Nothing}=nothing,
-        num_factors::Int=5,
-        N_pool::Int=2000,
-        max_kmeans_iter::Int=100)
-
-    if !isnothing(seed)
-        Random.seed!(seed)
-    end
-
-    num_regular_arcs = num_arcs - 1
-
-    if isnothing(interdictable_arcs)
-        intd_idx = collect(1:num_regular_arcs)
-    else
-        intd_idx = findall(interdictable_arcs[1:num_regular_arcs])
-    end
-    non_intd_idx = setdiff(1:num_regular_arcs, intd_idx)
-    num_intd = length(intd_idx)
-
-    k = num_factors
-    F = rand(0:10, num_intd, k)
-    μ = rand(k)
-
-    # 1) 대량 생성: N_pool개 시나리오
-    pool = zeros(Float64, num_intd, N_pool)
-    for j in 1:N_pool
-        ξ = [rand(Exponential(μ[i])) for i in 1:k]
-        pool[:, j] = (F * ξ) ./ k
-    end
-
-    # 2) k-means clustering → num_scenarios개 centroid
-    S = num_scenarios
-    # 초기 centroid: 균등 간격으로 선택
-    idx_init = round.(Int, range(1, N_pool; length=S))
-    centroids = pool[:, idx_init]  # num_intd × S
-    assignments = zeros(Int, N_pool)
-
-    for iter in 1:max_kmeans_iter
-        # Assign
-        changed = false
-        for j in 1:N_pool
-            best_c = 1
-            best_d = Inf
-            for c in 1:S
-                d = sum((pool[a, j] - centroids[a, c])^2 for a in 1:num_intd)
-                if d < best_d
-                    best_d = d
-                    best_c = c
-                end
-            end
-            if assignments[j] != best_c
-                assignments[j] = best_c
-                changed = true
-            end
-        end
-
-        # Update centroids
-        for c in 1:S
-            members = findall(==(c), assignments)
-            if !isempty(members)
-                for a in 1:num_intd
-                    centroids[a, c] = sum(pool[a, j] for j in members) / length(members)
-                end
-            end
-        end
-
-        !changed && break
-    end
-
-    # 3) Centroid를 capacity scenario로 변환
-    capacity_scenarios = zeros(Float64, num_arcs, S)
-    capacity_scenarios[intd_idx, :] = centroids
-
-    # Non-interdictable arcs
-    if !isempty(non_intd_idx) && !isempty(intd_idx)
-        max_intd_cap = maximum(capacity_scenarios[intd_idx, :])
-        capacity_scenarios[non_intd_idx, :] .= max_intd_cap
-    end
-
-    # Dummy arc
-    for s in 1:S
-        capacity_scenarios[end, s] = sum(capacity_scenarios[1:num_regular_arcs, s])
-    end
-
-    return capacity_scenarios, F
-end
-
-"""
-    generate_capacity_scenarios_factor_sparse(num_arcs, num_scenarios; ...)
+    generate_capacity_scenarios_factor_additive(num_arcs, num_scenarios; ...)
 
 Additive factor model: c_e^s = max(ε, c_bar + (1/k) Σ_j F_{ej} ξ_j^s)
 F_{ej} ~ Uniform(-a, a), ξ_j^s ~ Exp(1). Baseline c_bar에 factor perturbation 추가.
 음수 F → capacity 감소 방향, 양수 F → 증가 방향 → arc별 ranking reversal 유도.
 """
-function generate_capacity_scenarios_factor_sparse(num_arcs::Int, num_scenarios::Int;
+function generate_capacity_scenarios_factor_additive(num_arcs::Int, num_scenarios::Int;
                                      interdictable_arcs::Union{Vector{Bool},Nothing}=nothing,
                                      seed::Union{Int,Nothing}=nothing,
                                      num_factors::Int=5,

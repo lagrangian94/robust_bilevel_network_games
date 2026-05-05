@@ -18,7 +18,7 @@ net = RealWorldNetworkData(net.name, net.original_node_names, net.nodes, net.arc
     net.N, all_intd, net.arc_adjacency, net.node_arc_incidence)
 
 S = 20
-caps, _ = generate_capacity_scenarios_factor_sparse(length(net.arcs), S;
+caps, _ = generate_capacity_scenarios_factor_additive(length(net.arcs), S;
     interdictable_arcs=all_intd, seed=42, num_factors=5)
 intd_idx = findall(all_intd[1:num_arcs])
 w = round(maximum(caps[intd_idx, :]); digits=4)

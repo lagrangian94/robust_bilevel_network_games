@@ -538,3 +538,154 @@ function oos_phase_b_generic(x_dict::Dict{Symbol, Vector{Float64}},
 
     return costs
 end
+
+
+"""
+    weissman_epsilon(N_cal, S; alpha=0.05) -> Float64
+
+Weissman et al. (2003) TV concentration bound:
+  ε = sqrt(2/N * (S·log2 + log(1/α)))
+
+Returns ε^OOS for given sample size N_cal, number of scenarios S, confidence 1-α.
+"""
+function weissman_epsilon(N_cal::Int, S::Int; alpha::Float64=0.05)
+    return sqrt(2.0 / N_cal * (S * log(2) + log(1.0 / alpha)))
+end
+
+
+"""
+    sample_bental_normal(S, ε_oos, rng; σ=nothing, max_attempts=10000) -> Vector{Float64}
+
+Ben-Tal Section 6.4 style Normal sampling on simplex with TV-ball rejection.
+  p_i ~ Normal(1/S, σ) for i=1..S-1, p_S = 1 - Σp_{<S}
+  Accept if p ≥ 0 and ‖p - q̂‖₁ ≤ ε_oos.
+
+σ default: ε_oos / (2S) — pointwise sufficient condition.
+"""
+function sample_bental_normal(S::Int, ε_oos::Float64, rng;
+                               σ::Union{Nothing,Float64}=nothing,
+                               max_attempts::Int=10000)
+    σ_use = σ === nothing ? ε_oos / (2 * S) : σ
+    q_hat_i = 1.0 / S
+
+    for _ in 1:max_attempts
+        p = Vector{Float64}(undef, S)
+        for i in 1:S-1
+            p[i] = q_hat_i + σ_use * randn(rng)
+        end
+        p[S] = 1.0 - sum(p[1:S-1])
+
+        # Reject if outside simplex or TV ball
+        if all(p .>= 0) && sum(abs.(p .- q_hat_i)) <= ε_oos
+            return p
+        end
+    end
+    error("sample_bental_normal: failed after $max_attempts attempts (ε=$ε_oos, σ=$σ_use)")
+end
+
+
+"""
+    oos_phase_bental(x_dict, network, capacities, v, w;
+                     ε_oos, M=100, L=1000, seed=42) -> Dict
+
+Ben-Tal style OOS (Option b', nested): q̃ outer (M), p_true inner (L).
+  - Outer j=1..M: q̃^(j) ~ N(q̂,σ) in TV ball → h*^(j) = follower(x*, q̃)  [expensive]
+  - Inner ℓ=1..L: p_true^(j,ℓ) ~ N(q̂,σ) in TV ball → Y = dot(p_true, flows) [cheap]
+  - Same σ for both (symmetric ignorance), independent draws.
+
+Two-layer DRO와 consistent: ε₂가 follower belief uncertainty radius에 대응.
+Variance decomposition (식 12) 추정 가능.
+
+Returns: Dict with per-model keys:
+  :Y_bar  => Vector{Float64}(M) — outer means Ȳ^(j)
+  :mean   => Float64 — grand mean
+  :var_outer, :var_inner, :follower_share — variance decomposition
+  :costs  => Dict(key => Vector{Float64}(M)) — Ȳ^(j) per model (boxplot용)
+"""
+function oos_phase_bental(x_dict::Dict{Symbol, Vector{Float64}},
+                           network, capacities::Matrix{Float64},
+                           v::Float64, w::Float64;
+                           ε_oos::Float64, M::Int=100, L::Int=1000, seed::Int=42)
+    S = size(capacities, 2)
+    rng = MersenneTwister(seed)
+    model_keys = collect(keys(x_dict))
+
+    # Storage: per-model outer means and variance decomposition
+    Y_bar_outer = Dict(k => Vector{Float64}(undef, M) for k in model_keys)
+    var_inner_per_j = Dict(k => Vector{Float64}(undef, M) for k in model_keys)
+
+    # Pilot: measure acceptance rate
+    n_pilot = 200
+    accepted = 0
+    rng_pilot = MersenneTwister(seed + 9999)
+    σ = ε_oos / (2 * S)
+    for _ in 1:n_pilot
+        p = Vector{Float64}(undef, S)
+        for i in 1:S-1
+            p[i] = 1.0/S + σ * randn(rng_pilot)
+        end
+        p[S] = 1.0 - sum(p[1:S-1])
+        if all(p .>= 0) && sum(abs.(p .- 1.0/S)) <= ε_oos
+            accepted += 1
+        end
+    end
+    σ_used = ε_oos / (2 * S)
+    @printf("  BenTal sampling: ε_oos=%.4f, σ=%.4f, pilot accept=%.1f%%\n",
+            ε_oos, σ_used, 100.0 * accepted / n_pilot)
+
+    for j in 1:M
+        # Outer: follower belief q̃^(j)
+        q_tilde = sample_bental_normal(S, ε_oos, rng)
+
+        # Solve follower + compute flows per model (expensive, M times)
+        flows_dict = Dict{Symbol, Vector{Float64}}()
+        for k in model_keys
+            h = solve_follower_weighted(network, x_dict[k], v, w, capacities, q_tilde)
+            flows_dict[k] = compute_maxflow_per_scenario(network, x_dict[k], h, v, capacities)
+        end
+
+        # Inner: nature's truth p_true^(j,ℓ) (cheap, L times)
+        for k in model_keys
+            Y_inner = Vector{Float64}(undef, L)
+            for ℓ in 1:L
+                p_true = sample_bental_normal(S, ε_oos, rng)
+                Y_inner[ℓ] = dot(p_true, flows_dict[k])
+            end
+            Y_bar_outer[k][j] = mean(Y_inner)
+            var_inner_per_j[k][j] = var(Y_inner)
+        end
+
+        if j % 20 == 0
+            @printf("  OOS-BenTal outer %d/%d\n", j, M)
+        end
+    end
+
+    # Aggregate results per model
+    results = Dict{Symbol, Any}()
+    costs_for_boxplot = Dict{Symbol, Vector{Float64}}()
+
+    for k in model_keys
+        ybar = Y_bar_outer[k]
+        v_outer = var(ybar)
+        v_inner = mean(var_inner_per_j[k])
+        total_v = v_outer + v_inner
+        f_share = total_v > 0 ? v_outer / total_v : 0.0
+
+        costs_for_boxplot[k] = ybar
+
+        @printf("  [%s] mean=%.4f, var_outer=%.2e, var_inner=%.2e, f_share=%.4f\n",
+                k, mean(ybar), v_outer, v_inner, f_share)
+    end
+
+    results[:costs] = costs_for_boxplot
+    results[:var_decomp] = Dict(
+        k => (var_outer = var(Y_bar_outer[k]),
+              var_inner = mean(var_inner_per_j[k]),
+              follower_share = let vo=var(Y_bar_outer[k]), vi=mean(var_inner_per_j[k])
+                  (vo+vi) > 0 ? vo/(vo+vi) : 0.0
+              end)
+        for k in model_keys
+    )
+
+    return results
+end

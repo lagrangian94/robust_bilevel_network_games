@@ -266,6 +266,9 @@ function true_dro_benders_optimize!(td::TrueDROData;
             set_time_limit_sec(cur_sub_model, const_boost_time_limit)
             set_optimizer_attribute(cur_sub_model, "MIPGap", const_boost_mipgap)
             set_optimizer_attribute(cur_sub_model, "MIPFocus", 3)
+            set_optimizer_attribute(cur_sub_model, "OutputFlag", 1)
+            # Boost early stop: subproblem(max)의 incumbent ≥ t₀ 이면 outer gap 닫힘
+            set_optimizer_attribute(cur_sub_model, "BestObjStop", t0_val * (1 + tol))
         else
             effective_time_limit = is_global_iter ? current_time_limit : sub_time_limit
             if effective_time_limit !== nothing
@@ -275,6 +278,8 @@ function true_dro_benders_optimize!(td::TrueDROData;
             end
             set_optimizer_attribute(cur_sub_model, "MIPGap", 1e-4)
             set_optimizer_attribute(cur_sub_model, "MIPFocus", 0)
+            set_optimizer_attribute(cur_sub_model, "OutputFlag", 0)
+            set_optimizer_attribute(cur_sub_model, "BestObjStop", Inf)
         end
 
         # ---- Solve subproblem ----
@@ -318,7 +323,7 @@ function true_dro_benders_optimize!(td::TrueDROData;
             else
                 ""
             end
-            @printf("  Sub: Z₀=%.6f%s, α=[%s]\n", Z0_val, status_str, α_str)
+            @printf("  Sub: Z₀=%.6f%s (%.1fs), α=[%s]\n", Z0_val, status_str, t_sub, α_str)
             @printf("  Iter %d: LB=%.6f  UB=%.6f  gap=%.2e\n",
                     iter, lower_bound, upper_bound, gap)
             flush(stdout)

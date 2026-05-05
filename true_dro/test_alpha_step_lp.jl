@@ -153,7 +153,7 @@ function build_alpha_step_lp(td, x_bar, a_fixed, d_fixed; optimizer)
         -ξ[k,s] * a_fixed[s] - ζL[k,s] + u_hat[k,s] + ρ_hat_2[k,s] - ρ_hat_3[k,s] <= 0)
     # DL-3
     @constraint(model, [k=1:K, s=1:S],
-        v[k] * ξ[k,s] * a_fixed[s] - ρ_hat_1[k,s] - ρ_hat_2[k,s] + ρ_hat_3[k,s] <= 0)
+        v[k,s] * ξ[k,s] * a_fixed[s] - ρ_hat_1[k,s] - ρ_hat_2[k,s] + ρ_hat_3[k,s] <= 0)
     # DL-4~7 (b만 variable, a_fixed는 constant → RHS)
     @constraint(model, [s=1:S], -b[s] <= q[s] - a_fixed[s])
     @constraint(model, [s=1:S],  b[s] >= q[s] - a_fixed[s])
@@ -190,7 +190,7 @@ function build_alpha_step_lp(td, x_bar, a_fixed, d_fixed; optimizer)
         -ξ[k,s] * d_fixed[s] - ζF[k,s] + u_tilde[k,s] + ρ_tilde_2[k,s] - ρ_tilde_3[k,s] <= 0)
     # DF-7
     @constraint(model, [k=1:K, s=1:S],
-        v[k] * ξ[k,s] * d_fixed[s] - ρ_tilde_1[k,s] - ρ_tilde_2[k,s] + ρ_tilde_3[k,s] <= 0)
+        v[k,s] * ξ[k,s] * d_fixed[s] - ρ_tilde_1[k,s] - ρ_tilde_2[k,s] + ρ_tilde_3[k,s] <= 0)
     # DF-8
     @constraint(model, [k=1:K, s=1:S],
         sum(Ny[j,k] * ω[j,s] for j in 1:m) - β[k,s] <= 0)
@@ -205,7 +205,7 @@ function build_alpha_step_lp(td, x_bar, a_fixed, d_fixed; optimizer)
             + w * δ + sum(ρ_psi0_2) - sum(ρ_psi0_3))
     # DF-ψ
     @constraint(model, [k=1:K],
-        v[k] * sum(ξ[k,s] * β[k,s] for s in 1:S) + ρ_psi0_1[k] + ρ_psi0_2[k] >= ρ_psi0_3[k])
+        sum(v[k,s] * ξ[k,s] * β[k,s] for s in 1:S) + ρ_psi0_1[k] + ρ_psi0_2[k] >= ρ_psi0_3[k])
 
     # Objective
     obj_L = sum(σ_hat) -

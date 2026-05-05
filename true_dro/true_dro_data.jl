@@ -22,7 +22,7 @@ True-DRO-Exact (true_dro_v5.md)에 필요한 데이터.
 - `q_hat::Vector{Float64}`: nominal probability, length S
 - `eps_hat::Float64`: leader TV radius ε̂
 - `eps_tilde::Float64`: follower TV radius ε̃
-- `v::Vector{Float64}`: interdiction effectiveness, |A|
+- `v::Matrix{Float64}`: interdiction effectiveness, |A| × S (scenario-dependent)
 - `gamma::Int`: interdiction budget
 - `w::Float64`: recovery budget weight
 - `lambda_U::Float64`: λ upper bound (McCormick big-M for ψ⁰)
@@ -40,7 +40,7 @@ struct TrueDROData
     q_hat::Vector{Float64}     # S
     eps_hat::Float64
     eps_tilde::Float64
-    v::Vector{Float64}         # |A|
+    v::Matrix{Float64}         # |A| × S
     gamma::Int
     w::Float64
     lambda_U::Float64
@@ -57,7 +57,8 @@ end
 GridNetworkData + scenario 데이터로부터 TrueDROData 생성.
 """
 function make_true_dro_data(network, scenarios, q_hat, eps_hat, eps_tilde;
-                            w=1.0, lambda_U=10.0, gamma=2)
+                            w=1.0, lambda_U=10.0, gamma=2,
+                            v_scenarios::Union{Matrix{Float64}, Nothing}=nothing)
     num_arcs = length(network.arcs) - 1  # dummy arc 제외
     N_trunc = network.N
     Ny = N_trunc[:, 1:num_arcs]
@@ -82,7 +83,12 @@ function make_true_dro_data(network, scenarios, q_hat, eps_hat, eps_tilde;
     @assert 0 <= eps_hat <= 1 "eps_hat must be in [0,1]"
     @assert 0 <= eps_tilde <= 1 "eps_tilde must be in [0,1]"
 
-    v = Float64.(network.interdictable_arcs)
+    if v_scenarios !== nothing
+        @assert size(v_scenarios) == (num_arcs, S) "v_scenarios size ($(size(v_scenarios))) != ($num_arcs, $S)"
+        v = v_scenarios
+    else
+        v = repeat(Float64.(network.interdictable_arcs[1:num_arcs]), 1, S)
+    end
 
     # McCormick big-M
     # Leader: N_tsᵀ π̂ ≥ 1 → φ̂_k 가 1로 bound (loose)

@@ -82,9 +82,9 @@ function add_phase1_mincut_vi!(omp_model, omp_vars, td::TrueDROData)
         end
     end
 
-    # DC-link: t₀ ≥ Σ_j q̂_j Σ_k ξ̄^j_k (δ^j_k - v_k w^j_k)
+    # DC-link: t₀ ≥ Σ_j q̂_j Σ_k ξ̄^j_k (δ^j_k - v_k^j w^j_k)
     link_expr = sum(
-        td.q_hat[j] * sum(td.xi_bar[k, j] * (δ[k, j] - td.v[k] * w[k, j]) for k in 1:K)
+        td.q_hat[j] * sum(td.xi_bar[k, j] * (δ[k, j] - td.v[k, j] * w[k, j]) for k in 1:K)
         for j in 1:S
     )
     @constraint(omp_model, t_0 >= link_expr)
@@ -138,9 +138,10 @@ function add_phase2B_mincut_vi!(omp_model, omp_vars, td::TrueDROData,
         @constraint(omp_model, w[k] >= δ[k] - (1 - x[k]))
     end
 
-    # SB-link: t₀ ≥ Σ_k [ξ̄^min_k (δ_k - v_k w_k) + α_k δ_k]
+    # SB-link: t₀ ≥ Σ_k [ξ̄^min_k (δ_k - max_s(v_k^s) w_k) + α_k δ_k]
+    v_max = vec(maximum(td.v, dims=2))  # worst-case v per arc (valid lower bound)
     link_expr = sum(
-        ξ_min[k] * (δ[k] - td.v[k] * w[k]) + α_val[k] * δ[k]
+        ξ_min[k] * (δ[k] - v_max[k] * w[k]) + α_val[k] * δ[k]
         for k in 1:K
     )
     @constraint(omp_model, t_0 >= link_expr)

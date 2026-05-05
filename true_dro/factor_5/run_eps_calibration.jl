@@ -51,7 +51,7 @@ function f5_setup_network(net_key::Symbol)
             net.N, intd_flags, net.arc_adjacency, net.node_arc_incidence)
     end
 
-    caps, _ = generate_capacity_scenarios_factor_sparse(length(net.arcs), F5_S;
+    caps, _ = generate_capacity_scenarios_factor_additive(length(net.arcs), F5_S;
         interdictable_arcs=net.interdictable_arcs, seed=F5_SEED, num_factors=F5_NUM_FACTORS)
     intd_idx = findall(net.interdictable_arcs[1:num_arcs])
     w = round(maximum(caps[intd_idx, :]); digits=4)

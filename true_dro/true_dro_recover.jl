@@ -72,7 +72,7 @@ function build_primal_piece_F(td::TrueDROData, x_bar::Vector{Float64},
     @constraint(model, C1[s=1:S],
         σ_Fp[s] - σ_Fm[s] + η_F
         - sum((ξ[k, s] + α_bar[k]) * φ_tilde[k, s] for k in 1:K)
-        + sum(v[k] * ξ[k, s] * ψ_tilde[k, s] for k in 1:K)
+        + sum(v[k, s] * ξ[k, s] * ψ_tilde[k, s] for k in 1:K)
         + y_ts[s] >= 0)
 
     # (2) μ^F - σ^{F+}_s - σ^{F-}_s ≥ 0   ∀s
@@ -92,7 +92,7 @@ function build_primal_piece_F(td::TrueDROData, x_bar::Vector{Float64},
 
     # (6) -ỹ_k^s + h_k + λ ξ̄_k^s - v_k ψ⁰_k ξ̄_k^s ≥ 0   ∀k,s
     @constraint(model, C6[k=1:K, s=1:S],
-        -y_tilde[k, s] + h[k] + λ * ξ[k, s] - v[k] * ψ0[k] * ξ[k, s] >= 0)
+        -y_tilde[k, s] + h[k] + λ * ξ[k, s] - v[k, s] * ψ0[k] * ξ[k, s] >= 0)
 
     # (7) λw - Σ_k h_k ≥ 0
     @constraint(model, C7, λ * w - sum(h[k] for k in 1:K) >= 0)

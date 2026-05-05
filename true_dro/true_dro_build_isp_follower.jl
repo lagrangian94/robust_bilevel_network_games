@@ -74,9 +74,9 @@ function build_true_dro_isp_follower(td::TrueDROData, x_bar::Vector{Float64},
         -(ξ[k, s] + α_bar[k]) * d[s]
         + u_tilde[k, s] + ρ_tilde_2[k, s] - ρ_tilde_3[k, s] <= 0)
 
-    # (DF-7): v_k ξ̄_k^s d_s - ρ̃¹ - ρ̃² + ρ̃³ ≤ 0
+    # (DF-7): v_k^s ξ̄_k^s d_s - ρ̃¹ - ρ̃² + ρ̃³ ≤ 0
     @constraint(model, DF7[k=1:K, s=1:S],
-        v[k] * ξ[k, s] * d[s]
+        v[k, s] * ξ[k, s] * d[s]
         - ρ_tilde_1[k, s] - ρ_tilde_2[k, s] + ρ_tilde_3[k, s] <= 0)
 
     # (DF-8): [N_yᵀ ω^s]_k - β_k^s ≤ 0
@@ -98,9 +98,9 @@ function build_true_dro_isp_follower(td::TrueDROData, x_bar::Vector{Float64},
            + sum(ρ_psi0_2[k] for k in 1:K)
            - sum(ρ_psi0_3[k] for k in 1:K))
 
-    # (DF-ψ): v_k Σ_s ξ̄ β + ρ⁰¹ + ρ⁰² ≥ ρ⁰³
+    # (DF-ψ): Σ_s v_k^s ξ̄ β + ρ⁰¹ + ρ⁰² ≥ ρ⁰³
     @constraint(model, DFpsi[k=1:K],
-        v[k] * sum(ξ[k, s] * β[k, s] for s in 1:S)
+        sum(v[k, s] * ξ[k, s] * β[k, s] for s in 1:S)
         + ρ_psi0_1[k] + ρ_psi0_2[k] >= ρ_psi0_3[k])
 
     # ---- Objective ----
