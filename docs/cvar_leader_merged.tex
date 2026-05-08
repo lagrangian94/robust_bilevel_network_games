@@ -1,0 +1,492 @@
+\documentclass[11pt]{article}
+\usepackage{fontspec}
+\setmainfont{Noto Sans CJK KR}
+\usepackage{amsmath, amssymb, amsthm}
+\usepackage[margin=2.2cm]{geometry}
+\usepackage{booktabs}
+\usepackage{enumitem}
+\usepackage{xcolor}
+\usepackage{hyperref}
+\hypersetup{colorlinks=true, linkcolor=blue}
+
+% Notation
+\newcommand{\R}{\mathbb{R}}
+\newcommand{\E}{\mathbb{E}}
+\newcommand{\cA}{\mathcal{A}}
+\newcommand{\cX}{\mathcal{X}}
+\newcommand{\Phat}{\hat{\mathbb{P}}}
+\newcommand{\Ptil}{\tilde{\mathbb{P}}}
+\newcommand{\Dhat}{\hat{\mathcal{D}}}
+\newcommand{\Dtil}{\tilde{\mathcal{D}}}
+\newcommand{\hatpi}{\hat{\pi}}
+\newcommand{\hatphi}{\hat{\phi}}
+\newcommand{\hatpsi}{\hat{\psi}}
+\newcommand{\tilpi}{\tilde{\pi}}
+\newcommand{\tilphi}{\tilde{\phi}}
+\newcommand{\tilpsi}{\tilde{\psi}}
+\newcommand{\hatp}{\hat{p}}
+\newcommand{\tilp}{\tilde{p}}
+\newcommand{\hatq}{\hat{q}}
+\newcommand{\tilq}{\tilde{q}}
+\newcommand{\barxi}{\bar{\xi}}
+\newcommand{\barh}{\bar{h}}
+\newcommand{\hatY}{\hat{y}}
+\newcommand{\tilY}{\tilde{y}}
+\newcommand{\MF}{\mathrm{MF}}
+\newcommand{\CVaR}{\mathrm{CVaR}}
+\newcommand{\Rb}{\mathcal{R}_\beta}
+\newcommand{\etaTV}{\eta^L_{\mathrm{TV}}}
+
+\theoremstyle{plain}
+\newtheorem{proposition}{Proposition}
+\newtheorem{lemma}{Lemma}
+\newtheorem{theorem}{Theorem}
+\newtheorem{corollary}{Corollary}
+\theoremstyle{remark}
+\newtheorem{remark}{Remark}
+
+\title{\textbf{Asymmetric Instantiation: CVaR Leader, Expectation Follower}\\[2pt]
+\large Single-Level Reformulation $\to$ Benders Cut}
+\author{}
+\date{}
+
+\begin{document}
+\maketitle
+
+본 노트는 expectation 케이스의 single-level reformulation 과 Benders cut 유도를 mirror 하면서, leader 의 risk functional 만 $\E \to \CVaR_\beta$ 로 바꾼 결과를 정리한다. 핵심 메시지: \textbf{R-U 보조변수 $(\eta_\beta, \vartheta_s)$ 만 추가}되며, Lagrangian decomposition $\to$ variable separation $\to$ $g_2$ dichotomy $\to$ admissible recovery set $\to$ DRO Sion interchange $\to$ Benders 의 pipeline 은 \emph{구조적으로 동일하게} 통과한다.
+
+
+\section{Primal $(\mathcal{P}^{\CVaR})$ 와 R-U Polyhedral 형식}
+\label{sec:primal}
+
+CVaR-leader, expectation-follower 의 primal:
+\begin{equation}
+V(x, \Phat, \Ptil) = \sup_{\barh, \hatY, \tilY \geq 0}\; \CVaR_\beta^{\Phat}\!\big[d_0^\top \hatY(\xi)\big]
+\end{equation}
+s.t.\ (expectation 케이스의 모든 outer 제약 그대로)
+\[
+\E^{\Ptil}[d_0^\top \tilY] \geq z^*(x, \Ptil),\;
+A\hatY + B\barh \leq b_x\;\Phat\text{-a.s.},\;
+A\tilY + B\barh \leq b_x\;\Ptil\text{-a.s.},\;
+W\barh \leq w.
+\]
+
+R-U 표현 적용:
+\begin{equation}\label{eq:polyhedral}
+V(x, \Phat, \Ptil) = \sup_{\barh, \hatY, \tilY}\;\inf_{\eta_\beta, \vartheta(\cdot) \geq 0}\; \eta_\beta + \tfrac{1}{1-\beta}\E^{\Phat}[\vartheta(\xi)]
+\end{equation}
+s.t.\ $\vartheta(\xi) \geq d_0^\top \hatY(\xi) - \eta_\beta$ ($\Phat$-a.s.) + outer 제약.
+
+
+\section{Dual $(\mathcal{D}^{\CVaR})$: LP Duality 와 Coupling Constraint}
+\label{sec:dual}
+
+\eqref{eq:polyhedral} 의 inner $\inf_{\eta_\beta, \vartheta}$ 의 LP dual 은 CVaR risk envelope:
+\begin{equation}\label{eq:risk-envelope}
+\inf_{\eta_\beta, \vartheta \geq 0}\{\cdots\} = \sup_{\rho \in \Rb(\Phat)}\;\E^\rho[d_0^\top \hatY],\quad
+\Rb(\Phat) := \big\{\rho \in \Delta_S : \rho_s \leq \tfrac{\hatp_s}{1-\beta}\;\forall s\big\}.
+\end{equation}
+두 sup 합치기 + expectation 케이스 dualization 적용:
+\begin{equation}
+V(x, \Phat, \Ptil) = \sup_{\rho \in \Rb(\Phat)}\;\inf_{\substack{\hatpi, \hatphi, \tilpi, \tilphi\\ \tilY, h, \lambda, \nu}}\; \E^\rho[b_x^\top \hatpi] + \E^{\Ptil}[b_x^\top \tilpi - d_0^\top \tilY] + w\nu
+\end{equation}
+s.t.\ (C-L), (C-F), (C-P), (C-B), 그리고 \emph{변경된} (CC):
+\begin{equation}
+\boxed{\;
+\E^{\Ptil}[\tilphi_k(\xi)] + \E^{\rho}[\hatphi_k(\xi)] \leq \nu,\quad \forall k \in \cA
+\;}\tag{CC$^\rho$}
+\end{equation}
+
+\textbf{관찰.} (CC) 의 leader 측 expectation 만 $\E^{\Phat} \to \E^\rho$ 로 바뀐다.
+
+
+\section{Lagrangian Decomposition 과 Variable Separation}
+\label{sec:lagrangian}
+
+(CC$^\rho$) 를 multiplier $\alpha \in \R^{|\cA|}_+$ 로 relax:
+\[
+\mathcal{L}^\rho(\alpha) = g_1^\rho(x, \alpha, \rho) + g_2(x, \alpha, \Ptil, \lambda, h) + (w - \mathbf{1}^\top \alpha)\nu,
+\]
+\[
+g_1^\rho := \inf_{\hatpi, \hatphi \geq 0}\;\sum_k \E^\rho[(\xi_k(1-v_kx_k)+\alpha_k)\hatphi_k]\;\text{s.t.\ (C-L)},
+\]
+\[
+g_2 := \inf_{\tilpi, \tilphi, \tilY}\; \sum_k \E^{\Ptil}[(\xi_k(1-v_kx_k)+\alpha_k)\tilphi_k] - \E^{\Ptil}[\tilY_{ts}]\;\text{s.t.\ (C-F),(C-P)}.
+\]
+
+Slater + outer sup 합치기:
+\begin{equation}\label{eq:lagrangian-form}
+V(x, \Phat, \Ptil) = \sup_{\alpha \in H,\,\rho \in \Rb(\Phat)}\; \inf_{\substack{\lambda \geq 0\\ h\geq 0,\,\mathbf{1}^\top h \leq \lambda w}}\; \big[g_1^\rho(x, \alpha, \rho) + g_2(x, \alpha, \Ptil, \lambda, h)\big],
+\end{equation}
+$H := \{\alpha \in \R_+^{|\cA|} : \mathbf{1}^\top \alpha \leq w\}$.
+
+\subsection{Closed-Form 표현}
+
+\begin{proposition}[Leader piece, CVaR version]\label{prop:g1cvar}
+\[
+g_1^\rho(x, \alpha, \rho) = \sum_s \rho_s\, \MF^s\!\big(\alpha + \barxi^s(1-vx)\big).
+\]
+\end{proposition}
+
+Follower piece --- 변경 없음:
+\[
+g_2(x, \alpha, \Ptil) = \inf_{\lambda \geq 0}\; \lambda\,\Delta(\alpha, x, \Ptil),\quad
+\Delta := \sum_s \tilp_s \MF^s(\alpha + \barxi^s(1-vx)) - z^*(x, \Ptil).
+\]
+
+
+\section{Chronology Reversal: 두 종류의 Swap}
+\label{sec:chronology}
+
+\eqref{eq:lagrangian-form} 의 outer $\sup_\rho$ 와 inner $\inf_{\lambda, h}$ 는 Sion 정리 없이 교환 가능 (Cartesian separation):
+\begin{equation}\label{eq:swap-identity}
+\sup_{\rho \in \Rb(\Phat)} \inf_{\lambda, h}\; [g_1^\rho + g_2]
+= \inf_{\lambda, h} \sup_{\rho \in \Rb(\Phat)}\; [g_1^\rho + g_2]
+= \sup_\rho g_1^\rho + \inf_{\lambda, h} g_2.
+\end{equation}
+
+또한 다음은 expectation 케이스와 동일하게 Sion 으로 성립:
+\begin{equation}\label{eq:sion-needed}
+\sup_{\Ptil \in \Dtil}\; \inf_{\lambda, h, \psi^0}\; g_2 = \inf_{\lambda, h, \psi^0}\; \sup_{\Ptil \in \Dtil}\; g_2.
+\end{equation}
+
+\subsection{Dichotomy of $g_2$ 와 Admissible Recovery Set}
+
+\begin{corollary}[Dichotomy of $g_2$]\label{cor:dichotomy}
+\[
+g_2(x, \alpha, \Ptil) = \begin{cases} 0 & \alpha \in \mathcal{A}^*(x, \Ptil),\\ -\infty & \text{otherwise,}\end{cases}
+\]
+$\mathcal{A}^*(x, \Ptil) := \arg\max_{\barh \in H} \sum_s \tilp_s \MF^s(\barh + \barxi^s(1-vx))$.
+\end{corollary}
+
+이 dichotomy 는 \textbf{$g_1$ 의 형태와 무관} ($g_2$ 자체가 변하지 않으므로).
+
+따라서, $V(x,\Phat, \Ptil)$:
+\begin{align*}
+V(x,\Phat, \Ptil)
+&= \sup_{\alpha \in H}\Big[\sup_{\rho \in \Rb(\Phat)} g_1^\rho + \inf_{\lambda, h} g_2\Big]\\
+&= \sup_{\alpha \in H}\Big[\CVaR_\beta^{\Phat}[\MF^s(\alpha+\barxi^s(1-vx))] + \inf_{\lambda, h} g_2\Big]\\
+&= \begin{cases}
+\CVaR_\beta^{\Phat}[\MF^s(\alpha^* +\barxi^s(1-vx))] & \alpha^* \in \mathcal{A}^*(x,\Ptil),\\
+-\infty & \text{otherwise}.
+\end{cases}
+\end{align*}
+
+
+\section{Reformulation: Nominal 과 DRO}
+\label{sec:reformulation}
+
+\begin{theorem}[CVaR-leader nominal reformulation]\label{thm:nominal}
+\[
+\boxed{\;
+V(x, \Phat, \Ptil) = \max_{\alpha \in \mathcal{A}^*(x, \Ptil)}\; \CVaR_\beta^{\Phat}\!\Big[\MF^s\big(\alpha + \barxi^s(1-vx)\big)\Big]\;}
+\]
+\end{theorem}
+
+DRO extension: $V^*(x) := \sup_{(\Phat, \Ptil) \in \Dhat \times \Dtil} V(x, \Phat, \Ptil)$.
+
+\begin{theorem}[CVaR-leader DRO structural form]\label{thm:dro}
+\[
+\boxed{\;
+V^*(x) = \max_{\alpha \in \mathcal{A}^*(x, \Dtil)}\; \sup_{\Phat \in \Dhat}\; \CVaR_\beta^{\Phat}\!\Big[\MF^s\big(\alpha + \barxi^s(1-vx)\big)\Big]\;}
+\]
+$\mathcal{A}^*(x, \Dtil) := \bigcup_{\Ptil \in \Dtil} \mathcal{A}^*(x, \Ptil)$.
+\end{theorem}
+
+
+\section{Computational Form: R-U Primal Substitution}
+\label{sec:comp-form}
+
+Theorem~\ref{thm:dro} 는 \emph{구조적} 형태로 $\sup_\rho$ 가 $\CVaR$ 안에 묵시적이다. Benders 호환을 위해 R-U primal 로 다시 쓴다:
+\[
+\underbrace{\CVaR_\beta^{\Phat}[Z] = \sup_{\rho \in \Rb(\Phat)}\E^\rho[Z]}_{\text{dual (risk envelope)}}
+=\underbrace{\min_{\eta_\beta,\, \vartheta \geq 0}\Big\{\eta_\beta + \tfrac{1}{1-\beta}\E^{\Phat}[\vartheta_s] : \vartheta_s \geq Z_s - \eta_\beta\;\forall s\Big\}}_{\text{primal (R-U)}}.
+\]
+
+$Z_s = \MF^s(\alpha + \barxi^s(1-vx))$ 에 적용 + outer $\sup_{\Phat}$ 합치기:
+\begin{equation}\label{eq:piece-L-RU}
+\text{Piece-L}^\beta(\alpha, x) := \sup_{\Phat \in \Dhat}\CVaR_\beta^{\Phat}[\MF^s]
+= \min_{\eta_\beta}\Big[\eta_\beta + \sup_{\Phat \in \Dhat}\Big\{\tfrac{1}{1-\beta}\E^{\Phat}[\vartheta_s]\Big\}\Big].
+\end{equation}
+
+여기서 $\sup_{\Phat}\min_{\eta_\beta} = \min_{\eta_\beta}\sup_{\Phat}$ 가 되는 이유는, $\eta_\beta + \tfrac{1}{1-\beta}\E^{\Phat}[\vartheta]$ 가 $\eta_\beta$ 에 convex, $\Phat$ 에 concave 하기 때문 ($\Dhat$ weakly compact 가정 하). DRO of CVaR 의 표준 사실. \cite{ling2017robust} 참조.
+
+\begin{proposition}[Sion swap for R-U primal under TV ambiguity]\label{prop:sion-RU}
+$Z \in \R_+^S$ 고정 시,
+\[
+\sup_{\Phat \in \Dhat}\;\min_{(\eta_\beta, \vartheta) \in \mathcal{U}(Z)}\;\Big[\eta_\beta + \tfrac{1}{1-\beta}\E^{\Phat}[\vartheta_s]\Big]
+=\min_{(\eta_\beta, \vartheta) \in \mathcal{U}(Z)}\;\sup_{\Phat \in \Dhat}\;\Big[\eta_\beta + \tfrac{1}{1-\beta}\E^{\Phat}[\vartheta_s]\Big].
+\]
+\end{proposition}
+
+\begin{proof}
+Sion 의 minimax 조건 확인. $f(\Phat, \eta_\beta, \vartheta) := \eta_\beta + \tfrac{1}{1-\beta}\sum_s \hatp_s \vartheta_s$:
+\begin{enumerate}[label=(\roman*),leftmargin=*,nosep]
+\item $\Dhat$: simplex $\cap$ $\ell_1$-ball, closed bounded polyhedral $\to$ compact convex.
+\item $\mathcal{U}(Z)$: affine 부등식의 교집합, closed convex polyhedron.
+\item $f$: $\Phat$ 에 linear (concave), $(\eta_\beta, \vartheta)$ 에 linear (convex).
+\item $\mathcal{U}(Z)$ 는 $\Phat$ 에 의존 X ($Z$ 가 swap 단계에서 fixed parameter).
+\end{enumerate}
+조건 (i)-(iv) 충족, Sion 의 minimax 정리 적용.
+\end{proof}
+
+\begin{remark}[Inf 측 compactness 와 box bound]\label{rem:sion-RU-bounds}
+Sion 정리는 한쪽 도메인의 compactness 만 요구; 본 적용에서 $\Phat$ 측 compactness 로 충분. $\mathcal{U}(Z)$ 자체는 unbounded 이지만 swap 정당화에 영향 없음.
+
+향후 numerical 작업을 위해 box bound:
+\begin{equation}\label{eq:box-bound}
+    \eta_\beta^* \in [0, \bar M],\quad \vartheta_s^* \in [0, \bar M],\quad \bar M := \max_s \MF^s(\barxi^s + w\mathbf 1).
+\end{equation}
+\emph{Justification (R-U / VaR).} R-U 정리에 의해 optimum 에서 $\eta_\beta^* \in [\mathrm{VaR}_\beta^-(Z), \mathrm{VaR}_\beta^+(Z)]$ 이고 $\vartheta_s^* = (Z_s - \eta_\beta^*)^+$.
+\begin{itemize}[leftmargin=*,nosep]
+\item \textbf{Lower bound:} $Z_s \geq 0$ $\Rightarrow$ $\mathrm{VaR}_\beta(Z) \geq 0$, 따라서 $\eta_\beta^* \geq 0$.
+\item \textbf{Upper bound:} $\alpha \leq w\mathbf 1$ + $\MF^s$ capacity-monotonicity $\Rightarrow$ $Z_s \leq \bar M$, 따라서 $\eta_\beta^* \leq \bar M$.
+\item $\vartheta_s^* = (Z_s - \eta_\beta^*)^+ \in [0, \bar M]$.
+\end{itemize}
+\eqref{eq:box-bound} 은 Proposition~\ref{prop:sion-RU} 에 \emph{필요하지 않으며}, McCormick 도 $(\eta_\beta, \vartheta)$ 에 적용되지 않는다. \emph{Numerical 안전망} 으로 이해.
+\end{remark}
+
+
+\subsection{Final Form for Benders}
+
+\begin{align}\label{eq:final-comp}
+V^*(x) &= \sup_{\alpha \in H}\;\bigg[\inf_{\eta_\beta} \underbrace{\eta_\beta + \sup_{\Phat \in \Dhat}\!\tfrac{1}{1-\beta}\E^{\Phat}[\MF^s(\alpha + \barxi^s(1-vx))]}_{\text{Piece-L}'_\beta(\alpha,x,\eta_\beta)}\nonumber\\
+&\qquad\qquad+ \inf_{\lambda, h, \psi^0}\underbrace{\sup_{\Ptil} g_2}_{\text{Piece-F}'(\alpha, x, \lambda, h, \psi^0)}\bigg]
+\end{align}
+
+\eqref{eq:final-comp} 가 expectation 케이스의 computational form 과 \emph{구조적으로 동일}. R-U 변수 $(\eta_\beta, \vartheta)$ 추가가 유일한 차이.
+
+
+\section{ISP-L$_\beta$($\bar\alpha, \bar x$): Primal LP}
+\label{sec:isp-l-primal}
+
+OMP 가 $\bar x$ 산출 후, $\alpha = \bar\alpha$ fix 시 leader piece 의 LP 형태. (notation: $\bar c_k^s := \barxi_k^s(1-v_k\bar x_k) + \bar\alpha_k$.)
+
+\begin{equation}\label{eq:isp-l-primal-obj}
+\text{Piece-L}_\beta(\bar\alpha, \bar x) = \min\;\eta_\beta + \tfrac{1}{1-\beta}\Big[\textstyle\sum_s \hatq_s(\sigma_s^{L+} - \sigma_s^{L-}) + 2\hat\varepsilon\,\mu^L + \etaTV\Big]
+\end{equation}
+subject to:
+\begin{align}
+&\sigma_s^{L+} - \sigma_s^{L-} + \etaTV - \vartheta_s \geq 0 && \forall s \tag{EL-1C}\label{eq:EL-1C}\\
+&-\sigma_s^{L+} - \sigma_s^{L-} + \mu^L \geq 0 && \forall s \tag{EL-2C}\label{eq:EL-2C}\\
+&[N_y^\top \hatpi^s]_k + \hatphi_k^s \geq 0 && \forall k, s \tag{EL-3C}\label{eq:EL-3C}\\
+&N_{ts}^\top \hatpi^s \geq 1 && \forall s \tag{EL-4C}\label{eq:EL-4C}\\
+&\eta_\beta + \vartheta_s - \textstyle\sum_k \barxi_k^s(\hatphi_k^s - v_k\hatpsi_k^s) - \sum_k \bar\alpha_k \hatphi_k^s \geq 0 && \forall s \tag{EL-5C}\label{eq:EL-5C}
+\end{align}
+McCormick for $\hatpsi_k^s \approx \bar x_k \hatphi_k^s$:
+\begin{align}
+&-\hatpsi_k^s \geq -\phi^U \bar x_k && \forall k, s \tag{EL-McC1}\label{eq:McC1}\\
+&\hatphi_k^s - \hatpsi_k^s \geq 0 && \forall k, s \tag{EL-McC2}\label{eq:McC2}\\
+&\hatpsi_k^s - \hatphi_k^s \geq -\phi^U(1-\bar x_k) && \forall k, s \tag{EL-McC3}\label{eq:McC3}
+\end{align}
+Signs: $\hatpi^s$ free; $\etaTV, \eta_\beta$ free; 나머지 $\geq 0$.
+
+
+\section{ISP-L$_\beta$($\bar\alpha, \bar x$): Dual --- Form 1 (Original)}
+\label{sec:isp-l-dual-orig}
+
+\subsection{Dual 변수 할당}
+
+\begin{center}
+\begin{tabular}{lll}
+\toprule
+Primal 제약 & 부호 & Dual \\
+\midrule
+\eqref{eq:EL-1C} & $\geq 0$ & $a_s$\\
+\eqref{eq:EL-2C} & $\geq 0$ & $b_s$ \\
+\eqref{eq:EL-3C} & $\geq 0$ & $\hat u_k^s$ \\
+\eqref{eq:EL-4C} & $\geq 0$ & $\hat\sigma^s$ \\
+\eqref{eq:EL-5C} & $\geq 0$ & $r_s$\\
+\eqref{eq:McC1}, \eqref{eq:McC2}, \eqref{eq:McC3} & $\geq 0$ & $\hat\rho_k^{s,1}, \hat\rho_k^{s,2}, \hat\rho_k^{s,3}$ \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\subsection{Dual LP}
+
+\begin{equation}\label{eq:ISP-L-CVaR-obj}
+\boxed{\;
+Z^L_\beta(\bar\alpha, \bar x) \;=\; \max\;\textstyle\sum_s \hat\sigma^s \;-\;\phi^U \sum_{s,k} \bar x_k\, \hat\rho_k^{s,1} \;-\;\phi^U \sum_{s,k}(1-\bar x_k)\,\hat\rho_k^{s,3}
+\;}
+\end{equation}
+subject to:
+\begin{align}
+&N_y \hat u^s + N_{ts} \hat\sigma^s = 0 && \forall s \tag{DL-1C}\label{eq:DL-1C}\\
+&\hat u_k^s - (\barxi_k^s + \bar\alpha_k)\,r_s + \hat\rho_k^{s,2} - \hat\rho_k^{s,3} \leq 0 && \forall k, s \tag{DL-2C}\label{eq:DL-2C}\\
+&v_k\barxi_k^s\, r_s - \hat\rho_k^{s,1} - \hat\rho_k^{s,2} + \hat\rho_k^{s,3} \leq 0 && \forall k, s \tag{DL-3C}\label{eq:DL-3C}\\
+&a_s - b_s \leq \tfrac{\hatq_s}{1-\beta} && \forall s \tag{DL-4C}\label{eq:DL-4C}\\
+&a_s + b_s \geq \tfrac{\hatq_s}{1-\beta} && \forall s \tag{DL-5C}\label{eq:DL-5C}\\
+&\textstyle\sum_s b_s \leq \tfrac{2\hat\varepsilon}{1-\beta} && \tag{DL-6C}\label{eq:DL-6C}\\
+&\textstyle\sum_s a_s = \tfrac{1}{1-\beta} && \tag{DL-7C}\label{eq:DL-7C}\\
+&r_s \leq a_s && \forall s \tag{DL-RU1}\label{eq:DL-RU1}\\
+&\textstyle\sum_s r_s = 1 && \tag{DL-RU2}\label{eq:DL-RU2}\\
+&\hat\sigma^s, \hat u_k^s, a_s, b_s, r_s, \hat\rho_k^{s,1}, \hat\rho_k^{s,2}, \hat\rho_k^{s,3} \geq 0 && \tag{DL-8C}\label{eq:DL-8C}
+\end{align}
+
+
+\section{ISP-L$_\beta$($\bar\alpha, \bar x$): Dual --- Form 2 (Variable Transform, Coding-Friendly)}
+\label{sec:isp-l-dual-transformed}
+
+\subsection{변수 변환}
+
+다음 변환을 도입:
+\begin{equation}\label{eq:transform}
+\boxed{\;
+\tilde a_s := (1-\beta)\,a_s,\qquad \tilde b_s := (1-\beta)\,b_s.
+\;}
+\end{equation}
+$a_s, b_s \geq 0$ + $\beta \in [0,1)$ 이므로 $\tilde a_s, \tilde b_s \geq 0$ 이고 일대일.
+
+\subsection{변환 후 Dual LP}
+
+\textbf{Dual 목적함수.} $\bar x$ 와 $\hat\rho$ 만 등장 → 변환 영향 X:
+\begin{equation}\label{eq:ISP-L-CVaR-obj-transformed}
+\boxed{\;
+Z^L_\beta(\bar\alpha, \bar x) = \max\;\textstyle\sum_s \hat\sigma^s - \phi^U \sum_{s,k} \bar x_k\, \hat\rho_k^{s,1} - \phi^U \sum_{s,k}(1-\bar x_k)\,\hat\rho_k^{s,3}
+\;}
+\end{equation}
+
+\textbf{Dual 제약} (변환 적용; \eqref{eq:DL-2C}, \eqref{eq:DL-3C}, \eqref{eq:DL-RU2}, \eqref{eq:DL-8C} 는 $a, b$ 미등장으로 동일):
+\begin{align}
+&N_y \hat u^s + N_{ts} \hat\sigma^s = 0 && \forall s \tag{$\widetilde{\text{DL-1C}}$}\\
+&\hat u_k^s - (\barxi_k^s + \bar\alpha_k)\,r_s + \hat\rho_k^{s,2} - \hat\rho_k^{s,3} \leq 0 && \forall k, s \tag{$\widetilde{\text{DL-2C}}$}\\
+&v_k\barxi_k^s\, r_s - \hat\rho_k^{s,1} - \hat\rho_k^{s,2} + \hat\rho_k^{s,3} \leq 0 && \forall k, s \tag{$\widetilde{\text{DL-3C}}$}\\
+&\tilde a_s - \tilde b_s \leq \hatq_s && \forall s \tag{$\widetilde{\text{DL-4C}}$}\label{eq:t-DL-4C}\\
+&\tilde a_s + \tilde b_s \geq \hatq_s && \forall s \tag{$\widetilde{\text{DL-5C}}$}\label{eq:t-DL-5C}\\
+&\textstyle\sum_s \tilde b_s \leq 2\hat\varepsilon && \tag{$\widetilde{\text{DL-6C}}$}\label{eq:t-DL-6C}\\
+&\textstyle\sum_s \tilde a_s = 1 && \tag{$\widetilde{\text{DL-7C}}$}\label{eq:t-DL-7C}\\
+&\boxed{\;r_s \leq \tfrac{\tilde a_s}{1-\beta}\;} && \forall s \tag{$\widetilde{\text{DL-RU1}}$}\label{eq:t-DL-RU1}\\
+&\textstyle\sum_s r_s = 1 && \tag{$\widetilde{\text{DL-RU2}}$}\\
+&\hat\sigma^s, \hat u_k^s, \tilde a_s, \tilde b_s, r_s, \hat\rho_k^{s,1}, \hat\rho_k^{s,2}, \hat\rho_k^{s,3} \geq 0 && \tag{$\widetilde{\text{DL-8C}}$}
+\end{align}
+
+\subsection{Form 2 의 코딩 가이드}
+
+\textbf{Expectation 케이스 dual 코드 (DL-1)~(DL-8) 와 비교.}
+\eqref{eq:t-DL-4C}--\eqref{eq:t-DL-7C} 는 expectation 의 (DL-4)--(DL-7) 과 \emph{완전히 동일}:
+$(\tilde a_s, \tilde b_s)$ 가 expectation 의 $(a_s, b_s)$ 자리.
+
+\textbf{필요한 변경 사항 (4개):}
+\begin{enumerate}[leftmargin=*]
+\item \textbf{새 변수 $r_s$ 추가}: $S$ 개, $r_s \geq 0$.
+\item \textbf{$(\widetilde{\text{DL-2C}}), (\widetilde{\text{DL-3C}})$ 에서 $a_s$ 를 $r_s$ 로 교체}: expectation 코드의 capacity bilinear 부분의 multiplier 만 갈아끼움.
+\item \textbf{$(\widetilde{\text{DL-RU1}})$ 추가}: $r_s \leq \tilde a_s/(1-\beta)$, $S$ 개 부등식.
+\item \textbf{$(\widetilde{\text{DL-RU2}})$ 추가}: $\sum r_s = 1$, scalar 등식.
+\end{enumerate}
+
+\textbf{$\beta = 0$ Sanity check.} $\beta = 0$ 에서 $(\widetilde{\text{DL-RU1}})$ 가 $r_s \leq \tilde a_s$ 가 되고 $\sum r_s = \sum \tilde a_s = 1$ 와 결합해 $r_s = \tilde a_s$ 강제. 이때 $(\widetilde{\text{DL-2C}}), (\widetilde{\text{DL-3C}})$ 가 expectation 의 (DL-2), (DL-3) 으로 환원. ✓
+
+\subsection{구조적 해석}
+
+\textbf{$\tilde a$}: TV ball $\Dhat$ 안의 worst-case distribution.
+\textbf{$r$}: 그 distribution 위에서의 CVaR risk envelope point.
+
+다음 등식의 dual 체현:
+\[
+\sup_{\Phat \in \Dhat}\CVaR_\beta^{\Phat}[\MF^s] 
+= \max_{\substack{\tilde a \in \text{TV-ball}(\hatq, \hat\varepsilon)\\ r \in \Rb(\tilde a)}} \textstyle\sum_s r_s\, \MF^s.
+\]
+즉 외측 worst-case 가 \emph{이중 polytope (TV $\times$ CVaR-envelope)} 위 maximization.
+
+
+\section{Combined Benders Cuts (Coding 참고)}
+\label{sec:benders-cuts}
+
+OMP cut form (모든 케이스 공통):
+\begin{equation}\label{eq:benders-cut}
+\boxed{\;
+t_0 \geq c^{(\ell)} + \textstyle\sum_k \kappa_{x_k}^{(\ell)}\,(x_k - \bar x_k^{(\ell)}).
+\;}
+\end{equation}
+$c^{(\ell)}$ 와 $\kappa^{(\ell)}$ 의 구체적 계산은 케이스마다 미세하게 다르다.
+
+\subsection{Symmetric Expectation 경우}
+
+\textbf{Intercept.}
+\[
+c^{(\ell)} = Z^{L*}(\bar\alpha^{(\ell)}, \bar x^{(\ell)}) + Z^{F*}(\bar\alpha^{(\ell)}, \bar x^{(\ell)}, \bar\lambda^{(\ell)}, \bar h^{(\ell)}, \bar\psi^{0(\ell)}).
+\]
+
+\textbf{Slope.} ISP-L 와 ISP-F 의 dual obj 가 $\bar x_k$ 에 대해 affine 한 부분의 gradient:
+\begin{align*}
+\kappa_{x_k}^{(\ell)} &= \underbrace{-\phi^U \textstyle\sum_s (\hat\rho_k^{s,1*} - \hat\rho_k^{s,3*})}_{\text{leader 기여 } \kappa^L_{x_k}}\\
+&\quad + \underbrace{-\phi^U \textstyle\sum_s (\tilde\rho_k^{s,1*} - \tilde\rho_k^{s,3*}) - \lambda^U(\rho_k^{0,1*} - \rho_k^{0,3*})}_{\text{follower 기여 } \kappa^F_{x_k}}.
+\end{align*}
+
+\textbf{Dual 변수 출처:}
+\begin{itemize}[leftmargin=*,nosep]
+\item $\hat\rho_k^{s,1*}, \hat\rho_k^{s,3*}$: ISP-L 의 leader McCormick 듀얼 (EL-McC1, EL-McC3).
+\item $\tilde\rho_k^{s,1*}, \tilde\rho_k^{s,3*}$: ISP-F 의 follower McCormick 듀얼 ($\tilpsi_k^s \approx \bar x_k \tilphi_k^s$).
+\item $\rho_k^{0,1*}, \rho_k^{0,3*}$: ISP-F 의 $\psi^0$-McCormick 듀얼 ($\psi^0_k \approx \bar x_k \lambda$).
+\end{itemize}
+
+\subsection{CVaR Leader / Expectation Follower 경우}
+
+\textbf{Intercept.}
+\[
+c^{(\ell)} = Z^{L*}_\beta(\bar\alpha^{(\ell)}, \bar x^{(\ell)}) + Z^{F*}(\bar\alpha^{(\ell)}, \bar x^{(\ell)}, \bar\lambda^{(\ell)}, \bar h^{(\ell)}, \bar\psi^{0(\ell)}).
+\]
+$Z^{L*}_\beta$ 는 \eqref{eq:ISP-L-CVaR-obj-transformed} 의 optimal value (R-U auxiliaries $(\eta_\beta, \vartheta, r)$ 가 포함된 LP).
+
+\textbf{Slope.} expectation 케이스와 \emph{완전히 동일한 형태}:
+\begin{equation}\label{eq:cut-slope-CVaR}
+\boxed{\;
+\kappa_{x_k}^{(\ell)} = -\phi^U \textstyle\sum_s [(\hat\rho_k^{s,1*}_\beta - \hat\rho_k^{s,3*}_\beta) + (\tilde\rho_k^{s,1*} - \tilde\rho_k^{s,3*})] - \lambda^U(\rho_k^{0,1*} - \rho_k^{0,3*})
+\;}
+\end{equation}
+\textbf{유일한 차이}: $\hat\rho_k^{s,1*}_\beta, \hat\rho_k^{s,3*}_\beta$ 는 ISP-L$_\beta$ (CVaR 버전; \eqref{eq:McC1}, \eqref{eq:McC3} 의 듀얼) 에서 추출. ISP-F 의 듀얼은 expectation 케이스와 동일.
+
+\textbf{R-U auxiliaries 의 cut 기여.} $(\eta_\beta, \vartheta, r_s, a_s, b_s)$ 는 master 변수 $\bar x$ 와 곱해지지 않으므로 \emph{cut slope 에 등장 X}. 단지 ISP-L$_\beta$ 의 obj value 를 통해 \emph{intercept $c^{(\ell)}$ 에만} 기여.
+
+\subsection{코딩 패턴 (Pseudocode)}
+
+\begin{verbatim}
+// Common outer loop
+while not converged:
+    (x_bar) = solve_OMP()
+    
+    // Inner loop (heuristic or B&B for alpha)
+    alpha_bar = optimize_alpha(x_bar)
+    
+    // Solve two ISPs (independent LPs given alpha_bar, x_bar)
+    if case == "expectation":
+        ZL_star, hat_rho1, hat_rho3 = solve_ISP_L(alpha_bar, x_bar)
+    else:  // "CVaR-leader"
+        ZL_star, hat_rho1, hat_rho3 = solve_ISP_L_beta(alpha_bar, x_bar)
+        // ↑ 추가 변수 r_s, eta_beta, theta_s; 추가 제약 (DL-RU1), (DL-RU2)
+    
+    ZF_star, til_rho1, til_rho3, rho01, rho03 = solve_ISP_F(alpha_bar, x_bar, ...)
+    
+    // Build cut (slope identical for both cases; intercept = ZL_star + ZF_star)
+    intercept = ZL_star + ZF_star
+    for k in arcs:
+        slope[k] = -phiU * sum_s (hat_rho1[s,k] - hat_rho3[s,k]) \
+                   -phiU * sum_s (til_rho1[s,k] - til_rho3[s,k]) \
+                   -lamU * (rho01[k] - rho03[k])
+    
+    add_cut_to_OMP(intercept, slope, x_bar)
+\end{verbatim}
+
+\textbf{핵심.} expectation 코드를 CVaR 로 확장하는 데 필요한 작업은 \emph{ISP-L 만 ISP-L$_\beta$ 로 교체} (4가지 변경: §\ref{sec:isp-l-dual-transformed} 의 코딩 가이드 참조). ISP-F, OMP, cut 조립 로직은 \emph{모두 그대로}.
+
+
+\section{Magnanti--Wong 강화 (Optional)}
+\label{sec:mw}
+
+연구노트의 MW 절차 mirror. Core point $\hat x \in \mathrm{ri}(\mathrm{conv}(\cX))$ 선택 후:
+\begin{align*}
+\text{MW-L}_\beta:&\quad \max_{d^L \in F^L_\beta(\bar\alpha)} \mathrm{obj}^L_\beta(\hat x, d^L) \quad\text{s.t.\ } \mathrm{obj}^L_\beta(\bar x, d^L) = Z^{L*}_\beta\\
+\text{MW-F}:&\quad \text{(동일, 변경 없음)}
+\end{align*}
+$\bar x$ 가 obj 에만 등장 (constraint 에 X) 하므로 equality constraint 는:
+\[
+\textstyle\sum_s \hat\sigma^s - \phi^U \sum_{s,k} \bar x_k \hat\rho_k^{s,1} - \phi^U \sum_{s,k}(1-\bar x_k)\hat\rho_k^{s,3} = Z^{L*}_\beta.
+\]
+
+\bibliographystyle{plain}
+\begin{thebibliography}{9}
+\bibitem{ling2017robust}
+A. Ling, J. Sun, X. Yang. Robust tracking error portfolio selection with worst-case downside risk measures. Journal of Economic Dynamics and Control 39 (2014): 178-207. (또는 distributionally robust CVaR 의 표준 reference)
+\end{thebibliography}
+
+\end{document}
