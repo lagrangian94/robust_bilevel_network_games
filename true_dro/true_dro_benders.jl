@@ -125,7 +125,7 @@ function true_dro_benders_optimize!(td::TrueDROData;
 
     # ---- Build subproblem: global model (no ρ bound) ----
     x_init = zeros(K)
-    _use_nominal_compact = (td.eps_hat == 0.0 && td.eps_tilde == 0.0)
+    _use_nominal_compact = (td.eps_hat == 0.0 && td.eps_tilde == 0.0 && td.beta == 0.0)
     _use_single_compact = (td.eps_tilde == 0.0)  # nominal도 포함
     if _use_nominal_compact
         _sub_builder = build_true_dro_subproblem_nominal
@@ -184,10 +184,11 @@ function true_dro_benders_optimize!(td::TrueDROData;
         α_init = zeros(K)
         isp_l_model, isp_l_vars = build_true_dro_isp_leader(td, x_init, α_init; optimizer=lp_optimizer)
         isp_f_model, isp_f_vars = build_true_dro_isp_follower(td, x_init, α_init; optimizer=lp_optimizer)
-        # α-step LP: a,d 파라미터로 고정한 순수 LP (pre-build)
+        # α-step LP: a,d,r 파라미터로 고정한 순수 LP (pre-build)
         a_dummy = fill(1.0 / td.S, td.S)
         d_dummy = fill(1.0 / td.S, td.S)
-        astep_lp_model, astep_lp_vars = build_alpha_step_lp(td, x_init, a_dummy, d_dummy;
+        r_dummy = fill(1.0 / td.S, td.S)
+        astep_lp_model, astep_lp_vars = build_alpha_step_lp(td, x_init, a_dummy, d_dummy, r_dummy;
                                                               optimizer=lp_optimizer)
         if verbose
             @info "Mini-Benders enabled: max_mini_iter=$max_mini_benders_iter"
@@ -469,6 +470,7 @@ function true_dro_benders_optimize!(td::TrueDROData;
         if mini_benders
             α_fixed = sub_info[:α_val]
             last_a_val = nothing  # from last ISP-L solve
+            last_r_val = nothing  # from last ISP-L solve (CVaR)
             last_d_val = nothing  # from last ISP-F solve
 
             for phase in 1:2
@@ -531,8 +533,9 @@ function true_dro_benders_optimize!(td::TrueDROData;
                         break
                     end
 
-                    # 마지막 ISP solve의 a*, d* 저장 (α-step에 사용)
+                    # 마지막 ISP solve의 a*, r*, d* 저장 (α-step에 사용)
                     last_a_val = l_info[:a_val]
+                    last_r_val = l_info[:r_val]
                     last_d_val = f_info[:d_val]
 
                     Z0_mini = l_info[:obj_val] + f_info[:obj_val]
@@ -655,8 +658,8 @@ function true_dro_benders_optimize!(td::TrueDROData;
                     end
                 end
 
-                # ---- α-step: fix (a*, d*) → solve over α → new α' ----
-                # 1차: QCP sub_model에 fix(a,d) 시도.
+                # ---- α-step: fix (a*, r*, d*) → solve over α → new α' ----
+                # 1차: QCP sub_model에 fix(a,r,d) 시도.
                 # Gurobi NonConvex=2 + fix()가 infeasible 오판하면
                 # 2차: 별도 LP model (quadratic 없음)로 fallback.
                 if phase == 1 && last_a_val !== nothing
@@ -664,6 +667,7 @@ function true_dro_benders_optimize!(td::TrueDROData;
 
                     # Clamp (ISP LP numerical noise 방지)
                     a_clamped = _use_nominal_compact ? td.q_hat : [max(last_a_val[s], sub_vars[:a_min][s]) for s in 1:S]
+                    r_clamped = _use_nominal_compact ? td.q_hat : [clamp(last_r_val[s], 0.0, sub_vars[:r_max][s]) for s in 1:S]
                     d_clamped = _use_single_compact ? td.q_hat : [max(last_d_val[s], sub_vars[:d_min][s]) for s in 1:S]
 
                     # OMP x̄ for objective
@@ -674,15 +678,16 @@ function true_dro_benders_optimize!(td::TrueDROData;
                     end
                     x_alt = round.([value(omp_vars[:x][k]) for k in 1:K])
 
-                    # Nominal compact: a,d 모두 고정 → fix 불필요, 바로 sub solve
-                    # Single compact: a만 fix, d 없음
-                    # Full: a,d 모두 fix
+                    # Nominal compact: a,r,d 모두 고정 → fix 불필요, 바로 sub solve
+                    # Single compact: a,r만 fix, d 없음
+                    # Full: a,r,d 모두 fix
                     local alt_info
                     qcp_ok = true
                     try
                         if !_use_nominal_compact
                             for s in 1:S
                                 fix(sub_vars[:a][s], a_clamped[s]; force=true)
+                                fix(sub_vars[:r][s], r_clamped[s]; force=true)
                             end
                         end
                         if !_use_single_compact
@@ -703,6 +708,11 @@ function true_dro_benders_optimize!(td::TrueDROData;
                             unfix.(sub_vars[:a])
                             set_lower_bound.(sub_vars[:a], sub_vars[:a_min])
                             set_upper_bound.(sub_vars[:a], sub_vars[:a_max])
+                            unfix.(sub_vars[:r])
+                            set_lower_bound.(sub_vars[:r], 0.0)
+                            for s in 1:S
+                                set_upper_bound(sub_vars[:r][s], sub_vars[:r_max][s])
+                            end
                         end
                         if !_use_single_compact
                             unfix.(sub_vars[:d])
@@ -715,7 +725,7 @@ function true_dro_benders_optimize!(td::TrueDROData;
                     if !qcp_ok
                         try
                             alt_info = solve_alpha_step_lp!(astep_lp_model, astep_lp_vars,
-                                                            td, x_alt, a_clamped, d_clamped)
+                                                            td, x_alt, a_clamped, d_clamped, r_clamped)
                         catch e2
                             if verbose
                                 @printf("  α-step LP also failed (%s), skip\n",
