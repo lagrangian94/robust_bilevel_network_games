@@ -36,7 +36,7 @@ println("\n" * "="^50)
 println("Run 1: default (no beta kwarg)")
 println("="^50)
 td1 = make_true_dro_data(net, caps, q_hat, 0.3, 0.0; w=w, lambda_U=2.0, gamma=γ)
-@printf("td1.beta = %.1f\n", td1.beta)
+println("td1.beta = $(td1.beta)")
 
 res1 = true_dro_benders_optimize!(td1;
     mip_optimizer=Gurobi.Optimizer, nlp_optimizer=Gurobi.Optimizer,

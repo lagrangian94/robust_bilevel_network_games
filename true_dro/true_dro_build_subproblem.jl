@@ -118,7 +118,8 @@ function build_true_dro_subproblem(td::TrueDROData, x_bar::Vector{Float64};
     # ====================================================================
     # CVaR risk parameter
     # ====================================================================
-    β = td.beta
+    _use_cvar = (td.beta !== nothing)
+    β = _use_cvar ? td.beta : 0.0
 
     # ====================================================================
     # ISP-L variables (true_dro_v5.md §7.3)
@@ -129,9 +130,6 @@ function build_true_dro_subproblem(td::TrueDROData, x_bar::Vector{Float64};
     @variable(model, a_min[s] <= a[s=1:S] <= a_max[s])
     # b_s = |a_s - q̂_s|, ≤ 2ε̂ from DL-6
     @variable(model, 0 <= b[1:S] <= 2 * ε̂)
-    # r[s]: CVaR reweighting variable, r[s] ∈ [0, a_max[s]/(1-β)]
-    r_max = [a_max[s] / (1.0 - β) for s in 1:S]
-    @variable(model, 0 <= r[s=1:S] <= r_max[s])
     @variable(model, ρ_hat_1[1:K, 1:S] >= 0)
     @variable(model, ρ_hat_2[1:K, 1:S] >= 0)
     @variable(model, ρ_hat_3[1:K, 1:S] >= 0)
@@ -145,29 +143,38 @@ function build_true_dro_subproblem(td::TrueDROData, x_bar::Vector{Float64};
         end
     end
 
-    # Auxiliary bilinear: ζL_{ks} = α_k · r_s, tight per-(k,s) bound
-    @variable(model, 0 <= ζL[k=1:K, s=1:S] <= w * r_max[s])
-    @constraint(model, ζL_def[k=1:K, s=1:S], ζL[k, s] == α[k] * r[s])
-
     # --- (DL-1): N_y û^s + N_ts σ̂^s = 0  ∀s ---
     @constraint(model, DL1[j=1:m, s=1:S],
         sum(Ny[j, k] * u_hat[k, s] for k in 1:K) + Nts[j] * σ_hat[s] == 0)
 
-    # --- (DL-RU1): r[s] ≤ a[s]/(1-β)  ∀s ---
-    @constraint(model, DL_RU1[s=1:S], r[s] <= a[s] / (1.0 - β))
+    if _use_cvar
+        # CVaR path: r[s] 변수 추가, ζL = α·r bilinear
+        r_max = [a_max[s] / (1.0 - β) for s in 1:S]
+        @variable(model, 0 <= r[s=1:S] <= r_max[s])
+        @variable(model, 0 <= ζL[k=1:K, s=1:S] <= w * r_max[s])
+        @constraint(model, ζL_def[k=1:K, s=1:S], ζL[k, s] == α[k] * r[s])
 
-    # --- (DL-RU2): Σ_s r[s] = 1 ---
-    @constraint(model, DL_RU2, sum(r[s] for s in 1:S) == 1)
+        @constraint(model, DL_RU1[s=1:S], r[s] <= a[s] / (1.0 - β))
+        @constraint(model, DL_RU2, sum(r[s] for s in 1:S) == 1)
 
-    # --- (DL-2): -(ξ̄_k^s + α_k) r_s + û_k^s + ρ̂² - ρ̂³ ≤ 0  ∀k,s   [BILINEAR via ζL, a→r] ---
-    @constraint(model, DL2[k=1:K, s=1:S],
-        -ξ[k, s] * r[s] - ζL[k, s]
-        + u_hat[k, s] + ρ_hat_2[k, s] - ρ_hat_3[k, s] <= 0)
+        @constraint(model, DL2[k=1:K, s=1:S],
+            -ξ[k, s] * r[s] - ζL[k, s]
+            + u_hat[k, s] + ρ_hat_2[k, s] - ρ_hat_3[k, s] <= 0)
+        @constraint(model, DL3[k=1:K, s=1:S],
+            v[k, s] * ξ[k, s] * r[s]
+            - ρ_hat_1[k, s] - ρ_hat_2[k, s] + ρ_hat_3[k, s] <= 0)
+    else
+        # 기존 expectation path: ζL = α·a bilinear
+        @variable(model, 0 <= ζL[k=1:K, s=1:S] <= w * a_max[s])
+        @constraint(model, ζL_def[k=1:K, s=1:S], ζL[k, s] == α[k] * a[s])
 
-    # --- (DL-3): v_k^s ξ̄_k^s r_s - ρ̂¹ - ρ̂² + ρ̂³ ≤ 0  ∀k,s   [a→r] ---
-    @constraint(model, DL3[k=1:K, s=1:S],
-        v[k, s] * ξ[k, s] * r[s]
-        - ρ_hat_1[k, s] - ρ_hat_2[k, s] + ρ_hat_3[k, s] <= 0)
+        @constraint(model, DL2[k=1:K, s=1:S],
+            -ξ[k, s] * a[s] - ζL[k, s]
+            + u_hat[k, s] + ρ_hat_2[k, s] - ρ_hat_3[k, s] <= 0)
+        @constraint(model, DL3[k=1:K, s=1:S],
+            v[k, s] * ξ[k, s] * a[s]
+            - ρ_hat_1[k, s] - ρ_hat_2[k, s] + ρ_hat_3[k, s] <= 0)
+    end
 
     # --- (DL-4): a_s - b_s ≤ q̂_s ---
     @constraint(model, DL4[s=1:S], a[s] - b[s] <= q[s])
@@ -307,7 +314,7 @@ function build_true_dro_subproblem(td::TrueDROData, x_bar::Vector{Float64};
         # Auxiliary bilinear
         :ζL => ζL, :ζF => ζF,
         # ISP-L
-        :σ_hat => σ_hat, :u_hat => u_hat, :a => a, :b => b, :r => r,
+        :σ_hat => σ_hat, :u_hat => u_hat, :a => a, :b => b,
         :ρ_hat_1 => ρ_hat_1, :ρ_hat_2 => ρ_hat_2, :ρ_hat_3 => ρ_hat_3,
         # ISP-F
         :d => d, :e => e, :u_tilde => u_tilde, :σ_tilde => σ_tilde,
@@ -316,9 +323,13 @@ function build_true_dro_subproblem(td::TrueDROData, x_bar::Vector{Float64};
         :ρ_psi0_1 => ρ_psi0_1, :ρ_psi0_2 => ρ_psi0_2, :ρ_psi0_3 => ρ_psi0_3,
         # Precomputed bounds (for fix/unfix restoration)
         :a_min => a_min, :a_max => a_max,
-        :r_max => r_max,
         :d_min => d_min, :d_max => d_max,
+        :_use_cvar => _use_cvar,
     )
+    if _use_cvar
+        vars[:r] = r
+        vars[:r_max] = r_max
+    end
     if add_objF_vi
         vars[:objF_vi_rho_tilde_1] = objF_vi_rho_tilde_1
         vars[:objF_vi_rho_tilde_3] = objF_vi_rho_tilde_3
@@ -443,8 +454,8 @@ function solve_true_dro_subproblem!(model, vars, td::TrueDROData, x_bar::Vector{
         Z0_val
     end
 
-    # r_val (CVaR reweighting): present in full/single variants, not in nominal
-    r_val = haskey(vars, :r) ? [value(vars[:r][s]) for s in 1:S] : nothing
+    # r_val (CVaR reweighting): present only when _use_cvar=true
+    r_val = get(vars, :_use_cvar, false) ? [value(vars[:r][s]) for s in 1:S] : nothing
 
     return Dict(
         :Z0_val => Z0_val,
@@ -468,24 +479,33 @@ end
 """
     build_alpha_step_lp(td, x_bar, a_val, d_val, r_val; optimizer)
 
-a,d,r를 파라미터(상수)로 넣은 α-step LP. bilinear subproblem과 동일 구조이나
-ζL=α·r, ζF=α·d가 linear constraint.
+a,d,(r)를 파라미터(상수)로 넣은 α-step LP. bilinear subproblem과 동일 구조이나
+ζL=α·r (CVaR) 또는 ζL=α·a (expectation), ζF=α·d가 linear constraint.
+r_val: CVaR일 때만 사용, expectation이면 nothing.
 Returns (model, vars). vars에 constraint ref 포함 (update용).
 """
 function build_alpha_step_lp(td::TrueDROData, x_bar::Vector{Float64},
                               a_val::Vector{Float64}, d_val::Vector{Float64},
-                              r_val::Vector{Float64};
+                              r_val::Union{Vector{Float64}, Nothing};
                               optimizer)
     S = td.S; K = td.num_arcs; m = td.nv1
     Ny = td.Ny; Nts = td.Nts; q = td.q_hat
     ε̂ = td.eps_hat; ε̃ = td.eps_tilde
     ξ = td.xi_bar; v = td.v; w = td.w
     φ̂U = td.phi_hat_U; φ̃U = td.phi_tilde_U; λU = td.lambda_U
-    β = td.beta
+    _use_cvar = (td.beta !== nothing)
 
     a_max = [min(1.0, q[s] + 2ε̂) for s in 1:S]
-    r_max_bound = [a_max[s] / (1.0 - β) for s in 1:S]
     d_max = [min(1.0, q[s] + 2ε̃) for s in 1:S]
+
+    # ISP-L에서 ζL 계수로 쓸 값: CVaR이면 r_val, 아니면 a_val
+    ζL_param = _use_cvar ? r_val : a_val
+    if _use_cvar
+        β = td.beta
+        ζL_ub = [a_max[s] / (1.0 - β) for s in 1:S]
+    else
+        ζL_ub = a_max
+    end
 
     model = Model(optimizer)
     set_silent(model)
@@ -494,9 +514,9 @@ function build_alpha_step_lp(td::TrueDROData, x_bar::Vector{Float64},
     @variable(model, 0 <= α[1:K] <= w)
     @constraint(model, sum(α) <= w)
 
-    # ζL[k,s] = α[k] * r_val[s]  (linear: r is parameter)
-    @variable(model, 0 <= ζL[k=1:K, s=1:S] <= w * r_max_bound[s])
-    @constraint(model, ζL_def[k=1:K, s=1:S], ζL[k, s] == α[k] * r_val[s])
+    # ζL[k,s] = α[k] * ζL_param[s]  (linear: parameter)
+    @variable(model, 0 <= ζL[k=1:K, s=1:S] <= w * ζL_ub[s])
+    @constraint(model, ζL_def[k=1:K, s=1:S], ζL[k, s] == α[k] * ζL_param[s])
 
     # ISP-L variables
     @variable(model, σ_hat[1:S] >= 0)
@@ -509,12 +529,12 @@ function build_alpha_step_lp(td::TrueDROData, x_bar::Vector{Float64},
     # (DL-1)
     @constraint(model, DL1[j=1:m, s=1:S],
         sum(Ny[j, k] * u_hat[k, s] for k in 1:K) + Nts[j] * σ_hat[s] == 0)
-    # (DL-2): -ξ*r - ζL + u + ρ̂₂ - ρ̂₃ ≤ 0   (r is constant → ξ*r in RHS)
+    # (DL-2): -ξ*p - ζL + u + ρ̂₂ - ρ̂₃ ≤ 0   (p = r or a, constant → RHS)
     @constraint(model, DL2[k=1:K, s=1:S],
-        -ζL[k, s] + u_hat[k, s] + ρ_hat_2[k, s] - ρ_hat_3[k, s] <= ξ[k, s] * r_val[s])
-    # (DL-3): v*ξ*r - ρ̂₁ - ρ̂₂ + ρ̂₃ ≤ 0
+        -ζL[k, s] + u_hat[k, s] + ρ_hat_2[k, s] - ρ_hat_3[k, s] <= ξ[k, s] * ζL_param[s])
+    # (DL-3): v*ξ*p - ρ̂₁ - ρ̂₂ + ρ̂₃ ≤ 0
     @constraint(model, DL3[k=1:K, s=1:S],
-        -ρ_hat_1[k, s] - ρ_hat_2[k, s] + ρ_hat_3[k, s] <= -v[k, s] * ξ[k, s] * r_val[s])
+        -ρ_hat_1[k, s] - ρ_hat_2[k, s] + ρ_hat_3[k, s] <= -v[k, s] * ξ[k, s] * ζL_param[s])
     # (DL-4~7): b ≥ |a-q̂|, Σb ≤ 2ε̂  (a is constant)
     @constraint(model, DL4[s=1:S], -b[s] <= q[s] - a_val[s])
     @constraint(model, DL5[s=1:S],  b[s] >= q[s] - a_val[s])
@@ -599,31 +619,35 @@ end
 """
     update_alpha_step_lp!(model, vars, td, x_bar, a_val, d_val, r_val)
 
-α-step LP의 a,d,r 파라미터 및 x̄ 목적함수 계수를 갱신.
+α-step LP의 a,d,(r) 파라미터 및 x̄ 목적함수 계수를 갱신.
+r_val: CVaR이면 Vector{Float64}, expectation이면 nothing.
 """
 function update_alpha_step_lp!(model, vars, td::TrueDROData,
                                 x_bar::Vector{Float64},
                                 a_val::Vector{Float64}, d_val::Vector{Float64},
-                                r_val::Vector{Float64})
+                                r_val::Union{Vector{Float64}, Nothing})
     S = td.S; K = td.num_arcs
     ξ = td.xi_bar; v = td.v
     φ̂U = td.phi_hat_U; φ̃U = td.phi_tilde_U; λU = td.lambda_U
 
     α = vars[:α]
 
-    # ---- r 관련 계수 갱신 (ISP-L: a→r) ----
+    # ISP-L에서 ζL 계수로 쓸 값: CVaR이면 r_val, 아니면 a_val
+    ζL_param = (td.beta !== nothing) ? r_val : a_val
+
+    # ---- ζL_param 관련 계수 갱신 ----
     for s in 1:S
-        # ζL_def: ζL[k,s] == α[k] * r[s]  →  α[k] coef = r[s]
+        # ζL_def: ζL[k,s] == α[k] * p[s]  →  α[k] coef = p[s]
         for k in 1:K
-            set_normalized_coefficient(vars[:ζL_def][k, s], α[k], -r_val[s])
+            set_normalized_coefficient(vars[:ζL_def][k, s], α[k], -ζL_param[s])
         end
-        # DL2: ... ≤ ξ*r  →  RHS = ξ[k,s]*r[s]
+        # DL2: ... ≤ ξ*p  →  RHS = ξ[k,s]*p[s]
         for k in 1:K
-            set_normalized_rhs(vars[:DL2][k, s], ξ[k, s] * r_val[s])
+            set_normalized_rhs(vars[:DL2][k, s], ξ[k, s] * ζL_param[s])
         end
-        # DL3: ... ≤ -v*ξ*r  →  RHS = -v[k,s]*ξ[k,s]*r[s]
+        # DL3: ... ≤ -v*ξ*p  →  RHS = -v[k,s]*ξ[k,s]*p[s]
         for k in 1:K
-            set_normalized_rhs(vars[:DL3][k, s], -v[k, s] * ξ[k, s] * r_val[s])
+            set_normalized_rhs(vars[:DL3][k, s], -v[k, s] * ξ[k, s] * ζL_param[s])
         end
         # DL4: -b ≤ q-a  →  RHS = q-a
         set_normalized_rhs(vars[:DL4][s], td.q_hat[s] - a_val[s])
@@ -666,11 +690,12 @@ end
     solve_alpha_step_lp!(model, vars, td, x_bar, a_val, d_val, r_val)
 
 α-step LP 갱신 + solve. 반환 형식은 solve_true_dro_subproblem!과 동일.
+r_val: CVaR이면 Vector{Float64}, expectation이면 nothing.
 """
 function solve_alpha_step_lp!(model, vars, td::TrueDROData,
                                x_bar::Vector{Float64},
                                a_val::Vector{Float64}, d_val::Vector{Float64},
-                               r_val::Vector{Float64})
+                               r_val::Union{Vector{Float64}, Nothing})
     S = td.S; K = td.num_arcs
 
     update_alpha_step_lp!(model, vars, td, x_bar, a_val, d_val, r_val)
@@ -747,7 +772,8 @@ function build_true_dro_subproblem_single(td::TrueDROData, x_bar::Vector{Float64
     φ̂U = td.phi_hat_U
     φ̃U = td.phi_tilde_U
     λU = td.lambda_U
-    β = td.beta
+    _use_cvar = (td.beta !== nothing)
+    β = _use_cvar ? td.beta : 0.0
 
     model = Model(optimizer)
     if silent
@@ -756,11 +782,10 @@ function build_true_dro_subproblem_single(td::TrueDROData, x_bar::Vector{Float64
     set_optimizer_attribute(model, "DualReductions", 0)
 
     # ====================================================================
-    # ISP-L: a, r, ζL=α·r bilinear 유지
+    # ISP-L: a 변수 유지, CVaR이면 r+ζL=α·r, 아니면 ζL=α·a
     # ====================================================================
     a_min = [max(0.0, q[s] - 2 * ε̂) for s in 1:S]
     a_max = [min(1.0, q[s] + 2 * ε̂) for s in 1:S]
-    r_max = [a_max[s] / (1.0 - β) for s in 1:S]
 
     @variable(model, 0 <= α[1:K] <= w)
     @constraint(model, sum(α[k] for k in 1:K) <= w)
@@ -769,7 +794,6 @@ function build_true_dro_subproblem_single(td::TrueDROData, x_bar::Vector{Float64
     @variable(model, u_hat[1:K, 1:S] >= 0)
     @variable(model, a_min[s] <= a[s=1:S] <= a_max[s])
     @variable(model, 0 <= b[1:S] <= 2 * ε̂)
-    @variable(model, 0 <= r[s=1:S] <= r_max[s])
     @variable(model, ρ_hat_1[1:K, 1:S] >= 0)
     @variable(model, ρ_hat_2[1:K, 1:S] >= 0)
     @variable(model, ρ_hat_3[1:K, 1:S] >= 0)
@@ -782,25 +806,39 @@ function build_true_dro_subproblem_single(td::TrueDROData, x_bar::Vector{Float64
         end
     end
 
-    # Bilinear: ζL_{ks} = α_k · r_s (유일한 bilinear term)
-    @variable(model, 0 <= ζL[k=1:K, s=1:S] <= w * r_max[s])
-    @constraint(model, ζL_def[k=1:K, s=1:S], ζL[k, s] == α[k] * r[s])
-
     # (DL-1)
     @constraint(model, DL1[j=1:m, s=1:S],
         sum(Ny[j, k] * u_hat[k, s] for k in 1:K) + Nts[j] * σ_hat[s] == 0)
-    # (DL-RU1): r[s] ≤ a[s]/(1-β)
-    @constraint(model, DL_RU1[s=1:S], r[s] <= a[s] / (1.0 - β))
-    # (DL-RU2): Σ r[s] = 1
-    @constraint(model, DL_RU2, sum(r[s] for s in 1:S) == 1)
-    # (DL-2): bilinear via ζL, a→r
-    @constraint(model, DL2[k=1:K, s=1:S],
-        -ξ[k, s] * r[s] - ζL[k, s]
-        + u_hat[k, s] + ρ_hat_2[k, s] - ρ_hat_3[k, s] <= 0)
-    # (DL-3): a→r
-    @constraint(model, DL3[k=1:K, s=1:S],
-        v[k, s] * ξ[k, s] * r[s]
-        - ρ_hat_1[k, s] - ρ_hat_2[k, s] + ρ_hat_3[k, s] <= 0)
+
+    if _use_cvar
+        # CVaR path: r[s] 변수 추가, ζL = α·r bilinear
+        r_max = [a_max[s] / (1.0 - β) for s in 1:S]
+        @variable(model, 0 <= r[s=1:S] <= r_max[s])
+        @variable(model, 0 <= ζL[k=1:K, s=1:S] <= w * r_max[s])
+        @constraint(model, ζL_def[k=1:K, s=1:S], ζL[k, s] == α[k] * r[s])
+
+        @constraint(model, DL_RU1[s=1:S], r[s] <= a[s] / (1.0 - β))
+        @constraint(model, DL_RU2, sum(r[s] for s in 1:S) == 1)
+
+        @constraint(model, DL2[k=1:K, s=1:S],
+            -ξ[k, s] * r[s] - ζL[k, s]
+            + u_hat[k, s] + ρ_hat_2[k, s] - ρ_hat_3[k, s] <= 0)
+        @constraint(model, DL3[k=1:K, s=1:S],
+            v[k, s] * ξ[k, s] * r[s]
+            - ρ_hat_1[k, s] - ρ_hat_2[k, s] + ρ_hat_3[k, s] <= 0)
+    else
+        # 기존 expectation path: ζL = α·a bilinear
+        @variable(model, 0 <= ζL[k=1:K, s=1:S] <= w * a_max[s])
+        @constraint(model, ζL_def[k=1:K, s=1:S], ζL[k, s] == α[k] * a[s])
+
+        @constraint(model, DL2[k=1:K, s=1:S],
+            -ξ[k, s] * a[s] - ζL[k, s]
+            + u_hat[k, s] + ρ_hat_2[k, s] - ρ_hat_3[k, s] <= 0)
+        @constraint(model, DL3[k=1:K, s=1:S],
+            v[k, s] * ξ[k, s] * a[s]
+            - ρ_hat_1[k, s] - ρ_hat_2[k, s] + ρ_hat_3[k, s] <= 0)
+    end
+
     # (DL-4~7)
     @constraint(model, DL4[s=1:S], a[s] - b[s] <= q[s])
     @constraint(model, DL5[s=1:S], a[s] + b[s] >= q[s])
@@ -903,7 +941,7 @@ function build_true_dro_subproblem_single(td::TrueDROData, x_bar::Vector{Float64
         :α => α,
         :ζL => ζL,
         # ISP-L
-        :σ_hat => σ_hat, :u_hat => u_hat, :a => a, :b => b, :r => r,
+        :σ_hat => σ_hat, :u_hat => u_hat, :a => a, :b => b,
         :ρ_hat_1 => ρ_hat_1, :ρ_hat_2 => ρ_hat_2, :ρ_hat_3 => ρ_hat_3,
         # ISP-F (d, e, ζF 없음)
         :u_tilde => u_tilde, :σ_tilde => σ_tilde,
@@ -912,9 +950,13 @@ function build_true_dro_subproblem_single(td::TrueDROData, x_bar::Vector{Float64
         :ρ_psi0_1 => ρ_psi0_1, :ρ_psi0_2 => ρ_psi0_2, :ρ_psi0_3 => ρ_psi0_3,
         # Bounds (a만, d는 없음)
         :a_min => a_min, :a_max => a_max,
-        :r_max => r_max,
         :is_single_compact => true,
+        :_use_cvar => _use_cvar,
     )
+    if _use_cvar
+        vars[:r] = r
+        vars[:r_max] = r_max
+    end
     if add_objF_vi
         vars[:objF_vi_rho_tilde_1] = objF_vi_rho_tilde_1
         vars[:objF_vi_rho_tilde_3] = objF_vi_rho_tilde_3

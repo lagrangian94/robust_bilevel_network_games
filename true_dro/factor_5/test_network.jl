@@ -5,12 +5,18 @@ test_network.jl — unified test script for all networks
   real-world (abilene, nobel_us, sioux_falls, polska): γ=2(polska)/1(others), all arcs interdictable
 
 Usage:
-  julia test_network.jl <network_name> [eps] [scenario] [mode] [qhat]
+  julia test_network.jl <network_name> [eps] [scenario] [mode] [qhat] [key=value...]
   network_name: grid5x5, abilene, nobel_us, sioux_falls, polska
   eps: robust ε value (default 1.0)
   scenario: uniform (default) or factor (factor_additive, k=5)
   mode: double (default), single_l (ε̂=eps, ε̃=0), single_f (ε̂=0, ε̃=eps)
   qhat: uniform (default), sample1, sample3, sample8 (non-uniform q̂ from qhat_samples.jl)
+  beta=<float>: CVaR risk level β ∈ [0,1). 미지정 시 기존 expectation (r 없음).
+
+Examples:
+  julia test_network.jl grid5x5 0.3 uniform single_l          # expectation (기존, r 없음)
+  julia test_network.jl grid5x5 0.3 uniform single_l beta=0.0 # CVaR β=0 (r=a 강제, 동일 결과)
+  julia test_network.jl grid5x5 0.3 uniform single_l beta=0.3 # CVaR β=0.3
 """
 
 using JuMP, Gurobi, Printf, Dates, Serialization, LinearAlgebra
@@ -27,12 +33,24 @@ include("../true_dro_benders.jl")
 include("../true_dro_mincut_vi.jl")
 
 # ── parse argument ──
-if length(ARGS) >= 1
-    network_name = lowercase(ARGS[1])
-    ε_rob = length(ARGS) >= 2 ? parse(Float64, ARGS[2]) : 1.0
-    scenario = length(ARGS) >= 3 ? lowercase(ARGS[3]) : "uniform"
-    mode = length(ARGS) >= 4 ? lowercase(ARGS[4]) : "double"
-    qhat_name = length(ARGS) >= 5 ? lowercase(ARGS[5]) : "uniform"
+# key=value 형태 arg 파싱 (예: beta=0.3). 나머지는 positional.
+_kw_args = Dict{String,String}()
+_pos_args = String[]
+for arg in ARGS
+    if occursin("=", arg)
+        k, v = split(arg, "="; limit=2)
+        _kw_args[lowercase(k)] = v
+    else
+        push!(_pos_args, arg)
+    end
+end
+
+if length(_pos_args) >= 1
+    network_name = lowercase(_pos_args[1])
+    ε_rob = length(_pos_args) >= 2 ? parse(Float64, _pos_args[2]) : 1.0
+    scenario = length(_pos_args) >= 3 ? lowercase(_pos_args[3]) : "uniform"
+    mode = length(_pos_args) >= 4 ? lowercase(_pos_args[4]) : "double"
+    qhat_name = length(_pos_args) >= 5 ? lowercase(_pos_args[5]) : "uniform"
 else
     print("network (grid5x5/abilene/nobel_us/sioux_falls/polska): ")
     network_name = lowercase(strip(readline()))
@@ -49,6 +67,7 @@ else
     qhat_input = strip(readline())
     qhat_name = isempty(qhat_input) ? "uniform" : lowercase(qhat_input)
 end
+β_risk = haskey(_kw_args, "beta") ? parse(Float64, _kw_args["beta"]) : nothing
 scenario in ("uniform", "factor") || error("Unknown scenario: $scenario (uniform or factor)")
 mode == "single" && (mode = "single_l")  # backward compat
 mode in ("double", "single_l", "single_f") || error("Unknown mode: $mode (double/single_l/single_f)")
@@ -62,7 +81,8 @@ eps_str = replace(string(ε_rob), "." => "p")
 mode_suffix = mode == "single_l" ? "_single" : mode == "single_f" ? "_single_f" : ""
 scen_suffix = scenario == "factor" ? "_factor" : ""
 qhat_suffix = qhat_name == "uniform" ? "" : "_$(qhat_name)"
-log_path = joinpath(@__DIR__, "logs", "$(network_name)_eps$(eps_str)$(mode_suffix)$(scen_suffix)$(qhat_suffix).log")
+beta_suffix = (β_risk === nothing || β_risk == 0.0) ? "" : "_beta" * replace(string(β_risk), "." => "p")
+log_path = joinpath(@__DIR__, "logs", "$(network_name)_eps$(eps_str)$(mode_suffix)$(scen_suffix)$(qhat_suffix)$(beta_suffix).log")
 mkpath(dirname(log_path))
 log_io = open(log_path, "w")
 original_stdout = stdout
@@ -168,11 +188,12 @@ mode_label = mode == "single_l" ? "Single-layer DRO (leader only)" :
              mode == "single_f" ? "Single-layer DRO (follower only)" : "Double-layer DRO"
 
 println("\n" * "="^60)
-println("$mode_label (ε̂=$ε_hat, ε̃=$ε_tilde, λU=$λU)")
+beta_label = (β_risk !== nothing) ? "CVaR (β=$β_risk)" : "Expectation"
+println("$mode_label — $beta_label (ε̂=$ε_hat, ε̃=$ε_tilde, λU=$λU)")
 println("="^60)
 flush(stdout)
 
-td = make_true_dro_data(net, caps, q_hat, ε_hat, ε_tilde; w=w, lambda_U=λU, gamma=γ)
+td = make_true_dro_data(net, caps, q_hat, ε_hat, ε_tilde; w=w, lambda_U=λU, gamma=γ, beta=β_risk)
 t0 = time()
 res = true_dro_benders_optimize!(td;
     mip_optimizer=Gurobi.Optimizer, nlp_optimizer=Gurobi.Optimizer, lp_optimizer=Gurobi.Optimizer,
@@ -184,7 +205,8 @@ res = true_dro_benders_optimize!(td;
 wt = time() - t0
 x_sol = round.(Int, res[:x])
 
-@printf("\nResult (%s): Z₀=%.6f, iters=%d, time=%.1fs\n", mode, res[:Z0], res[:iters], wt)
+β_str = β_risk === nothing ? "none" : @sprintf("%.2f", β_risk)
+@printf("\nResult (%s, β=%s): Z₀=%.6f, iters=%d, time=%.1fs\n", mode, β_str, res[:Z0], res[:iters], wt)
 println("x arcs = $(findall(x_sol .> 0))")
 flush(stdout)
 

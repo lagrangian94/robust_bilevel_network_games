@@ -47,7 +47,7 @@ struct TrueDROData
     interdictable_arcs::Vector{Bool}
     phi_hat_U::Float64
     phi_tilde_U::Float64
-    beta::Float64              # CVaR risk level β ∈ [0,1). β=0 → expectation.
+    beta::Union{Nothing, Float64}  # CVaR risk level β ∈ [0,1). nothing → 기존 expectation (r 없음). 0.0 → CVaR with r=a.
 end
 
 
@@ -60,7 +60,7 @@ GridNetworkData + scenario 데이터로부터 TrueDROData 생성.
 function make_true_dro_data(network, scenarios, q_hat, eps_hat, eps_tilde;
                             w=1.0, lambda_U=10.0, gamma=2,
                             v_scenarios::Union{Matrix{Float64}, Nothing}=nothing,
-                            beta::Float64=0.0)
+                            beta::Union{Nothing, Float64}=nothing)
     num_arcs = length(network.arcs) - 1  # dummy arc 제외
     N_trunc = network.N
     Ny = N_trunc[:, 1:num_arcs]
@@ -84,7 +84,9 @@ function make_true_dro_data(network, scenarios, q_hat, eps_hat, eps_tilde;
     @assert abs(sum(q_hat) - 1.0) < 1e-10 "q_hat must sum to 1"
     @assert 0 <= eps_hat <= 1 "eps_hat must be in [0,1]"
     @assert 0 <= eps_tilde <= 1 "eps_tilde must be in [0,1]"
-    @assert 0 <= beta < 1 "beta must be in [0,1)"
+    if beta !== nothing
+        @assert 0 <= beta < 1 "beta must be in [0,1)"
+    end
 
     if v_scenarios !== nothing
         @assert size(v_scenarios) == (num_arcs, S) "v_scenarios size ($(size(v_scenarios))) != ($num_arcs, $S)"

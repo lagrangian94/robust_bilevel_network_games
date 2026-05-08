@@ -125,7 +125,8 @@ function true_dro_benders_optimize!(td::TrueDROData;
 
     # ---- Build subproblem: global model (no ρ bound) ----
     x_init = zeros(K)
-    _use_nominal_compact = (td.eps_hat == 0.0 && td.eps_tilde == 0.0 && td.beta == 0.0)
+    _use_cvar = (td.beta !== nothing)
+    _use_nominal_compact = (td.eps_hat == 0.0 && td.eps_tilde == 0.0 && !_use_cvar)
     _use_single_compact = (td.eps_tilde == 0.0)  # nominal도 포함
     if _use_nominal_compact
         _sub_builder = build_true_dro_subproblem_nominal
@@ -187,7 +188,7 @@ function true_dro_benders_optimize!(td::TrueDROData;
         # α-step LP: a,d,r 파라미터로 고정한 순수 LP (pre-build)
         a_dummy = fill(1.0 / td.S, td.S)
         d_dummy = fill(1.0 / td.S, td.S)
-        r_dummy = fill(1.0 / td.S, td.S)
+        r_dummy = _use_cvar ? fill(1.0 / td.S, td.S) : nothing
         astep_lp_model, astep_lp_vars = build_alpha_step_lp(td, x_init, a_dummy, d_dummy, r_dummy;
                                                               optimizer=lp_optimizer)
         if verbose
@@ -535,7 +536,7 @@ function true_dro_benders_optimize!(td::TrueDROData;
 
                     # 마지막 ISP solve의 a*, r*, d* 저장 (α-step에 사용)
                     last_a_val = l_info[:a_val]
-                    last_r_val = l_info[:r_val]
+                    last_r_val = get(l_info, :r_val, nothing)
                     last_d_val = f_info[:d_val]
 
                     Z0_mini = l_info[:obj_val] + f_info[:obj_val]
@@ -667,7 +668,7 @@ function true_dro_benders_optimize!(td::TrueDROData;
 
                     # Clamp (ISP LP numerical noise 방지)
                     a_clamped = _use_nominal_compact ? td.q_hat : [max(last_a_val[s], sub_vars[:a_min][s]) for s in 1:S]
-                    r_clamped = _use_nominal_compact ? td.q_hat : [clamp(last_r_val[s], 0.0, sub_vars[:r_max][s]) for s in 1:S]
+                    r_clamped = (_use_cvar && !_use_nominal_compact) ? [clamp(last_r_val[s], 0.0, sub_vars[:r_max][s]) for s in 1:S] : nothing
                     d_clamped = _use_single_compact ? td.q_hat : [max(last_d_val[s], sub_vars[:d_min][s]) for s in 1:S]
 
                     # OMP x̄ for objective
@@ -678,16 +679,21 @@ function true_dro_benders_optimize!(td::TrueDROData;
                     end
                     x_alt = round.([value(omp_vars[:x][k]) for k in 1:K])
 
-                    # Nominal compact: a,r,d 모두 고정 → fix 불필요, 바로 sub solve
-                    # Single compact: a,r만 fix, d 없음
-                    # Full: a,r,d 모두 fix
+                    # Nominal compact: a,(r),d 모두 고정 → fix 불필요, 바로 sub solve
+                    # Single compact: a,(r)만 fix, d 없음
+                    # Full: a,(r),d 모두 fix
+                    # r은 _use_cvar일 때만 존재
                     local alt_info
                     qcp_ok = true
                     try
                         if !_use_nominal_compact
                             for s in 1:S
                                 fix(sub_vars[:a][s], a_clamped[s]; force=true)
-                                fix(sub_vars[:r][s], r_clamped[s]; force=true)
+                            end
+                            if _use_cvar
+                                for s in 1:S
+                                    fix(sub_vars[:r][s], r_clamped[s]; force=true)
+                                end
                             end
                         end
                         if !_use_single_compact
@@ -708,10 +714,12 @@ function true_dro_benders_optimize!(td::TrueDROData;
                             unfix.(sub_vars[:a])
                             set_lower_bound.(sub_vars[:a], sub_vars[:a_min])
                             set_upper_bound.(sub_vars[:a], sub_vars[:a_max])
-                            unfix.(sub_vars[:r])
-                            set_lower_bound.(sub_vars[:r], 0.0)
-                            for s in 1:S
-                                set_upper_bound(sub_vars[:r][s], sub_vars[:r_max][s])
+                            if _use_cvar
+                                unfix.(sub_vars[:r])
+                                set_lower_bound.(sub_vars[:r], 0.0)
+                                for s in 1:S
+                                    set_upper_bound(sub_vars[:r][s], sub_vars[:r_max][s])
+                                end
                             end
                         end
                         if !_use_single_compact

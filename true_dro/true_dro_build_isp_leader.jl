@@ -5,8 +5,9 @@ true_dro_build_isp_leader.jl — ISP-L LP for mini-Benders (true_dro_v5.md §7.3
 ISP-L: max Σσ̂ - φ̂U·Σx̄ρ̂¹ - φ̂U·Σ(1-x̄)ρ̂³
   s.t. (DL-1)~(DL-7), (DL-RU1)~(DL-RU2)  with α fixed
 
-CVaR extension (β>0): r[s] 변수 추가, DL-2/DL-3에서 a→r 치환.
+CVaR extension (β≠nothing): r[s] 변수 추가, DL-2/DL-3에서 a→r 치환.
 r[s] ∈ [0, 1/(1-β)], r[s] ≤ a[s]/(1-β), Σr = 1.
+β=nothing → 기존 expectation 경로 (r 없음, DL-2/DL-3에 a 사용).
 
 Build once, update α via set_normalized_coefficient, update x̄ via objective.
 """
@@ -32,7 +33,8 @@ function build_true_dro_isp_leader(td::TrueDROData, x_bar::Vector{Float64},
     ξ = td.xi_bar
     v = td.v
     φ̂U = td.phi_hat_U
-    β = td.beta
+    _use_cvar = (td.beta !== nothing)
+    β = _use_cvar ? td.beta : 0.0  # 0.0 fallback (사용 안 됨)
 
     model = Model(optimizer)
     set_silent(model)
@@ -41,15 +43,11 @@ function build_true_dro_isp_leader(td::TrueDROData, x_bar::Vector{Float64},
     a_lo = [max(0.0, q[s] - 2 * ε̂) for s in 1:S]
     a_hi = [min(1.0, q[s] + 2 * ε̂) for s in 1:S]
 
-    # r[s] bounds: 0 ≤ r[s] ≤ min(1/(1-β), a_hi[s]/(1-β))
-    r_max = [a_hi[s] / (1.0 - β) for s in 1:S]
-
     # ---- Variables ----
     @variable(model, σ_hat[1:S] >= 0)
     @variable(model, u_hat[1:K, 1:S] >= 0)
     @variable(model, a_lo[s] <= a[s=1:S] <= a_hi[s])
     @variable(model, 0 <= b[1:S] <= 2 * ε̂)
-    @variable(model, 0 <= r[s=1:S] <= r_max[s])
     @variable(model, ρ_hat_1[1:K, 1:S] >= 0)
     @variable(model, ρ_hat_2[1:K, 1:S] >= 0)
     @variable(model, ρ_hat_3[1:K, 1:S] >= 0)
@@ -60,21 +58,37 @@ function build_true_dro_isp_leader(td::TrueDROData, x_bar::Vector{Float64},
     @constraint(model, DL1[j=1:m, s=1:S],
         sum(Ny[j, k] * u_hat[k, s] for k in 1:K) + Nts[j] * σ_hat[s] == 0)
 
-    # (DL-RU1): r[s] ≤ a[s]/(1-β)
-    @constraint(model, DL_RU1[s=1:S], r[s] <= a[s] / (1.0 - β))
+    if _use_cvar
+        # CVaR path: r[s] 변수 추가, DL-2/DL-3에서 a→r
+        r_max = [a_hi[s] / (1.0 - β) for s in 1:S]
+        @variable(model, 0 <= r[s=1:S] <= r_max[s])
 
-    # (DL-RU2): Σ r[s] = 1
-    @constraint(model, DL_RU2, sum(r[s] for s in 1:S) == 1)
+        # (DL-RU1): r[s] ≤ a[s]/(1-β)
+        @constraint(model, DL_RU1[s=1:S], r[s] <= a[s] / (1.0 - β))
+        # (DL-RU2): Σ r[s] = 1
+        @constraint(model, DL_RU2, sum(r[s] for s in 1:S) == 1)
 
-    # (DL-2): -(ξ̄_k^s + ᾱ_k) r_s + û + ρ̂² - ρ̂³ ≤ 0   [α fixed → linear, a→r]
-    @constraint(model, DL2[k=1:K, s=1:S],
-        -(ξ[k, s] + α_bar[k]) * r[s]
-        + u_hat[k, s] + ρ_hat_2[k, s] - ρ_hat_3[k, s] <= 0)
+        # (DL-2): -(ξ̄_k^s + ᾱ_k) r_s + û + ρ̂² - ρ̂³ ≤ 0   [α fixed → linear, a→r]
+        @constraint(model, DL2[k=1:K, s=1:S],
+            -(ξ[k, s] + α_bar[k]) * r[s]
+            + u_hat[k, s] + ρ_hat_2[k, s] - ρ_hat_3[k, s] <= 0)
 
-    # (DL-3): v_k^s ξ̄_k^s r_s - ρ̂¹ - ρ̂² + ρ̂³ ≤ 0   [a→r]
-    @constraint(model, DL3[k=1:K, s=1:S],
-        v[k, s] * ξ[k, s] * r[s]
-        - ρ_hat_1[k, s] - ρ_hat_2[k, s] + ρ_hat_3[k, s] <= 0)
+        # (DL-3): v_k^s ξ̄_k^s r_s - ρ̂¹ - ρ̂² + ρ̂³ ≤ 0   [a→r]
+        @constraint(model, DL3[k=1:K, s=1:S],
+            v[k, s] * ξ[k, s] * r[s]
+            - ρ_hat_1[k, s] - ρ_hat_2[k, s] + ρ_hat_3[k, s] <= 0)
+    else
+        # 기존 expectation path: DL-2/DL-3에 a 사용
+        # (DL-2): -(ξ̄_k^s + ᾱ_k) a_s + û + ρ̂² - ρ̂³ ≤ 0   [α fixed → linear]
+        @constraint(model, DL2[k=1:K, s=1:S],
+            -(ξ[k, s] + α_bar[k]) * a[s]
+            + u_hat[k, s] + ρ_hat_2[k, s] - ρ_hat_3[k, s] <= 0)
+
+        # (DL-3): v_k^s ξ̄_k^s a_s - ρ̂¹ - ρ̂² + ρ̂³ ≤ 0
+        @constraint(model, DL3[k=1:K, s=1:S],
+            v[k, s] * ξ[k, s] * a[s]
+            - ρ_hat_1[k, s] - ρ_hat_2[k, s] + ρ_hat_3[k, s] <= 0)
+    end
 
     # (DL-4)~(DL-7): TV ball constraints on a (unchanged)
     @constraint(model, DL4[s=1:S], a[s] - b[s] <= q[s])
@@ -89,10 +103,14 @@ function build_true_dro_isp_leader(td::TrueDROData, x_bar::Vector{Float64},
         - φ̂U * sum((1.0 - x_bar[k]) * ρ_hat_3[k, s] for k in 1:K, s in 1:S))
 
     vars = Dict(
-        :σ_hat => σ_hat, :u_hat => u_hat, :a => a, :b => b, :r => r,
+        :σ_hat => σ_hat, :u_hat => u_hat, :a => a, :b => b,
         :ρ_hat_1 => ρ_hat_1, :ρ_hat_2 => ρ_hat_2, :ρ_hat_3 => ρ_hat_3,
         :DL2 => DL2, :DL3 => DL3,
+        :_use_cvar => _use_cvar,
     )
+    if _use_cvar
+        vars[:r] = r
+    end
     return model, vars
 end
 
@@ -100,17 +118,24 @@ end
 """
     update_isp_leader_alpha!(model, vars, td, α_new)
 
-DL-2의 r[s] 계수를 -(ξ̄_k^s + α_new_k) 으로 갱신.
+DL-2의 r[s] (CVaR) 또는 a[s] (expectation) 계수를 -(ξ̄_k^s + α_new_k) 으로 갱신.
 """
 function update_isp_leader_alpha!(model, vars, td::TrueDROData, α_new::Vector{Float64})
     S = td.S
     K = td.num_arcs
     ξ = td.xi_bar
-    r = vars[:r]
     DL2 = vars[:DL2]
 
-    for k in 1:K, s in 1:S
-        set_normalized_coefficient(DL2[k, s], r[s], -(ξ[k, s] + α_new[k]))
+    if vars[:_use_cvar]
+        r = vars[:r]
+        for k in 1:K, s in 1:S
+            set_normalized_coefficient(DL2[k, s], r[s], -(ξ[k, s] + α_new[k]))
+        end
+    else
+        a = vars[:a]
+        for k in 1:K, s in 1:S
+            set_normalized_coefficient(DL2[k, s], a[s], -(ξ[k, s] + α_new[k]))
+        end
     end
 end
 
@@ -147,11 +172,14 @@ function solve_isp_leader!(model, vars, td::TrueDROData)
     S = td.S
     K = td.num_arcs
 
-    return Dict(
+    result = Dict(
         :obj_val => objective_value(model),
         :a_val => [value(vars[:a][s]) for s in 1:S],
-        :r_val => [value(vars[:r][s]) for s in 1:S],
         :rho_hat_1_val => [value(vars[:ρ_hat_1][k, s]) for k in 1:K, s in 1:S],
         :rho_hat_3_val => [value(vars[:ρ_hat_3][k, s]) for k in 1:K, s in 1:S],
     )
+    if vars[:_use_cvar]
+        result[:r_val] = [value(vars[:r][s]) for s in 1:S]
+    end
+    return result
 end
