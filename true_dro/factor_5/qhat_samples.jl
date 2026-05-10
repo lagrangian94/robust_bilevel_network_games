@@ -1,19 +1,45 @@
 """
-qhat_samples.jl — Non-uniform q̂ vectors sampled from Dir(1,...,1) with S=20, seed=42.
-  Sample 1,3,8 are the 3 most distant from uniform (TV = 0.457, 0.400, 0.410).
+qhat_samples.jl — Dir(1 ∈ R^S)에서 q̂ 샘플링 (greedy diversity).
+  100개 생성 후:
+    #1: uniform에서 가장 먼 것
+    #2: uniform과 #1 둘 다에서 가장 먼 것 (min TV 기준)
+    #3: uniform, #1, #2 셋에서 가장 먼 것
+  S와 seed(=123)만 같으면 네트워크 무관하게 동일한 q̂.
+
+Usage:
+  include("qhat_samples.jl")
+  q_hat = generate_qhat(S, idx)   # idx=0 → uniform, 1/2/3 → Dir(1) greedy
 """
 
-const QHAT_SAMPLES = Dict{String, Vector{Float64}}(
-    "sample1" => [0.030908, 0.007903, 0.026538, 0.005437, 0.006958,
-                  0.028325, 0.058624, 0.002189, 0.043612, 0.031542,
-                  0.018016, 0.070408, 0.040718, 0.026189, 0.003580,
-                  0.015937, 0.123425, 0.005643, 0.381005, 0.073042],
-    "sample3" => [0.254824, 0.017407, 0.033323, 0.052823, 0.001217,
-                  0.205983, 0.030271, 0.017455, 0.039379, 0.006283,
-                  0.084421, 0.026684, 0.039026, 0.009937, 0.035235,
-                  0.031227, 0.002076, 0.013959, 0.051463, 0.047008],
-    "sample8" => [0.109401, 0.004766, 0.032733, 0.178457, 0.006221,
-                  0.042168, 0.032769, 0.001902, 0.065001, 0.009092,
-                  0.019978, 0.158707, 0.000696, 0.018042, 0.046038,
-                  0.006748, 0.127355, 0.070276, 0.019127, 0.050523],
-)
+using Random
+
+function generate_qhat(S::Int, idx::Int; seed::Int=123, n_samples::Int=100)
+    idx in 0:3 || error("qhat idx must be 0 (uniform), 1, 2, or 3. Got: $idx")
+    if idx == 0
+        return fill(1.0 / S, S)
+    end
+    rng = MersenneTwister(seed)
+    samples = Vector{Vector{Float64}}(undef, n_samples)
+    for i in 1:n_samples
+        g = [-log(rand(rng)) for _ in 1:S]
+        samples[i] = g ./ sum(g)
+    end
+    tv(a, b) = 0.5 * sum(abs.(a .- b))
+
+    # Greedy: 순차적으로 기존 선택들과의 min distance가 최대인 샘플 선택
+    anchors = [fill(1.0 / S, S)]  # uniform이 첫 anchor
+    chosen = Int[]
+    for _ in 1:3
+        best_i, best_score = -1, -Inf
+        for i in 1:n_samples
+            i in chosen && continue
+            score = minimum(tv(samples[i], a) for a in anchors)
+            if score > best_score
+                best_i, best_score = i, score
+            end
+        end
+        push!(chosen, best_i)
+        push!(anchors, samples[best_i])
+    end
+    return samples[chosen[idx]]
+end

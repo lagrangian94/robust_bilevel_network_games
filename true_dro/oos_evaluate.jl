@@ -39,7 +39,7 @@ Args:
 Returns:
 - h_star: Vector{Float64} — optimal recovery (num_arcs, dummy 제외)
 """
-function solve_follower_weighted(network, x_star::Vector{Float64}, v::Float64, w::Float64,
+function solve_follower_weighted(network, x_star::Vector{Float64}, v::Union{Float64, Matrix{Float64}}, w::Float64,
                                   capacity_scenarios::Matrix{Float64}, q_weights::Vector{Float64})
     num_arcs_total = length(network.arcs)       # dummy 포함
     num_arcs = num_arcs_total - 1               # dummy 제외
@@ -70,7 +70,8 @@ function solve_follower_weighted(network, x_star::Vector{Float64}, v::Float64, w
     # Capacity constraints
     for k in 1:K
         for a in 1:num_arcs
-            cap = capacity_scenarios[a, k] * (1.0 - v * x_star[a]) + h[a]
+            v_ak = v isa Float64 ? v : v[a, k]
+            cap = capacity_scenarios[a, k] * (1.0 - v_ak * x_star[a]) + h[a]
             @constraint(model, y[a, k] <= cap)
         end
     end
@@ -94,7 +95,7 @@ end
 Returns: length-K vector of max-flow values.
 """
 function compute_maxflow_per_scenario(network, x_star::Vector{Float64}, h_star::Vector{Float64},
-                                       v::Float64, capacity_scenarios::Matrix{Float64})
+                                       v::Union{Float64, Matrix{Float64}}, capacity_scenarios::Matrix{Float64})
     num_arcs = length(network.arcs) - 1
     K = size(capacity_scenarios, 2)
 
@@ -103,8 +104,9 @@ function compute_maxflow_per_scenario(network, x_star::Vector{Float64}, h_star::
     flows = Vector{Float64}(undef, K)
     for k in 1:K
         xi_k = capacity_scenarios[1:num_arcs, k]
+        v_k = v isa Float64 ? v : v[:, k]
         flows[k] = solve_deterministic_maxflow!(mf_model, y_var, cap_con, xi_k,
-                                                 x_star, h_star, v, dummy_idx, na)
+                                                 x_star, h_star, v_k, dummy_idx, na)
     end
 
     return flows
@@ -465,33 +467,42 @@ end
 
 
 """
-    oos_phase_b_generic(x_dict, network, capacities, v, w;
-                        β, M, noise_scale, seed, mode) -> Dict{Symbol, Vector{Float64}}
+    compute_cvar(p, Z, β) -> Float64
 
-Generic Phase B OOS. 임의의 x_dict (Dict{Symbol, Vector}) 지원.
-
-mode:
-  :same_alpha — q_tilde ~ Dir(α), p_true ~ Dir(α).  같은 α, 독립 샘플.
-  :diff_alpha — α_tilde 별도 생성, q_tilde ~ Dir(α_tilde), p_true ~ Dir(α).
-  :symmetric — q_tilde ~ Dir(β·1_K), p_true ~ Dir(β·1_K).  symmetric Dirichlet, 독립 샘플. (Phase A 방식)
-
-각 outer sample m:
-  1. α = β*(1 + noise_scale*N(0,1))  → p_true ~ Dir(α)
-  2. mode에 따라 q_tilde 생성
-  3. h* = follower(x, q_tilde), flows = maxflow(x, h*)
-  4. cost = dot(p_true, flows)
-
-Returns: Dict(model_key => Vector{Float64} of length M)
+Discrete CVaR_β: upper-tail conditional value-at-risk.
+  CVaR_β = min_η { η + 1/(1-β) Σ_s p_s max(Z_s - η, 0) }
+Closed-form via sorting.
 """
+function compute_cvar(p::Vector{Float64}, Z::Vector{Float64}, β::Float64)
+    idx = sortperm(Z)
+    cum = 0.0
+    η = Z[idx[end]]
+    for i in idx
+        cum += p[i]
+        if cum >= β
+            η = Z[i]
+            break
+        end
+    end
+    return η + 1.0 / (1.0 - β) * sum(p[s] * max(Z[s] - η, 0.0) for s in eachindex(Z))
+end
+
+
 function oos_phase_b_generic(x_dict::Dict{Symbol, Vector{Float64}},
                               network, capacities::Matrix{Float64},
-                              v::Float64, w::Float64;
+                              v::Union{Float64, Matrix{Float64}}, w::Float64;
                               β::Float64=0.5, M::Int=500,
                               noise_scale::Float64=0.5, seed::Int=42,
-                              mode::Symbol=:same_alpha)
+                              mode::Symbol=:same_alpha,
+                              risk_measure::Symbol=:expectation,
+                              β_risk::Float64=0.0)
     K = size(capacities, 2)
     rng = MersenneTwister(seed)
     model_keys = collect(keys(x_dict))
+
+    if risk_measure == :cvar && (β_risk <= 0.0 || β_risk >= 1.0)
+        error("CVaR requires β_risk ∈ (0, 1), got $β_risk")
+    end
 
     costs = Dict(k => Vector{Float64}(undef, M) for k in model_keys)
 
@@ -528,11 +539,16 @@ function oos_phase_b_generic(x_dict::Dict{Symbol, Vector{Float64}},
         for k in model_keys
             h = solve_follower_weighted(network, x_dict[k], v, w, capacities, q_tilde)
             flows = compute_maxflow_per_scenario(network, x_dict[k], h, v, capacities)
-            costs[k][m] = dot(p_true, flows)
+            if risk_measure == :cvar
+                costs[k][m] = compute_cvar(p_true, flows, β_risk)
+            else
+                costs[k][m] = dot(p_true, flows)
+            end
         end
 
         if m % 100 == 0
-            @printf("  OOS-B(%s) outer %d/%d\n", mode, m, M)
+            risk_tag = risk_measure == :cvar ? @sprintf("CVaR%.2f", β_risk) : "E"
+            @printf("  OOS-B(%s,%s) outer %d/%d\n", mode, risk_tag, m, M)
         end
     end
 
@@ -604,7 +620,7 @@ Returns: Dict with per-model keys:
 """
 function oos_phase_bental(x_dict::Dict{Symbol, Vector{Float64}},
                            network, capacities::Matrix{Float64},
-                           v::Float64, w::Float64;
+                           v::Union{Float64, Matrix{Float64}}, w::Float64;
                            ε_oos::Float64, M::Int=100, L::Int=1000, seed::Int=42)
     S = size(capacities, 2)
     rng = MersenneTwister(seed)

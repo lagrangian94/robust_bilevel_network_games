@@ -139,9 +139,10 @@ Batch-optimized: RHS만 업데이트하여 재풀기. 모델을 매번 빌드하
 """
 function solve_deterministic_maxflow!(model::Model, y_var, cap_con, xi::Vector{Float64},
                                        x_star::Vector{Float64}, h_star::Vector{Float64},
-                                       v::Float64, dummy_idx::Int, num_arcs::Int)
+                                       v::Union{Float64, Vector{Float64}}, dummy_idx::Int, num_arcs::Int)
     for a in 1:num_arcs
-        cap = max(xi[a] * (1.0 - v * x_star[a]) + h_star[a], 0.0)
+        v_a = v isa Float64 ? v : v[a]
+        cap = max(xi[a] * (1.0 - v_a * x_star[a]) + h_star[a], 0.0)
         set_normalized_rhs(cap_con[a], cap)
     end
 

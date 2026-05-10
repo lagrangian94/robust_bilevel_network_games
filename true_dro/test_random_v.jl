@@ -60,7 +60,7 @@ function solve_gap(td, x_bar)
     α_f = [value(v1[:α][k]) for k in 1:K]
 
     # # (2) α=α*, d=a* 고정 → obj_F 계산 (tied 대용) — 주석처리
-    # m2, v2 = build_true_dro_subproblem(td, x_bar; optimizer=Gurobi.Optimizer, silent=true)
+    # m2, v2 = build_true_dro_subproblem(td, x_bar; optimizer=Gurobi.Optimizer, silent=false)
     # set_optimizer_attribute(m2, "NonConvex", 2)
     # for k in 1:K; JuMP.fix(v2[:α][k], α_f[k]; force=true); end
     # for s in 1:td.S; JuMP.fix(v2[:d][s], a_f[s]; force=true); end
@@ -100,7 +100,6 @@ end
 for (label, x_list, γ_val) in [
     ("A: x=[1,11] v-homo", [1,11], 2),
     ("B: x=[1,9] v-hetero", [1,9], 2),
-    ("C: x=[1,9,10,11,14] γ=5 ref", [1,9,10,11,14], 5),
 ]
 γ = γ_val
 x_bar = zeros(K)
