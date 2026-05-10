@@ -119,33 +119,30 @@ println("=" ^ 70)
 println("=" ^ 70)
 flush(stdout)
 
-for network_name in networks
-    net, γ, intd_arcs = make_network(network_name)
-    num_arcs = length(net.arcs) - 1
+for β_risk in β_list
+    for eps in eps_list
+        beta_str = fmt_val(β_risk)
+        eps_str  = fmt_val(eps)
+        log_dir  = joinpath(@__DIR__, "logs", "factor", "eps_$(eps_str)_beta_$(beta_str)")
+        mkpath(log_dir)
 
-    caps, _ = NG.generate_capacity_scenarios_factor_additive(length(net.arcs), S;
-        interdictable_arcs=intd_arcs, seed=42, num_factors=5)
-    intd_idx = findall(intd_arcs[1:num_arcs])
-    w = round(0.5 * γ * median(caps[intd_idx, :]); digits=4)
-    q_hat = fill(1.0/S, S)
-    ss_cut = make_ss_cut(net, num_arcs, network_name)
+        for network_name in networks
+            net, γ, intd_arcs = make_network(network_name)
+            num_arcs = length(net.arcs) - 1
 
-    # v_scenarios
-    Random.seed!(42)
-    v_rand = zeros(num_arcs, S)
-    for k in 1:num_arcs, s in 1:S
-        v_rand[k, s] = intd_arcs[k] ? (rand() < 0.75 ? 1.0 : 0.0) : 0.0
-    end
+            caps, _ = NG.generate_capacity_scenarios_factor_additive(length(net.arcs), S;
+                interdictable_arcs=intd_arcs, seed=42, num_factors=5)
+            intd_idx = findall(intd_arcs[1:num_arcs])
+            w = round(0.5 * γ * median(caps[intd_idx, :]); digits=4)
+            q_hat = fill(1.0/S, S)
+            ss_cut = make_ss_cut(net, num_arcs, network_name)
 
-    @printf("\n%s: arcs=%d, intd=%d, γ=%d, w=%.4f\n", network_name, num_arcs, length(intd_idx), γ, w)
-    flush(stdout)
-
-    for β_risk in β_list
-        for eps in eps_list
-            beta_str = fmt_val(β_risk)
-            eps_str  = fmt_val(eps)
-            log_dir  = joinpath(@__DIR__, "logs", "factor", "eps_$(eps_str)_beta_$(beta_str)")
-            mkpath(log_dir)
+            # v_scenarios
+            Random.seed!(42)
+            v_rand = zeros(num_arcs, S)
+            for k in 1:num_arcs, s in 1:S
+                v_rand[k, s] = intd_arcs[k] ? (rand() < 0.75 ? 1.0 : 0.0) : 0.0
+            end
 
             for (label, ε_hat_mult, ε_tilde_mult) in settings
                 ε_hat   = eps * ε_hat_mult
@@ -176,6 +173,9 @@ for network_name in networks
                     @printf("  [skip] %s already exists\n", log_path)
                     continue
                 end
+
+                @printf("\n%s: arcs=%d, intd=%d, γ=%d, w=%.4f\n", network_name, num_arcs, length(intd_idx), γ, w)
+                flush(stdout)
 
                 run_with_tee(log_path) do
                     println("=" ^ 60)
