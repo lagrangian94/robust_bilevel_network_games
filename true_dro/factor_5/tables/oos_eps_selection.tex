@@ -1,0 +1,20 @@
+\begin{table}[htbp]
+\centering
+\caption{Validation-set radius selection ($\beta=0.4$, Phase~A only): Full DR 95th-percentile and interval width, averaged over $\gamma\in\{0.1,0.3,0.5,1.0\}$}
+\label{tab:eps-selection}
+\small
+\setlength{\tabcolsep}{5pt}
+\begin{tabular}{l cc cc cc c}
+\toprule
+& \multicolumn{2}{c}{$\varepsilon=0.1$} & \multicolumn{2}{c}{$\varepsilon=0.2$} & \multicolumn{2}{c}{$\varepsilon=0.5$} & \\
+\cmidrule(lr){2-3} \cmidrule(lr){4-5} \cmidrule(lr){6-7}
+Network & $q_{95}$ & Interval & $q_{95}$ & Interval & $q_{95}$ & Interval & $\varepsilon^{*}$ \\
+\midrule
+Grid $5 \times 5$ & $\mathbf{34.33}$ & $\mathbf{12.06}$ & $34.33$ & $12.06$ & $35.62$ & $12.14$ & $0.1$ \\
+Polska & $\mathbf{16.86}$ & $\mathbf{4.65}$ & $16.86$ & $4.65$ & $17.28$ & $5.39$ & $0.1$ \\
+Sioux Falls & $\mathbf{19.29}$ & $\mathbf{9.53}$ & $19.29$ & $9.53$ & $19.36$ & $4.46$ & $0.1$ \\
+Abilene & $14.95$ & $6.98$ & $\mathbf{14.05}$ & $\mathbf{4.69}$ & $17.48$ & $5.77$ & $0.2$ \\
+Nobel-US & $\mathbf{12.82}$ & $\mathbf{6.97}$ & $13.75$ & $5.72$ & $14.70$ & $4.73$ & $0.1$ \\
+\bottomrule
+\end{tabular}
+\end{table}

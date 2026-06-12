@@ -93,7 +93,7 @@ S = 10
 λU = 10.0
 
 # sweep parameters
-β_list   = [0.05, 0.4, 0.7]
+β_list   = [0.0, 0.05, 0.4, 0.7]
 eps_list = [0.1, 0.2, 0.5]
 
 # (label, ε̂_mult, ε̃_mult) — multiplied by eps to get actual ε̂, ε̃

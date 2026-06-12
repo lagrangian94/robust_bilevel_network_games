@@ -9,7 +9,7 @@ OOS evaluation for True-DRO experiment:
 """
 
 using JuMP
-using HiGHS
+using Gurobi
 using LinearAlgebra
 using Statistics
 using Printf
@@ -50,7 +50,7 @@ function solve_follower_weighted(network, x_star::Vector{Float64}, v::Union{Floa
 
     dummy_idx = findfirst(a -> a == ("t", "s"), network.arcs)
 
-    model = Model(HiGHS.Optimizer)
+    model = Model(Gurobi.Optimizer)
     set_silent(model)
 
     @variable(model, h[1:num_arcs] >= 0)

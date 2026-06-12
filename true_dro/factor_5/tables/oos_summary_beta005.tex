@@ -1,0 +1,17 @@
+\begin{table}[htbp]
+\centering
+\caption{Out-of-sample summary ($\beta=0.05$): networks where DRO solution differs from nominal}
+\label{tab:oos-summary-beta005}
+\small
+\setlength{\tabcolsep}{6pt}
+\begin{tabular}{l c cc cc cc}
+\toprule
+& & \multicolumn{2}{c}{\textbf{Nominal SP}} & \multicolumn{2}{c}{\textbf{Partial DR}} & \multicolumn{2}{c}{\textbf{Full DR}} \\
+\cmidrule(lr){3-4} \cmidrule(lr){5-6} \cmidrule(lr){7-8}
+Network & $\varepsilon^{*}$ & $[q_{05}, q_{95}]$ & $q_{95} \!-\! q_{05}$ & $[q_{05}, q_{95}]$ & $q_{95} \!-\! q_{05}$ & $[q_{05}, q_{95}]$ & $q_{95} \!-\! q_{05}$ \\
+\midrule
+Polska & $0.20$ & $[9.96, 16.16]$ & $6.20$ & $[9.96, 16.16]$ & $6.20$ & $[10.56, \mathbf{16.14}]$ & $\mathbf{5.58}$ \\
+Abilene & $0.20$ & $[5.81, 13.06]$ & $7.25$ & $[5.87, \mathbf{12.92}]$ & $7.05$ & $[6.18, 13.03]$ & $\mathbf{6.85}$ \\
+\bottomrule
+\end{tabular}
+\end{table}

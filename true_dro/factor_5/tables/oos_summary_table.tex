@@ -1,0 +1,20 @@
+\begin{table}[htbp]
+\centering
+\caption{Out-of-sample summary: average 90\% quantile interval across all interdiction phases}
+\label{tab:oos-summary}
+\small
+\setlength{\tabcolsep}{6pt}
+\begin{tabular}{l c cc cc cc}
+\toprule
+& & \multicolumn{2}{c}{\textbf{Nominal SP}} & \multicolumn{2}{c}{\textbf{Partial DR}} & \multicolumn{2}{c}{\textbf{Full DR}} \\
+\cmidrule(lr){3-4} \cmidrule(lr){5-6} \cmidrule(lr){7-8}
+Network & $\varepsilon^{*}$ & $[q_{05}, q_{95}]$ & $q_{95} \!-\! q_{05}$ & $[q_{05}, q_{95}]$ & $q_{95} \!-\! q_{05}$ & $[q_{05}, q_{95}]$ & $q_{95} \!-\! q_{05}$ \\
+\midrule
+Grid $5 \times 5$ & $0.1$ & $[19.38, 38.92]$ & $19.54$ & $[21.56, 35.09]$ & $13.53$ & $[21.07, \mathbf{34.59}]$ & $\mathbf{13.52}$ \\
+Polska & $0.1$ & $[11.16, 18.03]$ & $6.86$ & $[11.16, 18.03]$ & $6.86$ & $[11.71, \mathbf{16.94}]$ & $\mathbf{5.22}$ \\
+Sioux Falls & $0.1$ & $[10.89, 20.85]$ & $\mathbf{9.96}$ & $[8.62, \mathbf{19.52}]$ & $10.90$ & $[8.62, \mathbf{19.52}]$ & $10.90$ \\
+Abilene & $0.2$ & $[6.92, 14.82]$ & $7.90$ & $[7.31, 15.61]$ & $8.30$ & $[8.43, \mathbf{14.32}]$ & $\mathbf{5.89}$ \\
+Nobel-US & $0.2$ & $[5.09, \mathbf{12.87}]$ & $7.78$ & $[5.09, \mathbf{12.87}]$ & $7.78$ & $[7.24, 13.84]$ & $\mathbf{6.60}$ \\
+\bottomrule
+\end{tabular}
+\end{table}
