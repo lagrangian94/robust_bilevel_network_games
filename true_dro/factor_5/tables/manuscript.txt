@@ -1,0 +1,1623 @@
+
+
+%==============================================================================
+section{Introduction}
+label{secintro}
+%==============================================================================
+ 
+We study a class of zero-sum Stackelberg games in which a leader and a
+follower interact through an exogenous uncertain parameter
+$xi in mathbb{R}^{d_u}$. The leader commits first to a decision
+$x in mathcal{X} subseteq mathbb{R}^{d_l}$. The follower, observing
+$x$ but not yet $xi$, commits a emph{here-and-now} decision
+$h in H subseteq mathbb{R}^{d_h}$; once $xi$ realizes, the follower
+then takes a emph{wait-and-see} decision $y(x, h, xi) in mathbb{R}^{d_y}$.
+Conditional on the leader's $x$, the follower's problem is therefore a
+two-stage stochastic linear program (2SLP) parameterized by $x$. The two
+players' objectives are oppositely aligned, so the leader's commitment to
+$x$ must anticipate a worst-case response from the follower.
+ 
+This setting can be positioned within the broader framework of bilevel
+optimization under uncertainty citep{beck2023survey}. A central object in
+this framework is the follower's here-and-now best response $tilde{h}$,
+which the leader must anticipate as a lower-level optimality constraint
+$tilde{h}$ lies in the follower's bilevel-feasible set, parameterized
+jointly by the leader's $x$ and by the data-generating distribution
+$mathbb{P}^$ of $xi$. In most realistic settings $mathbb{P}^$ is not
+perfectly known, owing to observation noise, modeling error, and the
+finiteness of historical data; the robust and distributionally robust
+optimization (RODRO) literatures address this parameter uncertainty by
+allowing $mathbb{P}^$ to range over an ambiguity set.
+ 
+A natural follow-up concern, which the existing RODRO bilevel literature
+has largely set aside, is the following. If $mathbb{P}^$ is uncertain
+to the leader, the same epistemic limitations --- observation noise,
+modeling error, finite samples --- apply equally to the follower. Each
+player therefore operates on his own subjective probability distribution
+over $xi$, which we refer to as a emph{belief} in the game-theoretic
+sense of citet{harsanyi1967games} we denote by $hat{P}$ the leader's
+belief and by $tilde{P}$ the follower's belief, and assume that neither
+need coincide with the true $mathbb{P}^$ or with the other player's
+belief. In zero-sum or otherwise adversarial settings the two players
+have, moreover, neither the strategic incentive nor a coordination
+mechanism to disclose their respective beliefs to each other; from the
+leader's perspective, $tilde{P}$ is private and unobservable, while her
+own $hat{P}$ may deviate from $mathbb{P}^$. The follower's
+bilevel-feasible set is parameterized by $tilde{P}$, not by
+$mathbb{P}^$ or $hat{P}$, and the leader faces a emph{compound
+ambiguity} in $mathbb{P}^$, which she hedges by an ambiguity set
+$hat{mathcal{D}}$ around her own belief $hat{P}$, and in $tilde{P}$,
+the follower's private belief, which she represents by a second
+ambiguity set $tilde{mathcal{D}}$ centered at $tilde{P}$.
+ 
+To make the compound-ambiguity setting concrete, consider the disruption
+of an illicit supply chain by a law-enforcement agency. The agency and
+the smugglers rely on different sensing infrastructure, different
+observational histories, and different operational viewpoints, so that
+their internal models of $xi$ diverge even when both are exposed to the
+same underlying phenomenon. The agency has access to historical
+interdiction outcomes and centralized analytics that the smugglers do
+not, while the smugglers observe operational realities on the ground
+that the agency does not. The follower's $tilde{P}$ is therefore not a
+stylized abstraction but a structural feature of the adversarial games
+we study.
+ 
+The principal class of problems to which our framework applies is that
+of emph{network interdiction games} (NIGs) zero-sum Stackelberg games
+on a directed network in which the leader (the emph{interdictor})
+selects a subset of arcs to disable subject to a budget, and the
+follower (the emph{flow player}) routes flow on the perturbed network.
+The stochastic variants of citet{Cormican1998} and the recovery-budget
+formulation of citet{Lei2018} are particularly relevant, as the latter
+introduces the 2SLP follower structure --- a here-and-now arc-capacity
+recovery decision $h$ followed by a wait-and-see flow $y$ --- that we
+adopt below.
+
+ 
+This study makes three main contributions as follows.
+begin{enumerate}
+item First, we formalize a class of distributionally robust zero-sum
+Stackelberg games with a here-and-now follower, interdiction-type
+lower-level coupling, and emph{compound ambiguity} in both nature's
+data-generating distribution and the follower's private belief; the
+maximum-flow NIG with a two-stage follower of
+citet{Lei2018, Sadana2022} is recovered as the principal special case,
+and the formulation accommodates asymmetric risk functionals on the two
+players.
+
+item Second, we establish the theoretical foundations of this
+class. A Lagrangian decomposition of the heterogeneous-belief coupling,
+combined with a Sion-type interchange across the follower-side
+ambiguity, yields a structural form in which the follower's ambiguity
+enlarges the admissible recovery set of the leader's outer
+maximization---the leader's distribution shapes the emph{objective},
+while the follower's distribution shapes the emph{feasible set} of that
+maximization. A subsequent dualization--linearization chain (TV
+dualization, McCormick linearization, inner LP duality) produces a
+single-level mixed-integer emph{bilinear} reformulation, and we show
+that no finite sequence of LP-duality steps absorbs the bilinear
+coupling between the recovery-budget multiplier and the TV dual
+variables of $tilde{mathcal{D}}$. The resulting decision problem
+belongs to $Sigma_2^p$, one level above the NP-completeness of standard
+two-stage DR. We also identify a symmetric expected-value sub-case in
+which the follower-side radius becomes inactive, which motivates our
+adoption of asymmetric risk functionals throughout. item Third, we design
+and evaluate a Benders decomposition algorithm whose cut extraction
+remains globally valid under inexact bilinear subproblem solves,
+augmented by a three-phase solver schedule grading subproblem effort to
+iteration phase and a family of min-cut valid inequalities that inject
+network-structural information into the master problem. Numerical
+experiments on synthetic grids and four real-world topologies quantify
+the value of follower-side ambiguity hedging and identify a
+emph{topological-saturation} regime in which the DR solution coincides
+with the nominal one on real-world networks with narrow $s$--$t$
+min-cuts; we report this as a candid empirical finding rather than a
+positive result---distributional robustness is most valuable on networks
+with dense $s$--$t$ connectivity and modest on real-world backbones with
+sparse cuts.
+end{enumerate}
+ 
+The remainder of the chapter is organized as follows.
+Section~ref{seclitreview} reviews the related literature and locates
+the gap that this study addresses.
+Section~ref{secproblem} formulates the general DR zero-sum Stackelberg
+game and its maximum-flow NIG instantiation.
+Section~ref{secsingle-level} reformulates the nominal model (fixed
+beliefs) into a single-level program and derives the structural form.
+Section~ref{secdro} extends the analysis to the DR setting and
+identifies the saturation phenomenon under symmetric expectation.
+Section~ref{seccomplexity} develops the tractable mixed-integer
+bilinear reformulation and the complexity result.
+Section~ref{secbenders} develops the Benders algorithm.
+Section~ref{secexperiments} reports numerical experiments.
+Section~ref{secconclusion} concludes.
+ 
+medskipnoindenttextbf{Notation.} Vectors and matrices are in lowercase
+and uppercase Roman type. $mathbb{R}_+^n$ denotes nonnegative reals.
+$mathcal{L}^2(P)$ denotes the space of $P$-square-integrable random
+vectors. $mathbb{E}^P[cdot]$ denotes expectation under $P$; for discrete
+$P = (p_s)_{s=1}^S$, we write $mathbb{E}^p[Z] = sum_s p_s Z_s$. The
+probability simplex on $S$ scenarios is $Delta^S$. For matrices $A, B$
+the inner product is $A  B = mathrm{tr}(A^top B)$. Throughout, hats
+$,hat{},$ denote leader objects and tildes $,tilde{},$ denote
+follower objects.
+
+
+
+
+%==============================================================================
+section{Problem Statement}
+label{secproblem}
+%==============================================================================
+ 
+ 
+The leader's decision is $x in mathcal{X}$, a polyhedral binary set
+$mathcal{X} subseteq {0,1}^{d_x}$. The random vector takes values in
+a closed bounded support $Xi subseteq mathbb{R}^{d_xi}$; we denote
+realizations by $xi$. The follower's here-and-now decision is $h in H$
+for a polyhedron $H subseteq mathbb{R}_+^{d_h}$, and his wait-and-see
+decision is $y in Y$ with $Y = mathbb{R}_+^{d_y}$. The lower-level
+coupling between leader, follower, and uncertainty is encoded by a
+constraint matrix pair $(A, B) in mathbb{R}^{m times d_y} times mathbb{R}^{m times d_h}$,
+a leader-parameterized right-hand side $b_x  Xi to mathbb{R}^m$ (made
+explicit in Assumption~ref{asminterdiction} below), and lower-level
+objective vectors $d_0, d_1 in mathbb{R}^{d_y}$. The players hold
+beliefs $hat{P}$ and $tilde{P}$ over $xi$ in the sense of
+Section~ref{secintro}, supported on $Xi$, and the leader's compound
+uncertainty about the pair $(hat{P}, tilde{P})$ is modeled by a
+emph{joint ambiguity set}
+$mathcal{D} subseteq mathcal{P}(Xi) times mathcal{P}(Xi)$
+containing it.
+ 
+We consider the class of problems given by
+begin{equation}label{eqDR}
+    min_{x ,in, mathcal{X}};; sup_{(P,, tilde{P}) ,in, mathcal{D}};; V(x, P, tilde{P}),
+end{equation}
+where, for any $(x, P, tilde{P}) in mathcal{X} times mathcal{D}$, the inner value $V(x, P, tilde{P})$ is the optimal value of the pessimistic bilevel program
+begin{equation}label{eqV-def}
+    begin{aligned}
+        V(x, P, tilde{P}) ;=;; & sup_{tilde{h} ,in, H}quad mathcal{R}^{L}_{P}!big[Q(x, tilde{h}, xi)big] [3pt]
+        text{s.t.}quad & tilde{h} ,in, argmax_{bar{h} ,in, H}; mathcal{R}^{F}_{tilde{P}}!big[Q(x, bar{h}, xi)big],
+    end{aligned}
+end{equation}
+the lower-level LP value function $Q  mathcal{X} times H times Xi to mathbb{R}$ is
+begin{equation}label{eqQ-def}
+    Q(x, h, xi) ;=; max_{bar{y} ,in, Y}; big{d_1^top bar{y} ,, Abar{y} ,leq, b_x(xi) - Bhbig},
+end{equation}
+and $mathcal{R}^{L}_{P}, mathcal{R}^{F}_{tilde{P}}$ are risk functionals indexed by the candidate distributions $P, tilde{P}$ used by the leader and the follower to evaluate the random lower-level value $Q(x, h, xi)$.
+ 
+We adopt throughout the chapter the asymmetric specification
+begin{equation}label{eqrisk-spec}
+    mathcal{R}^{L}_{P}[cdot] ;=; mathrm{CVaR}_beta^{P}[cdot] quad text{for some } beta in [0, 1), qquad mathcal{R}^{F}_{tilde{P}}[cdot] ;=; mathbb{E}^{tilde{P}}[cdot],
+end{equation}
+where the conditional value-at-risk at level $beta$ is defined by
+begin{equation}label{eqCVaR-def}
+    mathrm{CVaR}_beta^{P}[Z] ;=; min_{eta in mathbb{R}} ;Big{eta + tfrac{1}{1-beta} ,mathbb{E}^{P}!big[(Z - eta)^{+}big]Big}.
+end{equation}
+The convention $beta = 0$ gives $mathrm{CVaR}_0^{P}[cdot] = mathbb{E}^{P}[cdot]$, recovering the fully risk-neutral case as a nested special case. The choice~eqref{eqrisk-spec} positions our model as the emph{risk-averse-leader  risk-neutral-follower} combination among the four leader-follower risk pairings of citet{Lei2018}, and matches the DR maximum-flow NIG of citet{Sadana2022}. The asymmetry is not merely a modeling convention the follower's expected lower-level objective is the standard primitive in stochastic optimization, while the leader's risk aversion captures the operationally costly commitment of an interdiction action against an adversary. We will moreover show in Section~ref{subsecsaturation} that under symmetric expectation ($beta = 0$) the follower-side ambiguity radius becomes structurally inactive, making the asymmetry necessary for the compound-ambiguity framework to be nondegenerate.
+ 
+The follower commits to $tilde{h}$ here-and-now by maximizing
+$mathcal{R}^{F}_{tilde{P}}[Q(x, bar{h}, xi)] = mathbb{E}^{tilde{P}}[Q(x, bar{h}, xi)]$
+under his candidate distribution $tilde{P}$; once $xi$ realizes, he
+selects an optimal flow $bar{y} in Y$ for the LP~eqref{eqQ-def}. We
+adopt $d_0 = d_1$ throughout to encode the zero-sum structure the
+leader minimizes the same lower-level objective the follower maximizes;
+the notations are kept distinct to mark the players' roles. The operator $sup_{tilde{h}}$ in~eqref{eqV-def} implements the
+emph{pessimistic} convention when the follower's $bar{h}$-argmax set
+is not a singleton, the leader hedges against the recovery that is worst
+for her own objective
+citep{yanikoglu2018decision,goyal2023decision}.
+ 
+The technical development rests on the following four assumptions.
+ 
+begin{assumption}[Relatively complete recourse]label{asmRCR}
+For every $x in mathcal{X}$, $h in H$, and every $xi in Xi$, the polyhedron ${bar{y} in Y  Abar{y} leq b_x(xi) - B h}$ is nonempty and bounded.
+end{assumption}
+ 
+begin{assumption}[Weakly compact ambiguity set]label{asmcompact}
+$mathcal{D}$ is convex and weakly compact, and every $(P, tilde{P}) in mathcal{D}$ admits a uniform second-moment bound on $Xi$.
+end{assumption}
+ 
+begin{assumption}[Separability of the ambiguity set]label{asmseparability}
+There exist convex weakly compact sets $hat{mathcal{D}}, tilde{mathcal{D}} subseteq mathcal{P}(Xi)$, centered at the leader's belief $hat{P}$ and the follower's belief $tilde{P}$ respectively, such that $mathcal{D} = hat{mathcal{D}} times tilde{mathcal{D}}$. Equivalently, the candidates $P$ and $tilde{P}$ vary independently of each other.
+end{assumption}
+ 
+begin{assumption}[Interdiction-type linking]label{asminterdiction}
+The lower-level right-hand side $b_x(xi)$ depends on the leader's decision through
+begin{equation}label{eqbx}
+    b_x(xi) ;=; big(u_{k}(xi), (1 - v_k(xi), x_k)big)_{k=1}^{m}
+end{equation}
+for some random degradation vector $v(xi) in [0, 1]^{m}$, where $u_{k}(xi)$ denotes the (random) natural-state value of the right-hand side component corresponding to the $k$-th lower-level constraint.
+end{assumption}
+ Assumption~ref{asmRCR} is standard in DR stochastic optimization and
+ensures that~eqref{eqQ-def} has a finite optimal value uniformly over
+$(x, h, xi) in mathcal{X} times H times Xi$
+citep{goyal2023decision}. Assumption~ref{asmcompact} secures the
+strong-duality and Sion-type interchange arguments invoked in
+Section~ref{secreformulation}. Assumption~ref{asmseparability} is the
+structural counterpart of the compound-ambiguity derivation of
+Section~ref{secintro} it asserts that the leader's two distinct
+uncertainties --- about nature's $mathbb{P}^$ and about the follower's
+private $tilde{P}$ --- can be modeled by independent ambiguity sets.
+Without it, the leader would face a single joint ambiguity over
+$(mathbb{P}^, tilde{P})$, which is generally less tractable; we view
+the rectangular case as both natural for the compound-ambiguity
+interpretation and necessary for the structural reformulation we develop
+below. Assumption~ref{asminterdiction} formalizes the
+emph{interdiction-type} coupling in which the leader's decision
+$x$ multiplicatively degrades the lower-level right-hand side; it covers
+max-flow network interdiction, shortest-path interdiction, minimum-cost
+flow interdiction, and knapsack interdiction as special cases. The
+linking is written in terms of $x_k$ without further restricting
+$mathcal{X}$; the algorithmic developments of
+Sections~ref{secreformulation}--ref{seccomplexity} accommodate
+general mixed-integer $mathcal{X}$, and the finite-termination
+guarantee of Section~ref{secbenders} additionally invokes a binary
+restriction on the linking-active components
+(Proposition~ref{propfinite}).
+ 
+Under Assumption~ref{asmseparability}, problem~eqref{eqDR}
+specializes to the rectangular form
+begin{equation}label{eqDR-separable}
+    min_{x ,in, mathcal{X}};; sup_{(P,, tilde{P}) ,in, hat{mathcal{D}} times tilde{mathcal{D}}};; V(x, P, tilde{P}),
+end{equation}
+which we adopt as the working formulation throughout the remainder of
+the chapter.
+
+
+The marginals $hat{mathcal{D}}, tilde{mathcal{D}}$ are abstract in
+Assumption~ref{asmseparability}; we specify them concretely under the following assumptions, which both
+simplifies the notation and admits the LP-representable algorithmic
+form developed in Section~ref{subsecalgorithmic}.
+ 
+begin{assumption}[finite support]label{asmfinite-support}
+The uncertainty space has finite cardinality
+$Xi = {xi^{1}, ldots, xi^{S}}$, and the belief center $hat{P}$ is the empirical distributions
+$hat{q}, tilde{q} in Delta^{S}$ of the leader's and follower's
+observed scenario datasets, respectively. Problem-specific bounds
+$hat{pi}_k^{s}, tilde{pi}_k^{s} in [0, pi^{U}]$ and
+$lambda in [0, lambda^{U}]$ exist (Appendix~ref{appbounds}) and
+are tight enough that McCormick linearization is exact on
+$x_k in {0, 1}$.
+end{assumption}
+ 
+Under Assumption~ref{asmfinite-support}, every candidate
+$P in mathcal{P}(Xi)$ is identified with its probability vector
+$p in Delta^{S}$, and the $phi$-divergence ambiguity sets admit the
+finite-sum representation of citet{bayraksan2015data}.
+ 
+begin{definition}[$phi$-divergence ambiguity sets]label{defphi-div}
+Let $phi mathbb{R}_+ to mathbb{R} cup {+infty}$ be a convex
+lower-semicontinuous function with $phi(1) = 0$. For two probability
+vectors $p, q in Delta^{S}$, the emph{$phi$-divergence} of $p$
+from $q$ is
+begin{equation}label{eqphi-div-def}
+    I_phi(p, q) ;=; sum_{s = 1}^{S} q_{s}, phi!left(frac{p_{s}}{q_{s}}right),
+end{equation}
+with the usual conventions $0,phi(00) = 0$ and
+$0,phi(a0) = a lim_{t to infty} phi(t)t$ for $a  0$.
+Given radii $hat{varepsilon}, tilde{varepsilon} geq 0$, the
+emph{leader-side} and emph{follower-side} $phi$-divergence ambiguity
+sets are
+begin{equation}label{eqphi-div-balls}
+    hat{mathcal{D}}; =; {p in Delta^{S}  I_phi(p, hat{q}) leq hat{varepsilon}},
+    qquad
+    tilde{mathcal{D}}; =; {tilde{p} in Delta^{S}  I_phi(tilde{p}, tilde{q}) leq tilde{varepsilon}},
+end{equation}
+where the follower's belief center is subscripted as $tilde{q}$
+(equivalently $tilde{P}_{!0}$) to disambiguate it from the generic
+follower-side candidate $tilde{p}$. Both sets are convex and compact,
+and combine into the rectangular
+$mathcal{D} = hat{mathcal{D}} times tilde{mathcal{D}}$ of
+Assumptions~ref{asmcompact}--ref{asmseparability}.
+end{definition}
+ 
+Standard choices of $phi$ include
+Kullback--Leibler ($phi(t) = t log t - t + 1$), $chi^{2}$
+($phi(t) = (t - 1)^{2}$), and emph{total variation (TV)}
+($phi(t) = tfrac{1}{2}t - 1$). In this chapter we are especially
+interested in the TV case, $I_phi(p, q) = tfrac{1}{2}sum_{s} p_{s} - q_{s} = d_{mathrm{TV}}(p, q)$,
+whose ambiguity sets are
+begin{equation}label{eqTV-balls}
+    hat{mathcal{D}}; =; big{p in Delta^{S}  d_{mathrm{TV}}(p, hat{q}) leq hat{varepsilon}big},
+    qquad
+    tilde{mathcal{D}}; =; big{tilde{p} in Delta^{S}  d_{mathrm{TV}}(tilde{p}, tilde{q}) leq tilde{varepsilon}big}.
+end{equation}
+The TV choice yields polyhedral ambiguity sets and LP-representable
+worst-case expectations
+citep{benTal2013ambiguous,rahimian2019tvdro}, which we exploit in the
+algorithmic specialization of Section~ref{subsecalgorithmic}.
+ 
+begin{remark}[Scope of assumptions]label{remscope}
+Assumption~ref{asmfinite-support} and the TV
+specialization~eqref{eqTV-balls} are adopted for concrete
+notational ease and are invoked operatively only in
+Section~ref{subsecalgorithmic} (algorithmic min--max
+reformulation), Section~ref{seccomplexity} (complexity), and
+Section~ref{secbenders} (Benders algorithm; this additionally
+exploits the max-flow  min-cut LP duality specific to network
+interdiction). All results preceding
+Section~ref{subsecalgorithmic} --- in particular the dual single-level
+problem of Section~ref{subsecdual-coupling}, the closed
+forms of Proposition~ref{proppieces}, the saddle-point
+identity~eqref{eqV-cartesian}, the game-theoretic representation
+(Theorem~ref{thmgame-theoretic}), and the
+saturation Proposition~ref{propsaturation} --- hold for general
+support $Xi$ and any weakly compact $phi$-divergence ambiguity set
+under Assumptions~ref{asmRCR}--ref{asminterdiction}, and apply
+verbatim to any zero-sum Stackelberg game whose data
+$(A, B, b_x, d_0, d_1, H, Y)$ match the abstract structure
+of~eqref{eqV-def}--eqref{eqbx}. Other $phi$-divergences
+(KL, $chi^{2}$, Wasserstein, etc.) yield analogous algorithmic forms
+through their respective conjugate dualization
+citep{benTal2013ambiguous}; we leave these specializations to future
+work.
+end{remark}
+
+% -----------------------------------------------------------------------------
+subsection{Motivation Maximum-flow network interdiction game}
+label{subsecNIG-model}
+% -----------------------------------------------------------------------------
+The game is played on a directed network $mathcal{G} = (mathcal{V}, mathcal{A})$
+with source $s$ and sink $t$. The arc set is partitioned into the
+emph{interdictable} arcs $mathcal{A}_I$, on which the leader can commit
+effort, and the emph{non-interdictable} arcs incident to $s$ and $t$,
+whose capacities are fixed across scenarios. The leader's feasible set is
+$mathcal{X} = {x in {0,1}^{mathcal{A}}  mathbf{1}^top x leq Gamma,, x_k = 0 ;forall k notin mathcal{A}_I}$,
+where $Gamma in mathbb{Z}_+$ is the interdiction budget. The
+follower's recovery polyhedron is
+$H = {h in mathbb{R}_+^{mathcal{A}}  mathbf{1}^top h leq w}$,
+where $w$ is the recovery budget. The decision chronology is
+$x to h(x) to xi to y(x, h, xi)$.
+ 
+The random vector $xi in Xi$ encodes uncertain arc capacities
+$c_k(xi) geq 0$ and interdiction-effect coefficients
+$v_k(xi) in [0, 1]$, with $Xi subseteq mathbb{R}_+^{mathcal{A}} times [0,1]^{mathcal{A}}$.
+Writing $N = [N_y mid N_{ts}]$ for the node-arc incidence matrix with a
+dummy $(t,s)$-arc appended citep{Lei2018}, the lower-level LP value
+function~eqref{eqQ-def} specializes to the maximum $s$--$t$ flow
+begin{equation}label{eqQ-NIG}
+    Q(x, h, xi) ;=; max_{bar{y} in mathbb{R}^{mathcal{A}},, bar{y}_{ts} in mathbb{R}};
+    big{bar{y}_{ts} ,, N_y bar{y} + N_{ts} bar{y}_{ts} = 0,;; 0 ,leq, bar{y}_k ,leq, c_k(xi),(1 - v_k(xi), x_k) + h_k ;;forall kbig},
+end{equation}
+with $d_0 = d_1 = e_{ts}$ (the unit vector picking out the dummy arc) and
+begin{equation}label{eqbx-NIG}
+    b_x(xi) ;=; big(c_k(xi),(1 - v_k(xi), x_k)big)_{k=1}^{mathcal{A}},
+end{equation}
+which instantiates~eqref{eqbx} of Assumption~ref{asminterdiction}.
+
+%==============================================================================
+section{Saddle-Point Reformulation}
+label{secreformulation}
+%==============================================================================
+ 
+This section develops two equivalent reformulations of the
+distributionally robust value $V^{}_beta(x)$
+of~eqref{eqDR-final}. The first reformulation is
+emph{game-theoretic} it casts $V^{}_beta(x)$ as the leader's worst-case
+CVaR of the lower-level value $Q(x, alpha, xi)$, maximized over those
+recoveries $alpha$ that the follower could rationally choose under
+some distribution in $tilde{mathcal{D}}$. This form makes the
+Stackelberg structure of the original
+problem~eqref{eqDR-separable}--eqref{eqV-def} transparent the
+follower-side ambiguity set $tilde{mathcal{D}}$ shapes the
+emph{feasible set} of admissible follower responses, while the
+leader-side ambiguity set $hat{mathcal{D}}$ shapes the
+emph{objective} (the CVaR distortion). The asymmetric risk
+choice~eqref{eqrisk-spec} is what makes both channels nondegenerate.
+ 
+The second reformulation is emph{algorithmic} it casts the leader's
+decision problem $min_{x} V^{}_beta(x)$ as a single min--max
+begin{equation}
+    min_{x ,in, mathcal{X}}; sup_{(alpha,, zeta) ,in, Omega(x)}; F(x, alpha, zeta),
+end{equation}
+in which $alpha$ is the Lagrange multiplier of the unique
+cross-distribution coupling constraint introduced below, and
+$zeta$ collects the LP duals of two standard two-stage DRO subproblems
+(one for each ambiguity set). This min--max form, together with
+explicit bilinear coupling between $alpha$ and the follower-side TV-dual
+variables, is the basis for the Benders algorithm of
+Section~ref{secbenders} and the complexity result of
+Section~ref{seccomplexity}.
+ 
+Both reformulations originate from the same source dualizing the inner
+pessimistic LP of~eqref{eqV-def} produces a single-level dual program
+whose unique cross-distribution constraint links a leader-side
+expectation under a CVaR risk-envelope element to a follower-side
+expectation under the candidate distribution. Lagrangian relaxation of
+this coupling constraint with multiplier $alpha$, followed by a
+Cartesian separation across the two ambiguity sets, leads to the
+saddle-point structure of both reformulations.
+ 
+We work in continuous notation throughout
+Sections~ref{subsecdual-coupling}--ref{subsecrepresentations},
+with candidate distributions
+$(P, tilde{P}) in hat{mathcal{D}} times tilde{mathcal{D}}$ over
+the $phi$-divergence ambiguity sets of
+Definition~ref{defphi-div}; the
+finite-sum form~eqref{eqphi-div-def} is used as a notational
+convenience and the structural results hold equally for general support
+$Xi$ (cf.~Remark~ref{remscope}). The TV
+specialization~eqref{eqTV-balls} together with
+Assumption~ref{asmfinite-support} is invoked only in
+Section~ref{subsecalgorithmic} for the algorithmic representation.
+Throughout we hold $x in mathcal{X}$ fixed.
+ 
+% -----------------------------------------------------------------------------
+subsection{The dual single-level problem}
+label{subsecdual-coupling}
+% -----------------------------------------------------------------------------
+ 
+For any fixed
+$(P, tilde{P}) in hat{mathcal{D}} times tilde{mathcal{D}}$,
+encoding the follower's arg-max condition in~eqref{eqV-def} as a
+primal value constraint yields the lower-level program
+begin{subequations}label{eqprimal-inner}
+begin{align}
+    (mathcal{P})quad max_{substack{tilde{h} ,in, H  hat{y}(cdot),, tilde{y}(cdot) ,geq, 0}};;
+    & mathrm{CVaR}_beta^{P}!big[d_0^top hat{y}(xi)big] label{eqP-obj}
+    text{s.t.}quad
+    & mathbb{E}^{tilde{P}}!big[d_0^top tilde{y}(xi)big] ;geq; z^{}(x, tilde{P}), && (lambda) label{eqP-value}
+    & Ahat{y}(xi) + Btilde{h} ;leq; b_x(xi), quad Ptext{-a.s.}, && (hat{pi}(xi)) label{eqP-leader-feas}
+    & Atilde{y}(xi) + Btilde{h} ;leq; b_x(xi), quad tilde{P}text{-a.s.}, && (tilde{pi}(xi)) label{eqP-follower-feas}
+    & mathbf{1}^top tilde{h} ;leq; w, && (nu) label{eqP-budget}
+end{align}
+end{subequations}
+where the dual variables are indicated in parentheses,
+$z^{}(x, tilde{P}) = max_{bar{h} in H}, mathbb{E}^{tilde{P}}[Q(x, bar{h}, xi)]$
+is the follower's optimal value.
+ 
+The leader's outer functional $mathrm{CVaR}_beta^{P}$
+in~eqref{eqP-obj} is conveniently handled through its
+emph{risk envelope} dual representation
+citep{rockafellar2002cvar,shapiro2021lectures} for any
+$Z in mathcal{L}^{2}(P)$,
+begin{equation}label{eqCVaR-envelope}
+    mathrm{CVaR}_beta^{P}[Z] ;=; sup_{rho ,in, mathcal{R}_beta(P)}; mathbb{E}^{rho}[Z],
+    quad
+    mathcal{R}_beta(P) ;=; Big{rho ;; rho ,ll, P,;; 0 ,leq, tfrac{mathrm{d}rho}{mathrm{d}P} ,leq, tfrac{1}{1-beta};;text{$P$-a.s.},;; int mathrm{d}rho = 1Big}.
+end{equation}
+At $beta = 0$ the envelope collapses to $mathcal{R}_0(P) = {P}$ and
+recovers $mathbb{E}^{P}[Z]$. Substituting~eqref{eqCVaR-envelope}
+into~eqref{eqP-obj} converts $(mathcal{P})$ into a joint supremum
+over the primal variables and the envelope element $rho$, on which LP
+duality can be applied at each fixed $rho$.
+ 
+begin{lemma}[Lower-level dual]label{lemdual}
+Under Assumption~ref{asmRCR}, strong duality holds for the inner LP
+over $(tilde{h}, hat{y}, tilde{y})$ at every fixed
+$rho in mathcal{R}_beta(P)$. Substituting
+$z^{}(x, tilde{P}) = mathbb{E}^{tilde{P}}[d_1^top tilde{y}^{}(xi)]$
+with $(tilde{y}^{}, tilde{h}^{})$ an optimal follower wait-and-see
+flow attaining $z^{}(x, tilde{P})$, and rescaling
+$(tilde{y}, tilde{h}) leftarrow (lambda tilde{y}, lambda tilde{h})$
+to absorb the multiplier $lambda$ of~eqref{eqP-value} into the
+follower's primal feasibility, the single-level form of the dual is
+begin{equation}label{eqdual-compact}
+    V_beta(x, P, tilde{P}) ;=; sup_{rho ,in, mathcal{R}_beta(P)}; inf;Big{, mathbb{E}^{rho}!big[b_x(xi)^{!top} hat{pi}(xi)big] ;+; mathbb{E}^{tilde{P}}!big[b_x(xi)^{!top} tilde{pi}(xi) - d_1^top tilde{y}(xi)big] ;+; wnu ,, {rm (Ctext{-}L), (Ctext{-}F), (Ctext{-}P), (Ctext{-}B), (CC)}^{rho},Big},
+end{equation}
+where the infimum is taken over
+$(hat{pi}(cdot), tilde{pi}(cdot), tilde{y}(cdot), tilde{h}, lambda, nu)$
+subject to
+begin{subequations}label{eqdual-constraints}
+begin{align}
+    text{rm (C-L)}quad & A^{!top} hat{pi}(xi) ;geq; d_0, quad hat{pi}(xi) ;geq; 0, quad Ptext{-a.s.}, label{eqCL}
+    text{rm (C-F)}quad & A^{!top} tilde{pi}(xi) ;geq; lambda, d_1, quad tilde{pi}(xi) ;geq; 0, quad tilde{P}text{-a.s.}, label{eqCF}
+    text{rm (C-P)}quad & Atilde{y}(xi) + Btilde{h} ;leq; lambda, b_x(xi), quad tilde{y}(xi) ;geq; 0, quad tilde{P}text{-a.s.}; ;; tilde{h} ;geq; 0, label{eqCP}
+    text{rm (C-B)}quad & mathbf{1}^top tilde{h} ;leq; lambda, w, quad lambda ;geq; 0, quad nu ;geq; 0, label{eqCB}
+    text{rm (CC)}^{rho}quad & mathbb{E}^{rho}!big[B^{!top} hat{pi}(xi)big] ;+; mathbb{E}^{tilde{P}}!big[B^{!top} tilde{pi}(xi)big] ;+; nu mathbf{1} ;geq; 0. label{eqCC}
+end{align}
+end{subequations}
+At $beta = 0$, $mathcal{R}_0(P) = {P}$ is a singleton, $rho = P$,
+and {rm (CC)}$^{P}$ recovers the expected-value coupling.
+end{lemma}
+ 
+The proof is in Appendix~ref{applower-dual}; it combines a product-space
+lifting argument with the strong-duality theorem for stochastic LPs
+citep{shapiro2021lectures}.
+ 
+Each line of~eqref{eqdual-constraints} has a direct origin.
+textbf{(C-L)}--textbf{(C-F)} are the LP duals of the leader-side and
+follower-side primal flow
+constraints~eqref{eqP-leader-feas}--eqref{eqP-follower-feas}; the
+multiplier $lambda$ of~eqref{eqP-value} appears in the right-hand
+side of textbf{(C-F)}. textbf{(C-P)} retains the follower's primal
+flow feasibility in rescaled form $lambda b_x(xi)$ because the
+substitution of $z^{}(x, tilde{P})$ keeps $tilde{y}, tilde{h}$ as
+primal variables of $(mathcal{P})$. textbf{(C-B)} collects the
+rescaled budget and the sign constraints.
+ 
+The unique constraint linking expectations under leader-side and
+follower-side measures is the emph{coupling constraint}
+textbf{(CC)}$^{rho}$, which originates from the dual of the
+recovery-budget constraint $mathbf{1}^top tilde{h} leq w$. Two
+structural features drive the rest of the analysis. First,
+textbf{(CC)}$^{rho}$ mixes expectations under emph{two different
+measures} ($rho$ and $tilde{P}$). Second, the leader-side measure is
+the envelope element $rho$ rather than the data-generating $P$; the
+CVaR-leader's risk aversion enters the structural reformulation
+emph{at the constraint level} through this single equation.
+ 
+% -----------------------------------------------------------------------------
+subsection{Saddle-point and game-theoretic representation}
+label{subsecrepresentations}
+% -----------------------------------------------------------------------------
+ 
+ 
+Relaxing textbf{(CC)}$^{rho}$ with a nonnegative per-arc multiplier
+$alpha in mathbb{R}_+^{mathcal{A}}$ and optimizing over
+$nu geq 0$ produces, for any fixed
+$rho in mathcal{R}_beta(P)$ and
+$tilde{P} in tilde{mathcal{D}}$,
+begin{equation}label{eqV-lagrangian}
+    V_beta(x, P, tilde{P}) ;=; sup_{alpha ,in, H_alpha}; Big[,
+    sup_{rho ,in, mathcal{R}_beta(P)}, g_1^{rho}(x, alpha, rho)
+    ;+; inf_{lambda,, h,, psi^{0}}, g_2(x, alpha, tilde{P}, lambda, h, psi^{0}),Big],
+end{equation}
+where $H_alpha = {alpha in mathbb{R}_+^{mathcal{A}}  mathbf{1}^top alpha leq w}$
+arises from the optimum over $nu$,
+$psi^{0}_k = lambda x_k$ is a McCormick auxiliary, and $g_1^{rho}$
+and $g_2$ are the leader-side and follower-side blocks separated by the
+Lagrangian; full expressions are in
+Appendix~ref{applagrangian-CVaR}. The polyhedron $H_alpha$ coincides
+exactly with the recovery polyhedron $H$, an observation we sharpen in
+Remark~ref{remalpha-h} below.
+ 
+Two closed-form computations dispense with the inner LPs.
+ 
+begin{proposition}[Closed forms of $g_1^{rho}$ and $g_2$]label{proppieces}
+For any $x in mathcal{X}$, any $alpha in H_alpha$, and any
+candidate distributions $P, tilde{P}$ on $Xi$,
+begin{enumerate}
+item[(i)] (emph{Leader piece}) $g_1^{rho}(x, alpha, rho) = mathbb{E}^{rho}[Q(x, alpha, xi)]$ for every $rho in mathcal{R}_beta(P)$, and consequently
+begin{equation}label{eqg1-closed}
+    sup_{rho ,in, mathcal{R}_beta(P)}, g_1^{rho}(x, alpha, rho)
+    ;=; mathrm{CVaR}_beta^{P}!big[Q(x, alpha, xi)big];
+end{equation}
+ 
+item[(ii)] (emph{Follower piece})
+begin{equation}label{eqg2-dichotomy}
+    inf_{lambda ,geq, 0,, h ,geq, 0,, mathbf{1}^top h ,leq, lambda w};
+    g_2(x, alpha, tilde{P}, lambda, h, psi^{0}) ;=;
+    begin{cases}
+        0 & alpha in mathcal{A}^{}(x, tilde{P}), 
+        -infty & text{otherwise},
+    end{cases}
+end{equation}
+where the emph{admissible recovery set} at $tilde{P}$ is
+begin{equation}label{eqA-star-p}
+    mathcal{A}^{}(x, tilde{P}) ;=; argmax_{bar{h} ,in, H};
+    mathbb{E}^{tilde{P}}!big[Q(x, bar{h}, xi)big].
+end{equation}
+end{enumerate}
+end{proposition}
+ 
+The leader piece~eqref{eqg1-closed} follows from appyling duality $xi$-pointwise inside the $rho$-expectation, followed
+by the risk-envelope identity~eqref{eqCVaR-envelope}. The follower
+dichotomy reduces, after eliminating the inner LP for $tilde{y}$ via
+duality and using positive homogeneity of $Q$ in $h$, to
+begin{equation}label{eqlambda-penalty}
+    inf_{lambda geq 0}, lambda, Delta(alpha, x, tilde{P}),qquad
+    Delta(alpha, x, tilde{P}) ;=; mathbb{E}^{tilde{P}}!big[Q(x, alpha, xi)big] - z^{}(x, tilde{P}) ,leq, 0,
+end{equation}
+with $Delta = 0$ exactly on the arg-max set. Proofs are in
+Appendices~ref{applagrangian-CVaR}--ref{appg2-proof}.
+ 
+ 
+begin{remark}[The dual identification $alpha equiv h$]label{remalpha-h}
+In $(mathcal{P})$ the recovery $h$ is a budget-constrained primal
+variable. Dualizing converts it into the
+coupling constraint textbf{(CC)}$^{rho}$ with scalar dual $nu$;
+Lagrangian relaxation reintroduces a variable dual to it, $alpha$, whose
+envelope $H_alpha$ coincides with the recovery polyhedron $H$.
+Proposition~ref{propg2} sharpens this correspondence $alpha$ is
+admissible iff it is itself an optimal recovery for the follower under
+some $tilde{P}$ in $tilde{mathcal{D}}$.
+end{remark}
+ 
+Substituting~eqref{eqg1-closed} into~eqref{eqV-lagrangian} and
+lifting to the DR sup over
+$(P, tilde{P}) in hat{mathcal{D}} times tilde{mathcal{D}}$
+(rectangularity of $mathcal{D}$, Assumption~ref{asmseparability})
+separates the two ambiguity suprema across the two blocks. On the
+follower side, the nested operator
+$sup_{tilde{P}} inf_{lambda, h, psi^{0}}$ is interchangeable by
+Sion's theorem (Appendix~ref{appsion-proof}). After interchange,
+begin{subequations}label{eqV-cartesian}
+begin{align}
+    V^{}_beta(x) &;=; sup_{alpha ,in, H_alpha};
+    Big[,sup_{P ,in, hat{mathcal{D}}}, mathrm{CVaR}_beta^{P}!big[Q(x, alpha, xi)big]
+    ;+; inf_{lambda,, h,, psi^{0}}, sup_{tilde{P} ,in, tilde{mathcal{D}}}, g_2(x, alpha, tilde{P}, lambda, h, psi^{0}),Big] label{eqV-cartesian-raw}
+    &;=; sup_{alpha ,in, H_alpha};
+    big[,bar{V}^{L}_beta(x, alpha) ;+; bar{V}^{F}(x, alpha),big], label{eqV-cartesian-named}
+end{align}
+where
+begin{align}
+    bar{V}^{L}_beta(x, alpha) &;=; inf_{eta_beta};
+    Big{,eta_beta ;+; tfrac{1}{1-beta},sup_{P ,in, hat{mathcal{D}}};
+    mathbb{E}^{P}!big[,(Q(x, alpha, xi) - eta_beta)^{+},big],Big}, label{eqVbarL-def}
+    bar{V}^{F}(x, alpha) &;=; inf_{lambda,, h,, psi^{0}};
+    sup_{tilde{P} ,in, tilde{mathcal{D}}};
+    inf_{tilde{y}(cdot),, tilde{pi}(cdot)};
+    Big{,mathbb{E}^{tilde{P}}!big[,b_x(xi)^{!top}tilde{pi}(xi) - d_0^top tilde{y}(xi),big] ,, text{eqref{eqCF}, eqref{eqCP}, eqref{eqCB}},Big}. label{eqVbarF-def}
+end{align}
+end{subequations}
+
+Identity~eqref{eqV-cartesian-named} reduces the leader's decision
+problem~eqref{eqDR} to the single min--max
+begin{equation}label{eqV-minmax-block}
+    min_{x ,in, mathcal{X}}; V^{}_beta(x) ;=;
+    min_{x ,in, mathcal{X}};
+    sup_{alpha ,in, H_alpha};
+    big[,bar{V}^{L}_beta(x, alpha) ;+; bar{V}^{F}(x, alpha),big],
+end{equation}
+inside which sit two two-stage DRO subproblems. The leader block
+$bar{V}^{L}_beta$ is emph{risk-averse} (CVaR objective on
+ambiguity set $hat{mathcal{D}}$), and the follower block
+$bar{V}^{F}$ is emph{risk-neutral} (expected objective on
+$tilde{mathcal{D}}$), coupled by the multiplier $alpha$.
+
+Applying the dichotomy~eqref{eqg2-dichotomy} to the follower-side
+block of~eqref{eqV-cartesian} collapses the inner $inf_{lambda, h, psi^{0}}$
+into a membership constraint over the emph{DRO admissible recovery
+set}
+begin{equation}label{eqA-star-D}
+    mathcal{A}^{}(x, tilde{mathcal{D}}) ;=; bigcup_{tilde{P} ,in, tilde{mathcal{D}}}, mathcal{A}^{}(x, tilde{P}).
+end{equation}
+ 
+begin{theorem}[Game-theoretic representation]label{thmgame-theoretic}
+Under Assumptions~ref{asmRCR}--ref{asminterdiction} and for $beta in [0, 1)$,
+begin{equation}label{eqV-game}
+    V^{}_beta(x) ;=; max_{alpha ,in, mathcal{A}^{}(x, tilde{mathcal{D}})};
+    sup_{P ,in, hat{mathcal{D}}}; mathrm{CVaR}_beta^{P}!big[Q(x, alpha, xi)big].
+end{equation}
+$V^{}_beta(x)$ is finite for every $x in mathcal{X}$ and is weakly
+monotonically increasing in $tilde{varepsilon}$.
+end{theorem}
+ 
+The proof is in Appendix~ref{appstructural-proof}.
+Theorem~ref{thmgame-theoretic} has a transparent Stackelberg reading.
+The leader's optimization is over the recoveries $alpha$ that the
+follower could rationally choose under emph{some} distribution in
+$tilde{mathcal{D}}$; this is the game-theoretic admissible-recovery
+set. Given such an $alpha$, the leader pays the worst-case CVaR of the
+lower-level value $Q(x, alpha, xi)$ over her own ambiguity set
+$hat{mathcal{D}}$. The two ambiguity sets thus enter through
+structurally distinct channels $tilde{mathcal{D}}$ controls the
+emph{game-theoretic feasibility} (admissible follower responses),
+$hat{mathcal{D}}$ controls the emph{risk-adjusted objective}. The
+asymmetric risk choice~eqref{eqrisk-spec} is what keeps both channels
+active at $beta = 0$, Proposition~ref{propsaturation} below shows
+that the feasibility channel becomes inactive on a structurally natural
+regime.
+ 
+ % -----------------------------------------------------------------------------
+subsection{Algorithmic min--max reformulation}
+label{subsecalgorithmic}
+% -----------------------------------------------------------------------------
+The representation~eqref{eqV-cartesian} suits computation only after
+$bar{V}^{L}_beta$ and $bar{V}^{F}$ are converted into LP-representable
+form. To that end, we invoke Assumption~ref{asmfinite-support} (data-driven
+finite support with empirical belief centers) together with the TV
+ambiguity sets~eqref{eqTV-balls}. Writing $u_k^{s} = u_k(xi^{s})$
+and $v_k^{s} = v_k(xi^{s})$, and applying Rockafellar--Uryasev primal
+expansion of the CVaR functional, total-variation LP dualization of
+each worst-case expectation, and McCormick linearization of the
+binary--continuous bilinearities $x_k hat{pi}_k^{s}, x_k tilde{pi}_k^{s}, lambda x_k$,
+the two blocks of~eqref{eqV-cartesian} admit the explicit primal LP forms
+begin{subequations}label{eqVbarL-LP}
+begin{align}
+    bar{V}^{L}_beta(x, alpha) ;=; min;; & eta_beta + tfrac{1}{1-beta}Big[eta^{L} + 2hat{varepsilon},mu^{L} + textstylesum_{s} hat{q}_{s},(sigma_{s}^{L+} - sigma_{s}^{L-})Big] label{eqVbarL-obj}
+    text{s.t.}quad & sigma_{s}^{L+} - sigma_{s}^{L-} + eta^{L} ,geq, zeta_{s}^{L},quad sigma_{s}^{L+} + sigma_{s}^{L-} ,leq, mu^{L} quad forall s, label{eqVbarL-TV}
+    & zeta_{s}^{L} ,geq, textstylesum_{k}!big[(u_k^{s} + alpha_k),hat{pi}_k^{s} - u_k^{s} v_k^{s}, hat{psi}_k^{s}big] - eta_beta quad forall s, label{eqVbarL-RU}
+    & A^{!top} hat{pi}^{s} ,geq, d_{0},quad hat{pi}^{s} ,geq, 0 quad forall s, label{eqVbarL-CL}
+    & hat{psi}_k^{s} ,in, mathrm{MC}(x_k,, hat{pi}_k^{s};, pi^{U}) quad forall k, s, label{eqVbarL-MC}
+    & zeta_{s}^{L}, mu^{L}, sigma_{s}^{Lpm}, hat{psi}_k^{s} ,geq, 0,quad eta_beta, eta^{L} text{ free}, label{eqVbarL-nn}
+end{align}
+end{subequations}
+begin{subequations}label{eqVbarF-LP}
+begin{align}
+    bar{V}^{F}(x, alpha) ;=; min;; & eta^{F} + 2tilde{varepsilon},mu^{F} + textstylesum_{s} tilde{q}_{s},(sigma_{s}^{F+} - sigma_{s}^{F-}) label{eqVbarF-obj}
+    text{s.t.}quad & sigma_{s}^{F+} - sigma_{s}^{F-} + eta^{F} ,geq, textstylesum_{k}!big[(u_k^{s} + alpha_k),tilde{pi}_k^{s} - u_k^{s} v_k^{s}, tilde{psi}_k^{s}big] - d_{0}^{!top}, tilde{y}^{s} quad forall s, label{eqVbarF-TV}
+    & sigma_{s}^{F+} + sigma_{s}^{F-} ,leq, mu^{F} quad forall s, label{eqVbarF-TVnorm}
+    & A^{!top} tilde{pi}^{s} ,geq, lambda, d_{1},quad tilde{pi}^{s} ,geq, 0 quad forall s, tag{C-F} label{eqVbarF-CF}
+    & (Atilde{y}^{s})_k + h_k ,leq, lambda, u_k^{s} - u_k^{s} v_k^{s},psi_k^{0} quad forall k, s, tag{C-P} label{eqVbarF-CP}
+    & mathbf{1}^{!top}, h ,leq, lambda, w, tag{C-B} label{eqVbarF-CB}
+    & tilde{psi}_k^{s} ,in, mathrm{MC}(x_k,, tilde{pi}_k^{s};, pi^{U}),quad psi_k^{0} ,in, mathrm{MC}(x_k,, lambda;, lambda^{U}) quad forall k, s, label{eqVbarF-MC}
+    & tilde{y}^{s}, tilde{pi}^{s}, tilde{psi}_k^{s}, h, lambda, psi_k^{0}, mu^{F}, sigma_{s}^{Fpm} ,geq, 0,quad eta^{F} text{ free}, label{eqVbarF-nn}
+end{align}
+end{subequations}
+where $mathrm{MC}(x, pi; U)$ abbreviates the McCormick envelope of
+$psi = x pi$ with $pi in [0, U]$ and $x in {0, 1}$, viz.
+$psi leq U x,; psi leq pi,; psi geq pi - U(1-x),; psi geq 0$.
+For fixed $(x, alpha)$, both~eqref{eqVbarL-LP}
+and~eqref{eqVbarF-LP} are LPs; the products $alpha_k hat{pi}_k^{s}$
+and $alpha_k tilde{pi}_k^{s}$ enter the constraint matrix linearly
+in $(hat{pi}^{s}, tilde{pi}^{s})$, while $x_k$ enters only as
+McCormick right-hand-side parameter. Full derivation is in
+Appendix~ref{appformulation}.
+ 
+Taking the LP dual of each minimization and combining with the outer
+$sup_{alpha in H_alpha}$ yields the final saddle-point form, which
+we record as the main reformulation of this chapter. We adopt the
+notation of citet{bayraksan2015data} for the LP-dual variables $a_s, b_s$
+(leader-side TV duals), $d_s, e_s$ (follower-side TV duals),
+$hatrho_k^{s,i}, tilderho_k^{s,i}$ (McCormick duals for
+$hatpsi, tildepsi$), $rho_k^{0,i}$ (McCormick duals for $psi^0$),
+and the remaining variables as introduced below.
+ 
+begin{theorem}[Algorithmic min--max reformulation]label{thmalgorithmic}
+Under Assumptions~ref{asmRCR}--ref{asmfinite-support} and for
+$beta in [0, 1)$,
+begin{equation}label{eqsingle-level}
+    min_{x ,in, mathcal{X}}; V^{}_beta(x)
+    ;=;
+    min_{x ,in, mathcal{X}};
+    sup_{(alpha,, zeta^{L},, zeta^{F}) ,in, Omega};
+    F(x, alpha, zeta^{L}, zeta^{F}),
+end{equation}
+where the LP-dual variables collected in
+$zeta^{L} = (a_{s}, bar{a}_{s}, b_{s}, hat{y}^{s}, hat{rho}_{k}^{s,1}, hat{rho}_{k}^{s,2}, hat{rho}_{k}^{s,3})$
+and
+$zeta^{F} = (d_{s}, e_{s}, tilde{y}^{s,dagger}, tilde{pi}^{s,dagger}, kappa, tilde{rho}_{k}^{s,1}, tilde{rho}_{k}^{s,2}, tilde{rho}_{k}^{s,3}, rho_{k}^{0,1}, rho_{k}^{0,2}, rho_{k}^{0,3})$
+are the LP duals of the primal LPs~eqref{eqVbarL-LP}
+and~eqref{eqVbarF-LP}; in particular,
+$hat{y}^{s}, tilde{y}^{s,dagger}$ recover the leader-side and
+follower-side max-flows, $tilde{pi}^{s,dagger}$ is the dual of the
+follower's capacity constraint, and $kappa geq 0$ is the dual of the
+recovery-budget constraint $mathbf{1}^{!top} h leq lambda w$. The
+dual objective is
+begin{equation}label{eqdual-obj}
+    F(x, alpha, zeta^{L}, zeta^{F})
+    ;=; textstylesum_{s} d_{0}^{!top}, hat{y}^{s}
+    ;-; pi^{U}!!sum_{k,s}!big[x_k,(hat{rho}_{k}^{s,1} + tilde{rho}_{k}^{s,1}) + (1 - x_k)(hat{rho}_{k}^{s,3} + tilde{rho}_{k}^{s,3})big]
+    ;-; lambda^{U}!sum_{k}!big[x_k, rho_{k}^{0,1} + (1 - x_k), rho_{k}^{0,3}big],
+end{equation}
+and the feasible set $Omega$ is
+begin{subequations}label{eqOmega}
+begin{align}
+    textstylesum_{s} a_{s} &;=; textstylesum_{s} bar{a}_{s} ;=; 1, qquad (1-beta), a_{s} ,leq, bar{a}_{s} quad forall s, label{eqOm-Lball}
+    bar{a}_{s} - hat{q}_{s} &;leq; b_{s} quad forall s, qquad textstylesum_{s} b_{s} ,leq, 2hat{varepsilon}, label{eqOm-Lrad}
+    textstylesum_{s} d_{s} &;=; 1, qquad d_{s} - tilde{q}_{s} ,leq, e_{s} quad forall s, qquad textstylesum_{s} e_{s} ,leq, 2tilde{varepsilon}, label{eqOm-Fball}
+    (Ahat{y}^{s})_{k} + hat{rho}_{k}^{s,2} - hat{rho}_{k}^{s,3} &;leq; (u_{k}^{s} + alpha_{k}), a_{s} quad forall k, s, label{eqOm-Lbilin}
+    (Atilde{y}^{s,dagger})_{k} + tilde{rho}_{k}^{s,2} - tilde{rho}_{k}^{s,3} &;leq; (u_{k}^{s} + alpha_{k}), d_{s} quad forall k, s, label{eqOm-Fbilin}
+    hat{rho}_{k}^{s,1} + hat{rho}_{k}^{s,2} - hat{rho}_{k}^{s,3} &;geq; u_{k}^{s} v_{k}^{s}, a_{s} quad forall k, s, label{eqOm-LMC}
+    tilde{rho}_{k}^{s,1} + tilde{rho}_{k}^{s,2} - tilde{rho}_{k}^{s,3} &;geq; u_{k}^{s} v_{k}^{s}, d_{s} quad forall k, s, label{eqOm-FMC}
+    (A^{!top} tilde{pi}^{s,dagger})_{j} &;geq; d_{0,j}, d_{s} quad forall j, s, label{eqOm-Ffeas}
+    textstylesum_{k,s} u_{k}^{s}, tilde{pi}_{k}^{s,dagger} + w,kappa + textstylesum_{k}(rho_{k}^{0,2} - rho_{k}^{0,3}) &;leq; textstylesum_{s} d_{1}^{!top}, tilde{y}^{s,dagger}, label{eqOm-Flambda}
+    rho_{k}^{0,3} - rho_{k}^{0,1} - rho_{k}^{0,2} &;leq; textstylesum_{s} u_{k}^{s} v_{k}^{s}, tilde{pi}_{k}^{s,dagger} quad forall k, label{eqOm-psi0}
+    alpha in H_{alpha}, quad &zeta^{L}, zeta^{F} ,geq, 0. label{eqOm-sign}
+end{align}
+end{subequations}
+The objective $F$ is linear in $x$ for fixed $(alpha, zeta^{L}, zeta^{F})$ and linear in $(zeta^{L}, zeta^{F})$ for fixed $x$. Constraints~eqref{eqOm-Lbilin} and~eqref{eqOm-Fbilin} are continuous--continuous bilinearities in $alpha_{k} cdot a_{s}$ and $alpha_{k} cdot d_{s}$, respectively; all other constraints of $Omega$ are linear, and $Omega$ does not depend on $x$.
+end{theorem}
+ 
+The constraints of $Omega$ have the following structural meaning,
+each arising from LP duality applied to a specific primal block
+of~eqref{eqVbarL-LP}--eqref{eqVbarF-LP}
+begin{itemize}
+item eqref{eqOm-Lball}--eqref{eqOm-Lrad} confine the
+leader-side scenario weights to the CVaR-distorted TV ball $a_{s}$
+is the CVaR-distorted worst-case probability (the dual of the
+R--U linking constraint~eqref{eqVbarL-RU}), $bar{a}_{s}$ is the
+ambient TV-ball worst-case probability (the dual of the TV
+link~eqref{eqVbarL-TV} rescaled to sum to one), and $b_{s}$ is the
+TV-norm slack. The CVaR risk-envelope condition
+$(1-beta),a_{s} leq bar{a}_{s}$ links the two. At $beta = 0$,
+$a_{s} = bar{a}_{s}$ and the formulation collapses to the risk-neutral
+case studied in the research notes.
+item eqref{eqOm-Fball} is the analogous TV-ball constraint on the
+follower-side scenario weight $d_{s}$, the dual of the
+follower-side TV link~eqref{eqVbarF-TV}.
+item eqref{eqOm-Lbilin} and~eqref{eqOm-Fbilin} are the dual
+feasibility constraints for the primal max-flow capacity duals
+$hat{pi}_{k}^{s}$ and $tilde{pi}_{k}^{s}$; the bilinear products
+$alpha_{k},a_{s}$ and $alpha_{k},d_{s}$ arise from the Lagrangian
+relaxation of the recovery-budget constraint and are the only
+nonlinearities in $Omega$.
+item eqref{eqOm-LMC} and~eqref{eqOm-FMC} are the dual feasibility
+constraints for the McCormick auxiliaries $hat{psi}_{k}^{s}$ and
+$tilde{psi}_{k}^{s}$.
+item eqref{eqOm-Ffeas} is the dual feasibility constraint for the
+follower's flow recovery $tilde{y}^{s}$ in~eqref{eqVbarF-CP},
+paralleling the leader's max-flow dual~eqref{eqVbarL-CL}.
+item eqref{eqOm-Flambda} arises from the dual of $lambda geq 0$
+in the follower piece, balancing capacity, budget, and
+$psi^{0}$-McCormick contributions.
+item eqref{eqOm-psi0} is the dual feasibility constraint for the
+McCormick auxiliary $psi_{k}^{0} = lambda x_{k}$.
+end{itemize}
+Full derivation, with explicit identification of each LP-dual variable
+with its primal source, is in Appendix~ref{appformulation}.
+ 
+begin{remark}[Irreducibility of the bilinearity]label{remirreducibility}
+In standard two-stage DR with a single ambiguity set, the inner
+$sup_{p},mathbb{E}^{p}[Q(x, xi)]$ is one worst-case expectation that
+becomes an LP after TV dualization, and the full program reduces to a
+polynomial-size MILP. In the present setting, the follower's
+best-response condition introduces a emph{second} worst-case operator
+that survives the Lagrangian relaxation as the inner $sup_{tilde{P}}$
+in $bar{V}^{F}$. After TV dualization this operator becomes the
+continuous variable $d_{s}$, and its product with the recovery-budget
+multiplier $alpha_{k}$ produces the follower bilinear
+coupling~eqref{eqOm-Fbilin}; an analogous mechanism through the
+leader-side CVaR R--U layer produces~eqref{eqOm-Lbilin}. No finite
+sequence of LP-duality steps absorbs $alpha_k cdot a_{s}$ or
+$alpha_k cdot d_{s}$, because in each pair both factors are
+continuous. The bilinearity is a structural feature of the
+heterogeneous-belief setting and is the source of the complexity
+result of Section~ref{seccomplexity}.
+end{remark}
+ 
+ 
+ 
+%==============================================================================
+section{Computational Complexity}
+label{seccomplexity}
+%==============================================================================
+ 
+The algorithmic representation~eqref{eqsingle-level} of
+Theorem~ref{thmalgorithmic} is, under
+Assumption~ref{asmfinite-support}, a continuous bilinear maximization
+over a polyhedral set $Omega$ with bilinear constraints in
+$alpha_k a_{s}$ and $alpha_k d_{s}$, parameterized linearly
+by $x in mathcal{X}$. We characterize the complexity of the two
+natural decision problems it defines evaluating
+$V^{}_beta(bar{x})$ at a fixed $bar{x}$, and solving the leader's
+full decision problem $min_{x} V^{}_beta(x)$.
+ 
+paragraph{The inner subproblem.}
+For fixed $bar{x} in mathcal{X}$, evaluating
+$V^{}_beta(bar{x}) = sup_{(alpha, zeta) in Omega} F(bar{x}, alpha, zeta)$
+is a continuous bilinear maximization in the variables
+$(alpha, zeta^{L}, zeta^{F})$, with bilinearity arising solely
+through the products $alpha_k a_{s}$ and $alpha_k d_{s}$ of
+Remark~ref{remirreducibility}. Since the decision form of continuous
+bilinear maximization is already NP-complete with a single bilinear
+pair citep{alkhayyal1983bilinear}, the decision problem
+``$V^{}_beta(bar{x}) geq theta$'' is NP-hard and its complement
+``$V^{}_beta(bar{x}) leq theta$'' is coNP-hard.
+ 
+paragraph{The full decision problem.}
+The decision version of the leader's problem,
+begin{equation}label{eqfull-decision}
+    min_{x in mathcal{X}}; V^{}_beta(x) ;leq; theta,
+end{equation}
+takes the form
+$exists, x in mathcal{X};forall, (alpha, zeta) in Omega; F(x, alpha, zeta) leq theta$,
+i.e., an existential outer quantifier over the leader's binary
+decision followed by a universal inner check over the bilinear
+polytope $Omega$. The universal check is coNP-hard by the inner
+subproblem discussion above; the alternation places the full problem
+in $Sigma_2^{p}$.
+ 
+begin{lemma}[Complexity upper bound]label{lemSigma2}
+The decision problem~eqref{eqfull-decision} belongs to $Sigma_2^{p}$.
+end{lemma}
+ 
+Membership follows from the $existsforall$-structure the outer
+existential certificate $x in mathcal{X}$ has polynomial size, and
+by the NP-completeness of continuous bilinear maximization
+citep{alkhayyal1983bilinear}, the inner universal check
+$forall (alpha, zeta) in Omega F(x, alpha, zeta) leq theta$
+is in coNP.
+ 
+begin{remark}[On $Sigma_2^{p}$-hardness]label{remSigma2-hard}
+We expect~eqref{eqfull-decision} to be $Sigma_2^{p}$-hard. The
+$existsforall$ alternation together with the continuous bilinear
+coupling $alpha_k a_{s}, alpha_k d_{s}$ between the outer
+existential and inner universal variables is the standard mechanism by
+which two-stage problems escape NP, and a natural reduction would be
+from $existsforall$-3SAT with bilinear constraints encoding the
+clause structure across the two quantifier blocks. A complete proof
+is left to future work; absent it, only the upper bound of
+Lemma~ref{lemSigma2} is rigorously established here.
+end{remark}
+ 
+The $Sigma_2^{p}$ upper bound of Lemma~ref{lemSigma2} by itself
+does not rule out a polynomial-size MILP encoding. Under the
+$Sigma_2^{p}$-hardness conjecture of Remark~ref{remSigma2-hard},
+however, no such encoding can exist unless the polynomial hierarchy
+collapses to its first level. Whether or not the conjecture is
+established, the continuous bilinear coupling of
+Remark~ref{remirreducibility} already rules out a finite-step
+LP-duality reduction to MILP any tractable algorithm must therefore
+(i) accept exponential worst-case running time, (ii) employ a non-LP
+approach to the bilinear coupling, or (iii) exploit problem-specific
+structure to keep practical instances tractable. The Benders
+decomposition of Section~ref{secbenders} pursues (ii) for the
+subproblem and (iii) for the master, generating valid cuts under both
+exact (spatial branch-and-bound on the bilinear subproblem) and
+$alpha$-restricted (LP-only) solves.
+
+
+ 
+ 
+%==============================================================================
+section{Benders Decomposition}
+label{secbenders}
+%==============================================================================
+ 
+We develop a Benders decomposition for $min_x V^_beta(x)$ tailored to
+the bilinear single-level form~eqref{eqsingle-level}. The outer master
+problem (OMP) maintains a piecewise-linear lower envelope of
+$V^_beta(cdot)$ in $x$ and selects a candidate
+$bar{x} in mathcal{X}$; the inner subproblem (ISP) evaluates
+$V^_beta(bar{x})$ and returns an affine cut in $x$. Two features of
+the algorithm distinguish it from standard Benders (i) cut validity
+under emph{inexact} (local-optimal) subproblem solves, which we exploit
+to use a fast local bilinear solver for most iterations and reserve the
+expensive global solver for a smaller subset (Section~ref{subseccut-validity}); and (ii)
+a family of min-cut valid inequalities derived from the LP duality
+between max-flow and min-cut (Section~ref{subsecmin-cut-VI}).
+ 
+% -----------------------------------------------------------------------------
+subsection{Cut generation exact and $epsilon$-optimal}
+label{subseccut-validity}
+% -----------------------------------------------------------------------------
+The OMP at iteration $K$ is
+begin{equation}label{eqOMP}
+    (text{OMP}_K) qquad min_{x in mathcal{X},, t_0 in mathbb{R}}; t_0 quad text{s.t.}quad t_0 geq ell^{(i)}(x),; i = 1, ldots, K-1,
+end{equation}
+with $ell^{(i)}  mathcal{X} to mathbb{R}$ affine cuts (specified below). Denote an
+optimal solution $(bar{x}^{(K)}, bar{t}_0^{(K)})$; $bar{t}_0^{(K)}$ is
+a valid lower bound on $min_x V^_beta(x)$. The ISP at $bar{x}^{(K)}$ is
+begin{equation}label{eqISP}
+    V^_beta(bar{x}^{(K)}) ;=; sup_{(alpha, zeta) in Omega}; F(bar{x}^{(K)}, alpha, zeta),
+end{equation}
+a continuous bilinear maximization in $(alpha, zeta)$
+(Section~ref{seccomplexity}).
+ 
+paragraph{Cut form.}
+Let $(alpha^, zeta^) in Omega$ be any feasible point of~eqref{eqISP}, where $zeta^ = (zeta^{L}, zeta^{F})$ collects the LP duals introduced in Theorem~ref{thmalgorithmic}. Define
+begin{equation}label{eqcut}
+    ell^{(K)}(x) ;=; F(x, alpha^, zeta^) ;=; mathfrak{a}(alpha^, zeta^) ;+; textstylesum_{k} pi_k^{x}(alpha^, zeta^), x_k,
+end{equation}
+where, reading off the coefficients of $x_k$ and the constant terms
+of~eqref{eqdual-obj},
+begin{subequations}label{eqcut-coeffs}
+begin{align}
+    mathfrak{a}(alpha^, zeta^) ;&=; textstylesum_{s} d_{0}^{!top}, hat{y}^{s}
+        ;-; pi^{U}!!sum_{k,s}!big(hat{rho}_{k}^{s,3} + tilde{rho}_{k}^{s,3}big)
+        ;-; lambda^{U}!sum_{k} rho_{k}^{0,3}, label{eqcut-int}
+    pi_k^{x}(alpha^, zeta^) ;&=; -pi^{U}!sum_{s}!big[(hat{rho}_{k}^{s,1} + tilde{rho}_{k}^{s,1}) - (hat{rho}_{k}^{s,3} + tilde{rho}_{k}^{s,3})big]
+        ;-; lambda^{U}!big(rho_{k}^{0,1} - rho_{k}^{0,3}big). label{eqcut-slope}
+end{align}
+end{subequations}
+Crucially, the cut $ell^{(K)}$ is an emph{affine function of $x$ with
+fixed coefficients} $F(x, alpha^, zeta^)$ is the value of the
+emph{Lagrangian dual at the realized dual iterate} $(alpha^, zeta^)$,
+not the value of the ISP optimization itself.
+ 
+begin{proposition}[Cut validity]label{propcut-validity}
+For any feasible $(alpha^, zeta^) in Omega$ and any
+$x in mathcal{X}$,
+begin{equation}label{eqcut-valid}
+    ell^{(K)}(x) ;leq; V^_beta(x).
+end{equation}
+If $(alpha^, zeta^)$ is a global optimum of~eqref{eqISP} at
+$bar{x}^{(K)}$, then $ell^{(K)}(bar{x}^{(K)}) = V^_beta(bar{x}^{(K)})$.
+end{proposition}
+ 
+begin{proof}
+$Omega$ does not depend on $x$ by Theorem~ref{thmalgorithmic}, so for
+any feasible $(alpha^, zeta^) in Omega$ and any $x in mathcal{X}$,
+[
+    ell^{(K)}(x) ;=; F(x, alpha^, zeta^) ;leq; sup_{(alpha, zeta) in Omega} F(x, alpha, zeta) ;=; V^_beta(x).
+]
+Tightness at $bar{x}^{(K)}$ under global optimality is the definition.
+end{proof}
+ 
+The validity statement holds for emph{any} feasible
+$(alpha^, zeta^) in Omega$, not only globally optimal ones. This
+decouples cut extraction from global optimization of the bilinear
+subproblem, and is the foundation of the inexact-solver schedule below.
+ 
+paragraph{Exact and $epsilon$-optimality cuts.}
+The bilinear ISP is NP-complete in general (Section~ref{seccomplexity})
+and is the dominant per-iteration cost. We grade the solver effort
+ 
+smallskip
+noindentemph{Exact cut.} If~eqref{eqISP} is solved to global
+optimality by a spatial branch-and-bound solver, the resulting
+$ell^{(K)}$ is tight at $bar{x}^{(K)}$ and yields a valid upper bound
+$overline{V} leftarrow min{overline{V}, F(bar{x}^{(K)}, alpha^, zeta^)}$.
+ 
+smallskip
+noindentemph{$epsilon$-optimality cut.} If~eqref{eqISP} is solved
+only to a local optimum --- i.e., the solver returns a stationary point
+$(hatalpha, hatzeta) in Omega$ satisfying first-order conditions but
+not certified global --- then by Proposition~ref{propcut-validity} the
+cut $ell^{(K)}(x) = F(x, hatalpha, hatzeta)$ is still valid; only
+the global tightness at $bar{x}^{(K)}$ is forfeited, so the cut may be
+loose and $overline{V}$ is not updated. We call such a cut an
+emph{$epsilon$-optimality cut} it is the cut returned at any
+$epsilon$-stationary feasible point, valid uniformly in
+$x in mathcal{X}$ and slope-exact at $(hatalpha, hatzeta)$.
+ 
+The asymmetry between cost and validity --- the local solve is
+typically one to two orders of magnitude faster than the global solve
+while producing a fully valid cut --- motivates the schedule of
+Section~ref{subsecalgorithm}.
+ 
+% -----------------------------------------------------------------------------
+subsection{Min-cut valid inequalities for the master a partial Benders construction}
+label{subsecmin-cut-VI}
+% -----------------------------------------------------------------------------
+The cuts of Section~ref{subseccut-validity} are LP-derived linear
+functions in $x$ that, taken as a family, contain no a-priori
+information about the underlying network. The OMP at iteration $K = 1$
+therefore admits the trivial $t_0 = 0$ for arbitrary $x in mathcal{X}$,
+and the lower bound remains uninformative for many early iterations.
+This is a known limitation of standard Benders decomposition when the
+subproblem encodes combinatorial structure absent from the master
+citep{rahmaniani2017benders}.
+ 
+The remedy is to inject a relaxation of the subproblem structure
+directly into the master, a strategy known as emph{partial Benders
+decomposition} or emph{scenario creation}
+citep{crainic2021partial} the master is enriched with valid
+inequalities derived from a tractable relaxation of the subproblem,
+typically obtained by aggregating scenarios or by retaining a tractable
+substructure. In the present setting, the maximum-flow specialization
+of Section~ref{subsecNIG-model} provides such a substructure the
+follower's per-scenario evaluation $Q(x, bar{h}, xi^j)$ is a
+max-flow LP, and its min-cut dual offers a clean linear-in-$x$
+relaxation once a recovery $bar{h}$ and a probability vector $hat{q}$
+are fixed. We exploit this to derive a family of emph{min-cut valid
+inequalities} (min-cut VIs), pre-populated into the OMP as a network-aware
+cut pool. The construction uses two ingredients specific to network
+interdiction the LP duality between max-flow and min-cut, and the
+McCormick linearization of the binary--continuous bilinearity
+$x_k delta_k^j$.
+ 
+For interdiction $x$, recovery $bar{h} in H$, and scenario $j$, the
+residual capacity on arc $k$ is $u_k^j(x, bar{h}) = c_k^j(1 - v_k^j x_k) + bar{h}_k$,
+and the max-flow under $u^j(x, bar{h})$ admits the min-cut LP
+begin{equation}label{eqmincut-LP}
+    Q(x, bar{h}, xi^j) ;=; min_{delta^j, tau^j}; textstylesum_k u_k^j(x, bar{h}),delta_k^j
+    ;;text{s.t.};; delta_k^j geq tau_{j(k)}^j - tau_{i(k)}^j,;; tau_s^j = 0,; tau_t^j = 1,; delta_k^j, tau_i^j in [0, 1].
+end{equation}
+Based on Theorem~ref{thmgame-theoretic}, $V^_beta(x) =
+max_{alpha in mathcal{A}^(x, tilde{mathcal{D}})} sup_{p in hat{mathcal{D}}} mathrm{CVaR}_beta^{p}[Q(x, alpha, xi)]$.
+Specializing $p$ to the leader-side center $hat{q} in hat{mathcal{D}}$
+and using the data-driven identification $hat{q} = tilde{q}$ so that
+$hat{q} in tilde{mathcal{D}}$, any $bar{h} in H$ that is optimal for
+the nominal follower problem under $tilde{q}$ satisfies
+$bar{h} in mathcal{A}^(x, tilde{q}) subseteq mathcal{A}^(x, tilde{mathcal{D}})$,
+and hence
+begin{equation}label{eqmincut-bound}
+    V^_beta(x) ;geq; mathrm{CVaR}_beta^{hat{q}}[Q(x, bar{h}, xi)] ;geq; mathbb{E}^{hat{q}}[Q(x, bar{h}, xi)] - tau_beta,
+end{equation}
+where $tau_beta geq 0$ is an explicit bound on the CVaR--expectation
+gap (Appendix~ref{appmincut-bound}). Substituting~eqref{eqmincut-LP}
+for each scenario and linearizing $x_k delta_k^j$ via auxiliary
+$w_k^j = x_k delta_k^j$ under McCormick envelopes yields the following
+inequality.
+ 
+begin{proposition}[Min-cut VI]label{propmincut-VI}
+Under the data-driven specification $hat{q} = tilde{q}$, for any
+$bar{h} in H$ that is optimal for the nominal follower problem under
+$tilde{q}$, the constraint system
+begin{align}
+    t_0 &;geq; textstylesum_j hat{q}_j sum_k big[c_k^j (delta_k^j - v_k^j w_k^j) + bar{h}_k delta_k^jbig] - tau_beta, label{eqmincut-VI-obj}
+    & delta_k^j geq tau_{j(k)}^j - tau_{i(k)}^j,;; tau_s^j = 0,; tau_t^j = 1,;; delta_k^j, tau_i^j in [0,1] quad forall k, j,
+    & 0 leq w_k^j leq x_k,;; delta_k^j - (1 - x_k) leq w_k^j leq delta_k^j quad forall k, j,
+end{align}
+is valid in the MP.
+end{proposition}
+ 
+The proof is in Appendix~ref{appmincut-VI-proof}. Two recovery choices
+are useful in practice $bar{h} = 0$ (follower does not recover) and
+$bar{h} = alpha^{(ell)}$ where $alpha^{(ell)}$ is the
+$alpha$-iterate from the $ell$-th subproblem (which lies in $H_alpha = H$ by
+Remark~ref{remalpha-h} and is admissible for the nominal follower
+under $tilde{q}$). The latter dominates the former by monotonicity of
+$Q(x, bar{h}, xi^j)$ in capacity.
+ 
+We initialize the OMP with $L leq 3$ such VIs, including
+$bar{h} = 0$, and add subsequent VIs on demand when the OMP--ISP gap
+fails to close at the rate suggested by the cut schedule.
+ 
+% -----------------------------------------------------------------------------
+subsection{Overall algorithm procedure}
+label{subsecalgorithm}
+% -----------------------------------------------------------------------------
+The algorithm alternates between the OMP and the bilinear ISP. At each
+iteration, the OMP is re-solved to produce a candidate $bar{x}^{(K)}$
+and a lower bound $bar{t}_0^{(K)}$; the ISP at $bar{x}^{(K)}$ then
+returns a feasible dual iterate $(alpha^, zeta^) in Omega$ from
+which the affine cut~eqref{eqcut} is constructed and appended to the
+OMP. Since Proposition~ref{propcut-validity} guarantees validity at
+any feasible $(alpha^, zeta^)$, we grade the ISP solver effort to
+the iteration
+begin{itemize}
+item emph{Most iterations} use a emph{local} bilinear solver
+(stationary-point search; in our implementation Gurobi's local-optimal
+mode for non-convex quadratically constrained problems). The returned
+$(hatalpha, hatzeta) in Omega$ is $epsilon$-stationary and yields
+an $epsilon$-optimality cut by Proposition~ref{propcut-validity}.
+The upper bound $overline{V}$ is emph{not} updated in these iterations
+since the local solve produces no certificate of global optimality.
+ 
+item emph{A subset of iterations} (every $m$-th, with $m in {4, 5}$
+in our experiments) invokes a emph{global} spatial branch-and-bound
+solver on~eqref{eqISP}. The exact cut at the global optimum is added
+to the OMP and the upper bound is updated to
+$overline{V} leftarrow min{overline{V}, F(bar{x}^{(K)}, alpha^, zeta^)}$.
+end{itemize}
+The OMP is pre-populated with min-cut VIs (Section~ref{subsecmin-cut-VI})
+to ensure the lower bound is non-trivial from the first iteration. The
+iteration terminates when the relative gap
+$(overline{V} - bar{t}_0^{(K)})  overline{V}$ falls below a
+prescribed tolerance $epsilon_{mathrm{tol}}$ (or a wall-time budget is
+exhausted). The full procedure is summarized in
+Algorithm~ref{algbenders}.
+ 
+begin{algorithm}[htbp]
+caption{Benders procedure with $epsilon$-optimality and exact cuts}
+label{algbenders}
+begin{algorithmic}[1]
+State Initialize OMP with min-cut VIs (Proposition~ref{propmincut-VI})
+State Set $K gets 1$, $overline{V} gets +infty$, and tolerance $epsilon_{mathrm{tol}}$
+Repeat
+    State Solve OMP$_K$~eqref{eqOMP} to obtain $(bar{x}^{(K)}, bar{t}_0^{(K)})$
+    If{$K bmod m = 0$} Comment{exact cut (every $m$-th iteration)}
+        State Global solve of ISP~eqref{eqISP} $Rightarrow;(alpha^{}, zeta^{}) in Omega$ (certified)
+        State $overline{V} gets min{overline{V},; F(bar{x}^{(K)}, alpha^{}, zeta^{})}$
+        State $(alpha^{dagger}, zeta^{dagger}) gets (alpha^{}, zeta^{})$
+    Else Comment{$epsilon$-optimality cut (cheap local solve)}
+        State Local solve of ISP~eqref{eqISP} $Rightarrow;(hatalpha, hatzeta) in Omega$ ($epsilon$-stationary)
+        State $(alpha^{dagger}, zeta^{dagger}) gets (hatalpha, hatzeta)$
+    EndIf
+    State Construct cut
+        $ell^{(K)}(x) = mathfrak{a}(alpha^{dagger}, zeta^{dagger}) + sum_{k} pi_k^{x}(alpha^{dagger}, zeta^{dagger}), x_k$
+        from~eqref{eqcut-int},~eqref{eqcut-slope}
+    State Append $ell^{(K)}$ to OMP and set $K gets K + 1$
+Until{$(overline{V} - bar{t}_0^{(K)})  max{overline{V}, 1} leq epsilon_{mathrm{tol}}$}
+State Return $(bar{x}^{(K)}, overline{V})$
+end{algorithmic}
+end{algorithm}
+ 
+begin{proposition}[Finite termination]label{propfinite}
+Suppose the components of $x$ participating in the linking
+constraint~eqref{eqbx} are restricted to ${0, 1}$ --- i.e., the
+linking projection
+$mathcal{X}_{mathrm{link}} = {(x_1, ldots, x_m) in {0, 1}^{m}  x in mathcal{X}}$
+is a finite subset of the binary set, with
+$mathcal{X}_{mathrm{link}} leq 2^{m}$. Then the algorithm
+terminates in finitely many iterations.
+end{proposition}
+ 
+begin{proof}
+Suppose, for contradiction, that the algorithm does not terminate in
+finitely many iterations. Then it produces an infinite sequence
+${bar{x}^{(K)}}_{K geq 1}$ in $mathcal{X}_{mathrm{link}}$, and
+by pigeonhole some $bar{x}^{star} in mathcal{X}_{mathrm{link}}$
+recurs infinitely often. Because the global solver is scheduled at
+every $m$-th iteration, $bar{x}^{star}$ is encountered at a
+global-solve iteration at least once, producing an exact cut
+$ell^{(K^{star})}(bar{x}^{star}) = V^{}_beta(bar{x}^{star})$
+and the upper-bound update
+$overline{V} leq V^{}_beta(bar{x}^{star})$. Thereafter, any
+iteration at which the OMP selects $bar{x}^{star}$ satisfies
+$bar{t}_0^{(K)} geq ell^{(K^{star})}(bar{x}^{star}) = V^{}_beta(bar{x}^{star}) geq overline{V}$,
+so the gap closes at $bar{x}^{star}$ and the algorithm terminates ---
+a contradiction.
+end{proof}
+ 
+The argument hinges on the finiteness of $mathcal{X}_{mathrm{link}}$,
+not on bounding the cut-slope multiplicity the binary linking is what
+makes the leader's decision space ISP-discriminating, and the periodic
+global solve ensures that each recurring binary configuration
+eventually receives an exact evaluation. The hypothesis is local to
+this section --- the structural and complexity results of
+Sections~ref{secreformulation}--ref{seccomplexity} require no such
+restriction --- and is satisfied by the network-interdiction
+applications of Section~ref{secexperiments}. For applications in
+which $mathcal{X}_{mathrm{link}}$ is general mixed-integer or
+continuous, the algorithm remains valid as a primal--dual procedure
+that produces a monotone lower bound and, when global solves succeed,
+a valid upper bound; only the finite-termination guarantee is lost.
+ 
+The local solver dominates the per-iteration cost in our experiments
+(Section~ref{secexperiments}). Each local solve completes in seconds,
+the global solve is one to two orders of magnitude slower, and the
+$epsilon$-optimality cuts produced by the local solver close most of
+the OMP--ISP gap; the global solve serves primarily to validate the
+incumbent upper bound and to break out of regions where the local
+solver returns stationary points far from the global optimum.
+%==============================================================================
+section{Numerical Experiments}
+label{secexperiments}
+%==============================================================================
+ 
+We assess the proposed model and the Benders procedure of
+Section~ref{secbenders} along three dimensions. Section~ref{subsecexp-setup}
+specifies the test instances and the sampling protocol;
+Section~ref{subsecexp-compute} reports the wall-clock performance of
+three algorithmic variants;
+Section~ref{subsecexp-vor} quantifies the in-sample, model-implied
+value of robustness against the SAA baseline; and
+Section~ref{subsecexp-oos} reports out-of-sample CVaR performance
+under in-distribution and perturbed sampling regimes. All experiments
+are implemented in JuliaJuMP~citep{lubin2023jump} and run on
+[hardware specs to be inserted]. Both the local and global bilinear
+subproblem solves use Gurobi the local solver invokes
+texttt{OptimalityTarget = 1} (first-order $varepsilon$-stationary
+mode) and the global solver invokes texttt{NonConvex = 2} (spatial
+branch-and-bound). LP subproblems are solved by Gurobi in default mode.
+ 
+% -----------------------------------------------------------------------------
+subsection{Experimental setup}
+label{subsecexp-setup}
+% -----------------------------------------------------------------------------
+ 
+paragraph{Networks.} We consider five undirected $s$--$t$ networks of
+varying size and topology a synthetic $5 times 5$ grid and four
+backbone instances (Polska, Abilene, Nobel-US, Sioux Falls). Their
+vertex and arc counts are reported in
+Table~ref{tabcomputational}.
+ 
+paragraph{Interdictable arcs and budget.} The leader's budget is set
+to $Gamma = 2$ across all networks, with linking constraint
+$sum_{k in mathcal{A}_I} x_k leq Gamma$. For Grid $5 times 5$,
+the interdictable set $mathcal{A}_I$ excludes all source-outgoing and
+sink-incoming arcs. For the four backbone networks, $mathcal{A}_I$
+contains all arcs subject to the cardinality constraints
+$sum_{k in delta^{+}(s)} x_k leq delta^{+}(s) - 1$ and
+$sum_{k in delta^{-}(t)} x_k leq delta^{-}(t) - 1$ (at least
+one source-outgoing and one sink-incoming arc must remain operational).
+ 
+paragraph{Scenario generation.} The empirical scenario set has
+cardinality $S = 10$. For each scenario $s in [S]$, the baseline arc
+capacity $c^{s} in mathbb{R}^{mathcal{A}}_{+}$ and the
+interdiction-success vector $v^{s} in [0, 1]^{mathcal{A}}$ are
+drawn independently from network-specific intervals; the generation
+procedure is detailed in Appendix~ref{appscenario-gen}. The empirical
+distribution on these $S$ scenarios is uniform,
+$hat{q}_{s} = 1  S$, and the follower-side belief center is identified
+with the leader's, $tilde{q} = hat{q}$.
+ 
+paragraph{Validation and test sampling.}label{parsampling}
+To assess sensitivity to misspecification of the scenario probability
+vector, we draw $N_{mathrm{val}} = N_{mathrm{test}} = 500$ probability
+vectors $q^{(n)}$ from a symmetric Dirichlet
+$mathrm{Dir}(gamma , mathbf{1}_{S})$, with concentration parameter
+$gamma in {0.1, 0.3, 0.5, 1.0}$ controlling the dispersion around
+$hat{q}$ (smaller $gamma$ produces draws further from the uniform
+center). The 500 validation draws are used to select the ambiguity
+radius (described below); the 500 test draws are held out for the
+out-of-sample evaluation of Section~ref{subsecexp-oos}. To assess
+robustness to perturbations of the Dirichlet center itself, an
+additional 500 perturbed test draws are generated for each perturbation
+level $nu in {0.5, 1.0, 2.0, 5.0}$, where the Dirichlet center is
+multiplicatively perturbed from $hat{q}$ in proportion to $nu$
+(Appendix~ref{appperturbation}). We use $nu$ rather than $zeta$ to
+avoid collision with the LP-dual variables $zeta^{L}, zeta^{F}$ of
+Section~ref{subsecalgorithmic}.
+ 
+paragraph{Risk levels, ambiguity radii, and selection rule.}
+We evaluate CVaR risk levels $beta in {0.0, 0.05, 0.4, 0.7}$ and
+ambiguity radii $hat{varepsilon} = tilde{varepsilon} = varepsilon in {0.1, 0.2, 0.5}$.
+For the out-of-sample comparisons of Section~ref{subsecexp-oos} we
+fix $beta = 0.4$. The radius $varepsilon^{}(mathrm{net})$ is
+selected per network on the validation set, jointly across all
+$gamma in {0.1, 0.3, 0.5, 1.0}$, by minimizing the 95th-percentile
+of the validation out-of-sample CVaR (rule details in
+Appendix~ref{appselection}). The selection is held fixed in the test
+phase. We deliberately do not tune $varepsilon$ per $(mathrm{net}, gamma)$
+to prevent the selection from using test-distribution information.
+ 
+% -----------------------------------------------------------------------------
+subsection{Computational performance}
+label{subsecexp-compute}
+% -----------------------------------------------------------------------------
+ 
+We benchmark three algorithmic variants of the Benders procedure of
+Section~ref{subsecalgorithm}
+textbf{Plain BD} solves the global bilinear ISP~eqref{eqISP} at every
+iteration;
+textbf{Enhanced BD} uses $varepsilon$-optimality cuts from the local
+bilinear solver at every iteration, with a global solve scheduled at
+every $m = 5$-th iteration;
+textbf{Enhanced BD + VIs} augments Enhanced BD with the min-cut valid
+inequalities of Proposition~ref{propmincut-VI} pre-populated into the
+OMP. All variants share a $10^{-4}$ relative-gap tolerance, a
+6{,}000-second wall-time limit, and a 1{,}000-iteration cap. We fix
+$beta = 0.4$ and $varepsilon = 0.2$.
+ 
+Table~ref{tabcomputational} reports the wall-clock time and iteration
+count for each (variant, network) pair.
+ 
+begin{table}[t]
+centering
+caption{Computational performance of the three algorithmic variants. CVaR level $beta = 0.4$, ambiguity radius $varepsilon = 0.2$, budget $Gamma = 2$.}
+label{tabcomputational}
+small
+begin{tabular}{cl c rr rr rr}
+toprule
+ & & & multicolumn{2}{c}{textbf{Plain BD}} & multicolumn{2}{c}{textbf{Enhanced BD}} & multicolumn{2}{c}{textbf{Enhanced BD + VIs}} 
+cmidrule(lr){4-5} cmidrule(lr){6-7} cmidrule(lr){8-9}
+$beta$ & Network & $varepsilon$ & Time,(s) & Iter & Time,(s) & Iter & Time,(s) & Iter 
+midrule
+multirow{5}{}{$0.4$}
+ & Grid $5 times 5$ {scriptsize($mathcal{V} !=! 27,, mathcal{A} !=! 47$)} & $0.2$ & 747   & 247   & 161   & 49 & 256   & 55 
+ & Abilene          {scriptsize($mathcal{V} !=! 12,, mathcal{A} !=! 30$)} & $0.2$ & 5{,}003 & 421   & 1{,}866 & 56 & 1{,}524 & 37 
+ & Nobel-US         {scriptsize($mathcal{V} !=! 14,, mathcal{A} !=! 38$)} & $0.2$ & 2{,}400 & 510   & 1{,}076 & 80 & 329   & 66 
+ & Sioux Falls      {scriptsize($mathcal{V} !=! 24,, mathcal{A} !=! 76$)} & $0.2$ & 4{,}347 & 1{,}000$^{dagger}$ & 717   & 78 & 517   & 70 
+ & Polska           {scriptsize($mathcal{V} !=! 12,, mathcal{A} !=! 36$)} & $0.2$ & 2{,}192 & 590   & 228   & 50 & 106   & 25 
+bottomrule
+end{tabular}
+vspace{2pt}
+{footnotesize $^{dagger}$,Maximum iteration limit reached (relative gap above tolerance).}
+end{table}
+ 
+The schedule of local-solve $varepsilon$-optimality cuts with periodic
+global solves (Plain BD $to$ Enhanced BD) reduces wall-clock time by a
+factor of $2.4 times$ to $9.6 times$ across the five networks, with
+iteration counts compressed from several hundred (or the cap) to fewer
+than $80$ in every case. The reduction is largest on Polska
+($9.6 times$) and Grid $5 times 5$ ($4.6 times$), where the
+per-iteration cost of the global bilinear solver dominates and is most
+readily replaced by the local solver. The improvement on Plain BD
+itself is most extreme on Sioux Falls Plain BD fails to converge
+within the $1{,}000$-iteration cap, whereas both enhanced variants
+converge in $70$--$78$ iterations. Sioux Falls has the densest arc set
+($mathcal{A} = 76$) and consequently the largest number of bilinear
+pairs $alpha_{k} a_{s}, alpha_{k} d_{s}$ in the ISP, suggesting that
+the iteration-count savings of $varepsilon$-optimality cuts scale
+favorably with the bilinearity dimension.
+ 
+Augmenting Enhanced BD with the min-cut valid inequalities further
+reduces wall time on four of the five networks Abilene
+($1.2 times$), Nobel-US ($3.3 times$), Sioux Falls ($1.4 times$),
+and Polska ($2.2 times$), with iteration counts correspondingly
+compressed. On Grid $5 times 5$ the VIs increase wall time
+($256$ versus $161$ seconds) while the iteration count rises from
+$49$ to $55$ on this small instance the additional McCormick
+auxiliaries that encode the min-cut VIs inflate the per-OMP-solve cost
+beyond the iteration savings. For all four backbone instances, the
+VIs deliver a strict improvement in wall time.
+ 
+% -----------------------------------------------------------------------------
+subsection{Value of robustness}
+label{subsecexp-vor}
+% -----------------------------------------------------------------------------
+ 
+For an interdiction $x$ and ambiguity radius $varepsilon$, define the
+model-implied worst-case CVaR
+begin{equation}label{eqPhi-VoR}
+    Phi_beta(x; varepsilon) ;=; max_{(P, tilde{P}) ,in, hat{mathcal{D}}(varepsilon) times tilde{mathcal{D}}(varepsilon)} mathrm{CVaR}_beta^{P}!big[Q(x, alpha^{}(x), xi)big],
+end{equation}
+where $alpha^{}(x) in mathcal{A}^{}(x, tilde{mathcal{D}})$ is
+the follower's worst-case admissible recovery under
+$tilde{mathcal{D}}(varepsilon)$. Let $x^{}(varepsilon)$ denote
+the DRO optimal interdiction at radius $varepsilon$ and let
+$x^{mathrm{nom}} = x^{}(hat{varepsilon} = tilde{varepsilon} = 0)$
+denote the SAA (nominal) optimal. The emph{value of robustness} at
+$(beta, varepsilon)$ is
+begin{equation}label{eqVoR}
+    mathrm{VoR}_beta(varepsilon) ;=; frac{Phi_beta(x^{mathrm{nom}}; varepsilon) - Phi_beta(x^{}(varepsilon); varepsilon)}{Phi_beta(x^{}(varepsilon); varepsilon)} times 100 %.
+end{equation}
+$mathrm{VoR}_beta(varepsilon)$ quantifies the worst-case-CVaR
+improvement that the DRO solution promises over the SAA solution, both
+evaluated against the modeler's own ambiguity set of radius
+$varepsilon$. It is, by construction, an in-sample, model-implied
+measure --- distinct from the realized out-of-sample improvement
+studied in Section~ref{subsecexp-oos}.
+ 
+input{tables/vor_table.tex}
+
+Table~ref{tab:vor} reports $mathrm{VoR}_beta(varepsilon)$ for every
+(network, $beta$, $varepsilon$) combination. Across the table, three
+patterns emerge.
+
+First, $mathrm{VoR}_beta(varepsilon)$ is weakly non-decreasing in
+$varepsilon$ for virtually every (network, $beta$) row: enlarging the
+ambiguity set cannot reduce the worst-case gap between SAA and DRO, a
+built-in model-consistency check. Second,
+$mathrm{VoR}_beta(varepsilon)$ is broadly non-decreasing in $beta$,
+reflecting that higher risk aversion places more weight on the upper
+tail of the cost distribution where SAA and DRO interdictions diverge
+most. For example, on Grid $5 times 5$ with $varepsilon = 0.5$,
+$mathrm{VoR}$ rises from $3.0%$ at $beta = 0$ to $29.4%$ at
+$beta = 0.4$; on Sioux~Falls the same column grows from $0.0%$ to
+$18.4%$ at $beta = 0.7$.
+
+Third, the magnitudes vary substantially across networks. The largest
+values occur on Grid $5 times 5$ ($29.4%$ at $beta = 0.4$,
+$varepsilon = 0.5$), Polska ($14.9%$), Abilene ($14.5%$), and
+Sioux~Falls ($18.4%$ at $beta = 0.7$, $varepsilon = 0.5$), while
+Nobel-US remains modest ($leq 9.0%$). The cross-network variation
+correlates with the topology of the $s$--$t$ min-cut: networks whose
+min-cut consists of a small number of arcs admit interdiction plans
+that are largely invariant to the probability distribution, dampening
+the in-sample $mathrm{VoR}$. We do not formalize this pattern; it is
+reported as an empirical observation that motivates the cross-network
+analysis of Section~ref{subsecexp-oos}.
+
+An important caveat is that $mathrm{VoR}_beta(varepsilon)$ is an
+in-sample, model-implied quantity: it states that the DRO solution
+dominates the SAA solution under the modeler's own worst case, not
+under the realized distribution. In our experiments the in-sample
+$mathrm{VoR}$ is largest at $varepsilon = 0.5$, but the
+validation-selected radius (Section~ref{subsecexp-setup}) is typically
+$varepsilon in {0.1, 0.2}$, consistent with the standard
+conservatism--generalization trade-off of DRO. We therefore use the
+in-sample $mathrm{VoR}$ as an instance-level diagnostic for
+identifying networks on which the full DRO formulation is most likely
+to deliver realized improvement, rather than as a proxy for the OOS
+gain itself.
+ 
+% -----------------------------------------------------------------------------
+subsection{Out-of-sample performance}
+label{subsecexp-oos}
+% -----------------------------------------------------------------------------
+ 
+For each network we fix the per-network ambiguity radius
+$varepsilon^{*}(mathrm{net})$ selected on the validation set
+(Section~ref{subsecexp-setup}) and compute three interdictions at
+$beta = 0.4$: the nominal (SAA) solution
+$x^{mathrm{nom}} = x^{*}(hat{varepsilon} = tilde{varepsilon} = 0)$,
+the partial-DRO solution
+$x^{mathrm{par}} = x^{*}(hat{varepsilon} = varepsilon^{*}, tilde{varepsilon} = 0)$
+(leader-side ambiguity only), and the full-DRO solution
+$x^{mathrm{full}} = x^{*}(hat{varepsilon} = tilde{varepsilon} = varepsilon^{*})$.
+The validation-selected radii are $varepsilon^{*} = 0.1$ for
+Grid~$5 times 5$, Polska, and Sioux~Falls, and $varepsilon^{*} = 0.2$
+for Abilene and Nobel-US. All three solutions are evaluated on a
+held-out test set (seed~43, independent of the validation draws) under
+two regimes:
+begin{itemize}
+item emph{In-distribution test:} $500$ draws
+$q^{(n)} sim mathrm{Dir}(gamma , mathbf{1}_{S})$ for
+$gamma in {0.1, 0.3, 0.5, 1.0}$.
+item emph{Out-of-distribution test:} $500$ draws from
+$mathrm{Dir}(gamma cdot tilde{q}_{zeta})$ for
+$gamma in {0.1, 0.3, 0.5, 1.0}$ and perturbation level
+$zeta in {0.5, 1.0, 2.0, 5.0}$, where $tilde{q}_{zeta}$ is a
+multiplicatively perturbed center (Appendix~ref{appperturbation}).
+end{itemize}
+For each test draw $q^{(n)}$, the realized CVaR is
+$mathrm{CVaR}_beta^{q^{(n)}}!big[Qbig(x, h^{*}(tilde{q}^{(n)}), xibig)big]$,
+where $h^{*}(tilde{q}^{(n)})$ is the follower's optimal recovery
+under the realized $tilde{q}^{(n)}$. The empirical distribution of
+these $500$ realized CVaRs is summarized by box plots in
+Figure~ref{fig:oos-boxplot}; the box spans the interquartile range
+(IQR), whiskers mark the 5th and 95th percentiles, and diamonds
+indicate the mean.
+
+begin{figure}[t]
+centering
+% Representative panels: one per network, β_dir=0.1 (most dispersed)
+% Actual PNGs generated by plot_phaseAB_3way.jl in plots/test_seed43/
+includegraphics[width=0.48linewidth]{plots/test_seed43/grid5x5_factor_beta0p1_phaseAB.png}
+includegraphics[width=0.48linewidth]{plots/test_seed43/abilene_factor_beta0p1_phaseAB.png}\\[4pt]
+includegraphics[width=0.48linewidth]{plots/test_seed43/polska_factor_beta0p1_phaseAB.png}
+includegraphics[width=0.48linewidth]{plots/test_seed43/sioux_falls_factor_beta0p1_phaseAB.png}
+caption{Out-of-sample CVaR distributions on the held-out test set
+($beta = 0.4$, $gamma = 0.1$). Each panel shows three solutions:
+Nominal (no fill), Partial (hatched), and Full DRO (dense hatch).
+The $x$-axis labels report the in-distribution concentration
+($gamma$) and the out-of-distribution perturbation level ($zeta$).
+Whiskers span the 5th--95th percentile range.}
+label{fig:oos-boxplot}
+end{figure}
+
+paragraph{Tail-risk reduction.}
+The primary design target of the full-DRO formulation is the upper
+tail of the realized CVaR distribution, measured by the 95th percentile
+(upper whisker). On Grid~$5 times 5$ at $gamma = 0.1$ --- the most
+dispersed in-distribution regime --- the 95th-percentile CVaR drops from
+$43.7$ (Nominal) to $35.4$ (Full), a $19.0%$ reduction. Under the
+strongest perturbation $zeta = 5.0$ the reduction persists: the
+95th-percentile falls from $38.9$ to $35.4$ ($8.9%$). On
+Sioux~Falls the reduction is consistent at $5.2$--$5.7%$ across all
+$gamma$ values. On Abilene the Full solution reduces the
+95th-percentile by $7.2%$ at $gamma = 0.1$. On Polska the
+reduction reaches $10.9%$ at $gamma = 0.1$ but narrows to $< 1%$
+at $gamma = 1.0$, where the Dirichlet draws concentrate near the
+uniform $hat{q}$ and robustness provides little additional protection.
+
+paragraph{Median-cost trade-off.}
+The tail-risk reduction does not come for free in the median. On
+Grid~$5 times 5$ the Full solution's median ($28.4$) exceeds the
+Nominal's ($25.8$) by approximately $10%$; a similar pattern appears
+on Polska ($14.8$ vs.\ $13.9$) and Abilene ($11.3$ vs.\ $10.1$).
+This is the standard conservatism--generalization trade-off of DRO: the
+robust interdiction targets arcs that perform well under worst-case
+distributions, which may not be the arcs that minimize cost under the
+most likely distribution. On Sioux~Falls, by contrast, the median is
+nearly identical across solutions ($13.6$--$13.7$), indicating that
+the DRO interdiction achieves tail protection without inflating
+typical-case cost.
+
+paragraph{Partial vs.\ Full DRO.}
+On three of the five networks (Polska, Nobel-US, Sioux~Falls), the
+Partial and Nominal solutions coincide: the validation-selected radius
+$varepsilon^{*} = 0.1$ or $0.2$ does not perturb the leader-side
+distribution enough to change the interdiction at $tilde{varepsilon} = 0$.
+The Full solution, which additionally hedges the follower's belief,
+selects a different interdiction on all five networks (see
+Table~ref{tab:oos-interdictions} below). On Abilene, the Partial
+solution actually raises the 95th percentile relative to Nominal
+($17.3$ vs.\ $15.6$ at $gamma = 0.1$), while the Full solution
+reduces it to $14.5$ --- illustrating that leader-side ambiguity alone
+can be counterproductive when follower-side uncertainty is not
+simultaneously hedged.
+
+paragraph{Cross-network variation.}
+The OOS improvement varies with network topology, paralleling the
+in-sample $mathrm{VoR}$ of Section~ref{subsecexp-vor}. The largest
+tail-risk gains are on Grid~$5 times 5$ (up to $19%$) and
+Sioux~Falls ($approx 5.5%$); the most modest gains are on Nobel-US,
+where the Full solution's 95th percentile can exceed the Nominal's
+under concentrated $gamma$ (a consequence of the over-conservatism
+discussed above). Sparse-min-cut backbones admit interdiction plans
+that are largely invariant to the realized distribution, narrowing the
+OOS gap between SAA and DRO. The full formulation delivers the
+largest realized gains on instances in which the interdiction budget
+is comparable to the bottleneck width and the realized distributional
+shift exceeds the calibration of $hat{q}$.
+ 
+%==============================================================================
+section{Conclusion}
+label{secconclusion}
+%==============================================================================
+ 
+We have studied distributionally robust zero-sum Stackelberg games under
+incomplete information about the follower's distribution, formulated as
+a pessimistic bilevel program with two ambiguity sets and a 2SLP follower
+under interdiction-type lower-level coupling. The principal structural
+finding is that the second worst-case operator introduced by the
+heterogeneous-belief structure couples bilinearly with the
+recovery-budget Lagrange multiplier; the coupling is irreducible under
+LP duality, and the resulting program lies in $Sigma_2^p$ (with
+$Sigma_2^p$-hardness conjectured), one level above standard two-stage
+DR. A Lagrangian--Sion chain produces a structural form in which the
+follower's ambiguity enters the leader's maximization through an
+enlarged admissible recovery set, distinct from the way the leader's
+ambiguity enters the objective. A dualization chain produces a
+single-level mixed-integer bilinear reformulation on which a Benders
+algorithm operates with $varepsilon$-optimality cuts from a local
+bilinear solver at most iterations and periodic exact cuts from a global
+solver, supplemented by min-cut valid inequalities derived from the LP
+duality between max-flow and min-cut.
+ 
+Three limitations of the framework deserve emphasis. First, the
+symmetric expected-value sub-case is degenerate
+(Proposition~ref{propsaturation}) under
+$rho_L = rho_F = mathbb{E}$ and
+$hat{mathcal{D}} subseteq tilde{mathcal{D}}$, the follower-side
+radius is inactive, and the model collapses to a single-distribution
+DR. This motivates our asymmetric CVaR-leader formulation but raises
+the question of follower-side coherent risk, which we leave to future
+work. Second, the empirical value of the full DR formulation
+(Section~ref{secexperiments}) varies substantially with network
+topology on backbones whose $s$--$t$ min-cut admits few comparable
+targets, the nominal interdiction is already near-optimal under most
+plausible distributions, and the DR improvement is modest. The
+framework delivers the largest realized gains on instances in which
+the interdiction budget is comparable to the bottleneck width and the
+realized distributional shift exceeds the calibration of the empirical
+$hat{q}$. Third, the exact bilinear subproblem remains the dominant
+computational cost for the densest instances; a scenario-decomposed
+bilinear solver, of the form developed for non-DR multistage SLPs in
+citet{kang2024multistage}, is a natural algorithmic extension.
+ 
+Two further directions extend the structural results of this chapter.
+Wasserstein-type ambiguity sets in place of TV balls would replace the
+LP-representable inner minimizations with second-order cone problems,
+preserving the Lagrangian--Sion chain but at substantially higher
+per-subproblem cost; type-$infty$ Wasserstein offers a reasonable
+intermediate. The generalization beyond zero-sum to non-zero-sum
+Stackelberg games (in which the leader and the follower have distinct
+objective functionals, not just distinct distributions) would
+substantially complicate the strong-duality argument of
+Section~ref{subsecdual-coupling}; we do not anticipate that the
+structural form of Theorem~ref{thmgame-theoretic} extends without
+modification.
+%==============================================================================
+% Appendices
+%==============================================================================
