@@ -1,0 +1,51 @@
+\begin{table}[t]
+\centering
+\caption{Computational performance of algorithmic enhancements.}
+\label{tab:computational}
+\small
+\begin{tabular}{cl c rr rr rr}
+\toprule
+ & & & \multicolumn{2}{c}{\textbf{Plain BD}} & \multicolumn{2}{c}{\textbf{Enhanced BD}} & \multicolumn{2}{c}{\textbf{Enhanced BD + VIs}} \\
+\cmidrule(lr){4-5} \cmidrule(lr){6-7} \cmidrule(lr){8-9}
+$\beta$ & Network & $\varepsilon$ & Time\,(s) & Iter & Time\,(s) & Iter & Time\,(s) & Iter \\
+\midrule
+\multirow{5}{*}{$0.0$} & Grid $5\times5$ {\scriptsize($|\mathcal{V}|\!=\!27,\, |\mathcal{A}|\!=\!47$)} & $0.1$ & 1,070 & 314 & 201 & 50 & 99.4 & 30 \\
+ & Abilene {\scriptsize($|\mathcal{V}|\!=\!12,\, |\mathcal{A}|\!=\!30$)} & $0.1$ & 2,052 & 430 & 448 & 50 & 148 & 25 \\
+ & Nobel-US {\scriptsize($|\mathcal{V}|\!=\!14,\, |\mathcal{A}|\!=\!38$)} & $0.1$ & 4,152 & 740 & 1,160 & 80 & 265 & 55 \\
+ & Sioux Falls {\scriptsize($|\mathcal{V}|\!=\!24,\, |\mathcal{A}|\!=\!76$)} & $0.1$ & 4,469 & 1,000$^\dagger$ & 1,038 & 105 & 235 & 35 \\
+ & Polska {\scriptsize($|\mathcal{V}|\!=\!12,\, |\mathcal{A}|\!=\!36$)} & $0.1$ & 1,874 & 510 & 601 & 60 & 92.1 & 25 \\
+\midrule
+\multirow{5}{*}{$0.0$} & Grid $5\times5$ {\scriptsize($|\mathcal{V}|\!=\!27,\, |\mathcal{A}|\!=\!47$)} & $0.2$ & 930 & 266 & 198 & 42 & 141 & 37 \\
+ & Abilene {\scriptsize($|\mathcal{V}|\!=\!12,\, |\mathcal{A}|\!=\!30$)} & $0.2$ & 4,726 & 461 & 1,610 & 50 & 173 & 35 \\
+ & Nobel-US {\scriptsize($|\mathcal{V}|\!=\!14,\, |\mathcal{A}|\!=\!38$)} & $0.2$ & 1,642 & 430 & 2,226 & 65 & 337 & 50 \\
+ & Sioux Falls {\scriptsize($|\mathcal{V}|\!=\!24,\, |\mathcal{A}|\!=\!76$)} & $0.2$ & 4,492 & 1,000$^\dagger$ & 959 & 80 & 268 & 40 \\
+ & Polska {\scriptsize($|\mathcal{V}|\!=\!12,\, |\mathcal{A}|\!=\!36$)} & $0.2$ & 5,638 & 635 & 986 & 65 & 102 & 25 \\
+\midrule
+\multirow{5}{*}{$0.0$} & Grid $5\times5$ {\scriptsize($|\mathcal{V}|\!=\!27,\, |\mathcal{A}|\!=\!47$)} & $0.5$ & 716 & 236 & 155 & 36 & 113 & 35 \\
+ & Abilene {\scriptsize($|\mathcal{V}|\!=\!12,\, |\mathcal{A}|\!=\!30$)} & $0.5$ & 1,186 & 310 & 287 & 40 & 199 & 40 \\
+ & Nobel-US {\scriptsize($|\mathcal{V}|\!=\!14,\, |\mathcal{A}|\!=\!38$)} & $0.5$ & 752 & 207 & 318 & 45 & 197 & 47 \\
+ & Sioux Falls {\scriptsize($|\mathcal{V}|\!=\!24,\, |\mathcal{A}|\!=\!76$)} & $0.5$ & 2,944 & 662 & 552 & 55 & 440 & 55 \\
+ & Polska {\scriptsize($|\mathcal{V}|\!=\!12,\, |\mathcal{A}|\!=\!36$)} & $0.5$ & 1,242 & 330 & 233 & 40 & 119 & 30 \\
+\midrule
+\multirow{5}{*}{$0.1$} & Grid $5\times5$ {\scriptsize($|\mathcal{V}|\!=\!27,\, |\mathcal{A}|\!=\!47$)} & $0.1$ & 1,205 & 326 & 266 & 50 & 119 & 30 \\
+ & Abilene {\scriptsize($|\mathcal{V}|\!=\!12,\, |\mathcal{A}|\!=\!30$)} & $0.1$ & 2,294 & 440 & 684 & 50 & 107 & 25 \\
+ & Nobel-US {\scriptsize($|\mathcal{V}|\!=\!14,\, |\mathcal{A}|\!=\!38$)} & $0.1$ & 4,423 & 730 & 1,334 & 75 & 293 & 55 \\
+ & Sioux Falls {\scriptsize($|\mathcal{V}|\!=\!24,\, |\mathcal{A}|\!=\!76$)} & $0.1$ & 4,223 & 1,000$^\dagger$ & 912 & 102 & 221 & 35 \\
+ & Polska {\scriptsize($|\mathcal{V}|\!=\!12,\, |\mathcal{A}|\!=\!36$)} & $0.1$ & 2,918 & 605 & 431 & 65 & 103 & 25 \\
+\midrule
+\multirow{5}{*}{$0.1$} & Grid $5\times5$ {\scriptsize($|\mathcal{V}|\!=\!27,\, |\mathcal{A}|\!=\!47$)} & $0.2$ & 972 & 301 & 215 & 41 & 158 & 42 \\
+ & Abilene {\scriptsize($|\mathcal{V}|\!=\!12,\, |\mathcal{A}|\!=\!30$)} & $0.2$ & 1,842 & 460 & 330 & 55 & 182 & 35 \\
+ & Nobel-US {\scriptsize($|\mathcal{V}|\!=\!14,\, |\mathcal{A}|\!=\!38$)} & $0.2$ & 3,140 & 685 & 738 & 65 & 352 & 50 \\
+ & Sioux Falls {\scriptsize($|\mathcal{V}|\!=\!24,\, |\mathcal{A}|\!=\!76$)} & $0.2$ & -- & -- & 1,493 & 80 & 270 & 45 \\
+ & Polska {\scriptsize($|\mathcal{V}|\!=\!12,\, |\mathcal{A}|\!=\!36$)} & $0.2$ & 2,249 & 584 & 298 & 51 & 85.2 & 25 \\
+\midrule
+\multirow{5}{*}{$0.4$} & Grid $5\times5$ {\scriptsize($|\mathcal{V}|\!=\!27,\, |\mathcal{A}|\!=\!47$)} & $0.2$ & 747 & 247 & 161 & 49 & 256 & 55 \\
+ & Abilene {\scriptsize($|\mathcal{V}|\!=\!12,\, |\mathcal{A}|\!=\!30$)} & $0.2$ & 5,003 & 421 & 1,866 & 56 & 1,524 & 37 \\
+ & Nobel-US {\scriptsize($|\mathcal{V}|\!=\!14,\, |\mathcal{A}|\!=\!38$)} & $0.2$ & 2,400 & 510 & 1,076 & 80 & 329 & 66 \\
+ & Sioux Falls {\scriptsize($|\mathcal{V}|\!=\!24,\, |\mathcal{A}|\!=\!76$)} & $0.2$ & 4,347 & 1,000$^\dagger$ & 717 & 78 & 517 & 70 \\
+ & Polska {\scriptsize($|\mathcal{V}|\!=\!12,\, |\mathcal{A}|\!=\!36$)} & $0.2$ & 2,192 & 590 & 228 & 50 & 106 & 25 \\
+\bottomrule
+\end{tabular}
+\vspace{2pt}
+{\footnotesize $^\dagger$\,Maximum iteration limit reached (not converged).}
+\end{table}
