@@ -48,12 +48,6 @@ Run outer Benders.
 - `strengthen_cuts`: `:none` (default), `:mw` (cut strengthening).
   `:mw` — outer bilinear: Sherali perturbation (x_pert로 추가 solve, constraint 변경 없음).
          mini-benders: MW (ISP-L/F 독립 LP Phase 2, joint Pareto-optimality 미보장).
-- `boost_solver`: boost 단계 subproblem solver. `:gurobi` (default, 기존 Gurobi NonConvex) 또는
-  `:alpha_bnb` (global_bilinear_solver.jl: 병렬 α-공간 B&B + RLT 분리 + Ipopt 로컬 primal heuristic,
-  목표 gap 0.5%). `:alpha_bnb` 사용 시 global_bilinear_solver.jl 을 먼저 include 하고
-  Julia 를 `-t (boost_nworkers + 2)` 이상으로 실행해야 함.
-- `boost_time_limit`: boost 시 time limit (default 3600s, 기존 값).
-- `boost_nworkers`: `:alpha_bnb` 의 worker 수 (default 12).
 - `valid_inequality`: `:none` (default), `:mincut`.
   `:mincut` — Phase 1 (all S, 1회) + Phase 2B (comp-min + α*, 매 iter) min-cut valid inequalities.
 
@@ -74,20 +68,9 @@ function true_dro_benders_optimize!(td::TrueDROData;
         add_objF_vi::Bool=false,
         phase2B_vi::Bool=false,
         source_sink_cut::Union{Nothing, Dict}=nothing,
-        wall_time_limit::Union{Nothing, Float64}=7200.0,
-        boost_solver::Symbol=:gurobi,
-        boost_time_limit::Float64=3600.0,
-        boost_nworkers::Int=12)
+        wall_time_limit::Union{Nothing, Float64}=7200.0)
 
     K = td.num_arcs
-
-    boost_solver in (:gurobi, :alpha_bnb) || error("boost_solver must be :gurobi or :alpha_bnb (got $boost_solver)")
-    if boost_solver == :alpha_bnb
-        isdefined(Main, :global_bilinear_solve) ||
-            error("boost_solver=:alpha_bnb: global_bilinear_solver.jl 을 먼저 include 하세요")
-        Threads.nthreads() >= boost_nworkers + 2 ||
-            error("boost_solver=:alpha_bnb: Julia 스레드 $(Threads.nthreads()) < boost_nworkers+2 = $(boost_nworkers + 2) (julia -t 로 실행)")
-    end
 
     # lp_optimizer 미지정 시 nlp_optimizer (Gurobi) 사용
     if lp_optimizer === nothing
@@ -197,7 +180,7 @@ function true_dro_benders_optimize!(td::TrueDROData;
     current_time_limit = sub_time_limit  # nothing = unlimited
     is_boost = false                     # boost 상태 플래그
     const_boost_mipgap = _use_single_compact ? 1e-2 : 5e-3  # single-layer: 1%, else: 0.5%
-    const_boost_time_limit = boost_time_limit  # boost 시 time limit (default 3600s)
+    const_boost_time_limit = 3600.0  # boost 시 time limit (single/double 모두 3600s)
     prev_x_global = nothing      # 이전 global iter의 x_sol
     prev_t0_global = -Inf        # 이전 global iter의 t₀
     prev_global_was_timelimit = false  # 이전 global iter TIME_LIMIT 여부
@@ -356,36 +339,8 @@ function true_dro_benders_optimize!(td::TrueDROData;
 
         # ---- Solve subproblem ----
         t_sub = @elapsed begin
-            if is_boost && boost_solver == :alpha_bnb
-                # α-B&B: UB = α-B&B 상한, 해 = α-B&B incumbent α*.
-                # cut 용 ρ 값은 α* 를 Ω 에 고정해 풀어서 얻음 (α 고정 → 실현 가능해 → valid cut).
-                ab = Main.global_bilinear_solve(td, x_sol; nworkers=boost_nworkers, time_limit=const_boost_time_limit,
-                                                rel_gap=5e-3, verbose=verbose, log_every=120.0)
-                α_star = ab[:α]
-                α_v = cur_sub_vars[:α]
-                for k in 1:K
-                    fix(α_v[k], α_star[k]; force=true)
-                end
-                set_time_limit_sec(cur_sub_model, nothing)
-                set_optimizer_attribute(cur_sub_model, "MIPGap", 1e-6)
-                set_optimizer_attribute(cur_sub_model, "MIPFocus", 0)
-                sub_info = solve_true_dro_subproblem!(cur_sub_model, cur_sub_vars, td, x_sol;
-                                                      is_global=is_global_iter)
-                for k in 1:K
-                    unfix(α_v[k]); set_lower_bound(α_v[k], 0.0); set_upper_bound(α_v[k], td.w)
-                end
-                sub_info[:Z0_bound] = ab[:UB]
-                sub_info[:is_optimal] = ab[:is_exact]
-                if verbose
-                    @printf("  α-B&B boost: [LB=%.6f, UB=%.6f] nodes=%d, α* 고정 Ω=%.6f (%.1fs)
-",
-                            ab[:LB], ab[:UB], ab[:nodes], sub_info[:Z0_val], ab[:time])
-                    flush(stdout)
-                end
-            else
-                sub_info = solve_true_dro_subproblem!(cur_sub_model, cur_sub_vars, td, x_sol;
-                                                    is_global=is_global_iter)
-            end
+            sub_info = solve_true_dro_subproblem!(cur_sub_model, cur_sub_vars, td, x_sol;
+                                                is_global=is_global_iter)
         end
         Z0_val = sub_info[:Z0_val]
         is_exact = sub_info[:is_optimal]
