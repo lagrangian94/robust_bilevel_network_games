@@ -22,7 +22,7 @@ LB (primal heuristic): 노드 α̂ 고정 LP + Ipopt 로컬 최적화 (출발점
 사용:
     r = global_bilinear_solve(td, x̄; nworkers=12, time_limit=300.0, rel_gap=5e-3)
     r[:LB], r[:UB], r[:α]
-Julia 는 `-t (nworkers + 2)` 이상으로 실행.
+Julia 는 `-t (nworkers + 2),1` 로 실행 (interactive 스레드 1개 필수: 메인 루프·타이머용).
 """
 
 using JuMP, Printf
@@ -271,13 +271,18 @@ end
 """
     global_bilinear_solve(td, x̄; nworkers, time_limit, rel_gap, ...)
 
+target (선택): LB ≥ target 이거나 UB ≤ target 이면 즉시 종료 (Benders 에서 "t₀ 보다 큰 값이 있는가" 판정용).
 반환 Dict: :LB (incumbent 값), :UB (dual bound), :α (incumbent α), :is_exact (gap ≤ rel_gap),
            :nodes, :time, :root_UB, :ipopt_calls
 """
 function global_bilinear_solve(td, x̄; nworkers=Threads.nthreads() - 2, time_limit=300.0, rel_gap=5e-3,
                                dive_max=3, maxrounds=30, min_width=1e-7, ipopt_time=120.0,
-                               verbose=true, log_every=30.0)
-    nworkers >= 1 || error("global_bilinear_solve: nworkers ≥ 1 필요 (Julia 를 -t (nworkers+2) 로 실행)")
+                               verbose=true, log_every=30.0, target=nothing)
+    nworkers >= 1 || error("global_bilinear_solve: nworkers ≥ 1 필요 (Julia 를 -t (nworkers+2),1 로 실행)")
+    # 메인 루프 (시간·종료 판정) 와 sleep 타이머는 스레드 1 의 이벤트 루프가 처리한다. worker 가 스레드 1 을
+    # 점유하면 이들이 멈춘다 → interactive 스레드 (julia -t N,1) 로 스레드 1 을 비워 두어야 한다.
+    Threads.nthreads(:interactive) >= 1 ||
+        error("global_bilinear_solve: interactive 스레드가 필요합니다. julia -t $(nworkers + 2),1 로 실행하세요")
     t0 = time()
     t_end = t0 + time_limit
     K, S, w = td.num_arcs, td.S, td.w
@@ -296,8 +301,11 @@ function global_bilinear_solve(td, x̄; nworkers=Threads.nthreads() - 2, time_li
     root_rows = Ref{Any}(nothing)                    # root 상자 [0,w] 에서 만든 행 — 모든 노드에서 유효
     node_cands = Tuple{Float64,Vector{Float64}}[]    # (상한, α̂) — Ipopt 출발점 후보
     ipopt_calls = Ref(0)
+    # 허용오차 (rel_gap) 로 가지치기한 노드의 상한 중 최댓값. 이 노드들은 LB 와 tol 이내지만 LB 보다 클 수 있으므로
+    # 보고하는 UB 에 반드시 포함해야 유효한 상한이 된다.
+    pruned_ub = Ref(-Inf)
 
-    globalUB() = max(LB[], isempty(open) ? -Inf : maximum(n[3] for n in open), maximum(inflight))
+    globalUB() = max(LB[], isempty(open) ? -Inf : maximum(n[3] for n in open), maximum(inflight), pruned_ub[])
     function offer!(z, a)
         lock(lk)
         try
@@ -311,9 +319,17 @@ function global_bilinear_solve(td, x̄; nworkers=Threads.nthreads() - 2, time_li
         P = Ps[wid]; F = Fs[wid]
         localnode = nothing; dive_left = 0; synced = false
         while true
+            # Julia 태스크는 선점형이 아님: worker 가 메인 스레드에 배정되면 메인 루프 (시간·종료 판정) 가
+            # 굶을 수 있다 → 노드마다 yield 하고, 종료 조건도 worker 가 직접 확인한다.
+            yield()
             node = nothing
             lock(lk)
             try
+                ub_now = globalUB()
+                if time() >= t_end || ub_now - LB[] <= tol(LB[]) ||
+                   (target !== nothing && (LB[] >= target || ub_now <= target))
+                    done[] = true
+                end
                 if done[]
                     localnode !== nothing && push!(open, localnode)
                     return
@@ -321,7 +337,10 @@ function global_bilinear_solve(td, x̄; nworkers=Threads.nthreads() - 2, time_li
                 if localnode !== nothing && dive_left > 0 && localnode[3] > LB[] + tol(LB[])
                     node = localnode; dive_left -= 1
                 else
-                    localnode !== nothing && localnode[3] > LB[] + tol(LB[]) && push!(open, localnode)
+                    if localnode !== nothing
+                        localnode[3] > LB[] + tol(LB[]) ? push!(open, localnode) :
+                                                          (pruned_ub[] = max(pruned_ub[], localnode[3]))
+                    end
                     if !isempty(open)
                         node = popat!(open, argmax([n[3] for n in open])); dive_left = dive_max
                     end
@@ -335,17 +354,23 @@ function global_bilinear_solve(td, x̄; nworkers=Threads.nthreads() - 2, time_li
                 sleep(0.05); continue
             end
             l, u, ubp = node
-            if !synced && root_rows[] !== nothing && isempty(P.allrows)
+            # root 행 복사는 시간이 걸리므로 (S 큰 경우) 남은 시간이 충분할 때만 (행이 없어도 완화는 유효)
+            if !synced && root_rows[] !== nothing && isempty(P.allrows) && t_end - time() > 60.0
                 for (k, j, islo, b) in root_rows[]; _sep_add!(P, k, j, islo, b); end
                 synced = true
             end
             z = -Inf; α̂ = nothing; children = nothing; zE = -Inf; unfinished = false
+            pruned_val = -Inf                    # 허용오차로 버리는 노드의 상한 (기록용)
+            if sum(l) <= w + 1e-9 && ubp <= LB[] + tol(LB[])
+                pruned_val = ubp
+            end
             if ubp > LB[] + tol(LB[]) && sum(l) <= w + 1e-9
                 _sep_set_box!(P, l, u)
                 set_time_limit_sec(P.model, max(t_end - time(), 0.1))
                 z = _sep_solve!(P; maxrounds=maxrounds)
                 unfinished = isnan(z)
                 z = unfinished ? ubp : min(z, ubp)
+                (!unfinished && z <= LB[] + tol(LB[])) && (pruned_val = z)
                 if !unfinished && z > LB[] + tol(LB[])
                     α̂ = clamp.(value.(P.vars[:α]), l, u)
                     rv = value.(P.lead); dv = value.(P.fol)
@@ -374,6 +399,7 @@ function global_bilinear_solve(td, x̄; nworkers=Threads.nthreads() - 2, time_li
                     continue
                 end
                 nodes[] += 1
+                pruned_ub[] = max(pruned_ub[], pruned_val)
                 if ubp == Inf
                     root_UB[] = z
                     root_rows[] = [(r[1], r[6], r[2], r[3]) for r in P.allrows]
@@ -439,7 +465,8 @@ function global_bilinear_solve(td, x̄; nworkers=Threads.nthreads() - 2, time_li
         try
             UBn = globalUB()
             idle = isempty(open) && all(inflight .== -Inf)
-            fin = (time() >= t_end) || (UBn - LB[] <= tol(LB[])) || (idle && nodes[] > 0)
+            fin = (time() >= t_end) || (UBn - LB[] <= tol(LB[])) || (idle && nodes[] > 0) ||
+                  (target !== nothing && (LB[] >= target || UBn <= target))   # 목표값 판정만 필요할 때
             fin && (done[] = true)
         finally
             unlock(lk)
@@ -452,7 +479,7 @@ function global_bilinear_solve(td, x̄; nworkers=Threads.nthreads() - 2, time_li
         fin && break
     end
     foreach(wait, tasks)
-    UB = max(LB[], isempty(open) ? -Inf : maximum(n[3] for n in open))
+    UB = max(LB[], isempty(open) ? -Inf : maximum(n[3] for n in open), pruned_ub[])
     return Dict(:LB => LB[], :UB => UB, :α => best_α[], :is_exact => (UB - LB[] <= tol(LB[])),
                 :nodes => nodes[], :time => time() - t0, :root_UB => root_UB[], :ipopt_calls => ipopt_calls[])
 end

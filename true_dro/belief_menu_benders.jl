@@ -45,6 +45,38 @@ function _build_belief_lp(td; optimizer)
 end
 
 _read_belief(vars, fam) = Dict(f => [value(v) for v in vec(vars[f])] for f in fam)
+
+"""
+belief 를 정확히 실현 가능한 점으로 정리 (solver 허용오차로 생긴 미세 위반 제거).
+  a, d: 음수 제거·합 1, TV 볼 밖이면 q̂ 쪽으로 축소, b = |a − q̂|, e = |d − q̂|
+  r (CVaR): [0, a/(1−β)] 로 자르고 합 1 (부족분은 여유 비율로 배분, 초과는 비례 축소)
+정리된 belief 도 belief 다면체 안 → 고정 LP 는 Ω 의 restriction → cut 유효성 유지.
+"""
+function _clean_belief(b, td)
+    q = td.q_hat
+    function proj(y, ε)
+        y = max.(y, 0.0); y ./= sum(y)
+        dev = sum(abs.(y .- q))
+        dev > 2ε && (y = q .+ (y .- q) .* (2ε / dev))
+        return y
+    end
+    out = Dict{Symbol,Vector{Float64}}()
+    out[:a] = proj(b[:a], td.eps_hat);   out[:b] = abs.(out[:a] .- q)
+    out[:d] = proj(b[:d], td.eps_tilde); out[:e] = abs.(out[:d] .- q)
+    if haskey(b, :r)
+        cap = out[:a] ./ (1.0 - td.beta)
+        r = clamp.(b[:r], 0.0, cap)
+        sr = sum(r)
+        if sr > 1.0
+            r ./= sr
+        elseif sr < 1.0
+            slack = cap .- r
+            r .+= slack .* ((1.0 - sr) / sum(slack))
+        end
+        out[:r] = r
+    end
+    return out
+end
 _belief_key(b) = Tuple(round(x; digits=6) for f in sort(collect(keys(b))) for x in b[f])
 
 function _set_belief!(B::_BeliefLP, b)
@@ -65,6 +97,44 @@ end
 
 
 # ---------------------------------------------------------------------
+# Gurobi oracle: 목표값 조기 종료 (BestObjStop / BestBdStop) 를 허용하는 풀이
+# (solve_true_dro_subproblem! 은 OBJECTIVE_LIMIT 를 오류로 처리하므로 별도 함수)
+# ---------------------------------------------------------------------
+# 목표값 한도로 일찍 멈추면 bound 가 아직 없을 수 있음 → +∞ (상한 정보 없음, 유효). 그 외 오류는 그대로.
+function _bound_or_inf(model)
+    try
+        return objective_bound(model)
+    catch e
+        e isa MOI.GetAttributeNotAllowed || rethrow()
+        return Inf
+    end
+end
+
+function _oracle_solve!(model, vars, td, x̄)
+    S, K = td.S, td.num_arcs
+    update_true_dro_subproblem_objective!(model, vars, td, x̄)
+    optimize!(model)
+    st = termination_status(model)
+    # solve_true_dro_subproblem! 과 같은 기준: LOCALLY_SOLVED 도 해로 인정 (α 고정 시 볼록 → 로컬 = 전역)
+    ok = st == MOI.OPTIMAL || st == MOI.LOCALLY_SOLVED ||
+         ((st == MOI.TIME_LIMIT || st == MOI.OBJECTIVE_LIMIT) && has_values(model))
+    ok || error("belief-menu oracle: $st (가능해 없음)")
+    return Dict(
+        :Z0_val => objective_value(model),
+        :Z0_bound => (st == MOI.OPTIMAL ? objective_value(model) : _bound_or_inf(model)),
+        :α_val => max.([value(vars[:α][k]) for k in 1:K], 0.0),
+        :rho_hat_1_val => [value(vars[:ρ_hat_1][k, s]) for k in 1:K, s in 1:S],
+        :rho_hat_3_val => [value(vars[:ρ_hat_3][k, s]) for k in 1:K, s in 1:S],
+        :rho_tilde_1_val => [value(vars[:ρ_tilde_1][k, s]) for k in 1:K, s in 1:S],
+        :rho_tilde_3_val => [value(vars[:ρ_tilde_3][k, s]) for k in 1:K, s in 1:S],
+        :rho_psi0_1_val => [value(vars[:ρ_psi0_1][k]) for k in 1:K],
+        :rho_psi0_3_val => [value(vars[:ρ_psi0_3][k]) for k in 1:K],
+        :is_optimal => st == MOI.OPTIMAL, :status => st,
+    )
+end
+
+
+# ---------------------------------------------------------------------
 # 주 함수
 # ---------------------------------------------------------------------
 """
@@ -78,6 +148,7 @@ oracle = :gurobi (Ω NonConvex, 시간 제한 oracle_time_limit → 정체 시 b
 function belief_menu_benders_optimize!(td::TrueDROData;
         mip_optimizer, nlp_optimizer, lp_optimizer=nlp_optimizer,
         oracle::Symbol=:gurobi, oracle_time_limit=15.0, boost_time_limit=3600.0, oracle_gap=5e-3,
+        target_stop::Bool=true,
         nworkers=12, max_iter=1000, tol=5e-3, verbose=true,
         valid_inequality::Symbol=:mincut, source_sink_cut=nothing, wall_time_limit=7200.0)
     oracle in (:gurobi, :alpha_bnb) || error("oracle must be :gurobi or :alpha_bnb (got $oracle)")
@@ -126,7 +197,7 @@ function belief_menu_benders_optimize!(td::TrueDROData;
         end
         optimize!(omp_model)
         termination_status(omp_model) == MOI.OPTIMAL || error("OMP: $(termination_status(omp_model))")
-        x̄ = round.(value.(omp_vars[:x]))
+        x̄ = Float64.(value.(omp_vars[:x]) .> 0.5)     # 0/1 로 정리 (round 는 −0.0 을 만들어 Dict 키가 달라짐)
         t0 = value(omp_vars[:t_0])
         LB = max(LB, t0)
         if rel(LB, UB) <= tol
@@ -153,21 +224,29 @@ function belief_menu_benders_optimize!(td::TrueDROData;
         # ---- oracle 단계 (menu 가 x̄ 에서 수렴) ----
         tl = get(oracle_tl, x̄, oracle_time_limit)
         oracle_calls += 1
+        # 목표값: oracle 은 "t₀ 보다 의미 있게 큰 값이 있는가" 만 판정하면 됨.
+        #   incumbent ≥ target → 새 belief (cut),  상한 ≤ target → gap ≤ tol 이므로 수렴
+        target = t0 + 0.99 * tol * max(1.0, abs(t0))      # Benders 수렴 기준 (tol) 과 일치
         t_or = @elapsed begin
             if oracle == :gurobi
                 set_time_limit_sec(sub_model, tl)
                 set_optimizer_attribute(sub_model, "MIPGap", oracle_gap)
-                info = solve_true_dro_subproblem!(sub_model, sub_vars, td, x̄; is_global=true)
+                set_optimizer_attribute(sub_model, "BestObjStop", target_stop ? target : 1e100)
+                set_optimizer_attribute(sub_model, "BestBdStop", target_stop ? target : -1e100)
+                info = _oracle_solve!(sub_model, sub_vars, td, x̄)
                 Zbd = info[:Z0_bound]
                 b_star = _read_belief(sub_vars, B.fam)
             else
                 ab = Main.global_bilinear_solve(td, x̄; nworkers=nworkers, time_limit=tl,
-                                                rel_gap=oracle_gap, verbose=false)
+                                                rel_gap=oracle_gap, verbose=false,
+                                                target=(target_stop ? target : nothing))
                 α_v = sub_vars[:α]
                 for k in 1:K; fix(α_v[k], ab[:α][k]; force=true); end
                 set_time_limit_sec(sub_model, nothing)
                 set_optimizer_attribute(sub_model, "MIPGap", 1e-6)
-                info = solve_true_dro_subproblem!(sub_model, sub_vars, td, x̄; is_global=true)
+                set_optimizer_attribute(sub_model, "BestObjStop", 1e100)
+                set_optimizer_attribute(sub_model, "BestBdStop", -1e100)
+                info = _oracle_solve!(sub_model, sub_vars, td, x̄)
                 b_star = _read_belief(sub_vars, B.fam)          # 고정 해제 전에 읽기 (수정하면 해가 무효화)
                 for k in 1:K; unfix(α_v[k]); set_lower_bound(α_v[k], 0.0); set_upper_bound(α_v[k], td.w); end
                 Zbd = ab[:UB]
@@ -179,8 +258,11 @@ function belief_menu_benders_optimize!(td::TrueDROData;
         end
         add_cut!(info, x̄)
         new_belief = Zinc > V_menu + 1e-6 * max(1.0, abs(Zinc))
-        if new_belief && !(_belief_key(b_star) in menu_keys)
-            push!(menu, b_star); push!(menu_keys, _belief_key(b_star))
+        if new_belief
+            b_clean = _clean_belief(b_star, td)
+            if !(_belief_key(b_clean) in menu_keys)
+                push!(menu, b_clean); push!(menu_keys, _belief_key(b_clean))
+            end
         end
         # 같은 x̄ 에서 oracle 이 진전 없이 상한만 남기면 (incumbent ≤ t₀ < 상한) 시간 제한을 늘림
         if Zinc <= t0 + 1e-6 * max(1.0, abs(t0)) && rel(LB, UB) > tol

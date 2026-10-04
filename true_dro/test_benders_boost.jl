@@ -21,7 +21,7 @@ function make_ss_cut_for(name)
     return isempty(ss) ? nothing : ss
 end
 
-function run_benders(name, S, solver; beta=0.4, eps=0.2, boost_time_limit=3600.0)
+function run_benders(name, S, solver; beta=0.4, eps=0.2, boost_time_limit=3600.0, belief_menu=false)
     td = make_batch_instance(name; beta=beta, eps=eps, S=S)
     t0 = time()
     res = true_dro_benders_optimize!(td;
@@ -31,11 +31,12 @@ function run_benders(name, S, solver; beta=0.4, eps=0.2, boost_time_limit=3600.0
         strengthen_cuts=:mw, valid_inequality=:mincut,
         inexact=true, nonconvex_attr=("NonConvex" => 2),
         source_sink_cut=make_ss_cut_for(name),
-        boost_solver=solver, boost_time_limit=boost_time_limit, boost_nworkers=12)
+        boost_solver=solver, boost_time_limit=boost_time_limit, boost_nworkers=12,
+        belief_menu=belief_menu)
     wt = time() - t0
     h = res[:history]
-    @printf("BENDERS %s S=%d solver=%-9s status=%s Z0=%.6f LB=%.6f UB=%.6f iters=%d wall=%.1fs sub_total=%.1fs sub_max=%.1fs x=%s\n",
-            name, S, solver, res[:status], res[:Z0], res[:lower_bound], res[:upper_bound], res[:iters], wt,
+    @printf("BENDERS %s S=%d solver=%-9s menu=%-5s status=%s Z0=%.6f LB=%.6f UB=%.6f iters=%d wall=%.1fs sub_total=%.1fs sub_max=%.1fs x=%s\n",
+            name, S, solver, belief_menu, res[:status], res[:Z0], res[:lower_bound], res[:upper_bound], res[:iters], wt,
             sum(h[:sub_times]), maximum(h[:sub_times]), string(findall(res[:x] .> 0.5)))
     flush(stdout)
     return res

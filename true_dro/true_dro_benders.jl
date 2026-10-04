@@ -51,8 +51,11 @@ Run outer Benders.
 - `boost_solver`: boost 단계 subproblem solver. `:gurobi` (default, 기존 Gurobi NonConvex) 또는
   `:alpha_bnb` (global_bilinear_solver.jl: 병렬 α-공간 B&B + RLT 분리 + Ipopt 로컬 primal heuristic,
   목표 gap 0.5%). `:alpha_bnb` 사용 시 global_bilinear_solver.jl 을 먼저 include 하고
-  Julia 를 `-t (boost_nworkers + 2)` 이상으로 실행해야 함.
+  Julia 를 `-t (boost_nworkers + 2),1` 로 실행해야 함 (interactive 스레드 필수).
 - `boost_time_limit`: boost 시 time limit (default 3600s, 기존 값).
+- `belief_menu`: true 이면 하이브리드 — subproblem 해의 belief 를 menu 에 모으고 (최대 `menu_max` 개),
+  매 반복 menu 의 belief 고정 LP 를 현재 x̄ 에서 풀어 t₀ 보다 큰 것을 cut 으로 추가
+  (docs/benders_belief_menu_design.md). belief_menu_benders.jl 을 먼저 include 해야 함.
 - `boost_nworkers`: `:alpha_bnb` 의 worker 수 (default 12).
 - `valid_inequality`: `:none` (default), `:mincut`.
   `:mincut` — Phase 1 (all S, 1회) + Phase 2B (comp-min + α*, 매 iter) min-cut valid inequalities.
@@ -77,7 +80,9 @@ function true_dro_benders_optimize!(td::TrueDROData;
         wall_time_limit::Union{Nothing, Float64}=7200.0,
         boost_solver::Symbol=:gurobi,
         boost_time_limit::Float64=3600.0,
-        boost_nworkers::Int=12)
+        boost_nworkers::Int=12,
+        belief_menu::Bool=false,
+        menu_max::Int=20)
 
     K = td.num_arcs
 
@@ -87,6 +92,11 @@ function true_dro_benders_optimize!(td::TrueDROData;
             error("boost_solver=:alpha_bnb: global_bilinear_solver.jl 을 먼저 include 하세요")
         Threads.nthreads() >= boost_nworkers + 2 ||
             error("boost_solver=:alpha_bnb: Julia 스레드 $(Threads.nthreads()) < boost_nworkers+2 = $(boost_nworkers + 2) (julia -t 로 실행)")
+    end
+
+    if belief_menu
+        isdefined(Main, :_build_belief_lp) ||
+            error("belief_menu=true: belief_menu_benders.jl 을 먼저 include 하세요")
     end
 
     # lp_optimizer 미지정 시 nlp_optimizer (Gurobi) 사용
@@ -111,6 +121,14 @@ function true_dro_benders_optimize!(td::TrueDROData;
 
     # ---- Build OMP ----
     omp_model, omp_vars = build_true_dro_omp(td; optimizer=mip_optimizer, silent=true)
+
+    # ---- (하이브리드) belief menu ----
+    local menu_lp
+    menu = Vector{Dict{Symbol,Vector{Float64}}}()
+    menu_keys = Set{Any}()
+    if belief_menu
+        menu_lp = Main._build_belief_lp(td; optimizer=lp_optimizer)
+    end
 
     # ---- Source/Sink connectivity cut ----
     if source_sink_cut !== nothing
@@ -355,6 +373,7 @@ function true_dro_benders_optimize!(td::TrueDROData;
         end
 
         # ---- Solve subproblem ----
+        sub_belief = nothing
         t_sub = @elapsed begin
             if is_boost && boost_solver == :alpha_bnb
                 # α-B&B: UB = α-B&B 상한, 해 = α-B&B incumbent α*.
@@ -371,6 +390,7 @@ function true_dro_benders_optimize!(td::TrueDROData;
                 set_optimizer_attribute(cur_sub_model, "MIPFocus", 0)
                 sub_info = solve_true_dro_subproblem!(cur_sub_model, cur_sub_vars, td, x_sol;
                                                       is_global=is_global_iter)
+                belief_menu && (sub_belief = Main._read_belief(cur_sub_vars, menu_lp.fam))   # 고정 해제 전에 읽기
                 for k in 1:K
                     unfix(α_v[k]); set_lower_bound(α_v[k], 0.0); set_upper_bound(α_v[k], td.w)
                 end
@@ -385,6 +405,7 @@ function true_dro_benders_optimize!(td::TrueDROData;
             else
                 sub_info = solve_true_dro_subproblem!(cur_sub_model, cur_sub_vars, td, x_sol;
                                                     is_global=is_global_iter)
+                belief_menu && (sub_belief = Main._read_belief(cur_sub_vars, menu_lp.fam))
             end
         end
         Z0_val = sub_info[:Z0_val]
@@ -479,6 +500,34 @@ function true_dro_benders_optimize!(td::TrueDROData;
                     outer_cut[:intercept],
                     minimum(outer_cut[:π_x]), maximum(outer_cut[:π_x]))
             flush(stdout)
+        end
+
+        # ---- (하이브리드) belief menu: 해의 belief 추가 → menu LP cut ----
+        if belief_menu
+            if sub_belief !== nothing
+                bc = Main._clean_belief(sub_belief, td)
+                key = Main._belief_key(bc)
+                if !(key in menu_keys)
+                    push!(menu, bc); push!(menu_keys, key)
+                    if length(menu) > menu_max                  # 오래된 것부터 제거
+                        old = popfirst!(menu); delete!(menu_keys, Main._belief_key(old))
+                    end
+                end
+            end
+            n_menu_cut = 0; V_menu = -Inf
+            t_menu = @elapsed for b in menu
+                Main._set_belief!(menu_lp, b)
+                minfo = solve_true_dro_subproblem!(menu_lp.model, menu_lp.vars, td, x_sol; is_global=false)
+                V_menu = max(V_menu, minfo[:Z0_val])
+                if minfo[:Z0_val] > t0_val + 1e-6 * max(1.0, abs(t0_val))
+                    cut_count += 1
+                    add_true_dro_optimality_cut!(omp_model, omp_vars,
+                                                 compute_true_dro_outer_cut(td, minfo, x_sol), cut_count)
+                    n_menu_cut += 1
+                end
+            end
+            verbose && @printf("  Menu: %d/%d cut, V_menu=%.6f (%.2fs)
+", n_menu_cut, length(menu), V_menu, t_menu)
         end
 
         # ---- Min-cut valid inequality: Phase 2B (comp-min + α*) ----

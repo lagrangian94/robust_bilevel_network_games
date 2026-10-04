@@ -96,3 +96,11 @@
 - S=200 노드 LP 비용 절감: 형제 전환 비용 (~25s) 이 최대 병목. worker 별 subtree 할당 (전환 최소화).
 - LB: 병행 global 이 가장 효과적. Benders 통합 시 "global(LB) ∥ α-B&B(UB)" 구성.
 - λU 정확성 문제 별도 정리 (논문 재정식화 exactness).
+
+
+## 추가 (2026-10-04): 최종판 `global_bilinear_solver.jl` 수정 사항
+- 보고 UB 에 허용오차 (rel_gap) 로 가지치기한 노드의 상한 포함 (이전엔 최대 rel_gap 만큼 과소 → Benders 에서 LB > UB).
+- `julia -t N,1` (interactive 스레드) 필수: 스레드 1 을 worker 가 점유하면 메인 루프·sleep 타이머가 멈춰 시간 제한이 깨짐.
+  시작 시 `Threads.nthreads(:interactive) ≥ 1` 확인, worker 도 종료 조건 직접 판정.
+- `target` 인자: LB ≥ target 또는 UB ≤ target 이면 종료 (Benders 판정용).
+- Benders 통합 결과는 `docs/benders_belief_menu_design.md` §8~10.
