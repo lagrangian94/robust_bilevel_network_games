@@ -142,13 +142,18 @@ end
 
 oracle = :gurobi (Ω NonConvex, 시간 제한 oracle_time_limit → 정체 시 boost_time_limit, MIPGap 0.5%)
        | :alpha_bnb (global_bilinear_solve, 시간 제한 oracle_time_limit, 목표 gap 0.5%;
-                     global_bilinear_solver.jl include 및 julia -t (nworkers+2) 필요)
-반환 Dict: :status, :Z0, :x, :lower_bound, :upper_bound, :iters, :oracle_calls, :menu_size, :history, :wall_time
+                     global_bilinear_solver.jl include 및 julia -t (nworkers+2),1 필요)
+repeat_boost (기본 true): oracle 을 이미 부른 x̄ 가 다시 나오면 처음부터 boost_time_limit (시간 제한 실패 후 재시작 낭비 방지).
+local_first (oracle=:alpha_bnb 전용, 그때 기본 true): α-B&B 전에 Ipopt 로컬 해 (출발점 = menu 최선 LP 해의 α, 균등 α) 를
+    α 고정 LP 로 정확히 재평가해 목표값 이상이면 그 해로 cut·belief 를 얻고 α-B&B 를 건너뜀.
+    로컬 해에는 상한 정보가 없으므로 UB 는 갱신하지 않음 (UB 는 α-B&B 에서만).
+반환 Dict: :status, :Z0, :x, :lower_bound, :upper_bound, :iters, :oracle_calls, :menu_size, :history, :wall_time,
+           :local_hits, :local_time, :bnb_calls, :bnb_time
 """
 function belief_menu_benders_optimize!(td::TrueDROData;
         mip_optimizer, nlp_optimizer, lp_optimizer=nlp_optimizer,
         oracle::Symbol=:gurobi, oracle_time_limit=15.0, boost_time_limit=3600.0, oracle_gap=5e-3,
-        target_stop::Bool=true,
+        target_stop::Bool=true, repeat_boost::Bool=true, local_first::Bool=(oracle == :alpha_bnb), local_time=60.0,
         nworkers=12, max_iter=1000, tol=5e-3, verbose=true,
         valid_inequality::Symbol=:mincut, source_sink_cut=nothing, wall_time_limit=7200.0)
     oracle in (:gurobi, :alpha_bnb) || error("oracle must be :gurobi or :alpha_bnb (got $oracle)")
@@ -156,6 +161,7 @@ function belief_menu_benders_optimize!(td::TrueDROData;
         isdefined(Main, :global_bilinear_solve) || error("oracle=:alpha_bnb: global_bilinear_solver.jl 을 먼저 include 하세요")
         Threads.nthreads() >= nworkers + 2 || error("oracle=:alpha_bnb: julia -t $(nworkers + 2) 이상 필요")
     end
+    local_first && oracle != :alpha_bnb && error("local_first=true 는 oracle=:alpha_bnb 에서만 지원")
     wall_start = time()
     K = td.num_arcs
 
@@ -174,6 +180,7 @@ function belief_menu_benders_optimize!(td::TrueDROData;
     sub_model, sub_vars = build_true_dro_subproblem(td, zeros(K); optimizer=nlp_optimizer, silent=true)
     set_optimizer_attribute(sub_model, "NonConvex", 2)
     B = _build_belief_lp(td; optimizer=lp_optimizer)
+    Floc = local_first ? Main._build_fixed_alpha_lp(td, zeros(K); optimizer=lp_optimizer) : nothing
 
     menu = Vector{Dict{Symbol,Vector{Float64}}}()
     menu_keys = Set{Any}()
@@ -182,6 +189,8 @@ function belief_menu_benders_optimize!(td::TrueDROData;
     cut_count = 0
     oracle_calls = 0
     oracle_tl = Dict{Vector{Float64},Float64}()        # x̄ 별 현재 oracle 시간 제한 (정체 시 boost)
+    oracle_seen = Set{Vector{Float64}}()               # oracle 을 부른 적 있는 x̄
+    local_hits = 0; local_t = 0.0; bnb_calls = 0; bnb_t = 0.0
     hist = Dict(:LB => Float64[], :UB => Float64[], :menu => Int[], :oracle => Bool[], :t => Float64[])
     rel(a, b) = abs(b - a) / max(abs(b), 1e-10)
     status = :MaxIter
@@ -205,10 +214,11 @@ function belief_menu_benders_optimize!(td::TrueDROData;
         end
 
         # ---- menu 단계 ----
-        V_menu = -Inf; nviol = 0
+        V_menu = -Inf; nviol = 0; α_menu = nothing
         for b in menu
             _set_belief!(B, b)
             info = solve_true_dro_subproblem!(B.model, B.vars, td, x̄; is_global=false)
+            info[:Z0_val] > V_menu && (α_menu = copy(info[:α_val]))
             V_menu = max(V_menu, info[:Z0_val])
             if info[:Z0_val] > t0 + 1e-6 * max(1.0, abs(t0))
                 add_cut!(info, x̄); nviol += 1
@@ -222,7 +232,8 @@ function belief_menu_benders_optimize!(td::TrueDROData;
         end
 
         # ---- oracle 단계 (menu 가 x̄ 에서 수렴) ----
-        tl = get(oracle_tl, x̄, oracle_time_limit)
+        tl = get(oracle_tl, x̄, (repeat_boost && x̄ in oracle_seen) ? boost_time_limit : oracle_time_limit)
+        push!(oracle_seen, x̄)
         oracle_calls += 1
         # 목표값: oracle 은 "t₀ 보다 의미 있게 큰 값이 있는가" 만 판정하면 됨.
         #   incumbent ≥ target → 새 belief (cut),  상한 ≤ target → gap ≤ tol 이므로 수렴
@@ -237,21 +248,49 @@ function belief_menu_benders_optimize!(td::TrueDROData;
                 Zbd = info[:Z0_bound]
                 b_star = _read_belief(sub_vars, B.fam)
             else
-                ab = Main.global_bilinear_solve(td, x̄; nworkers=nworkers, time_limit=tl,
-                                                rel_gap=oracle_gap, verbose=false,
-                                                target=(target_stop ? target : nothing))
-                α_v = sub_vars[:α]
-                for k in 1:K; fix(α_v[k], ab[:α][k]; force=true); end
-                set_time_limit_sec(sub_model, nothing)
-                set_optimizer_attribute(sub_model, "MIPGap", 1e-6)
-                set_optimizer_attribute(sub_model, "BestObjStop", 1e100)
-                set_optimizer_attribute(sub_model, "BestBdStop", -1e100)
-                info = _oracle_solve!(sub_model, sub_vars, td, x̄)
-                b_star = _read_belief(sub_vars, B.fam)          # 고정 해제 전에 읽기 (수정하면 해가 무효화)
-                for k in 1:K; unfix(α_v[k]); set_lower_bound(α_v[k], 0.0); set_upper_bound(α_v[k], td.w); end
-                Zbd = ab[:UB]
+                # α 고정 Ω (LP) 로 정확한 해와 belief 를 얻음
+                function eval_fixed(αv)
+                    α_v = sub_vars[:α]
+                    for k in 1:K; fix(α_v[k], αv[k]; force=true); end
+                    set_time_limit_sec(sub_model, nothing)
+                    set_optimizer_attribute(sub_model, "MIPGap", 1e-6)
+                    set_optimizer_attribute(sub_model, "BestObjStop", 1e100)
+                    set_optimizer_attribute(sub_model, "BestBdStop", -1e100)
+                    inf_ = _oracle_solve!(sub_model, sub_vars, td, x̄)
+                    b_ = _read_belief(sub_vars, B.fam)          # 고정 해제 전에 읽기 (수정하면 해가 무효화)
+                    for k in 1:K; unfix(α_v[k]); set_lower_bound(α_v[k], 0.0); set_upper_bound(α_v[k], td.w); end
+                    return inf_, b_
+                end
+                hit = false
+                if local_first
+                    t_l = @elapsed begin
+                        update_true_dro_subproblem_objective!(Floc.model, Floc.vars, td, x̄)
+                        starts = α_menu === nothing ? [fill(td.w / K, K)] : [α_menu, fill(td.w / K, K)]
+                        for a0 in starts
+                            aloc = Main._ipopt_local_alpha(td, x̄, Floc, Main._capw(a0, td.w);
+                                                           max_time=local_time, deadline=time() + local_time)
+                            aloc === nothing && continue
+                            inf_, b_ = eval_fixed(aloc)
+                            if inf_[:Z0_val] >= target
+                                info, b_star, Zbd, hit = inf_, b_, Inf, true
+                                break
+                            end
+                        end
+                    end
+                    local_t += t_l
+                    hit && (local_hits += 1)
+                end
+                if !hit
+                    t_b = @elapsed (ab = Main.global_bilinear_solve(td, x̄; nworkers=nworkers, time_limit=tl,
+                                                    rel_gap=oracle_gap, verbose=false,
+                                                    target=(target_stop ? target : nothing)))
+                    bnb_calls += 1; bnb_t += t_b
+                    info, b_star = eval_fixed(ab[:α])
+                    Zbd = ab[:UB]
+                end
             end
         end
+        src = (oracle == :alpha_bnb && local_first && !isfinite(Zbd)) ? "local" : string(oracle)
         Zinc = info[:Z0_val]
         if Zbd < UB
             UB = Zbd; best_x = copy(x̄)
@@ -275,15 +314,16 @@ function belief_menu_benders_optimize!(td::TrueDROData;
             oracle_tl[x̄] = newtl
         end
         verbose && @printf("  Iter %d: LB=%.6f UB=%.6f  oracle[%s %.0fs] inc=%.6f bd=%.6f (%.1fs) menu=%d%s x=%s\n",
-                           iter, LB, UB, oracle, tl, Zinc, Zbd, t_or, length(menu), new_belief ? " (+belief)" : "",
+                           iter, LB, UB, src, tl, Zinc, Zbd, t_or, length(menu), new_belief ? " (+belief)" : "",
                            string(findall(x̄ .> 0.5)))
         flush(stdout)
         push!(hist[:LB], LB); push!(hist[:UB], UB); push!(hist[:menu], length(menu)); push!(hist[:t], time() - wall_start)
     end
     wall = time() - wall_start
-    verbose && @printf("Belief-menu Benders %s: LB=%.6f UB=%.6f gap=%.2e iters=%d oracle=%d menu=%d wall=%.1fs\n",
-                       status, LB, UB, rel(LB, UB), iter, oracle_calls, length(menu), wall)
+    verbose && @printf("Belief-menu Benders %s: LB=%.6f UB=%.6f gap=%.2e iters=%d oracle=%d (local %d / %.1fs, α-B&B %d / %.1fs) menu=%d wall=%.1fs\n",
+                       status, LB, UB, rel(LB, UB), iter, oracle_calls, local_hits, local_t, bnb_calls, bnb_t, length(menu), wall)
     return Dict(:status => status, :Z0 => UB, :x => best_x, :lower_bound => LB, :upper_bound => UB,
                 :iters => iter, :oracle_calls => oracle_calls, :menu_size => length(menu),
-                :history => hist, :wall_time => wall)
+                :history => hist, :wall_time => wall,
+                :local_hits => local_hits, :local_time => local_t, :bnb_calls => bnb_calls, :bnb_time => bnb_t)
 end

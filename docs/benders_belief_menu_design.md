@@ -230,3 +230,28 @@ Gurobi: BestObjStop/BestBdStop, α-B&B: `global_bilinear_solve(...; target)`. me
 | 스레드 1 점유로 메인 루프·sleep 타이머 정지 | α-B&B 시간 제한 미준수, 병렬 효율 저하 | `julia -t N,1` (interactive 스레드) 필수 + 시작 시 확인, worker 측 종료 판정·yield |
 | barrier 해의 belief 허용오차 | menu LP infeasible | `_clean_belief` 로 실현 가능한 점으로 정리 |
 | Gurobi OBJECTIVE_LIMIT / LOCALLY_SOLVED 상태 | oracle 오류 | 전용 `_oracle_solve!`, bound 없으면 +∞ |
+
+## 11. 개선안 3·1 구현 (2026-10-05)
+
+`belief_menu_benders_optimize!` 옵션 (둘 다 기본값으로 켜짐):
+
+| 옵션 | 기본 | 동작 |
+|---|---|---|
+| `repeat_boost` | `true` | oracle 을 이미 부른 x̄ 가 다시 나오면 처음부터 `boost_time_limit` (3,600s). 600s 실패 후 처음부터 재시작하는 낭비 제거 (§9 의 604s) |
+| `local_first` | `oracle == :alpha_bnb` | α-B&B 전에 Ipopt 로컬 해 (출발점: menu 최선 LP 해의 α, 균등 α; 각 `local_time`=60s 이내) → α 고정 LP 로 정확히 재평가해 목표값 이상이면 그 해로 cut·belief, α-B&B 생략. 로컬 해는 상한이 없으므로 UB 는 α-B&B 에서만 갱신 |
+
+개선 2 (worker LP·트리 재사용) 는 아래 측정 결과를 보고 결정.
+
+### 첫 확인 (Abilene S=10)
+| | 개선 전 A | A2 (개선 3+1) |
+|---|---|---|
+| wall | 46.0s | 45.8s |
+| oracle 호출 | 7 (모두 α-B&B) | 7 (로컬 6 / 17s, α-B&B 1 / 9s = 최적점 증명) |
+| 해 | [5, 27], LB 14.122941 | 동일 |
+
+### 진행 중인 측정 (`true_dro/archive_alpha_bnb/run_improve_batch.jl`, `julia -t 14,1`, 순차)
+1. S=10 × 5개 네트워크: A2 (기준선 A·standard 는 §8)
+2. S=50 × Abilene·Polska·grid 5×5: A2, standard, A (개선 전) — 같은 조건에서 재측정
+3. S=200 Abilene: A2 (wall 7,200s), standard (wall 제한 없음)
+
+예상 8~10시간. 결과는 이 절에 추가.
