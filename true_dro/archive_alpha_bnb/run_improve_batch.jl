@@ -1,4 +1,4 @@
-include(raw"C:\Users\user\AppData\Local\Temp\claude_improve_common.jl")
+include(joinpath(@__DIR__, "run_improve_common.jl"))
 # 1) S=10 설계 A2 (개선 3+1), 5개 네트워크 (기준선 A / standard 는 claude_final.log)
 for net in ("abilene", "polska", "grid5x5", "nobel_us", "sioux_falls")
     safe(runA, net, 10)
