@@ -254,4 +254,33 @@ Gurobi: BestObjStop/BestBdStop, α-B&B: `global_bilinear_solve(...; target)`. me
 2. S=50 × Abilene·Polska·grid 5×5: A2, standard, A (개선 전) — 같은 조건에서 재측정
 3. S=200 Abilene: A2 (wall 7,200s), standard (wall 제한 없음)
 
-예상 8~10시간. 결과는 이 절에 추가.
+### 결과 (2026-10-05, 모든 방식 같은 x*)
+
+S=10 (A·standard 는 §8 값)
+| 네트워크 | A | **A2** | standard |
+|---|---|---|---|
+| Abilene | 46s | **45s** | 189s |
+| Polska | 31s | **31s** | 85s |
+| grid 5×5 | 99s | **84s** | 267s |
+| Nobel-US | **91s** | 99s | 341s |
+| Sioux Falls | 872s | 794s | **566s** |
+
+S=50 (세 방식 같은 조건에서 재측정)
+| 네트워크 | A | **A2** | standard | A2 oracle 내역 |
+|---|---|---|---|---|
+| Abilene | 1,350s | 1,088s (−19%) | **1,014s** | 로컬 8 / 192s, α-B&B 1 / 680s |
+| Polska | 1,540s | 1,183s (−23%) | **580s** | 로컬 10 / 316s, α-B&B 1 / 83s → menu 단계 ~780s (반복 428) |
+| grid 5×5 | 1,507s | **778s** (−48%) | 1,024s | 로컬 7 / 372s, α-B&B 1 / 167s |
+
+S=200 Abilene
+| | A (개선 전, §8) | **A2** | standard |
+|---|---|---|---|
+| 결과 | 7,912s wall 제한, gap 0.65% | 6,547s 수렴 | **6,145s** 수렴 |
+| 내역 | — | 로컬 10 / 785s, α-B&B 1 / 3,177s, menu ~2,585s | boost 1회 3,493s |
+
+### 해석
+- 개선 3+1 로 α-B&B 호출이 모든 인스턴스에서 최적점 증명 1회로 줄었다 (S=50 에서 8~11회 → 1회). A 대비 19~48% 단축, S=200 도 수렴.
+- 그래도 A2 vs standard 는 네트워크마다 갈린다: grid 는 A2, Polska 는 standard (2배), Abilene 은 비슷 (S=50·200 모두 standard 가 4~7% 빠름).
+- 이제 두 방식의 공통 비용은 "최적점 증명 1회" (S=200 에서 3,177s vs 3,493s). 차이는 A2 의 menu 단계 (반복 수백 회 × menu LP) 와 로컬 해 시간.
+- 개선 2 (worker LP·트리 재사용) 는 α-B&B 호출이 이미 1회라 효과가 작을 것 → 보류.
+- 다음 병목 후보: (i) 최적점 증명 자체 (α-B&B 노드 LP, 두 방식 공통), (ii) A2 의 menu 단계 반복 수 (Polska), (iii) Ipopt 시간 (grid).
