@@ -14,15 +14,20 @@ include(joinpath(root, "nonzero_sum", "nz_kkt_eval.jl"))
 function main()
     nd0 = make_location_instance(; S=3, seed=4, wres=100.0)
     xs = [[0.0, 0, 1, 0], [0.0, 0, 0, 1], [0.0, 0, 1, 1], [1.0, 0, 1, 0]]
+    lams = (0.1, 1.0, 10.0, 100.0, 1000.0)
+    if get(ENV, "NZ_LAMBDA_EDGE", "0") == "1"      # 경계 탐색: x=[3,4] 에서 50 근처
+        xs = [[0.0, 0, 1, 1]]; lams = (40.0, 49.0, 49.9, 50.0, 50.1, 51.0, 60.0)
+    end
     kkt = Dict(x => nz_kkt_value(nd0, x; optimizer=GRB)[:value] for x in xs)
-    @printf("%-8s %-10s %12s %12s %10s %8s\n", "λᵁ", "x", "Ω(x)", "KKT V*", "Ω−V*", "time")
-    for λ in (0.1, 1.0, 10.0, 100.0, 1000.0)
+    # TIME_LIMIT 이면 incumbent 만으로는 과대평가가 없다는 증명이 안 됨 → 상한 (bound) 도 출력
+    @printf("%-8s %-10s %12s %12s %12s %10s %8s\n", "λᵁ", "x", "Ω(x)", "Ω bound", "KKT V*", "Ω−V*", "time")
+    for λ in lams
         nd = nz_with_bounds(nd0; lambdaU=λ)
         O = build_nz_omega(nd; optimizer=GRB)
         for x in xs
             t = @elapsed (r = nz_solve!(O, nd, x; time_limit=300))
-            @printf("%-8g %-10s %12.4f %12.4f %10.2e %7.1fs %s\n", λ, string(findall(x .> 0.5)), r[:Fval], kkt[x],
-                    r[:Fval] - kkt[x], t, r[:status] == MOI.OPTIMAL ? "" : string(r[:status]))
+            @printf("%-8g %-10s %12.4f %12.4f %12.4f %10.2e %7.1fs %s\n", λ, string(findall(x .> 0.5)), r[:Fval],
+                    r[:bound], kkt[x], r[:Fval] - kkt[x], t, r[:status] == MOI.OPTIMAL ? "" : string(r[:status]))
             flush(stdout)
         end
     end

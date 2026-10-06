@@ -28,14 +28,25 @@ function _nz_omp(nd::NZData; optimizer, t_lb=-1e7)
 end
 
 _add_cut!(omp, x, t0, cut) = @constraint(omp, t0 >= cut[:intercept] + dot(cut[:slope], x))
+
+# 같은 x̄ 에서 oracle 을 다시 부르면 (상한이 시간 제한 안에 안 닫혀 LB < UB 가 남은 경우) 시간 제한을 4배 (최대 boost_time).
+# 이미 boost_time 으로 풀었던 x̄ 가 또 나오면 더 할 수 있는 게 없으므로 :Stalled.
+function _oracle_limit!(tl::Dict, x̄, oracle_time, boost_time)
+    haskey(tl, x̄) || return (tl[x̄] = oracle_time; (oracle_time, false))
+    tl[x̄] >= boost_time && return (tl[x̄], true)
+    tl[x̄] = min(4 * tl[x̄], boost_time)
+    return (tl[x̄], false)
+end
 _rel(a, b) = abs(b - a) / max(abs(b), 1.0)
 
 
-function nz_standard_benders(nd::NZData; optimizer, max_iter=200, tol=1e-4, oracle_time=600.0, verbose=true)
+function nz_standard_benders(nd::NZData; optimizer, max_iter=200, tol=1e-4, oracle_time=600.0, boost_time=3600.0,
+                             verbose=true)
     omp, x, t0 = _nz_omp(nd; optimizer=optimizer)
     O = build_nz_omega(nd; optimizer=optimizer)
     LB, UB, best_x = -Inf, Inf, zeros(nd.nx)
     hist = NamedTuple[]
+    tl = Dict{Vector{Float64},Float64}(); ncalls = 0
     wall = time(); iter = 0; status = :MaxIter
     while iter < max_iter
         iter += 1
@@ -43,7 +54,10 @@ function nz_standard_benders(nd::NZData; optimizer, max_iter=200, tol=1e-4, orac
         x̄ = Float64.(value.(x) .> 0.5)
         LB = objective_value(omp)
         _rel(LB, UB) <= tol && (status = :Optimal; break)
-        t_o = @elapsed (res = nz_solve!(O, nd, x̄; time_limit=oracle_time))
+        lim, stalled = _oracle_limit!(tl, x̄, oracle_time, boost_time)
+        stalled && (status = :Stalled; break)
+        ncalls += 1
+        t_o = @elapsed (res = nz_solve!(O, nd, x̄; time_limit=lim))
         cut = nz_cut_from_solution(O, nd, x̄)
         _add_cut!(omp, x, t0, cut)
         ub_here = dot(nd.qx, x̄) + res[:bound]
@@ -54,12 +68,13 @@ function nz_standard_benders(nd::NZData; optimizer, max_iter=200, tol=1e-4, orac
         verbose && flush(stdout)
     end
     return Dict(:status => status, :LB => LB, :UB => UB, :x => best_x, :iters => iter,
-                :oracle_calls => iter - (status == :Optimal ? 1 : 0), :wall => time() - wall, :hist => hist)
+                :oracle_calls => ncalls, :wall => time() - wall, :hist => hist)
 end
 
 
 function nz_belief_menu_benders(nd::NZData; optimizer, lp_optimizer=optimizer, cert::Symbol=:recompute,
-                                cert_rows::Symbol=:hrows, max_iter=500, tol=1e-4, oracle_time=600.0, verbose=true)
+                                cert_rows::Symbol=:hrows, max_iter=500, tol=1e-4, oracle_time=600.0, boost_time=3600.0,
+                                verbose=true)
     cert in (:recompute, :solution) || error("cert = :recompute | :solution")
     omp, x, t0 = _nz_omp(nd; optimizer=optimizer)
     O = build_nz_omega(nd; optimizer=optimizer)
@@ -69,6 +84,7 @@ function nz_belief_menu_benders(nd::NZData; optimizer, lp_optimizer=optimizer, c
     oracle_calls = 0; menu_cuts = 0
     exact_log = NamedTuple[]
     hist = NamedTuple[]
+    tl = Dict{Vector{Float64},Float64}()
     wall = time(); iter = 0; status = :MaxIter
     while iter < max_iter
         iter += 1
@@ -97,8 +113,10 @@ function nz_belief_menu_benders(nd::NZData; optimizer, lp_optimizer=optimizer, c
         end
 
         # ---- oracle 단계 ----
+        lim, stalled = _oracle_limit!(tl, x̄, oracle_time, boost_time)
+        stalled && (status = :Stalled; break)
         oracle_calls += 1
-        t_o = @elapsed (res = nz_solve!(O, nd, x̄; time_limit=oracle_time))
+        t_o = @elapsed (res = nz_solve!(O, nd, x̄; time_limit=lim))
         cut = nz_cut_from_solution(O, nd, x̄)
         bel_raw = nz_read_belief(O, nd)
         _add_cut!(omp, x, t0, cut)

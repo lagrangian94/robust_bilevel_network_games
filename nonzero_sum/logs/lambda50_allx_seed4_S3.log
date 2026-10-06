@@ -1,0 +1,34 @@
+Set parameter WLSAccessID
+Set parameter WLSSecret
+Set parameter LicenseID to value 926906
+Academic license 926906 - for non-commercial use only - registered to se___@postech.ac.kr
+======================================================================
+λᵁ = 50.0
+======================================================================
+  x=Int64[]        Ω=    -0.0000 bound=    -0.0000 KKT=    -0.0000  inc−V*=-4.5e-13  bd−V*=-4.5e-13 
+  x=[1]            Ω=  -480.6666 bound=  -480.6666 KKT=  -480.6667  inc−V*=+5.0e-05  bd−V*=+5.0e-05 
+  x=[2]            Ω=  -480.6666 bound=  -480.6666 KKT=  -480.6667  inc−V*=+7.0e-05  bd−V*=+7.0e-05 
+  x=[1, 2]         Ω=  -480.6666 bound=  -480.6666 KKT=  -480.6667  inc−V*=+8.9e-05  bd−V*=+8.9e-05 
+  x=[3]            Ω=  -725.0000 bound=  -725.0000 KKT=  -725.0000  inc−V*=+4.5e-05  bd−V*=+4.5e-05 
+  x=[1, 3]         Ω= -1239.8333 bound= -1239.5301 KKT= -1239.8333  inc−V*=+3.9e-05  bd−V*=+3.0e-01 TIME_LIMIT
+  x=[2, 3]         Ω= -1239.8333 bound= -1239.6524 KKT= -1239.8333  inc−V*=+6.5e-05  bd−V*=+1.8e-01 TIME_LIMIT
+  x=[1, 2, 3]      Ω= -1239.8333 bound= -1239.3141 KKT= -1239.8333  inc−V*=+5.1e-05  bd−V*=+5.2e-01 TIME_LIMIT
+  x=[4]            Ω= -1520.4444 bound= -1520.4444 KKT= -1520.4444  inc−V*=+6.1e-05  bd−V*=+6.1e-05 
+  x=[1, 4]         Ω= -1520.4444 bound= -1520.4444 KKT= -1520.4444  inc−V*=+7.1e-05  bd−V*=+7.1e-05 
+  x=[2, 4]         Ω= -1520.4445 bound= -1520.4445 KKT= -1520.4444  inc−V*=-5.5e-05  bd−V*=-5.5e-05 
+  x=[1, 2, 4]      Ω= -1520.4444 bound= -1520.4284 KKT= -1520.4444  inc−V*=+1.5e-05  bd−V*=+1.6e-02 TIME_LIMIT
+  x=[3, 4]         Ω= -2396.0000 bound= -2394.2807 KKT= -2396.0000  inc−V*=+3.5e-05  bd−V*=+1.7e+00 TIME_LIMIT
+  x=[1, 3, 4]      Ω= -2396.0000 bound= -2395.5799 KKT= -2396.0000  inc−V*=+3.4e-05  bd−V*=+4.2e-01 TIME_LIMIT
+  x=[2, 3, 4]      Ω= -2396.0000 bound= -2394.3595 KKT= -2396.0000  inc−V*=+1.6e-05  bd−V*=+1.6e+00 TIME_LIMIT
+  x=[1, 2, 3, 4]   Ω= -2396.0000 bound= -2394.6467 KKT= -2396.0000  inc−V*=+1.2e-05  bd−V*=+1.4e+00 TIME_LIMIT
+  max(Ω incumbent − V*) = 8.91e-05  (> 0 이면 과대평가)
+-- belief-menu Benders
+  [orcl] it   1 LB=-10000000.0000 UB=    -0.0000 x=Int64[]    Ω=    -0.0000 (0.1s) menu=1 (+belief, LP@x̄=-0.0000, gap 2.2e-09)
+  [menu] it   2 LB=-430780.0000 UB=    -0.0000 x=[1, 2, 3, 4] menu cut 1/1 (V_menu=-2569.7165)
+  [menu] it   3 LB=-46063.2006 UB=    -0.0000 x=[1]        menu cut 1/1 (V_menu=-512.7142)
+  [menu] it   4 LB=-26770.1142 UB=    -0.0000 x=[2, 3]     menu cut 1/1 (V_menu=-1518.6087)
+  [menu] it   5 LB=-20741.1165 UB=    -0.0000 x=[4]        menu cut 1/1 (V_menu=-1563.8219)
+  [menu] it   6 LB=-19690.0087 UB=    -0.0000 x=[2]        menu cut 1/1 (V_menu=-512.7142)
+  [menu] it   7 LB=-14145.2929 UB=    -0.0000 x=[3]        menu cut 1/1 (V_menu=-1005.8946)
+  [menu] it   8 LB= -3502.7142 UB=    -0.0000 x=[1, 3]     menu cut 1/1 (V_menu=-1518.6087)
+  [orcl] it   9 LB= -1959.7165 UB= -1783.2125 x=[3, 4]     Ω= -2396.0000 (600.0s) menu=2 (+belief, LP@x̄=-2396.0000, gap 2.5e-05)
