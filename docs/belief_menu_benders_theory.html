@@ -1,0 +1,347 @@
+<title>Belief-menu Benders</title>
+<meta charset="utf-8">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+KR:wght@400;500;600&family=Noto+Serif+KR:wght@600;700&family=JetBrains+Mono:wght@400;500&display=swap">
+<style>
+/* layout: 단일 읽기 열 (본문 ~68ch), 수식 블록은 자체 가로 스크롤, 명제·정의는 왼쪽 괘선 상자 */
+:root {
+  --bg: #f7f8fa;
+  --surface: #ffffff;
+  --fg: #1b2230;
+  --muted: #5a6475;
+  --rule: #d9dee6;
+  --accent: #1f5f8b;
+  --accent-soft: #e6eef5;
+  --warn: #8a4b0f;
+  --warn-soft: #fbf0e3;
+  --ok: #2c6b3f;
+  --ok-soft: #e7f2ea;
+  --font-display: "Noto Serif KR", "Nanum Myeongjo", Georgia, serif;
+  --font-body: "IBM Plex Sans KR", "Malgun Gothic", "Apple SD Gothic Neo", system-ui, sans-serif;
+  --font-mono: "JetBrains Mono", Consolas, "Courier New", monospace;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #12161d; --surface: #1a2029; --fg: #e3e7ee; --muted: #9aa4b4; --rule: #2e3746;
+    --accent: #7db4dc; --accent-soft: #1d2b39; --warn: #e3a964; --warn-soft: #2d2418;
+    --ok: #8ccf9d; --ok-soft: #1a2a20;
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #12161d; --surface: #1a2029; --fg: #e3e7ee; --muted: #9aa4b4; --rule: #2e3746;
+  --accent: #7db4dc; --accent-soft: #1d2b39; --warn: #e3a964; --warn-soft: #2d2418;
+  --ok: #8ccf9d; --ok-soft: #1a2a20;
+  color-scheme: dark;
+}
+body { background: var(--bg); color: var(--fg); font: 15.5px/1.75 var(--font-body); }
+.wrap { max-width: 860px; margin: 0 auto; padding-inline: 20px; padding-block: 40px 80px; }
+header { display: grid; gap: 10px; border-bottom: 1px solid var(--rule); padding-bottom: 22px; margin-bottom: 8px; }
+.eyebrow { font: 500 12px/1.4 var(--font-mono); letter-spacing: .08em; text-transform: uppercase; color: var(--muted); }
+h1 { font: 700 2rem/1.25 var(--font-display); margin: 0; text-wrap: balance; }
+.lede { color: var(--muted); margin: 0; max-width: 68ch; }
+nav.toc { font-size: 14px; color: var(--muted); display: flex; flex-wrap: wrap; gap: 4px 14px; }
+nav.toc a { color: var(--muted); text-decoration: none; }
+nav.toc a:hover { color: var(--accent); text-decoration: underline; }
+h2 { font: 700 1.35rem/1.35 var(--font-display); margin: 44px 0 10px; text-wrap: balance; }
+h2 .num { color: var(--accent); font-family: var(--font-mono); font-size: .95rem; margin-right: 10px; }
+h3 { font: 600 1.02rem/1.4 var(--font-body); margin: 26px 0 6px; }
+p, li { max-width: 68ch; }
+p { margin: 10px 0; }
+ul, ol { padding-left: 1.3em; margin: 8px 0; }
+li { margin: 4px 0; }
+code { font: 0.9em var(--font-mono); background: var(--accent-soft); padding: 1px 5px; border-radius: 3px; }
+.box { border-left: 3px solid var(--accent); background: var(--surface); padding: 12px 18px; margin: 16px 0; min-width: 0; }
+.box .tag { font: 600 12px/1.4 var(--font-mono); letter-spacing: .06em; text-transform: uppercase; color: var(--accent); }
+.box.warn { border-left-color: var(--warn); background: var(--warn-soft); }
+.box.warn .tag { color: var(--warn); }
+.box.ok { border-left-color: var(--ok); background: var(--ok-soft); }
+.box.ok .tag { color: var(--ok); }
+.proof { font-size: 14.5px; color: var(--muted); }
+.proof b { color: var(--fg); }
+.math { overflow-x: auto; overflow-y: hidden; margin: 8px 0; }
+mjx-container[display="true"] { overflow-x: auto; overflow-y: hidden; max-width: 100%; padding: 2px 0; }
+.tablewrap { overflow-x: auto; margin: 12px 0; }
+table { border-collapse: collapse; font-size: 14px; min-width: 520px; width: 100%; font-variant-numeric: tabular-nums; }
+th, td { border-bottom: 1px solid var(--rule); padding: 7px 10px; text-align: left; vertical-align: top; }
+th { font-weight: 600; color: var(--muted); font-size: 12.5px; letter-spacing: .03em; }
+.algo { background: var(--surface); border: 1px solid var(--rule); padding: 14px 18px; margin: 16px 0; }
+.algo ol { margin: 0; }
+.algo > ol > li { margin: 10px 0; }
+.algo .step { font-weight: 600; }
+.small { font-size: 13.5px; color: var(--muted); }
+.status { display: inline-block; font: 600 11.5px/1.6 var(--font-mono); padding: 0 7px; border-radius: 3px; letter-spacing: .04em; }
+.status.proved { background: var(--ok-soft); color: var(--ok); }
+.status.cond { background: var(--accent-soft); color: var(--accent); }
+.status.open { background: var(--warn-soft); color: var(--warn); }
+a { color: var(--accent); }
+:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+</style>
+<script>
+window.MathJax = {
+  tex: { inlineMath: [['$', '$'], ['\\(', '\\)']], displayMath: [['$$', '$$']], tags: 'ams' },
+  svg: { fontCache: 'global' },
+  options: { enableMenu: false }
+};
+</script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/3.2.2/es5/tex-svg.min.js"></script>
+
+<div class="wrap">
+<header>
+  <div class="eyebrow">true_dro / belief_menu_benders.jl · 이론</div>
+  <h1>Belief-menu Benders</h1>
+  <p class="lede">바깥 Benders (OMP ↔ Ω) 에서 bilinear 항의 belief 쪽을 고정하면 Ω 가 LP 가 되고, 필요한 belief 가 유한하고 작다는 구조를 이용하는 방법의 이론 정리. 측정 결과는 <code>docs/benders_belief_menu_design.md</code> (실험 리포트) 에 있다.</p>
+  <nav class="toc" aria-label="목차">
+    <a href="#s1">1 기호</a><a href="#s2">2 Ω</a><a href="#s3">3 기본 성질</a><a href="#s4">4 두 가지 menu 크기</a>
+    <a href="#s5">5 Master</a><a href="#s6">6 설계 A</a><a href="#s7">7 정당성</a><a href="#s8">8 접평면 cut 의 퇴화</a>
+    <a href="#s9">9 oracle 호출 상한</a><a href="#s10">10 설계 B</a><a href="#s11">11 α 고정 대 belief 고정</a><a href="#s12">12 열린 조건</a>
+  </nav>
+</header>
+
+<p class="small">명제 상태 표시: <span class="status proved">증명</span> 이 문서에서 증명 완료 · <span class="status cond">조건부</span> 표시한 조건 아래에서 성립, 조건 일부 미구현 · <span class="status open">가설</span> 측정으로 뒷받침되나 증명 없음.</p>
+
+<h2 id="s1"><span class="num">1</span>기호</h2>
+<div class="tablewrap"><table>
+<thead><tr><th>기호</th><th>뜻</th><th>코드</th></tr></thead>
+<tbody>
+<tr><td>$k\in[K]$, $s\in[S]$</td><td>아크, 시나리오</td><td><code>num_arcs</code>, <code>S</code></td></tr>
+<tr><td>$x\in X\subseteq\{0,1\}^K$</td><td>leader 차단 결정 (유한 집합)</td><td><code>x</code></td></tr>
+<tr><td>$\hat q_s$, $\hat\varepsilon$, $\tilde\varepsilon$</td><td>명목 확률, leader / follower TV 반경</td><td><code>q_hat</code>, <code>eps_hat</code>, <code>eps_tilde</code></td></tr>
+<tr><td>$\beta$</td><td>leader CVaR 수준</td><td><code>td.beta</code></td></tr>
+<tr><td>$\bar\xi_k^s$, $v_k^s$</td><td>용량, 차단 효과</td><td><code>xi_bar</code>, <code>v</code></td></tr>
+<tr><td>$w$</td><td>follower 증설 예산 ($\sum_k h_k\le w$), 따라서 $\alpha$ 의 상한</td><td><code>w</code></td></tr>
+<tr><td>$\hat\phi^U$, $\tilde\phi^U$, $\lambda^U$</td><td>쌍대 변수 상한 (big-M 역할)</td><td><code>phi_hat_U</code>, <code>phi_tilde_U</code>, <code>lambda_U</code></td></tr>
+<tr><td>$N_y$, $N_{ts}$</td><td>노드-아크 접속 행렬, 가상 아크 열</td><td><code>Ny</code>, <code>Nts</code></td></tr>
+<tr><td>$\alpha\in\mathbb R^K_+$</td><td>follower 예산 제약의 승수 (leader·follower 공유)</td><td><code>α</code></td></tr>
+<tr><td>$\theta=(a,r,d)$</td><td><b>belief</b>: leader 분포 $a$, CVaR 가중 $r$, follower 분포 $d$</td><td><code>a</code>, <code>r</code>, <code>d</code></td></tr>
+<tr><td>$y$</td><td>Ω 의 나머지 변수 전부 ($\sigma,u,\rho,\omega,\kappa,\delta,\dots$)</td><td>—</td></tr>
+<tr><td>$z^\star=\min_{x\in X}V^*(x)$</td><td>바깥 문제의 최적값</td><td>—</td></tr>
+</tbody></table></div>
+<p class="small">코드의 follower 쌍대 변수 <code>β[k,s]</code> 는 CVaR 수준 $\beta$ 와 이름이 겹쳐 여기서는 $\kappa_k^s$ 로 쓴다. 기대값 경로 ($\beta$ 미사용) 는 $r=a$.</p>
+
+<h2 id="s2"><span class="num">2</span>Ω subproblem</h2>
+<p>주어진 $\bar x$ 에서 바깥 값 $V^*(\bar x)$ 는 다음 비볼록 최대화 문제의 값이다 (<code>build_true_dro_subproblem</code>).</p>
+<div class="math">$$
+V^*(\bar x)=\max_{\alpha,\theta,y}\; c(\bar x)^\top y
+\quad\text{s.t.}\quad \alpha\in\mathcal A,\;\; \theta\in\Theta,\;\; (\alpha,\theta,y)\in\mathcal L\cap\mathcal F
+\tag{Ω}
+$$</div>
+<h3>목적함수 (x 는 여기에만 있다)</h3>
+<div class="math">$$
+\begin{aligned}
+c(x)^\top y \;=\;&amp; \sum_s \hat\sigma_s
+-\hat\phi^U\sum_{k,s}\big[x_k\hat\rho^{1}_{ks}+(1-x_k)\hat\rho^{3}_{ks}\big]
+-\tilde\phi^U\sum_{k,s}\big[x_k\tilde\rho^{1}_{ks}+(1-x_k)\tilde\rho^{3}_{ks}\big]\\
+&amp;-\lambda^U\sum_{k}\big[x_k\rho^{01}_{k}+(1-x_k)\rho^{03}_{k}\big]
+\end{aligned}
+$$</div>
+<h3>승수 집합</h3>
+<div class="math">$$\mathcal A=\Big\{\alpha:\;0\le\alpha_k\le w,\;\; \textstyle\sum_k\alpha_k\le w\Big\}$$</div>
+<h3>Belief 다면체 (TV 볼 + CVaR)</h3>
+<div class="math">$$
+\Theta=\left\{(a,r,d)\;:\;
+\begin{aligned}
+&amp;a_s-b_s\le\hat q_s,\;\; a_s+b_s\ge\hat q_s,\;\; \textstyle\sum_s b_s\le 2\hat\varepsilon,\;\; \sum_s a_s=1\\
+&amp;0\le r_s\le a_s/(1-\beta),\;\; \textstyle\sum_s r_s=1\\
+&amp;d_s-e_s\le\hat q_s,\;\; d_s+e_s\ge\hat q_s,\;\; \textstyle\sum_s e_s\le 2\tilde\varepsilon,\;\; \sum_s d_s=1
+\end{aligned}\right\}
+$$</div>
+<h3>Leader 블록 $\mathcal L$ (∀k, s)</h3>
+<div class="math">$$
+\begin{aligned}
+&amp;N_y\hat u^s+N_{ts}\hat\sigma_s=0\\
+&amp;-\bar\xi_k^s\, r_s-\underbrace{\alpha_k r_s}_{\zeta^L_{ks}}+\hat u_k^s+\hat\rho^2_{ks}-\hat\rho^3_{ks}\le 0\\
+&amp;v_k^s\bar\xi_k^s\, r_s-\hat\rho^1_{ks}-\hat\rho^2_{ks}+\hat\rho^3_{ks}\le 0
+\end{aligned}
+$$</div>
+<h3>Follower 블록 $\mathcal F$ (∀k, s)</h3>
+<div class="math">$$
+\begin{aligned}
+&amp;N_y\tilde u^s+N_{ts}\tilde\sigma_s=0\\
+&amp;-\bar\xi_k^s\, d_s-\underbrace{\alpha_k d_s}_{\zeta^F_{ks}}+\tilde u_k^s+\tilde\rho^2_{ks}-\tilde\rho^3_{ks}\le 0\\
+&amp;v_k^s\bar\xi_k^s\, d_s-\tilde\rho^1_{ks}-\tilde\rho^2_{ks}+\tilde\rho^3_{ks}\le 0\\
+&amp;[N_y^\top\omega^s]_k-\kappa_k^s\le 0,\qquad d_s+N_{ts}^\top\omega^s\le 0,\qquad \textstyle\sum_s\kappa_k^s\le\delta\\
+&amp;\textstyle\sum_s\tilde\sigma_s\ \ge\ \sum_{k,s}\bar\xi_k^s\kappa_k^s+w\delta+\sum_k\rho^{02}_k-\sum_k\rho^{03}_k\\
+&amp;\textstyle\sum_s v_k^s\bar\xi_k^s\kappa_k^s+\rho^{01}_k+\rho^{02}_k\ \ge\ \rho^{03}_k
+\end{aligned}
+$$</div>
+<p>비선형 항은 $\zeta^L_{ks}=\alpha_k r_s$ 와 $\zeta^F_{ks}=\alpha_k d_s$ 두 종류뿐이고, 둘 다 <b>$\alpha$ × belief</b> 의 곱이다. 가능영역 전체를 $\mathcal Y$ 라 쓴다.</p>
+
+<h2 id="s3"><span class="num">3</span>기본 성질</h2>
+<div class="box"><div class="tag">명제 1 · cut 의 유효성과 볼록성 <span class="status proved">증명</span></div>
+<p>$\mathcal Y$ 에는 $x$ 가 없고 $c(x)$ 는 $x$ 에 affine 이므로 $V^*(x)=\max_{y\in\mathcal Y}c(x)^\top y$ 는 $x$ 에 대해 볼록이다. 임의의 $\hat y\in\mathcal Y$ 에 대해</p>
+<div class="math">$$
+V^*(x)\;\ge\; c(x)^\top\hat y\;=\;\kappa_0(\hat y)+\sum_k\pi_k(\hat y)\,x_k\qquad\forall x
+\tag{cut}
+$$</div>
+<div class="math">$$
+\begin{aligned}
+\kappa_0(\hat y)&amp;=\textstyle\sum_s\hat\sigma_s-\hat\phi^U\sum_{k,s}\hat\rho^3_{ks}-\tilde\phi^U\sum_{k,s}\tilde\rho^3_{ks}-\lambda^U\sum_k\rho^{03}_k\\
+\pi_k(\hat y)&amp;=-\hat\phi^U\textstyle\sum_s(\hat\rho^1_{ks}-\hat\rho^3_{ks})-\tilde\phi^U\sum_s(\tilde\rho^1_{ks}-\tilde\rho^3_{ks})-\lambda^U(\rho^{01}_k-\rho^{03}_k)
+\end{aligned}
+$$</div>
+<p class="proof"><b>증명.</b> $\hat y$ 는 모든 $x$ 에서 Ω 의 가능해이고 $V^*(x)$ 는 그중 최대값. 코드: <code>compute_true_dro_outer_cut</code>.</p>
+</div>
+
+<div class="box"><div class="tag">명제 2 · 한쪽 고정 = restriction <span class="status proved">증명</span></div>
+<p>bilinear 항의 어느 한쪽을 고정하면 LP 가 된다.</p>
+<div class="math">$$
+v_{\bar\theta}(x)=\max\big\{c(x)^\top y:\ y\in\mathcal Y,\ \theta=\bar\theta\big\},\qquad
+g_{\bar\alpha}(x)=\max\big\{c(x)^\top y:\ y\in\mathcal Y,\ \alpha=\bar\alpha\big\}
+$$</div>
+<p>둘 다 가능영역이 $\mathcal Y$ 의 부분집합이므로 $v_{\bar\theta}(x)\le V^*(x)$, $g_{\bar\alpha}(x)\le V^*(x)$ 이고, 각 LP 의 최적해에서 만든 cut 은 명제 1 에 의해 전역 유효하다. belief 를 고정한 것이 설계 A 의 menu cut, $\alpha$ 를 고정한 것이 기존 mini-Benders cut 이다.</p>
+<p class="small">코드: <code>_build_belief_lp</code> 는 $\zeta^L_{ks}-\bar r_s\alpha_k=0$, $\zeta^F_{ks}-\bar d_s\alpha_k=0$ 로 바꾸고 <code>_set_belief!</code> 가 계수만 갱신한다.</p>
+</div>
+
+<div class="box"><div class="tag">명제 3 · 유한한 belief 로 충분 <span class="status cond">ccg.tex 정리 인용</span></div>
+<p>$\mathcal Y=\bigcup_{\theta\in\Theta}\mathcal Y(\theta)$ 이므로 $V^*(x)=\max_{\theta\in\Theta}v_\theta(x)$ 는 자명하다. ccg.tex 의 cover 이론은 더 강하게, 각 $x$ 에서 최적 belief 를 유한 집합 $\Theta^\star(x)$ (vertex / minimal cover 의 대표점) 에서 고를 수 있음을 준다. $X$ 가 유한이므로</p>
+<div class="math">$$
+\Theta^\star=\bigcup_{x\in X}\Theta^\star(x)\ \text{ 는 유한},\qquad V^*(x)=\max_{\theta\in\Theta^\star}v_\theta(x)\quad\forall x\in X .
+$$</div>
+</div>
+
+<h2 id="s4"><span class="num">4</span>두 가지 menu 크기</h2>
+<p>"belief 가 몇 개 필요한가" 에는 서로 다른 두 질문이 섞여 있다.</p>
+<div class="box"><div class="tag">정의 · 표현 menu 와 충분 menu</div>
+<ul>
+<li><b>표현 menu</b>: 모든 $x\in X$ 에서 $\max_{\theta\in M}v_\theta(x)=V^*(x)$. 명제 3 의 $\Theta^\star$ 가 그 예다. $V^*$ 를 함수 전체로 복원한다.</li>
+<li><b>충분 menu</b>: 최적값만 보존한다.
+<div class="math">$$\min_{x\in X}\max_{\theta\in M}v_\theta(x)=z^\star
+\iff \forall x\in X\ \exists\theta\in M:\ v_\theta(x)\ge z^\star .$$</div>
+즉 "모든 $x$ 를 $z^\star$ 이상으로 덮는" belief 들의 집합이다. 덮는 조건이므로 belief 하나가 많은 $x$ 를 한꺼번에 덮을 수 있다.</li>
+</ul>
+<p>최소 충분 menu 의 크기를 $m^\star$ 라 하면 $m^\star\le|\Theta^\star|$ 이고, 보통 훨씬 작을 것으로 기대한다.</p>
+</div>
+<div class="box"><div class="tag">측정값의 의미</div>
+<p>실험 리포트의 "menu 크기 최대 11" 은 설계 A 가 한 번 실행에서 모은 $|M|$ 이다. $|\Theta^\star|$ 가 아니다. 종료 시점에</p>
+<div class="math">$$\text{LB}=\min_x\max_j\big[\kappa_0(\hat y^j)+\pi(\hat y^j)^\top x\big]\le\min_x\max_{\theta\in M\cup M_0}v_\theta(x)$$</div>
+<p>이고 $\text{LB}\ge(1-\text{tol})\,\text{UB}$ 이므로, $M$ 에 마지막 인증 호출에서 menu 에 넣지 않은 belief 몇 개 ($M_0$) 를 더한 집합이 tol 이내의 충분 menu 다. 따라서 측정값은 $m^\star$ 의 (근사) 상한이다. ccg.tex 에서 $x$ 하나에 대한 극대 패턴이 S=7 에서 20~29 개였던 것과 비교하면, 최적값 인증에 필요한 belief 는 그보다 작다.</p>
+</div>
+
+<h2 id="s5"><span class="num">5</span>Master (OMP)</h2>
+<div class="math">$$
+\begin{aligned}
+\text{OMP}_\ell:\quad \min_{x,\,t_0}\;\; &amp; t_0\\
+\text{s.t.}\;\; &amp; t_0\ge\kappa_0(\hat y^j)+\pi(\hat y^j)^\top x, &amp;&amp; j=1,\dots,\ell\\
+&amp; \textstyle\sum_k x_k\le\gamma,\;\; x_k=0\;(k\text{ 차단 불가}),\;\; \text{min-cut VI},\;\; \text{source/sink cut}\\
+&amp; x\in\{0,1\}^K
+\end{aligned}
+$$</div>
+<p>모든 cut 이 $\mathcal Y$ 의 점에서 나오므로 OMP 는 $\min_x V^*(x)$ 의 완화이고 그 값이 유효한 하한이다. 기존 Benders 와 같은 master 다.</p>
+
+<h2 id="s6"><span class="num">6</span>설계 A: belief-menu Benders (구현됨)</h2>
+<p>상태: menu $M\subset\Theta$ (처음엔 비어 있음), LB $=-\infty$, UB $=+\infty$, $\bar x$ 별 oracle 시간 제한 $T(\bar x)$.</p>
+<div class="algo"><ol>
+<li><span class="step">Master.</span> OMP 를 풀어 $(\bar x,\bar t_0)$. $\text{LB}\leftarrow\max(\text{LB},\bar t_0)$. $(\text{UB}-\text{LB})/|\text{UB}|\le\text{tol}$ 이면 종료.</li>
+<li><span class="step">Menu 단계 (LP 만).</span> 모든 $\theta\in M$ 에 대해 LP $v_\theta(\bar x)$ 를 풀어 해 $\hat y_\theta$ 를 얻는다.
+  <div class="math">$$V_M(\bar x)=\max_{\theta\in M}v_\theta(\bar x),\qquad v_\theta(\bar x)>\bar t_0\;\Rightarrow\;\text{cut}(\hat y_\theta)\text{ 추가}$$</div>
+  cut 이 하나라도 추가되면 1 로.</li>
+<li><span class="step">Oracle 단계</span> ($V_M(\bar x)\le\bar t_0$). 목표값
+  <div class="math">$$\tau=\bar t_0+0.99\cdot\text{tol}\cdot\max(1,|\bar t_0|)$$</div>
+  <ol type="a">
+  <li><b>로컬 해 먼저</b>: $\alpha^0\in\{$menu 최선 LP 해의 $\alpha$, $\tfrac{w}{K}\mathbf 1\}$ 에서 Ipopt → $\alpha^{\text{loc}}$, $g_{\alpha^{\text{loc}}}(\bar x)$ 의 해 $\hat y$. $c(\bar x)^\top\hat y\ge\tau$ 이면 성공 (UB 갱신 없음).</li>
+  <li><b>α-B&amp;B</b> (시간 제한 $T(\bar x)$): incumbent $\ge\tau$ 또는 dual bound $\bar U\le\tau$ 이면 멈춤. $\text{UB}\leftarrow\min(\text{UB},\bar U)$.</li>
+  </ol>
+  $\text{cut}(\hat y)$ 추가. $c(\bar x)^\top\hat y>V_M(\bar x)$ 이면 $\hat y$ 의 belief 를 정리해 $M$ 에 추가. 1 로.</li>
+</ol></div>
+<div class="math">$$
+T(\bar x)=\begin{cases}
+T_0 &amp; \bar x\text{ 에서 처음 호출}\\
+T_{\text{boost}} &amp; \bar x\text{ 에서 이미 호출한 적 있음}\\
+\min(4T,\,T_{\text{boost}}) &amp; \text{같은 }\bar x\text{ 에서 진전 없이 끝난 뒤}
+\end{cases}
+\qquad T_0=600\text{s},\;T_{\text{boost}}=3600\text{s}
+$$</div>
+
+<h2 id="s7"><span class="num">7</span>정당성 <span class="status proved">증명</span></h2>
+<ul>
+<li><b>하한.</b> menu LP 해와 $\alpha$ 고정 Ω 의 해는 모두 $\mathcal Y$ 의 점 → 명제 1 → OMP 는 완화.</li>
+<li><b>상한.</b> α-B&amp;B 의 $\bar U\ge V^*(\bar x)\ge z^\star$ (허용오차로 가지친 노드의 상한 포함). $\bar U\le\tau$ 로 끝나면 $\text{UB}\le\text{LB}(1+\text{tol})$.</li>
+<li><b>유한 종료.</b> menu cut 과 $\tau$ 이상의 oracle 해는 $(\bar x,\bar t_0)$ 를 잘라낸다. $X$ 가 유한이고 같은 $(\bar x,\bar t_0)$ 가 반복되지 않으므로 유한 반복 (시간 제한 실패는 <code>:Stalled</code>).</li>
+<li><b>휴리스틱 생략의 안전성.</b> menu 단계에서 belief 일부를 건너뛰어도 cut 이 줄어들 뿐 정당성은 그대로다. 놓친 위반은 oracle 이 다시 찾는다.</li>
+</ul>
+
+<h2 id="s8"><span class="num">8</span>접평면 cut 의 퇴화 <span class="status proved">기전</span> · <span class="status open">규모는 측정</span></h2>
+<p>설계 A 의 menu cut 과 기존 Benders 의 Ω cut 은 모두 한 점 $\bar x$ 에서의 접평면이다. 이 cut 이 $\bar x$ 밖에서 얼마나 쓸모 있는지는 LP 해의 선택에 달려 있다.</p>
+<div class="box"><div class="tag">기전</div>
+<p>$\bar x_k=0$ 인 아크에서 $\hat\rho^1_{ks}$, $\tilde\rho^1_{ks}$, $\rho^{01}_k$ 의 목적 계수는 0 이다. 이 변수들은 제약에서만 값이 정해지므로 LP 가 쌍대 퇴화이고, 최적해 중 이들을 크게 둔 꼭짓점이 나올 수 있다. 그러면</p>
+<div class="math">$$\pi_k(\hat y)=-\hat\phi^U\textstyle\sum_s\hat\rho^1_{ks}+\cdots\ \ll 0\qquad(\bar x_k=0)$$</div>
+<p>가 되어, 그 아크를 차단하는 다른 $x$ 에서 cut 값이 크게 떨어진다. cut 이 실질적으로 막는 점이 $\bar x$ 하나로 줄고, OMP 는 $X$ 를 한 점씩 지워 나가게 된다.</p>
+</div>
+<p>Sioux Falls (K=76, γ=2, $|X|=2{,}927$), S=50 에서 belief 하나의 menu cut 을 재 보면, $\bar x$ 에서 값 19 안팎인 cut 이 다른 $x$ (아크 2개) 의 99.8~100% 에서 음수였다 (중앙값 −210~−250). 76개 중 32개 아크에서 $\pi_k\lt-100$. 같은 인스턴스에서 설계 A 가 반복 1,000회에 수렴하지 못한 원인으로 본다.</p>
+<p>처방은 두 갈래다. (i) 최적해 중 $\bar x$ 밖에서도 강한 것을 고르는 Pareto-optimal (Magnanti–Wong) cut. 기존 mini-Benders 는 이미 쓰고 있고 menu cut 에는 아직 없다. (ii) 접평면 대신 $v_\theta(x)$ 전체를 master 에 넣는 설계 B (10절).</p>
+
+<h2 id="s9"><span class="num">9</span>NP-hard 평가 횟수의 상한 <span class="status cond">조건부</span></h2>
+<div class="box"><div class="tag">명제 4</div>
+<p>다음을 가정한다.</p>
+<ol>
+<li>(정확한 판정) oracle 은 매 호출에서 $V^*(\bar x)\ge\tau$ 인 해를 내거나 $V^*(\bar x)\le\tau$ 를 인증한다 (시간 제한에 걸리지 않음).</li>
+<li>(대표점 사영) oracle 이 낸 해의 belief 를 값이 줄지 않게 $\Theta^\star$ 의 원소로 바꿀 수 있다.</li>
+</ol>
+<p>그러면 설계 A 의 oracle 호출 수는</p>
+<div class="math">$$\#\text{oracle}\;\le\;|\Theta^\star|+1 .$$</div>
+<p class="proof"><b>증명.</b> oracle 은 menu 가 $\bar x$ 에서 수렴했을 때, 즉 $V_M(\bar x)\le\bar t_0$ 일 때만 불린다. (a) 해를 내면 그 값은 $\ge\tau\gt\bar t_0\ge V_M(\bar x)$ 이고, 사영한 belief $\theta'\in\Theta^\star$ 는 $v_{\theta'}(\bar x)\ge\tau$. $\theta'\in M$ 이면 $V_M(\bar x)\ge\tau$ 로 모순이므로 $\theta'$ 는 새 원소다. (b) 인증하면 $\text{UB}\le\text{LB}(1+\text{tol})$ 로 다음 반복에서 끝난다. (a) 는 최대 $|\Theta^\star|$ 번, (b) 는 한 번. □</p>
+</div>
+<p>기존 Benders 에는 이런 상한이 없다. 매 반복 Ω 를 시간 제한 있는 Gurobi 로 휴리스틱하게 풀고, 정체 시 전역 평가를 부르는데, 그 횟수는 구조로 정해지지 않는다. 조건 2 (사영) 는 현재 미구현이고, 지금 코드는 <code>_clean_belief</code> 로 실현 가능하게 정리만 한다.</p>
+<p class="small">측정에서는 oracle 호출 수가 $|M|+1$ 과 거의 같았다 (예: Abilene S=50, menu 9 · oracle 9). 단 로컬 해 우선 이후 비싼 α-B&amp;B 는 대부분 마지막 인증 1회뿐이라, 이 상한이 실제 시간을 지배하지는 않는다.</p>
+
+<h2 id="s10"><span class="num">10</span>설계 B: belief 를 master 에 블록째 넣는 C&amp;CG <span class="status cond">조건부</span> · 미구현</h2>
+<p>접평면 하나 대신 $v_\theta(x)$ 를 LP 쌍대로 master 에 그대로 넣는다. belief $\theta$ 를 고정한 Ω 를 표준형으로</p>
+<div class="math">$$
+v_\theta(x)=\max_{y}\{c(x)^\top y:\ A_\theta y\le b_\theta,\ y\ge 0\}=\min_{\lambda}\{b_\theta^\top\lambda:\ A_\theta^\top\lambda\ge c(x),\ \lambda\ge 0\}
+$$</div>
+<p>라 쓰면 ($y$ 의 자유 변수와 등식 제약은 해당 쌍대 제약을 등식·자유로 바꾼다), master 는</p>
+<div class="math">$$
+\begin{aligned}
+\text{MP}(M):\quad\min_{x,\,\eta,\,\{\lambda_\theta\}}\;\; &amp;\eta\\
+\text{s.t.}\;\; &amp;\eta\ge b_\theta^\top\lambda_\theta,\quad A_\theta^\top\lambda_\theta\ge c(x),\quad \lambda_\theta\ge 0 &amp;&amp;\forall\theta\in M\\
+&amp;x\in X
+\end{aligned}
+$$</div>
+<div class="box"><div class="tag">명제 5 · big-M 없는 정확한 master <span class="status proved">증명</span></div>
+<p>$\text{MP}(M)$ 의 값은 $\min_{x\in X}\max_{\theta\in M}v_\theta(x)$ 와 같고, 제약은 $(x,\lambda)$ 에 대해 선형이다.</p>
+<p class="proof"><b>증명.</b> LP 강쌍대성 ($v_\theta(x)$ 가 모든 $x\in X$ 에서 유한하다는 가정) 으로 고정된 $x$ 에서 $\min_{\lambda_\theta}b_\theta^\top\lambda_\theta=v_\theta(x)$. $x$ 는 $c(x)$, 즉 쌍대 제약의 우변에만 affine 하게 들어가므로 $x\cdot\lambda$ 같은 곱이 생기지 않는다. □ (Ω 에서 $x$ 가 목적 계수에만 있다는 2절의 구조 덕분이다. $x$ 가 제약 행렬에 있었다면 big-M 선형화가 필요했다.)</p>
+</div>
+<div class="box"><div class="tag">명제 6 · 반복 수가 |X| 가 아니라 belief 수에 묶임 <span class="status cond">조건부</span></div>
+<p>알고리즘: $\text{MP}(M)$ → $(\bar x,\bar\eta)$ → oracle 로 $V^*(\bar x)$ 판정 → $V^*(\bar x)\le\bar\eta(1+\text{tol})$ 이면 종료, 아니면 oracle 의 belief 를 $M$ 에 추가. 명제 4 의 두 조건 아래에서 반복 수는</p>
+<div class="math">$$\#\text{iter}\;\le\;|\Theta^\star|+1,$$</div>
+<p>$|X|$ 와 무관하다.</p>
+<p class="proof"><b>증명.</b> $\bar\eta=\max_{\theta\in M}v_\theta(\bar x)$ (명제 5). 종료하지 않으면 $V^*(\bar x)\gt\bar\eta$ 이므로 사영한 belief 는 $M$ 에 없는 $\Theta^\star$ 의 원소다. $M=\Theta^\star$ 가 되면 명제 3 에 의해 $\bar\eta=\min_xV^*(x)=z^\star$ 이고 $V^*(\bar x)=\bar\eta$ 로 종료한다. Zeng–Zhao C&amp;CG 의 유한 수렴 논증과 같다. □</p>
+</div>
+<p>실제로는 충분 menu (4절) 에 도달하면 끝나므로 반복 수는 $m^\star+1$ 근처로 기대한다. 설계 A 에서 Sioux Falls 의 문제였던 "접평면이 한 점만 막는다" 는 현상이 설계 B 에서는 구조적으로 사라진다: belief 블록 하나가 모든 $x$ 에서 $v_\theta(x)$ 를 정확히 준다.</p>
+<p><b>비용.</b> 블록 하나가 Ω LP 와 같은 규모 (변수·제약 $O(KS)$). $|M|\approx10$ 이면 S≤50 정도에서 MILP 로 풀 만하고, S=200 에서는 블록당 수만 행이라 부담이 크다. 쌍대 블록은 JuMP 로 $v_\theta$ 의 LP 를 만들어 Dualization.jl 로 생성하는 것이 부호 실수를 줄인다.</p>
+
+<h2 id="s11"><span class="num">11</span>α 고정 대 belief 고정</h2>
+<div class="tablewrap"><table>
+<thead><tr><th></th><th>α 고정 (mini-Benders)</th><th>belief 고정 (설계 A·B)</th></tr></thead>
+<tbody>
+<tr><td>cut 의 유효성</td><td>restriction (명제 2)</td><td>같음</td></tr>
+<tr><td>필요한 원소의 유한성</td><td>LP 꼭짓점이라는 의미에서만 유한, 개수 큼</td><td>cover 정리로 유한 (명제 3)</td></tr>
+<tr><td>측정된 다양성</td><td>Abilene 로그에서 α* 299개 중 241개가 새 값 (70~80%)</td><td>한 실행의 $|M|\le11$ (5개 네트워크, S=10~200)</td></tr>
+<tr><td>NP-hard 평가 상한</td><td>없음</td><td>$|\Theta^\star|+1$ (명제 4, 조건부)</td></tr>
+<tr><td>블록 master (C&amp;CG)</td><td>가능하나 원소가 많아 블록 수가 폭발</td><td>반복 ≤ $|\Theta^\star|+1$ (명제 6)</td></tr>
+<tr><td>cut 강화</td><td>MW 적용 중</td><td>미적용 (8절)</td></tr>
+</tbody></table></div>
+<div class="box ok"><div class="tag">논문에서의 위치</div>
+<p>"mini-Benders 대신 belief cut 을 쓴다" 는 주장할 근거가 약하다: 같은 논증 (명제 2) 이고 측정상 우열이 갈린다. 주장할 수 있는 것은 belief 쪽의 <b>구조</b>다.</p>
+<ul>
+<li>필요한 belief 가 유한하고 작다 (명제 3, 4절의 충분 menu, $|M|\le11$).</li>
+<li>그 결과 NP-hard 평가 횟수에 구조적 상한이 생긴다 (명제 4).</li>
+<li>$x$ 가 목적 계수에만 있어 belief 블록을 big-M 없이 master 에 넣을 수 있고, 반복 수가 $|X|$ 가 아니라 belief 수에 묶인다 (명제 5·6).</li>
+</ul>
+<p>이 구조가 실제 이득으로 이어지는지는 설계 B 를 큰 $|X|$ 인스턴스 (Sioux Falls) 에서 보여야 한다.</p>
+</div>
+
+<h2 id="s12"><span class="num">12</span>열린 조건</h2>
+<div class="tablewrap"><table>
+<thead><tr><th>항목</th><th>필요한 곳</th><th>상태</th></tr></thead>
+<tbody>
+<tr><td>oracle belief 를 $\Theta^\star$ 의 대표점으로 사영 (값이 줄지 않게)</td><td>명제 4·6</td><td><span class="status open">미구현</span> 현재는 실현 가능 정리 (<code>_clean_belief</code>) 만</td></tr>
+<tr><td>oracle 의 정확한 판정 (시간 제한 없이)</td><td>명제 4·6</td><td><span class="status cond">α-B&amp;B 는 정확, 시간 제한 시 :Stalled</span></td></tr>
+<tr><td>$v_\theta(x)$ 가 모든 $x\in X$ 에서 유한</td><td>명제 5</td><td><span class="status cond">ρ 가 위로 무계라 확인 필요</span></td></tr>
+<tr><td>$m^\star$ (최소 충분 menu) 의 크기에 대한 이론적 상한</td><td>반복 수의 실용적 보장</td><td><span class="status open">없음</span> 측정만</td></tr>
+<tr><td>Ω 자체가 $\lambda^U$ 벌점 완화라는 점 ($\lambda^U=10$ 에서 $V^*$ 과대평가 가능)</td><td>전체</td><td><span class="status open">별도 과제</span> (<code>docs/alpha_bnb_notes.md</code> §4)</td></tr>
+</tbody></table></div>
+<p class="small">출처: <code>true_dro/belief_menu_benders.jl</code>, <code>true_dro/true_dro_build_subproblem.jl</code>, ccg.tex (cover 이론), <code>docs/benders_belief_menu_design.md</code> (실험 리포트).</p>
+</div>
