@@ -97,6 +97,37 @@ end
 
 
 # ---------------------------------------------------------------------
+# menu cut 의 Magnanti–Wong 강화 (기존 mini-Benders 의 MW 와 같은 Phase 2)
+#   LP_θ 최적값 z* 를 유지하는 해 중 core point 에서 목적이 최대인 해 → 같은 x̄ 에서 값은 같고
+#   x̄ 밖에서 더 강한 cut. x̄_k=0 아크의 ρ¹ 퇴화로 생기는 약한 cut 대응 (이론 문서 §8).
+# 실패 (OPTIMAL 아님) 시 nothing → 호출 측이 기본 cut 사용.
+# ---------------------------------------------------------------------
+function _mw_menu_cut!(B::_BeliefLP, td, x̄, zstar, x_core)
+    K, S = td.num_arcs, td.S
+    m, v = B.model, B.vars
+    con = @constraint(m, objective_function(m) >= zstar - 1e-6)
+    update_true_dro_subproblem_objective!(m, v, td, x_core)
+    optimize!(m)
+    cut = nothing
+    if termination_status(m) == MOI.OPTIMAL
+        info = Dict(
+            :Z0_val => objective_value(m),
+            :rho_hat_1_val => [value(v[:ρ_hat_1][k, s]) for k in 1:K, s in 1:S],
+            :rho_hat_3_val => [value(v[:ρ_hat_3][k, s]) for k in 1:K, s in 1:S],
+            :rho_tilde_1_val => [value(v[:ρ_tilde_1][k, s]) for k in 1:K, s in 1:S],
+            :rho_tilde_3_val => [value(v[:ρ_tilde_3][k, s]) for k in 1:K, s in 1:S],
+            :rho_psi0_1_val => [value(v[:ρ_psi0_1][k]) for k in 1:K],
+            :rho_psi0_3_val => [value(v[:ρ_psi0_3][k]) for k in 1:K],
+        )
+        cut = compute_true_dro_outer_cut(td, info, x_core)
+    end
+    delete(m, con)
+    update_true_dro_subproblem_objective!(m, v, td, x̄)
+    return cut
+end
+
+
+# ---------------------------------------------------------------------
 # Gurobi oracle: 목표값 조기 종료 (BestObjStop / BestBdStop) 를 허용하는 풀이
 # (solve_true_dro_subproblem! 은 OBJECTIVE_LIMIT 를 오류로 처리하므로 별도 함수)
 # ---------------------------------------------------------------------
@@ -147,6 +178,7 @@ repeat_boost (기본 true): oracle 을 이미 부른 x̄ 가 다시 나오면 �
 local_first (oracle=:alpha_bnb 전용, 그때 기본 true): α-B&B 전에 Ipopt 로컬 해 (출발점 = menu 최선 LP 해의 α, 균등 α) 를
     α 고정 LP 로 정확히 재평가해 목표값 이상이면 그 해로 cut·belief 를 얻고 α-B&B 를 건너뜀.
     로컬 해에는 상한 정보가 없으므로 UB 는 갱신하지 않음 (UB 는 α-B&B 에서만).
+menu_mw: menu cut 을 Magnanti–Wong 으로 강화 (core point = 차단 가능 아크에 γ/n 균등, 기존 mini-Benders 와 동일).
 반환 Dict: :status, :Z0, :x, :lower_bound, :upper_bound, :iters, :oracle_calls, :menu_size, :history, :wall_time,
            :local_hits, :local_time, :bnb_calls, :bnb_time
 """
@@ -154,6 +186,7 @@ function belief_menu_benders_optimize!(td::TrueDROData;
         mip_optimizer, nlp_optimizer, lp_optimizer=nlp_optimizer,
         oracle::Symbol=:gurobi, oracle_time_limit=15.0, boost_time_limit=3600.0, oracle_gap=5e-3,
         target_stop::Bool=true, repeat_boost::Bool=true, local_first::Bool=(oracle == :alpha_bnb), local_time=60.0,
+        menu_mw::Bool=false,
         nworkers=12, max_iter=1000, tol=5e-3, verbose=true,
         valid_inequality::Symbol=:mincut, source_sink_cut=nothing, wall_time_limit=7200.0)
     oracle in (:gurobi, :alpha_bnb) || error("oracle must be :gurobi or :alpha_bnb (got $oracle)")
@@ -191,6 +224,9 @@ function belief_menu_benders_optimize!(td::TrueDROData;
     oracle_tl = Dict{Vector{Float64},Float64}()        # x̄ 별 현재 oracle 시간 제한 (정체 시 boost)
     oracle_seen = Set{Vector{Float64}}()               # oracle 을 부른 적 있는 x̄
     local_hits = 0; local_t = 0.0; bnb_calls = 0; bnb_t = 0.0
+    n_interd = count(td.interdictable_arcs)
+    x_core = [(td.interdictable_arcs[k] ? td.gamma / n_interd : 0.0) for k in 1:K]
+    mw_ok = 0; mw_fail = 0
     hist = Dict(:LB => Float64[], :UB => Float64[], :menu => Int[], :oracle => Bool[], :t => Float64[])
     rel(a, b) = abs(b - a) / max(abs(b), 1e-10)
     status = :MaxIter
@@ -221,7 +257,16 @@ function belief_menu_benders_optimize!(td::TrueDROData;
             info[:Z0_val] > V_menu && (α_menu = copy(info[:α_val]))
             V_menu = max(V_menu, info[:Z0_val])
             if info[:Z0_val] > t0 + 1e-6 * max(1.0, abs(t0))
-                add_cut!(info, x̄); nviol += 1
+                cut = menu_mw ? _mw_menu_cut!(B, td, x̄, info[:Z0_val], x_core) : nothing
+                if cut === nothing
+                    menu_mw && (mw_fail += 1)
+                    add_cut!(info, x̄)
+                else
+                    mw_ok += 1
+                    cut_count += 1
+                    add_true_dro_optimality_cut!(omp_model, omp_vars, cut, cut_count)
+                end
+                nviol += 1
             end
         end
         push!(hist[:oracle], nviol == 0)
@@ -320,10 +365,12 @@ function belief_menu_benders_optimize!(td::TrueDROData;
         push!(hist[:LB], LB); push!(hist[:UB], UB); push!(hist[:menu], length(menu)); push!(hist[:t], time() - wall_start)
     end
     wall = time() - wall_start
-    verbose && @printf("Belief-menu Benders %s: LB=%.6f UB=%.6f gap=%.2e iters=%d oracle=%d (local %d / %.1fs, α-B&B %d / %.1fs) menu=%d wall=%.1fs\n",
-                       status, LB, UB, rel(LB, UB), iter, oracle_calls, local_hits, local_t, bnb_calls, bnb_t, length(menu), wall)
+    verbose && @printf("Belief-menu Benders %s: LB=%.6f UB=%.6f gap=%.2e iters=%d oracle=%d (local %d / %.1fs, α-B&B %d / %.1fs) menu=%d mw=%d/%d wall=%.1fs\n",
+                       status, LB, UB, rel(LB, UB), iter, oracle_calls, local_hits, local_t, bnb_calls, bnb_t, length(menu),
+                       mw_ok, mw_ok + mw_fail, wall)
     return Dict(:status => status, :Z0 => UB, :x => best_x, :lower_bound => LB, :upper_bound => UB,
                 :iters => iter, :oracle_calls => oracle_calls, :menu_size => length(menu),
                 :history => hist, :wall_time => wall,
-                :local_hits => local_hits, :local_time => local_t, :bnb_calls => bnb_calls, :bnb_time => bnb_t)
+                :local_hits => local_hits, :local_time => local_t, :bnb_calls => bnb_calls, :bnb_time => bnb_t,
+                :mw_ok => mw_ok, :mw_fail => mw_fail)
 end
