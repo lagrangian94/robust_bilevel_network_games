@@ -1,0 +1,22 @@
+Set parameter WLSAccessID
+Set parameter WLSSecret
+Set parameter LicenseID to value 926906
+Academic license 926906 - for non-commercial use only - registered to se___@postech.ac.kr
+seed=1 p=0.3 f=0.1 wres=  100 | best x=[2]        -1055.0  2nd [1]        -1055.0 | V* 고유값  2/16 | 18s
+seed=1 p=0.2 f=0.1 wres=  100 | best x=[2]        -1055.0  2nd [1]        -1055.0 | V* 고유값  2/16 | 5s
+seed=1 p=0.3 f=0.1 wres=  200 | best x=[1]        -1055.0  2nd [4]        -1055.0 | V* 고유값  2/16 | 11s
+seed=2 p=0.3 f=0.1 wres=  100 | best x=[2, 4]     -784.5  2nd [2, 3]     -784.5 | V* 고유값  6/16 | 8s
+seed=2 p=0.2 f=0.1 wres=  100 | best x=[2, 4]     -784.5  2nd [2, 3]     -784.5 | V* 고유값  6/16 | 8s
+seed=2 p=0.3 f=0.1 wres=  200 | best x=[2, 4]     -784.5  2nd [2, 3]     -784.5 | V* 고유값  6/16 | 39s
+seed=3 p=0.3 f=0.1 wres=  100 | best x=Int64[]    0.0  2nd [1, 4]     5.4 | V* 고유값  4/16 | 3s
+seed=3 p=0.2 f=0.1 wres=  100 | best x=Int64[]    0.0  2nd [1, 4]     5.4 | V* 고유값  4/16 | 3s
+seed=3 p=0.3 f=0.1 wres=  200 | best x=Int64[]    0.0  2nd [1, 4]     5.4 | V* 고유값  5/16 | 6s
+seed=4 p=0.3 f=0.1 wres=  100 | best x=[3, 4]     -1786.0  2nd [1, 3, 4]  -1481.0 | V* 고유값  6/16 | 3s
+seed=4 p=0.2 f=0.1 wres=  100 | best x=[3, 4]     -1786.0  2nd [2, 3, 4]  -1481.0 | V* 고유값  6/16 | 3s
+seed=4 p=0.3 f=0.1 wres=  200 | best x=[3, 4]     -1786.0  2nd [2, 3, 4]  -1481.0 | V* 고유값  6/16 | 8s
+seed=5 p=0.3 f=0.1 wres=  100 | best x=[2]        -875.6  2nd [3]        -875.6 | V* 고유값  3/16 | 17s
+seed=5 p=0.2 f=0.1 wres=  100 | best x=[2]        -875.6  2nd [3]        -875.6 | V* 고유값  3/16 | 33s
+seed=5 p=0.3 f=0.1 wres=  200 | best x=[3]        -875.6  2nd [2]        -875.6 | V* 고유값  3/16 | 238s
+seed=6 p=0.3 f=0.1 wres=  100 | best x=[3, 4]     -380.8  2nd [3]        -190.1 | V* 고유값  5/16 | 24s
+seed=6 p=0.2 f=0.1 wres=  100 | best x=[3, 4]     -380.8  2nd [3]        -190.1 | V* 고유값  5/16 | 27s
+seed=6 p=0.3 f=0.1 wres=  200 | best x=[3, 4]     -380.8  2nd [3]        -190.1 | V* 고유값  5/16 | 92s
