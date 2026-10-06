@@ -178,7 +178,7 @@ repeat_boost (기본 true): oracle 을 이미 부른 x̄ 가 다시 나오면 �
 local_first (oracle=:alpha_bnb 전용, 그때 기본 true): α-B&B 전에 Ipopt 로컬 해 (출발점 = menu 최선 LP 해의 α, 균등 α) 를
     α 고정 LP 로 정확히 재평가해 목표값 이상이면 그 해로 cut·belief 를 얻고 α-B&B 를 건너뜀.
     로컬 해에는 상한 정보가 없으므로 UB 는 갱신하지 않음 (UB 는 α-B&B 에서만).
-menu_mw: menu cut 을 Magnanti–Wong 으로 강화 (core point = 차단 가능 아크에 γ/n 균등, 기존 mini-Benders 와 동일).
+menu_mw (기본 true): menu cut 을 Magnanti–Wong 으로 강화 (core point = 차단 가능 아크에 γ/n 균등, 기존 mini-Benders 와 동일).
 반환 Dict: :status, :Z0, :x, :lower_bound, :upper_bound, :iters, :oracle_calls, :menu_size, :history, :wall_time,
            :local_hits, :local_time, :bnb_calls, :bnb_time
 """
@@ -186,7 +186,7 @@ function belief_menu_benders_optimize!(td::TrueDROData;
         mip_optimizer, nlp_optimizer, lp_optimizer=nlp_optimizer,
         oracle::Symbol=:gurobi, oracle_time_limit=15.0, boost_time_limit=3600.0, oracle_gap=5e-3,
         target_stop::Bool=true, repeat_boost::Bool=true, local_first::Bool=(oracle == :alpha_bnb), local_time=60.0,
-        menu_mw::Bool=false,
+        menu_mw::Bool=true,
         nworkers=12, max_iter=1000, tol=5e-3, verbose=true,
         valid_inequality::Symbol=:mincut, source_sink_cut=nothing, wall_time_limit=7200.0)
     oracle in (:gurobi, :alpha_bnb) || error("oracle must be :gurobi or :alpha_bnb (got $oracle)")
@@ -240,7 +240,7 @@ function belief_menu_benders_optimize!(td::TrueDROData;
         if wall_time_limit !== nothing && time() - wall_start > wall_time_limit
             status = :WallTimeLimit; break
         end
-        optimize!(omp_model)
+        t_omp = @elapsed optimize!(omp_model)
         termination_status(omp_model) == MOI.OPTIMAL || error("OMP: $(termination_status(omp_model))")
         x̄ = Float64.(value.(omp_vars[:x]) .> 0.5)     # 0/1 로 정리 (round 는 −0.0 을 만들어 Dict 키가 달라짐)
         t0 = value(omp_vars[:t_0])
@@ -250,14 +250,14 @@ function belief_menu_benders_optimize!(td::TrueDROData;
         end
 
         # ---- menu 단계 ----
-        V_menu = -Inf; nviol = 0; α_menu = nothing
+        V_menu = -Inf; nviol = 0; α_menu = nothing; t_lp = 0.0; t_mw = 0.0
         for b in menu
             _set_belief!(B, b)
-            info = solve_true_dro_subproblem!(B.model, B.vars, td, x̄; is_global=false)
+            t_lp += @elapsed (info = solve_true_dro_subproblem!(B.model, B.vars, td, x̄; is_global=false))
             info[:Z0_val] > V_menu && (α_menu = copy(info[:α_val]))
             V_menu = max(V_menu, info[:Z0_val])
             if info[:Z0_val] > t0 + 1e-6 * max(1.0, abs(t0))
-                cut = menu_mw ? _mw_menu_cut!(B, td, x̄, info[:Z0_val], x_core) : nothing
+                t_mw += @elapsed (cut = menu_mw ? _mw_menu_cut!(B, td, x̄, info[:Z0_val], x_core) : nothing)
                 if cut === nothing
                     menu_mw && (mw_fail += 1)
                     add_cut!(info, x̄)
@@ -271,7 +271,9 @@ function belief_menu_benders_optimize!(td::TrueDROData;
         end
         push!(hist[:oracle], nviol == 0)
         if nviol > 0
-            verbose && @printf("  Iter %d: LB=%.6f UB=%.6f  menu cut %d/%d (V_menu=%.6f)\n", iter, LB, UB, nviol, length(menu), V_menu)
+            verbose && @printf("  Iter %d: LB=%.6f UB=%.6f  menu cut %d/%d (V_menu=%.6f) [OMP %.1fs, LP %.1fs, MW %.1fs]\n",
+                               iter, LB, UB, nviol, length(menu), V_menu, t_omp, t_lp, t_mw)
+            verbose && flush(stdout)          # 파일로 출력할 때 줄이 몰려 찍히면 반복 시간을 잘못 읽게 됨
             push!(hist[:LB], LB); push!(hist[:UB], UB); push!(hist[:menu], length(menu)); push!(hist[:t], time() - wall_start)
             continue
         end
