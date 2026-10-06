@@ -284,3 +284,38 @@ S=200 Abilene
 - 이제 두 방식의 공통 비용은 "최적점 증명 1회" (S=200 에서 3,177s vs 3,493s). 차이는 A2 의 menu 단계 (반복 수백 회 × menu LP) 와 로컬 해 시간.
 - 개선 2 (worker LP·트리 재사용) 는 α-B&B 호출이 이미 1회라 효과가 작을 것 → 보류.
 - 다음 병목 후보: (i) 최적점 증명 자체 (α-B&B 노드 LP, 두 방식 공통), (ii) A2 의 menu 단계 반복 수 (Polska), (iii) Ipopt 시간 (grid).
+
+
+## 12. 5개 네트워크 확장 측정 (2026-10-05~06, 중단)
+
+`true_dro/archive_alpha_bnb/run_improve_batch2.jl`. S=50: wall 2h·boost 1h, S=200: wall 4h·boost 3h (두 방식 동일).
+grid 5×5 S=200 A2 진행 중 (1.5h) 사용자 요청으로 중단.
+
+### S=50 (wall 시간)
+| 네트워크 (아크) | A | A2 | standard |
+|---|---|---|---|
+| Abilene (30) | 1,350s | 1,088s | **1,014s** |
+| Polska (36) | 1,540s | 1,183s | **580s** |
+| Nobel-US (38) | — | **854s** | 1,072s |
+| grid 5×5 (47) | 1,507s | **778s** | 1,024s |
+| Sioux Falls (76) | — | **실패**: 반복 1,000 상한 (6,836s), LB 14.93, UB 없음, oracle 2회 | 15,830s (wall 7,200s 초과), LB 18.882 UB 18.965 gap 0.44%, x=[35, 72] |
+
+### S=200 (wall 시간, 둘 다 수렴, 같은 x*)
+| 네트워크 | A2 | standard |
+|---|---|---|
+| Abilene | 6,547s | **6,145s** |
+| Polska | 9,313s (로컬 8 / 671s, α-B&B 1 / 1,698s) | **7,424s** (boost 2,208s) |
+| grid 5×5, Nobel-US, Sioux Falls | 미측정 (중단) | 미측정 |
+
+### 결론
+- **기본은 standard + α-B&B boost 유지.** A2 는 S=50 에서 2/5 네트워크 (Nobel-US, grid) 만 빠르고, S=200 측정한 2개 모두 standard 가 빠름.
+- **A2 는 큰 네트워크에서 실패**: Sioux Falls (아크 76) 에서 menu 단계만 1,000회 돌고 LB 가 최적값 (~18.9) 의 79% 에 머묾.
+  menu cut (belief 고정 LP cut) 이 약해서 OMP 가 x 를 계속 바꾸며 반복만 늘어남 (S=10 에서도 739회).
+  standard 는 mini-Benders 가 x̄ 마다 α 를 갱신해 cut 이 강함 → 45회.
+
+### 미해결
+1. **standard 의 wall 제한 초과**: 제한은 반복 시작 시에만 확인 (`true_dro_benders.jl:262`). Sioux S=50 은 7,200s 제한에 15,830s.
+   로그에 시간이 찍힌 단계 (Sub 444s, mini/alt-Benders ~1,940s, OMP 재풀이 120s, boost 138s) 합계 ~2,650s →
+   나머지 ~13,000s 는 시간 표시가 없는 단계 (α-step 등) 로 추정, 원인 미확인.
+2. A2 menu 단계의 K 확장성 (위).
+3. S=200 grid·Nobel-US·Sioux Falls 비교.
