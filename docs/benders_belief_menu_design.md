@@ -324,3 +324,34 @@ x̄ 평가 횟수는 비슷한 규모이며, 차이는 cut 의 질 (mini-Benders
 - A2+MW vs standard: S=10 은 5/5 에서 A2+MW 가 빠름 (2.0~6.8배). S=50 은 Nobel-US·grid·Sioux Falls 에서 A2+MW, Abilene (10%)·Polska (35%) 에서 standard.
 - Abilene S=50 은 두 방식 모두 최적점 증명 α-B&B 1회가 대부분 (A2+MW 735s, standard boost ~580s).
 - **결정: `menu_mw` 기본값 true.**
+
+
+## 16. 실험 목표: MW 기본값 기준 재측정 (계획, 2026-10-06)
+
+`menu_mw=true` 가 기본이 되면서 설계 A 의 이전 측정 (§11~12, A2) 은 현재 기본 구성과 다르다.
+standard 는 mini-Benders 에 이미 MW 를 쓰므로 영향 없음 → 다시 잴 것은 설계 A 쪽과, 아직 없는 조합뿐이다.
+
+### 이미 현재 구성 (A2+MW) 으로 있는 것
+| S | 네트워크 |
+|---|---|
+| 10 | Abilene, Polska, Nobel-US, grid 5×5, Sioux Falls (§15) |
+| 50 | Abilene, Polska, Nobel-US, grid 5×5 (§15), Sioux Falls (§14) |
+
+### 재측정 / 신규 측정 목표
+| 우선 | S | 네트워크 | 구성 | 이유 | 시간 제한 |
+|---|---|---|---|---|---|
+| 1 | 200 | Abilene, Polska | A2+MW | 기존 값은 A2 (MW 없음): Abilene 6,547s, Polska 9,313s. standard (6,145s, 7,424s) 와 다시 비교 | wall 4h, boost 3h |
+| 2 | 200 | grid 5×5, Nobel-US | A2+MW, standard | 미측정 (§12 중단) | wall 4h, boost 3h |
+| 3 | 200 | Sioux Falls | A2+MW, standard | 미측정. S=50 에서 A2+MW 2,875s vs standard 15,830s 로 차이가 가장 큼 | wall 4h, boost 3h |
+
+예상 시간: 우선 1 약 4~5h, 우선 2 약 8~12h, 우선 3 최대 8h+ (standard 의 wall 초과 가능).
+
+### 선행 조건
+1. **standard 의 wall 제한 준수** (§13): master (OMP MIP) 와 subproblem 에 남은 wall 시간을 Gurobi TimeLimit 으로 넘기고 master 시간을 기록.
+   고치지 않으면 Sioux Falls·큰 S 에서 standard 가 제한을 크게 넘겨 (S=50 에서 7,200s → 15,830s) 같은 조건 비교가 안 됨. 코드 수정이라 승인 필요.
+2. 측정은 `julia -t 14,1`, 다른 계산 작업과 겹치지 않게 단독 실행 (WSL 작업 포함 확인).
+
+### 범위 밖 (다시 돌리지 않아도 되는 것)
+- 논문 실험 (`true_dro/factor_5/`, OOS 등) 은 standard Benders (`true_dro_benders.jl`) 만 쓰므로 menu MW 와 무관.
+  논문의 계산 실험을 설계 A 로 바꾸기로 하면 그때 별도 계획.
+- S=10·50 의 설계 A 측정은 §14~15 로 완료.
