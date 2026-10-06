@@ -91,12 +91,13 @@ for (x1, bel, _) in elems[1:min(3, end)]
     for f in (:a, :b, :r, :d, :e), s in 1:nd.S
         fix(Ob.v[f][s], bel[f][s]; force=true)
     end
-    r = nz_solve!(Ob, nd, x1)
-    @printf("  x=%-10s belief-only (QCP) = %12.4f   Ω = %12.4f\n", xs_str(x1), r[:Fval], Ωval[x1])
+    r = nz_solve!(Ob, nd, x1; time_limit=300)
+    @printf("  x=%-10s belief-only (QCP) = %12.4f [%s]  Ω = %12.4f\n", xs_str(x1), r[:Fval], r[:status], Ωval[x1])
+    flush(stdout)
 end
 
 # ---------------------------------------------------------------- (E)
-println("\n(E) Benders 비교")
+println("\n(E) Benders 비교"); flush(stdout)
 println("-- 표준 Benders (매 반복 전역 Ω)")
 rs = nz_standard_benders(nd; optimizer=GRB, tol=1e-5)
 println("-- belief-menu Benders (확장 belief, σ:recompute, hrows)")

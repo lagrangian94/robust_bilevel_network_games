@@ -115,6 +115,57 @@ KKT 평가가 120s 안에 끝나지 않아 접었다.
   belief LP 가 INFEASIBLE 이 된다 (`:solution` + `:all` 에서 발생). `nz_repair_cert` (min‖σ′−σ‖₁ LP + 계수 ≥ 0 행 dual 을
   올리는 정확 보정) 로 해결. 보정은 restriction 을 바꿀 뿐이므로 cut 유효성에는 영향 없음.
 
-### (B)~(E)
+### (B) validity, (C) 충분성 (`analyze_nz_menu_cache.jl`, `logs/analyze_cache_seed4_S3.log`)
 
-(재실행 중 — 첫 실행은 (B) 에서 스크립트 스코프 오류로 중단, `main()` 으로 감싸 재실행)
+(A) 에서 x 마다 얻은 원소 (belief + 인증서 σ:recompute, `:hrows`) 16 개를 모든 x₂ 에서 풀었다 (LP 256 개).
+
+- validity: 모든 쌍에서 LP ≤ Ω(x₂). 최대 초과 1.2e-4 (x₂=[3,4], Ω incumbent 자체가 −2396.0001 로 참값보다 1e-4 낮음, 상대 5e-8).
+  → 다른 x 에서 얻은 인증서는 weak duality 로 벌점만 커진다는 html 의 유효성 논증과 일치.
+- 충분성: 모든 x₂ 에서 max_원소 LP = Ω(x₂) (gap ≤ 8.5e-5). 16 개 x 를 모두 exact 로 덮는 greedy 최소 menu 는 **3 개**
+  (x₁ = [1], [3], [4] 에서 얻은 원소).
+- 원소가 exact 인 범위는 x 에 따라 갈린다.
+
+| 원소를 얻은 x₁ | exact 인 x₂ |
+|---|---|
+| ∅ | ∅ |
+| [1] | ∅, [1], [2], [1,2] |
+| [3], [1,3] | ∅ 와 3 을 포함하는 모든 x (9 개) |
+| [4] 계열 | ∅, [4], [1,4], [2,4], [1,2,4] |
+| [3,4] | [3,4], [1,3,4] |
+| [1,3,4] 등 | 3, 4 를 모두 포함하는 4 개 |
+
+- 인증서 패턴: 시나리오마다 고유 σˢ 9 개 / 원소 16, 고유 belief (r, d) 12 개 / 16. 같은 belief 라도 x 에 따라 min-cut 이 달라서
+  belief 만 저장하면 다른 x 에서 exact 가 아니다 → html "belief 하나에 시나리오당 min-cut 하나, 다른 x̄ 에서 다른 min-cut 이 필요하면
+  oracle 이 새 쌍을 추가" 의 구조가 그대로 보인다. 다만 이 인스턴스에서는 3 개면 충분.
+
+### (D) 대조: 인증서 없이 belief 만 고정
+
+belief (a, b, r, d, e) 만 고정하면 α·ϖ 가 남아 QCP 다 (Gurobi NonConvex). x = ∅, [1], [2] 에서 값은 Ω 와 같다
+(0, −480.6667, −480.6667). 즉 belief 만으로도 값은 충분하지만 LP 가 아니고, 인증서를 붙여야 LP 가 된다 (html 명제 2).
+
+### (E) Benders 비교 (`logs/belief_menu_base_seed4_S3.log`, tol 1e-5, Ω 시간 제한 600s)
+
+| | x* | LB = UB | 반복 | 전역 Ω 호출 | menu | wall |
+|---|---|---|---|---|---|---|
+| 표준 Benders (매 반복 전역 Ω) | [3, 4] | −1786.0001 | 17 | 16 | − | 3,754s |
+| belief-menu (확장 belief, σ:recompute, `:hrows`) | [3, 4] | −1786.0001 | 10 | **2** | **2** | **69.5s** |
+
+전수 열거 최적 ([3, 4], q·x + V* = 610 − 2396 = −1786) 과 같다.
+
+- 표준 Benders 는 16 개 x 를 사실상 전부 방문했다. LB 가 −4.5×10⁶ 에서 시작해 −4.6×10⁵ 까지밖에 안 오르는데,
+  cut 기울기가 λᵁ = 1000 이 곱해진 McCormick 항 (ρ̃, ρ⁰) 에 지배되기 때문이다. 원고 실험의 big-M tightening 이슈와 같은 종류.
+- belief-menu 는 x̄ = ∅ 에서 얻은 원소 하나로 반복 2~8 에서 menu cut 을 냈고 (모두 유효, exact 는 아님:
+  예 x=[1,2,3,4] 에서 −2667 < Ω −2396), 반복 9 의 x̄=[3,4] 에서 menu 가 수렴해 oracle 을 불러 두 번째 원소를 얻었다.
+  그 원소가 [3,4] 에서 exact (gap −1.2e-4, Ω incumbent 오차) 라 반복 10 에서 LB = UB.
+- menu cut 은 같은 반복 수에서 LB 를 더 많이 올렸다 (반복 8: −3.8×10⁴ vs 표준 반복 15: −4.6×10⁵). belief LP 의 해가
+  McCormick 쪽 ρ 를 덜 쓰는 꼭짓점을 고르는 것으로 보인다 (확인 안 함).
+- oracle 이 x̄ 에서 새 원소를 넣을 때마다 그 원소의 LP 값이 x̄ 에서 Ω(x̄) 와 같았다 (exactness 기록 2/2).
+
+## 8. 요약
+
+1. 비제로섬 Ω (html Step 4′) 는 zero-sum 에서 원고 Ω 와 일치하고, location 에서 big-M 없는 독립 평가와 모든 x 에서 일치한다.
+2. θᵁ 는 Lemma 2 대신 구조 상계 (location: v/거리해상도 = 50) 를 써야 한다. 1200 은 수치 상쇄로 Ω 를 과대평가했다.
+3. 확장 belief (belief + follower 인증서) 를 고정하면 Ω 가 LP 가 되고, (i) 얻은 x 에서 exact, (ii) 다른 x 에서 유효,
+   (iii) 모은 원소의 max 가 모든 x 에서 Ω 를 복원한다. html "확장 belief" 절의 검증 항목이 이 인스턴스에서 성립.
+4. belief-menu Benders 는 전역 Ω 2 회, menu 2 개로 수렴해 표준 Benders 보다 54 배 빨랐다.
+5. 남은 문제: λᵁ (follower exact penalty) 가 cut 을 약하게 만든다. λᵁ 를 얼마까지 줄여도 exact 인지 (`test_nz_lambda.jl`) 가 다음 측정.

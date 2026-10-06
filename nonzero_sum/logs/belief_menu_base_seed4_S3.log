@@ -1,0 +1,71 @@
+Set parameter WLSAccessID
+Set parameter WLSSecret
+Set parameter LicenseID to value 926906
+Academic license 926906 - for non-commercial use only - registered to se___@postech.ac.kr
+location_n8_A1_B4_S3_seed4: θᵁ=50.0  max π̂ᵁ=65.0  λᵁ=1000.0
+
+(A) exactness: LP(belief(x), σ) at x  vs  Ω(x)
+  x             KKT V*(x)         Ω(x) |  recomp/hrow   recomp/all     sol/hrow      sol/all
+  (캐시 사용: F:\github_projects\robust_bilevel_network_games\nonzero_sum\logs\cacheA_location_n8_A1_B4_S3_seed4.jls)
+
+(B) validity / (C) 충분성: 원소 (x₁ 에서 얻은 belief, σ:recompute) 를 x₂ 에서
+  max(LP − Ω) over all pairs = 1.23e-04  (pair x₁=[1, 2, 3, 4] → x₂=[3, 4]; > 0 이면 cut 무효)
+  (C) max_menu LP(x) vs Ω(x):
+    x=Int64[]    Ω=     -0.0000  menu max=      0.0000  gap=-2.8e-12
+    x=[1]        Ω=   -480.6666  menu max=   -480.6667  gap=4.9e-05
+    x=[2]        Ω=   -480.6666  menu max=   -480.6667  gap=4.7e-05
+    x=[1, 2]     Ω=   -480.6666  menu max=   -480.6667  gap=5.1e-05
+    x=[3]        Ω=   -725.0000  menu max=   -725.0000  gap=4.9e-05
+    x=[1, 3]     Ω=  -1239.8333  menu max=  -1239.8333  gap=4.8e-05
+    x=[2, 3]     Ω=  -1239.8333  menu max=  -1239.8333  gap=6.4e-05
+    x=[1, 2, 3]  Ω=  -1239.8333  menu max=  -1239.8333  gap=5.0e-05
+    x=[4]        Ω=  -1520.4444  menu max=  -1520.4444  gap=6.2e-05
+    x=[1, 4]     Ω=  -1520.4444  menu max=  -1520.4444  gap=8.5e-05
+    x=[2, 4]     Ω=  -1520.4444  menu max=  -1520.4444  gap=6.5e-05
+    x=[1, 2, 4]  Ω=  -1520.4444  menu max=  -1520.4444  gap=6.6e-05
+    x=[3, 4]     Ω=  -2396.0001  menu max=  -2396.0000  gap=-1.2e-04
+    x=[1, 3, 4]  Ω=  -2396.0000  menu max=  -2396.0000  gap=-3.3e-05
+    x=[2, 3, 4]  Ω=  -2396.0000  menu max=  -2396.0000  gap=-4.5e-05
+    x=[1, 2, 3, 4] Ω=  -2396.0000  menu max=  -2396.0000  gap=-4.4e-05
+  전수 열거 최적: x*=[3, 4]  q·x + V* = -1786.0001
+
+(D) 대조: 인증서 없이 belief 만 고정 (α·ϖ bilinear 남음, Gurobi NonConvex 로 풀이)
+  x=Int64[]    belief-only (QCP) =      -0.0000 [OPTIMAL]  Ω =      -0.0000
+  x=[1]        belief-only (QCP) =    -480.6667 [OPTIMAL]  Ω =    -480.6666
+  x=[2]        belief-only (QCP) =    -480.6667 [OPTIMAL]  Ω =    -480.6666
+
+(E) Benders 비교
+-- 표준 Benders (매 반복 전역 Ω)
+  [std] it   1 LB=-10000000.0000 UB=    -0.0000 x=Int64[]    Ω=    -0.0000 (0.0s)
+  [std] it   2 LB=-4462780.0000 UB= -1176.0001 x=[1, 2, 3, 4] Ω= -2396.0001 (87.0s)
+  [std] it   3 LB=-1115695.0000 UB= -1215.4444 x=[4]        Ω= -1520.4444 (44.7s)
+  [std] it   4 LB=-1115695.0000 UB= -1215.4444 x=[3]        Ω=  -725.0000 (49.0s)
+  [std] it   5 LB=-1115695.0000 UB= -1215.4444 x=[2]        Ω=  -480.6666 (545.6s)
+  [std] it   6 LB=-1115695.0000 UB= -1215.4444 x=[1]        Ω=  -480.6666 (144.1s)
+  [std] it   7 LB=-912586.0001 UB= -1215.4444 x=[2, 3]     Ω= -1239.8333 (600.8s)
+  [std] it   8 LB=-912586.0001 UB= -1786.0001 x=[3, 4]     Ω= -2396.0001 (53.1s)
+  [std] it   9 LB=-912586.0001 UB= -1786.0001 x=[1, 2]     Ω=  -480.6666 (218.5s)
+  [std] it  10 LB=-912586.0001 UB= -1786.0001 x=[2, 4]     Ω= -1520.4445 (169.0s)
+  [std] it  11 LB=-912586.0001 UB= -1786.0001 x=[1, 4]     Ω= -1520.4444 (85.7s)
+  [std] it  12 LB=-912586.0001 UB= -1786.0001 x=[1, 3]     Ω= -1239.8333 (600.3s)
+  [std] it  13 LB=-456881.0001 UB= -1786.0001 x=[2, 3, 4]  Ω= -2396.0001 (262.3s)
+  [std] it  14 LB=-456881.0001 UB= -1786.0001 x=[1, 2, 3]  Ω= -1239.8333 (601.2s)
+  [std] it  15 LB=-456881.0001 UB= -1786.0001 x=[1, 3, 4]  Ω= -2396.0001 (136.1s)
+  [std] it  16 LB=-456881.0001 UB= -1786.0001 x=[1, 2, 4]  Ω= -1520.4444 (156.2s)
+-- belief-menu Benders (확장 belief, σ:recompute, hrows)
+  [orcl] it   1 LB=-10000000.0000 UB=    -0.0000 x=Int64[]    Ω=    -0.0000 (0.0s) menu=1 (+belief, LP@x̄=-0.0000, gap 4.4e-09)
+  [menu] it   2 LB=-4462780.0000 UB=    -0.0000 x=[1, 2, 3, 4] menu cut 1/1 (V_menu=-2667.1111)
+  [menu] it   3 LB=-627837.6111 UB=    -0.0000 x=[1]        menu cut 1/1 (V_menu=-485.5000)
+  [menu] it   4 LB=-282604.5000 UB=    -0.0000 x=[2, 3]     menu cut 1/1 (V_menu=-1594.0556)
+  [menu] it   5 LB=-248390.1111 UB=    -0.0000 x=[4]        menu cut 1/1 (V_menu=-1558.5556)
+  [menu] it   6 LB=-245109.5000 UB=    -0.0000 x=[2]        menu cut 1/1 (V_menu=-485.5000)
+  [menu] it   7 LB=-132928.5556 UB=    -0.0000 x=[3]        menu cut 1/1 (V_menu=-1108.5556)
+  [menu] it   8 LB=-37675.5000 UB=    -0.0000 x=[1, 3]     menu cut 1/1 (V_menu=-1594.0556)
+  [orcl] it   9 LB= -2057.1111 UB= -1786.0001 x=[3, 4]     Ω= -2396.0001 (66.0s) menu=2 (+belief, LP@x̄=-2396.0000, gap -1.2e-04)
+
+                         x*                   LB           UB   iter   oracle   menu     wall
+  standard               [3, 4]       -1786.0001   -1786.0001     17       16      -  3754.1s
+  belief-menu            [3, 4]       -1786.0001   -1786.0001     10        2      2    69.5s
+  belief-menu exactness 기록 (새 원소마다 LP@x̄ vs Ω(x̄)):
+    it   1 x=Int64[]    Ω=     -0.0000 LP=     -0.0000 gap=4.4e-09
+    it   9 x=[3, 4]     Ω=  -2396.0001 LP=  -2396.0000 gap=-1.2e-04

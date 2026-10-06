@@ -51,6 +51,7 @@ function nz_standard_benders(nd::NZData; optimizer, max_iter=200, tol=1e-4, orac
         push!(hist, (iter=iter, LB=LB, UB=UB, x=findall(x̄ .> 0.5), F=res[:Fval], t=t_o))
         verbose && @printf("  [std] it %3d LB=%11.4f UB=%11.4f x=%-10s Ω=%11.4f (%.1fs)\n",
                            iter, LB, UB, string(findall(x̄ .> 0.5)), res[:Fval], t_o)
+        verbose && flush(stdout)
     end
     return Dict(:status => status, :LB => LB, :UB => UB, :x => best_x, :iters => iter,
                 :oracle_calls => iter - (status == :Optimal ? 1 : 0), :wall => time() - wall, :hist => hist)
@@ -91,6 +92,7 @@ function nz_belief_menu_benders(nd::NZData; optimizer, lp_optimizer=optimizer, c
             push!(hist, (iter=iter, LB=LB, UB=UB, x=findall(x̄ .> 0.5), kind=:menu, n=nviol))
             verbose && @printf("  [menu] it %3d LB=%11.4f UB=%11.4f x=%-10s menu cut %d/%d (V_menu=%.4f)\n",
                                iter, LB, UB, string(findall(x̄ .> 0.5)), nviol, length(menu), V_menu)
+            verbose && flush(stdout)
             continue
         end
 
@@ -120,6 +122,7 @@ function nz_belief_menu_benders(nd::NZData; optimizer, lp_optimizer=optimizer, c
         verbose && @printf("  [orcl] it %3d LB=%11.4f UB=%11.4f x=%-10s Ω=%11.4f (%.1fs) menu=%d%s\n",
                            iter, LB, UB, string(findall(x̄ .> 0.5)), res[:Fval], t_o, length(menu),
                            new_b ? @sprintf(" (+belief, LP@x̄=%.4f, gap %.1e)", exact_log[end].lp, exact_log[end].gap) : "")
+        verbose && flush(stdout)
     end
     return Dict(:status => status, :LB => LB, :UB => UB, :x => best_x, :iters => iter,
                 :oracle_calls => oracle_calls, :menu_cuts => menu_cuts, :menu => menu, :menu_size => length(menu),
