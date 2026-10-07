@@ -94,15 +94,19 @@ Goyal et al. (2023) §7.1 기본 사례를 따른다 (SGB128 좌표 대신 [0,1]
   수요: 고객마다 U[dlo, dhi] (기본 [30, 240]), 시나리오 S 개, q̂ 균등.
   수송비 c_ij = Euclidean 거리를 dist_res (기본 0.1) 단위로 반올림.
   리더 손실 ℓ = −v (B 점포에서 나가는 모든 flow, v=5).
-확장 (html): 고객이 점포별 예약량 h 를 정함 (단위 예약비 f, 한도 1ᵀh ≤ wres),
-  예약분은 c_ij, 현장구매는 c_ij + p.
+확장 (html): 고객이 사전예약 h 를 정함 (단위 예약비 f), 예약분은 c_ij, 현장구매는 c_ij + p.
+  reservation = :pooled (기존) — 점포별 예약 풀 h_i, Σ_j y^R_ij ≤ h_i, 한도 1ᵀh ≤ wres
+              | :pair         — 고객×점포별 선주문 h_ij, y^R_ij ≤ h_ij, 점포별 선판매 할당량 Σ_j h_ij ≤ quota
+                                (aggregate LP 가 개별 고객 선주문의 가격 균형과 같아지는 형태, test_nz_equilibrium.jl)
 RCR: A 총용량 > 최대 총수요 (assert).
 """
 function make_location_instance(; n_loc=8, nA=1, nB=4, NB=4, S=5, seed=1,
         bA=720.0, bB=360.0, qB=305.0, dlo=30.0, dhi=240.0, v=5.0,
         p=0.3, f=0.1, wres=300.0, dist_res=0.1,
+        reservation::Symbol=:pooled, quota=wres,
         eps_hat=0.2, eps_tilde=0.2, beta=0.4,
         thetaU=:circuit, lambdaU=1000.0)
+    reservation in (:pooled, :pair) || error("reservation = :pooled | :pair")
     rng = MersenneTwister(seed)
     nst = nA + nB
     ncu = n_loc - nst
@@ -119,15 +123,18 @@ function make_location_instance(; n_loc=8, nA=1, nB=4, NB=4, S=5, seed=1,
     iyR(i, j) = (i - 1) * ncu + j
     iyS(i, j) = nst * ncu + (i - 1) * ncu + j
     ny = 2 * nst * ncu
-    # 행: 수요 ncu, 예약 nst, 용량 nst
+    # 행: 수요 ncu, 예약 (pooled: nst, pair: nst·ncu), 용량 nst
+    pair = reservation == :pair
+    nres = pair ? nst * ncu : nst
+    hidx(i, j) = pair ? (i - 1) * ncu + j : i          # 예약 행 / here-and-now 인덱스
     rdem(j) = j
-    rres(i) = ncu + i
-    rcap(i) = ncu + nst + i
-    m = ncu + 2 * nst
+    rres(i, j) = ncu + hidx(i, j)
+    rcap(i) = ncu + nres + i
+    m = ncu + nres + nst
     A = zeros(m, ny)
     for i in 1:nst, j in 1:ncu
         A[rdem(j), iyR(i, j)] = -1; A[rdem(j), iyS(i, j)] = -1
-        A[rres(i), iyR(i, j)] = 1
+        A[rres(i, j), iyR(i, j)] = 1
         A[rcap(i), iyR(i, j)] = 1;  A[rcap(i), iyS(i, j)] = 1
     end
     c = zeros(ny); ell = zeros(ny)
@@ -143,8 +150,10 @@ function make_location_instance(; n_loc=8, nA=1, nB=4, NB=4, S=5, seed=1,
     for s in 1:S, j in 1:ncu
         u[rdem(j), s] = -ξ[j, s]
     end
+    for i in 1:nst, j in (pair ? (1:ncu) : (1:1))
+        hrow[rres(i, j)] = hidx(i, j); hcoef[rres(i, j)] = 1.0
+    end
     for i in 1:nst
-        hrow[rres(i)] = i; hcoef[rres(i)] = 1.0
         if isB[i]
             xrow[rcap(i)] = i - nA
             g[rcap(i), :] .= bB
@@ -153,7 +162,15 @@ function make_location_instance(; n_loc=8, nA=1, nB=4, NB=4, S=5, seed=1,
         end
     end
     nx = nB
-    W = ones(1, nst); wvec = [wres]; c0 = fill(-f, nst); hU = fill(wres, nst)
+    if pair
+        nh = nst * ncu
+        W = zeros(nst, nh)
+        for i in 1:nst, j in 1:ncu; W[i, hidx(i, j)] = 1.0; end
+        qv = quota isa Real ? fill(Float64(quota), nst) : Float64.(quota)
+        wvec = qv; c0 = fill(-f, nh); hU = [qv[i] for i in 1:nst for j in 1:ncu]
+    else
+        W = ones(1, nst); wvec = [wres]; c0 = fill(-f, nst); hU = fill(wres, nst)
+    end
 
     # ---- 상계 (html Step 2 + location 구조) ----
     cmax = maximum(dist)
@@ -175,8 +192,9 @@ function make_location_instance(; n_loc=8, nA=1, nB=4, NB=4, S=5, seed=1,
     meta = Dict{Symbol,Any}(:kind => :location, :coord => coord, :dist => dist, :xi => ξ,
         :nA => nA, :nB => nB, :ncu => ncu, :p => p, :f => f, :v => v, :wres => wres,
         :bA => bA, :bB => bB, :cmax => cmax, :D => D, :piLU_fn => piLU_fn,
-        :iyR => iyR, :iyS => iyS)
-    return NZData("location_n$(n_loc)_A$(nA)_B$(nB)_S$(S)_seed$(seed)",
+        :iyR => iyR, :iyS => iyS, :reservation => reservation, :nst => nst,
+        :rdem => rdem, :rres => rres, :rcap => rcap, :hidx => hidx, :isB => isB)
+    return NZData("location_n$(n_loc)_A$(nA)_B$(nB)_S$(S)_seed$(seed)" * (pair ? "_pair" : ""),
         A, c, ell, u, hrow, hcoef, xrow, g, W, wvec, c0, hU,
         nx, fill(true, nx), NB, fill(qB, nx),
         S, fill(1.0 / S, S), eps_hat, eps_tilde, beta,

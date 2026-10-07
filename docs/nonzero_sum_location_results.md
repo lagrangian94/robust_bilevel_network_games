@@ -278,6 +278,21 @@ worker 1 개·휴리스틱 없이 잰 것이라 Gurobi 와의 속도 비교는 �
   Gurobi 쪽은 같은 시점 −10⁴~10⁵ 규모). 원인 확인 안 함.
 - λᵁ 는 이제 경계 근처 (50) 만 피하면 Gurobi·α-B&B 모두 빠르다. λᵁ 를 경계의 2 배 (100) 이상으로 잡으면 충분.
 
+## 9b. aggregate follower 의 균형 해석 (2026-10-07)
+
+예약을 고객×점포별 선주문 h_ij (y^R_ij ≤ h_ij, 점포별 선판매 할당량 Σ_j h_ij ≤ w_i) 로 두면 (`make_location_instance(reservation=:pair)`),
+follower 의 aggregate 2단계 LP 는 개별 고객 선주문의 가격 균형과 정확히 같다 (용량 dual = 시나리오별 혼잡 가격,
+할당량 dual = 예약 슬롯 가격). 명제와 증명은 논문 supplementary `joc-non_zero_sum/supplementary.tex` 의
+"Equilibrium interpretation of the aggregate follower in the location instance" 절.
+
+수치 확인 (`test_nz_equilibrium.jl`, `logs/equilibrium_seed4_S3.log`, x 16 × belief 4, 세 경우 192 개):
+- aggregate 해가 가격 아래 각 고객 문제의 최적해: 192/192 (상대 차이 ≤ 2e-16), 강쌍대 ≤ 4e-16.
+- 가격 0 이면 결합 제약 (용량·할당량) 위반 192/192 → 혼잡 가격이 균형의 필수 요소.
+- 고객별로 따로 푼 최적해 묶음은 열린 점포 용량이 묶일 때 청산 실패 (48/48). 예약 없는 벤치마크 (할당량 0) 에서도
+  같은 48/48 → 가격이 배분을 하나로 정하지 못하는 것은 YK/Goyal 수송 LP 에 원래 있는 성질. pessimistic 선택이 처리.
+- 점포별 예약 풀 (pooled) 의 follower 값은 항상 pair 보다 큼 (완화).
+- 닫힌 B 후보지의 용량 dual 은 혼잡 가격이 아니므로 고객 선택지와 집계에서 제외.
+
 ## 10. 요약
 
 1. 비제로섬 Ω (html Step 4′) 는 zero-sum 에서 원고 Ω 와 일치하고, location 에서 big-M 없는 독립 평가와 모든 x 에서 일치한다.
