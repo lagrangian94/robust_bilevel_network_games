@@ -450,7 +450,7 @@ window.MathJax = {
     <tr><th>쓰이던 곳</th><th>zero-sum</th><th>비제로섬</th></tr>
     <tr><td>정확성 (thm, cut 유효성, attainment)</td><td>오목성 불필요</td><td class="good">영향 없음</td></tr>
     <tr><td>$\alpha$ 고정 ISP, restricted ISP, α-step</td><td>LP</td><td class="good">LP</td></tr>
-    <tr><td><code>alpha_bnb.jl</code> (α만 분기)</td><td>상자가 점으로 줄면 exact</td><td>수렴은 유지. $\alpha_k\varpi^s_k$ 완화가 추가되어 상한이 느슨해짐(RLT에 $0\le\varpi^s_k\le a_s$ 필요)</td></tr>
+    <tr><td><code>alpha_bnb.jl</code> (α만 분기)</td><td>상자가 점으로 줄면 exact</td><td>수렴은 유지. $\alpha_k\varpi^s_k$ 완화가 추가되지만, $\varpi^s_k\le p_s r_s$(값을 바꾸지 않는 지배 제약)와 그 RLT로 조였다. 구현: <code>nonzero_sum/nz_alpha_bnb.jl</code></td></tr>
     <tr><td>"belief를 고정하면 LP"</td><td>성립 (bilinear가 전부 α×belief)</td><td class="bad">깨짐. $\varpi$는 belief 변수가 아님</td></tr>
     <tr><td>ccg.tex Prop eval (disjoint bilinear)</td><td>$(\alpha,y,y')$ 그룹이 선형이라 disjoint bilinear. Konno, Zhen, evalMILP 사용 가능</td><td class="bad">깨짐. 평가 copy $y^s$에도 follower 최적성이 필요. 강쌍대로 걸면 그룹 안에 $\alpha\cdot\varpi$가 생기고, complementarity로 걸면 시나리오마다 binary 추가(약 $|K|S$개)</td></tr>
     <tr><td>Follower 쪽 ($\Psi$, belief cover)</td><td>$\Psi(x,\tilde p)$ 볼록</td><td class="good">영향 없음 (follower는 여전히 $Q$)</td></tr>
@@ -513,95 +513,166 @@ window.MathJax = {
     <li><b>§3.1</b>: follower 쪽 cover 정리(유한 조각, $x$와 무관한 진입 문턱 $\gamma_I$, $\tilde\varepsilon$ 계단함수)를 reaction-set 정리 바로 뒤에 둔다. "menu"라는 말 대신 finite cover와 admission threshold를 쓴다.</li>
     <li><b>알고리즘</b>: belief cut은 "(belief, certificate) pair"로 넣는다. zero-sum에서는 $\varpi$ 항이 없으므로 인증서를 붙일 필요가 없다.</li>
     <li><b>크기</b>: 이론상 $\lvert\mathcal V_F\rvert^S$배까지 커질 수 있다. 실제 크기는 min-cut 패턴이 얼마나 반복되는가에 달려 있으며, 실험 ①(패턴 반복성 측정)이 그 답이다.</li>
-    <li><b>검증</b>: 작은 인스턴스에서 "확장 belief를 고정한 LP의 max = α-B&B 전역값"인지 수치로 확인해야 한다. 아직 유도만 한 상태다.</li>
+    <li><b>검증</b>: location 인스턴스에서 확인했다. 얻은 $x$에서 exact, 다른 $x$에서 유효, 모은 원소의 max가 모든 $x$에서 Ω를 복원한다(<code>docs/nonzero_sum_location_results.md</code> §7).</li>
   </ul>
 </section>
 
 <div class="divider">적용 예</div>
 
 <section>
-  <h2><span class="step">Location</span>사전예약이 있는 시장진입 입지 문제</h2>
-  <p>Yanikoglu &amp; Kuhn (2018, SIOPT) §7의 시장진입 입지 문제에 follower의 here-and-now 결정(고객 사전예약)을 넣어 우리 모델에 맞춘 버전이다. Goyal et al. (2023, JOC) §7.1도 같은 예제를 쓴다.</p>
+  <h2><span class="step">Location</span>선주문이 있는 시장진입 입지 문제</h2>
+  <p>Yanıkoğlu &amp; Kuhn (2018, SIOPT) §7과 Goyal et al. (2023, JOC) §7.1의 시장진입 입지 문제에 follower의 here-and-now 결정(고객 선주문)을 넣어 우리 모델에 맞춘 버전이다. 비제로섬 실험은 이 벤치마크의 인스턴스를, zero-sum 실험은 NIG 인스턴스를 쓴다. 문제 자체는 벤치마크에서 가져오고, 우리가 더하는 것은 follower의 선주문 한 층뿐이다.</p>
 
-  <h3>원래 예제 (YK §7)</h3>
+  <h3>원래 예제 (YK §7, Goyal §7.1)</h3>
   <ul>
-    <li><b>리더</b>: 시장진입 기업 B. 출점 $x\in\{0,1\}^n$, 출점비 $q_i$, 최대 $r$개. $\mathcal X=\{x : \mathbf 1^\top x\le r,\ x+t\le s\}$이고, $s$는 후보지 표시, $t$는 기존 업체 A의 점포 표시다. B는 A가 차지하지 않은 후보지에만 출점할 수 있다.</li>
-    <li><b>Follower</b>: 수요 $\xi$를 관찰한 뒤 수송 LP를 푸는 aggregate customer다. 소유주와 무관하게 가까운 점포에서 산다.</li>
-    <li><b>리더 목적</b>: $q^\top x-v\cdot$(B 점포 판매량). Pessimistic이면 고객이 무차별할 때 B에게 불리하게 배정된다고 본다.</li>
-    <li><b>RCR</b>: A 점포의 총용량이 최대 총수요 이상이 되도록 데이터를 설정한다. $x$는 용량을 늘리기만 하므로 모든 $x$에서 feasible하다.</li>
+    <li><b>리더</b>: 시장진입 기업 B. 기존 업체 A가 차지하지 않은 후보지 중에서 출점 $x\in\{0,1\}^n$을 정한다. 출점비 $q_i$, 최대 $N_B$개.</li>
+    <li><b>Follower</b>: 수요 $\xi$를 관찰한 뒤 수송 LP를 푸는 aggregate customer. 소유주와 무관하게 비용이 싼 점포에서 산다.</li>
+    <li><b>리더 목적</b>: $q^\top x-v\cdot$(B 점포 판매량). 고객이 무차별하면 B에게 불리하게 배정된다고 본다(pessimistic).</li>
     <li><b>빠진 것</b>: follower의 here-and-now 결정 $h$와 belief $\tilde P$. 그래서 우리 모델의 belief ambiguity 층이 들어갈 자리가 없다.</li>
   </ul>
 
-  <h3>확장: 고객 사전예약 + 현장구매</h3>
-  <p>순서는 다음과 같다. B가 출점 $x$를 정하고, 고객이 수요 belief $\tilde P$ 아래에서 점포별 예약량 $h$를 정한다. 그다음 수요 $\xi$가 실현되고, 고객이 예약분 $y^R$와 현장구매분 $y^S$로 배송을 정한다.</p>
+  <h3>확장: 고객×점포 선주문 + 현장구매</h3>
+  <p>순서: B가 출점 $x$를 정한다 → 고객 $j$가 수요 belief $\tilde P$ 아래에서 점포 $i$에 선주문 $h_{ij}$를 넣는다 → 수요 $\xi$가 실현된다 → 고객이 선주문분 $y^R$와 현장구매분 $y^S$로 산다.</p>
   <div class="eq-label">Follower 1단계 (here-and-now)</div>
-  <div class="eq">$$\max_{h\in H}\ -f^\top h+\mathbb E^{\tilde P}\big[Q(x,h,\xi)\big],\qquad H=\{h\ge0 : \mathbf 1^\top h\le w\}$$</div>
+  <div class="eq">$$\max_{h\in H}\ -f\sum_{i,j}h_{ij}+\mathbb E^{\tilde P}\big[Q(x,h,\xi)\big],\qquad H=\Big\{h\ge0 : \textstyle\sum_j h_{ij}\le w_i\ \ \forall i\Big\}$$</div>
   <div class="eq-label">Follower 2단계 (wait-and-see), $Q=-$최소비용</div>
   <div class="eq">$$\begin{aligned}
   Q(x,h,\xi)=-\min_{y^R,y^S\ge0}\;& \sum_{i,j}\Big[c_{ij}\,y^R_{ij}+(c_{ij}+p)\,y^S_{ij}\Big]\\
   \text{s.t.}\;& \textstyle\sum_i\big(y^R_{ij}+y^S_{ij}\big)\ge\xi_j && \forall j \quad\text{(수요)}\\
-  & \textstyle\sum_j y^R_{ij}\le h_i && \forall i \quad\text{(예약분만 할인가)}\\
+  & y^R_{ij}\le h_{ij} && \forall i,j \quad\text{(자기 선주문분만 할인가)}\\
   & \textstyle\sum_j\big(y^R_{ij}+y^S_{ij}\big)\le b_i\,(x_i+t_i) && \forall i \quad\text{(점포 용량)}
   \end{aligned}$$</div>
   <div class="eq-label">리더</div>
-  <div class="eq">$$\min_{x\in\mathcal X}\ q^\top x+\sup_{(P,\tilde P)\in\hat{\mathcal D}\times\tilde{\mathcal D}}\ \sup_{h\in\Psi(x,\tilde P)}\ \mathcal R^P\big[\phi(x,h,\xi)\big],\qquad \phi=\max_{(y^R,y^S)\,\in\,\text{follower 최적 face}}\ -v\!\!\sum_{i:\,t_i=0,\ s_i=1}\sum_j\big(y^R_{ij}+y^S_{ij}\big)$$</div>
-  <p class="note">$f$는 단위 예약비($f\lt p$이어야 예약할 이유가 생김), $p$는 현장구매 프리미엄, $w$는 예약 한도다. 셋 다 새로 정해야 하는 파라미터다.</p>
+  <div class="eq">$$\min_{x\in\mathcal X}\ q^\top x+\sup_{(P,\tilde P)\in\hat{\mathcal D}\times\tilde{\mathcal D}}\ \sup_{h\in\Psi(x,\tilde P)}\ \mathrm{CVaR}^P_\beta\big[\phi(x,h,\xi)\big],\qquad \phi=\max_{(y^R,y^S)\,\in\,\text{follower 최적 face}}\ -v\!\!\sum_{i\in B}\sum_j\big(y^R_{ij}+y^S_{ij}\big)$$</div>
+  <ul>
+    <li>$f$는 단위 선주문비, $p$는 현장구매 프리미엄, $w_i$는 점포 $i$의 선판매 할당량이다. $f\lt p$라야 선주문할 유인이 있다.</li>
+    <li>$w_i=0$이면 선주문이 사라지고 정확히 YK/Goyal의 수송 recourse가 된다. 벤치마크는 이 확장의 특수 경우다.</li>
+    <li>닫힌 B 후보지에도 할당량을 둔다. 용량이 0인 점포에는 고객이 선주문하지 않으므로 해가 없고, $H$가 $x$와 무관하게 유지된다.</li>
+  </ul>
+
+  <h3>왜 고객×점포 선주문인가</h3>
+  <p>벤치마크의 aggregate 수송 LP는 근사가 아니라 균형의 정확한 표현이다. 용량 제약의 쌍대 $\rho_i$를 가격(또는 대기 비용)으로 두면, 최적 흐름은 "각 고객이 $c_{ij}+\rho_i$가 가장 작은 점포에서 사는" 상태와 같다. 선주문을 넣어도 이 해석이 유지되려면 선주문이 개별 고객의 결정이어야 한다.</p>
+  <div class="tbl"><table>
+    <tr><th></th><th>점포별 풀 $\sum_j y^R_{ij}\le h_i$</th><th>고객×점포 $y^R_{ij}\le h_{ij}$</th></tr>
+    <tr><td>고객을 묶는 제약</td><td>용량, 예약 풀, 한도</td><td>용량, 할당량뿐</td></tr>
+    <tr><td>개별 결정으로 분해</td><td class="bad">안 됨 (남의 선주문분을 씀)</td><td class="good">됨: 고객마다 선구매 문제</td></tr>
+    <tr><td>follower 값</td><td>더 큼 (완화)</td><td>기준</td></tr>
+  </table></div>
+  <div class="lemma">
+    <span class="tag">명제 · supplementary</span>
+    <p>A 점포가 모든 시나리오의 총수요를 감당할 수 있으면, aggregate 2단계 LP의 최적해 $(h^*,y^*)$는 가격 균형과 동치다. 가격은 시나리오별 혼잡 가격 $\rho_i^s$(용량 쌍대)와 선주문 슬롯 가격 $\kappa_i$(할당량 쌍대)이고, 각 고객은 그 가격 아래에서 자기 선구매 문제를 푼다.</p>
+  </div>
+  <ul>
+    <li>벤치마크에 더해지는 가정은 "고객이 선주문할 때 시나리오별 혼잡 가격을 예상한다" 하나다. 결합 제약이 느슨하면 가격은 0이고 이 가정도 필요 없다.</li>
+    <li>균형 가격이 배분을 하나로 정하지 못하는 경우(고객이 무차별)가 있지만, 이는 선주문이 없는 벤치마크에도 똑같이 있다. 리더의 pessimistic 평가 $\phi$가 그중 B에게 가장 불리한 것을 고른다.</li>
+    <li>수치 확인: 192개 경우에서 aggregate 해가 가격 아래 각 고객의 최적해 (차이 ≤ 2e-16). 가격을 0으로 두면 묶인 결합 제약이 모두 깨진다.</li>
+  </ul>
 
   <h3>우리 기호와의 대응</h3>
   <div class="tbl"><table>
     <tr><th>원고 기호</th><th>이 모델</th></tr>
-    <tr><td>$y$ (recourse)</td><td>$(y^R,y^S)$</td></tr>
+    <tr><td>$y$ (recourse)</td><td>$(y^R,y^S)$, 점포×고객×2</td></tr>
     <tr><td>$d$ (follower 목적, max 형태)</td><td>$-c$ ($y^R$), $-(c+p)$ ($y^S$)</td></tr>
-    <tr><td>$\ell$ (리더 손실)</td><td>B 후보지에서 나가는 flow에 $-v$, 나머지 0</td></tr>
-    <tr><td>$b_x(\xi)$</td><td>수요 행 $-\xi_j$, 용량 행 $b_i(t_i+x_i)\,\xi_1$ ($\xi_1\equiv1$ 상수 성분, YK Assumption 1과 같은 방식)</td></tr>
-    <tr><td>$Bh$</td><td>예약 행의 우변 $h_i$</td></tr>
-    <tr><td>$H$</td><td>$\{h\ge0:\mathbf 1^\top h\le w\}$, $x$와 무관</td></tr>
-    <tr><td>follower 1단계 비용</td><td>$-f^\top h$ (원고 Remark의 $d_0^\top h$ 형태)</td></tr>
+    <tr><td>$\ell$ (리더 손실)</td><td>B 후보지에서 나가는 흐름에 $-v$, 나머지 0</td></tr>
+    <tr><td>$b_x(\xi)$</td><td>수요 행 $-\xi_j$, 용량 행 $b_i(t_i+x_i)$</td></tr>
+    <tr><td>$Bh$</td><td>선주문 행의 우변 $h_{ij}$ (행마다 here-and-now 하나)</td></tr>
+    <tr><td>$H$</td><td>$\{h\ge0:\sum_j h_{ij}\le w_i\ \forall i\}$, $x$와 무관</td></tr>
+    <tr><td>follower 1단계 비용</td><td>$-f\sum_{ij}h_{ij}$ (원고 Remark의 $d_0^\top h$ 형태)</td></tr>
   </table></div>
-  <p class="note">원고의 interdiction에서는 $x$가 용량을 줄이지만, 여기서는 늘린다. 부호만 다르고 $x\pi$ McCormick 처리는 같다.</p>
+  <p class="note">원고의 interdiction에서는 $x$가 용량을 줄이지만 여기서는 늘린다. 부호만 다르고 $x\pi$ McCormick 처리는 같다.</p>
 
   <h3>원고 가정 점검</h3>
   <div class="tbl"><table>
     <tr><th>조건</th><th>판정</th><th>근거</th></tr>
-    <tr><td>RCR: feasibility</td><td class="good">충족</td><td>$h=0$이어도 현장구매로 A 점포에서 전 수요를 살 수 있다. YK의 데이터 가정이 그대로 통한다. 예약을 "예약분만 구매 가능"으로 두면 작은 $h$에서 infeasible이 되어 깨진다.</td></tr>
-    <tr><td>RCR: boundedness</td><td class="good">충족</td><td>용량 행이 $y^R$와 $y^S$를 모두 막는다. $\{y\ge0:Ay\le0\}=\{0\}$.</td></tr>
-    <tr><td>$H$가 $x$와 무관하고 compact</td><td class="good">충족</td><td>점포가 없는 곳의 예약은 쓸모가 없을 뿐 금지할 필요는 없다. Follower는 $x$를 본 뒤 $h$를 고른다.</td></tr>
+    <tr><td>RCR: feasibility</td><td class="good">충족</td><td>선주문이 0이어도 현장구매로 A 점포에서 전 수요를 살 수 있다. 선주문을 "선주문분만 구매 가능"으로 두면 작은 $h$에서 infeasible이 되어 깨진다.</td></tr>
+    <tr><td>RCR: boundedness</td><td class="good">충족</td><td>용량 행이 $y^R$와 $y^S$를 모두 막는다.</td></tr>
+    <tr><td>$H$가 $x$와 무관하고 compact</td><td class="good">충족</td><td>할당량은 출점과 무관하게 둔다.</td></tr>
     <tr><td>Follower 하나, 목적 하나</td><td class="good">충족</td><td>1단계와 2단계 모두 고객 집단의 비용이다. "A가 용량을 정하고 고객이 배송을 정하는" 구조는 follower가 둘인 trilevel이라 피했다.</td></tr>
-    <tr><td>$x$와 $h$가 recourse 우변에만</td><td class="good">충족</td><td>용량 행과 예약 행</td></tr>
-    <tr><td>$A$가 TU</td><td class="good">충족</td><td>$y^R_{ij}$는 경로 (예약$_i$→용량$_i$→수요$_j$), $y^S_{ij}$는 (용량$_i$→수요$_j$)로, 트리 위 경로의 network matrix다. 수요 행의 부호를 뒤집어도 TU는 유지된다.</td></tr>
-    <tr><td>순환류 artifact</td><td class="good">없음</td><td>이분 그래프 수송 구조라 순환이 없다. NIG의 양방향 arc 문제가 생기지 않는다.</td></tr>
+    <tr><td>$A$가 TU</td><td class="good">충족</td><td>수송 network matrix에 선주문 행 $y^R_{ij}\le h_{ij}$(단순 상한 행)를 붙인 것이다.</td></tr>
+    <tr><td>순환류 artifact</td><td class="good">없음</td><td>이분 그래프 수송 구조라 순환이 없다.</td></tr>
   </table></div>
 
-  <h3>$\theta^U$</h3>
-  <p>Follower 최적 face 위에서 리더 손실을 고르는 penalty 상계는 Cramer 공식으로 정해진다. 기저 $B$에 대해 $\theta=\det(B_\theta)/\det(B)$이다. 분자는 나머지 열이 TU라서 $\|\ell\|_1$ 이하다. 분모는 $d$ 열로 전개하면 $d$ 성분과 TU 소행렬식의 곱의 합이다.</p>
+  <h3>인스턴스: SGB128 처음 8개 도시</h3>
+  <p>Goyal et al. (2023) §7.1 기본 사례를 따른다. 데이터는 John Burkardt가 공개한 SGB128(Stanford GraphBase의 북미 128개 도시, XY 좌표)이고, repo의 <code>nonzero_sum/data/sgb128/</code>에 있다. Goyal처럼 처음 8개 도시를 쓰고, 기본 사례의 규모(A 1곳, B 후보 4곳, 고객 3곳)에 맞춰 6번을 A 점포, 1–4번을 B 후보, 5·7·8번을 고객으로 둔다.</p>
+  <div class="tbl"><table>
+    <tr><th>역할</th><th>SGB128 번호</th><th>도시</th><th>용량</th></tr>
+    <tr><td>A (기존 업체)</td><td>6</td><td>Winston-Salem, NC</td><td>720</td></tr>
+    <tr><td>B 후보</td><td>1</td><td>Youngstown, OH</td><td>360</td></tr>
+    <tr><td>B 후보</td><td>2</td><td>Yankton, SD</td><td>360</td></tr>
+    <tr><td>B 후보</td><td>3</td><td>Yakima, WA</td><td>360</td></tr>
+    <tr><td>B 후보</td><td>4</td><td>Worcester, MA</td><td>360</td></tr>
+    <tr><td>고객</td><td>5, 7, 8</td><td>Wisconsin Dells, WI · Winnipeg, MB · Winchester, VA</td><td>수요 U[30, 240]</td></tr>
+  </table></div>
+  <div class="eq-label">점포–고객 수송비 $c_{ij}$ (XY 좌표 Euclidean 거리, 정수로 반올림, 마일 척도)</div>
+  <div class="tbl"><table>
+    <tr><th>점포 \ 고객</th><th>Wisconsin Dells</th><th>Winnipeg</th><th>Winchester</th></tr>
+    <tr><td>Winston-Salem (A)</td><td>839</td><td>1,507</td><td>258</td></tr>
+    <tr><td>Youngstown</td><td>654</td><td>1,291</td><td>217</td></tr>
+    <tr><td>Yankton</td><td>529</td><td>484</td><td>1,353</td></tr>
+    <tr><td>Yakima</td><td>2,134</td><td>1,630</td><td>2,971</td></tr>
+    <tr><td>Worcester</td><td>1,245</td><td>1,829</td><td>488</td></tr>
+  </table></div>
+  <div class="tbl"><table>
+    <tr><th>항목</th><th>Goyal §7.1</th><th>이 실험</th></tr>
+    <tr><td>출점비, 최대 출점 수</td><td>305, $N_B=4$</td><td>같음</td></tr>
+    <tr><td>리더 손실</td><td>$v_{ij}=-5$ (B 판매 단위당)</td><td>같음 ($\ell=-5$)</td></tr>
+    <tr><td>수송비</td><td>Euclidean 거리</td><td>같은 거리를 1마일 단위로 반올림 ($\theta^U$ 논증용)</td></tr>
+    <tr><td>불확실성</td><td>moment ambiguity</td><td>support U[30, 240]에서 뽑은 이산 시나리오 $S$개, $\hat q$ 균등, 양쪽 TV 볼 $\hat\varepsilon=\tilde\varepsilon=0.2$, 리더 CVaR $\beta=0.4$</td></tr>
+    <tr><td>선주문 (확장)</td><td>없음</td><td>$p=200$, $f=50$, 할당량 $w_i=100$ (점포마다)</td></tr>
+  </table></div>
+  <p class="note">$p$, $f$, $w_i$는 벤치마크에 없는 확장 파라미터라 거리 척도(점포–고객 평균 1,162)에 맞춰 정했다. 민감도는 아직 보지 않았다. 초기 검증에는 같은 규모의 무작위 좌표 인스턴스(<code>coords = :random</code>, $[0,1]^2$, 0.1 단위)를 썼다.</p>
+
+  <h3>상수: $\theta^U$, McCormick 상한, $\lambda^U$</h3>
+  <p>비제로섬 Ω는 벌점 상수로 최적성을 강제한다. 상수가 너무 작으면 Ω가 $V^*$를 과대평가해 cut이 무효가 되고, 너무 크면 벌점 × 비용이 리더 목적보다 커져 완화가 느슨해진다. 마일 척도인 SGB128에서는 두 번째 문제가 크게 드러난다.</p>
+  <div class="tbl"><table>
+    <tr><th>상수</th><th>일반 상계</th><th>location 구조 상계</th><th>SGB128</th></tr>
+    <tr><td>$\theta^U$ (follower 최적성 벌점)</td><td>Lemma 2: $D\|\ell\|_1$</td><td>circuit 논증: $v$/해상도. 한 circuit이 바꾸는 B 판매는 1단위 이하, follower 비용 변화는 0이 아니면 해상도 이상</td><td>5 (무작위 좌표 0.1 단위에서는 50). 표본 진단의 최대 필요 θ는 0.3125</td></tr>
+    <tr><td>$\hat\pi^U_i$ (리더 McCormick, B 점포 $i$)</td><td>$\theta^U(c^{\max}+p)+v$</td><td>$\theta^U\max_j(c_{Aj}+p-c_{ij})^+$. A 점포에 항상 여유가 있어 수요 쌍대가 $c_{Aj}+p$ 이하</td><td>6,115 (이전 15,860)</td></tr>
+    <tr><td>$\pi_F^U$ (follower McCormick, $\times\lambda^U$)</td><td>$c^{\max}+p$</td><td>$\max_j(c_{Aj}+p-c_{ij})^+$</td><td>1,223 (이전 3,171)</td></tr>
+    <tr><td>$\lambda^U$ (follower 반응집합 벌점)</td><td>존재만 (Hoffman)</td><td>무작위 좌표에서 경계가 정확히 $v$/해상도 = 50으로 측정됨. 미만이면 과대평가 $10(50-\lambda^U)$</td><td>100 (비용 단위에 묶인 상수라 척도를 따름)</td></tr>
+  </table></div>
+
+  <h3>검증 결과</h3>
   <ul>
-    <li><b>거리 $c$와 $p$가 정수</b>(YK는 도시 간 도로거리 사용)이면 $|\det B|\ge1$이므로 $\theta^U=\|\ell\|_1$이다.</li>
-    <li><b>실수 거리</b>(Goyal은 Euclidean)이면 공통분모 $D$만큼 커져서 $\theta^U=D\,\|\ell\|_1$이다. 반올림 해상도를 정해야 한다.</li>
-    <li>$\|\ell\|_1=v\times$(B 후보지에서 나가는 arc 수)라서 값이 꽤 크다. 기저에 실제로 들어가는 행 수로 더 줄일 여지가 있다.</li>
+    <li><b>Ω</b>: zero-sum으로 줄이면 원고 Ω와 1e-14 일치. location에서 big-M 없는 KKT 독립 평가와 모든 $x$에서 일치(무작위 좌표 seed 1·4, 선주문 두 형태).</li>
+    <li><b>확장 belief LP cut</b>: 얻은 $x$에서 exact, 다른 $x$에서 유효, 모은 원소의 max가 모든 $x$에서 Ω를 복원.</li>
+    <li><b>SGB128</b> ($S=3$, seed 1, 고객×점포 선주문): KKT 전수 열거로 구한 참 최적은 Youngstown 출점이다. belief-menu Benders의 하한이 이 값과 정확히 같았다. 이 PC에서는 Ω 전역 풀이가 상한을 닫지 못해 수렴 판정은 실험 머신에서 다시 한다.</li>
   </ul>
+  <div class="tbl"><table>
+    <tr><th>출점 $x$</th><th>$V^*(x)$</th><th>$q^\top x+V^*(x)$</th></tr>
+    <tr><td>없음</td><td>0</td><td>0</td></tr>
+    <tr><td><b>Youngstown</b></td><td>−1,216.83</td><td><b>−911.83</b> (최적)</td></tr>
+    <tr><td>Yankton</td><td>−1,148.00</td><td>−843.00</td></tr>
+    <tr><td>Yakima</td><td>−225.00</td><td>80.00</td></tr>
+    <tr><td>Worcester</td><td>0</td><td>305.00</td></tr>
+    <tr><td>Youngstown + Yankton</td><td>−1,326.50</td><td>−716.50</td></tr>
+    <tr><td>네 곳 모두</td><td>−1,326.50</td><td>−106.50</td></tr>
+  </table></div>
+  <p class="note">Worcester는 Winchester에 가깝지만 A(Winston-Salem)도 가까워서, pessimistic 배정에서 판매가 0이다. 두 곳 이상 출점하면 판매 증가가 출점비 305를 넘지 못한다.</p>
 
   <h3>Belief ambiguity가 하는 일</h3>
-  <p>B는 고객이 수요를 어떻게 예측해서 어디에 얼마나 예약했는지 모른다. 예약이 A 점포 쪽에 몰리면 B 점포는 현장구매 물량만 받고, B 점포 쪽에 몰리면 판매량이 늘어난다. 그래서 $\tilde{\mathcal D}$가 B의 출점 결정에 영향을 주며, 이는 원래 예제에 없던 경로다. Face-selection pessimism(고객이 무차별할 때 B에게 불리한 배정)은 그 위에 한 층 더 얹힌다.</p>
+  <p>B는 고객이 수요를 어떻게 예측해 어느 점포에 얼마나 선주문했는지 모른다. 선주문이 A 쪽에 몰리면 A의 할인가가 B의 현장가와 경쟁하고, B 쪽에 오면 판매가 늘어난다. 그래서 $\tilde{\mathcal D}$가 B의 출점 결정에 영향을 주며, 이는 원래 예제에 없던 경로다. 고객이 무차별할 때 B에게 불리하게 배정하는 face 선택이 그 위에 한 층 더 얹힌다. 무작위 좌표 seed 1에서는 A 점포가 모든 고객에게 멀어 B 점포가 하나만 있어도 $V^*$가 −1,360으로 같았다. SGB128에서는 위 표처럼 출점 위치마다 $V^*$가 달라 이 경로가 결과에 드러난다.</p>
 
-  <h3>정해야 할 것</h3>
+  <h3>남은 것</h3>
   <ul>
-    <li>$f$, $p$, $w$의 값. $f\lt p$이어야 예약할 유인이 있고, $p$가 크면 예약이 거의 확정 수요처럼 작동한다.</li>
-    <li>대안으로 lost-sales 방식이 있다. 미충족 수요 $z_j$에 penalty를 주되, $z$가 unbounded가 되지 않도록 $\sum_iy_{ij}+z_j=\xi_j$처럼 등식으로 써야 한다. 다만 spot 방식이 YK 원본과 더 자연스럽게 이어진다.</li>
-    <li>정수 도로거리에서는 같은 거리의 점포가 드물 수 있다. Face-selection 층이 실제로 작동하는지 작은 인스턴스에서 확인해야 한다.</li>
+    <li>$p$, $f$, $w_i$ 민감도. 셋 다 벤치마크에 없는 파라미터다.</li>
+    <li>$S$를 키웠을 때 Ω의 상한 증명. 실험 머신에서 α-B&amp;B를 병렬로 돌려 확인한다.</li>
+    <li>$\theta^U$를 인스턴스에 맞게 엄밀히 계산하는 방법. 지금은 표본 진단으로 후보를 잡고 모든 $x$에서 Ω와 KKT를 대조해 인증한다.</li>
+    <li>$\lambda^U$의 일반 상계 유도. follower 손실은 belief $d$로, 리더 이득은 CVaR 가중으로 가중되어 단순한 $v$/해상도로 끝나지 않을 수 있다.</li>
   </ul>
 </section>
 
 <section>
-  <h2><span class="step">확인</span>남은 검증 항목</h2>
+  <h2><span class="step">확인</span>검증 항목 현황</h2>
   <ol>
-    <li><b>zero-sum 복원</b>: $\ell=d$이면 (D)에서 $\theta=0$이 최적이므로 값이 원고와 같다. 쌍대 쪽에서는 N1–N3가 최적해에서 비활성이다(리더가 $d^\top\hat y$를 최대화하면 이미 follower 최적).</li>
-    <li><b>TU 확인</b>: 원고와 코드의 recourse 행렬 $A$가 incidence와 용량 행만으로 되어 있는지 확인한다. TU를 깨는 side constraint가 없으면 Step 2의 $\theta^U=\hat\pi^U=\|\ell\|_1$을 그대로 쓴다.</li>
-    <li><b>상계 조이기</b>: $\|\ell\|_1$은 모든 arc의 합이라 느슨하다. 기저에 실제로 들어갈 수 있는 행만 세면 더 줄일 수 있는지 확인한다(cut 계수와 McCormick 강도에 직접 영향).</li>
-    <li><b>수치 검증</b>: 3×3 grid, 작은 $S$에서 $x$를 전수 열거하고 $\sup_\Omega F$와 brute-force pessimistic bilevel 값을 비교한다.</li>
-    <li><b>실험 설계 (메모 §8)</b>: Abilene과 Polska는 양방향 arc라 2-cycle이 있다. 그래서 $d=e_{ts}$의 최적 face에 순환류가 들어가고, $\ell\ge0$이면 pessimistic 리더가 순환류로 harm을 부풀린다. $\ell$ 정의를 바꾸거나 순환류를 막는 제약이 필요하다.</li>
+    <li><b>zero-sum 복원</b> <span class="chip keep">확인</span>: 원고 max-flow를 일반 형식으로 옮겨 $\ell=d$, $\theta=0$으로 두면 원고 Ω와 1e-14 일치.</li>
+    <li><b>TU 확인</b> <span class="chip keep">확인</span>: location recourse는 수송 network matrix에 단순 상한 행을 붙인 것이라 TU.</li>
+    <li><b>상계 조이기</b> <span class="chip keep">진행</span>: location에서 $\theta^U$는 circuit 상계 $v$/해상도, McCormick 상한은 점포별 구조 상계로 조였다. 일반 recourse의 방법은 남아 있다.</li>
+    <li><b>수치 검증</b> <span class="chip keep">확인</span>: location에서 $x$를 전수 열거해 $\sup_\Omega F$와 KKT 기반 pessimistic bilevel 값이 모두 일치.</li>
+    <li><b>실험 설계 (메모 §8)</b>: Abilene과 Polska는 양방향 arc라 2-cycle이 있다. $d=e_{ts}$의 최적 face에 순환류가 들어가고, $\ell\ge0$이면 pessimistic 리더가 순환류로 harm을 부풀린다. 비제로섬 실험을 location 벤치마크로 하는 이유 중 하나다.</li>
   </ol>
 </section>
 
-<footer>원고 대조: paper/manuscript.tex의 lem:dual(428행), prop:DRO-decomposition(574행), thm:structural-minsup(991행), coro:algorithmic-TV(3195행). 코드는 수정하지 않았다.</footer>
+<footer>원고 대조: paper/manuscript.tex의 lem:dual(428행), prop:DRO-decomposition(574행), thm:structural-minsup(991행), coro:algorithmic-TV(3195행). 구현은 repo의 <code>nonzero_sum/</code>(Ω, 확장 belief LP, α-B&amp;B, Benders, KKT 독립 평가), 측정 결과는 <code>docs/nonzero_sum_location_results.md</code>, 균형 해석의 증명은 논문 supplementary에 있다.</footer>
 
 </div>
