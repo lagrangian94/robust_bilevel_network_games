@@ -16,6 +16,9 @@ belief b = (a, b, r; d, e) 를 고정하면 bilinear 항 α·r, α·d 가 선형
 
 using JuMP, Printf, LinearAlgebra
 
+# 기본 oracle 이 α-B&B (oracle = :alpha_bnb) 이므로 미리 불러 둔다. 실행은 julia -t (nworkers+2),1.
+isdefined(Main, :global_bilinear_solve) || include(joinpath(@__DIR__, "global_bilinear_solver.jl"))
+
 
 # ---------------------------------------------------------------------
 # belief 고정 LP: ζL_ks = α_k·lead_s, ζF_ks = α_k·d_s 를 (belief 고정 계수로) 선형 등식으로
@@ -171,7 +174,7 @@ end
 """
     belief_menu_benders_optimize!(td; mip_optimizer, nlp_optimizer, lp_optimizer, oracle, ...)
 
-oracle = :gurobi (Ω NonConvex, 시간 제한 oracle_time_limit → 정체 시 boost_time_limit, MIPGap 0.5%)
+oracle = :alpha_bnb (기본) | :gurobi (Ω NonConvex, 시간 제한 oracle_time_limit → 정체 시 boost_time_limit, MIPGap 0.5%)
        | :alpha_bnb (global_bilinear_solve, 시간 제한 oracle_time_limit, 목표 gap 0.5%;
                      global_bilinear_solver.jl include 및 julia -t (nworkers+2),1 필요)
 repeat_boost (기본 true): oracle 을 이미 부른 x̄ 가 다시 나오면 처음부터 boost_time_limit (시간 제한 실패 후 재시작 낭비 방지).
@@ -184,7 +187,7 @@ menu_mw (기본 true): menu cut 을 Magnanti–Wong 으로 강화 (core point = 
 """
 function belief_menu_benders_optimize!(td::TrueDROData;
         mip_optimizer, nlp_optimizer, lp_optimizer=nlp_optimizer,
-        oracle::Symbol=:gurobi, oracle_time_limit=15.0, boost_time_limit=3600.0, oracle_gap=5e-3,
+        oracle::Symbol=:alpha_bnb, oracle_time_limit=15.0, boost_time_limit=3600.0, oracle_gap=5e-3,
         target_stop::Bool=true, repeat_boost::Bool=true, local_first::Bool=(oracle == :alpha_bnb), local_time=60.0,
         menu_mw::Bool=true,
         nworkers=12, max_iter=1000, tol=5e-3, verbose=true,

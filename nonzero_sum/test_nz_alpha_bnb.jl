@@ -15,7 +15,7 @@ GRB() = Gurobi.Optimizer(GRB_ENV)
 include(joinpath(root, "nonzero_sum", "nz_data.jl"))
 include(joinpath(root, "nonzero_sum", "nz_omega.jl"))
 include(joinpath(root, "nonzero_sum", "nz_kkt_eval.jl"))
-include(joinpath(root, "nonzero_sum", "nz_alpha_bnb.jl"))
+isdefined(Main, :nz_alpha_bnb) || include(joinpath(root, "nonzero_sum", "nz_alpha_bnb.jl"))
 
 function main()
     nd0 = make_location_instance(; S=parse(Int, get(ENV, "NZ_S", "3")), seed=parse(Int, get(ENV, "NZ_SEED", "4")),

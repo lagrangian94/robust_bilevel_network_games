@@ -52,7 +52,7 @@ end
 println("="^70, "\n(2) location: Ω(x) vs KKT V*(x)\n", "="^70)
 nd = make_location_instance(; S=parse(Int, get(ENV, "NZ_S", "4")), seed=parse(Int, get(ENV, "NZ_SEED", "1")),
                             lambdaU=(haskey(ENV, "NZ_LAMBDA") ? parse(Float64, ENV["NZ_LAMBDA"]) : nothing),
-                            reservation=Symbol(get(ENV, "NZ_RES", "pooled")),
+                            reservation=Symbol(get(ENV, "NZ_RES", "pooled")), coords=Symbol(get(ENV, "NZ_COORDS", "sgb128")),
                             quota=parse(Float64, get(ENV, "NZ_QUOTA", "100")), wres=parse(Float64, get(ENV, "NZ_WRES", "300")))
 @printf("%s: θᵁ=%.1f  max π̂ᵁ=%.1f  λᵁ=%.1f  cmax=%.2f\n", nd.name, nd.thetaU, maximum(nd.piLU), nd.lambdaU, nd.meta[:cmax])
 println("  거리 (A행 먼저):"); display(nd.meta[:dist])
@@ -60,9 +60,9 @@ println("  수요 ξ (고객 × S):"); display(nd.meta[:xi])
 
 O = build_nz_omega(nd; optimizer=GRB)
 for x in all_x(nd)
-    t1 = @elapsed (res = nz_solve!(O, nd, x; time_limit=600))
+    t1 = @elapsed (res = nz_solve!(O, nd, x; time_limit=parse(Float64, get(ENV, "NZ_TL", "600"))))
     bel = nz_read_belief(O, nd)
-    t2 = @elapsed (kk = nz_kkt_value(nd, x; optimizer=GRB, time_limit=600))
+    t2 = @elapsed (kk = nz_kkt_value(nd, x; optimizer=GRB, time_limit=parse(Float64, get(ENV, "NZ_TL", "600"))))
     # θ 진단: Ω 해의 α 에서
     dg = [nz_theta_diag(nd, x, bel[:α], s; lp_optimizer=GRB) for s in 1:nd.S]
     @printf("  x=%-10s Ω=%11.4f [%s %.1fs]  KKT=%11.4f (bd %.4f, %.1fs)  diff=%+.2e | θneed=%.2f  pen_excess=%.1e  π̂/π̂ᵁ=%.3f\n",

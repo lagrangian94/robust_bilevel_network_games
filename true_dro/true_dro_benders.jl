@@ -26,6 +26,9 @@ using LinearAlgebra
 using Printf
 using Statistics
 
+# 기본 boost 해법이 α-B&B (boost_solver = :alpha_bnb) 이므로 미리 불러 둔다. 실행은 julia -t (boost_nworkers+2),1.
+isdefined(Main, :global_bilinear_solve) || include(joinpath(@__DIR__, "global_bilinear_solver.jl"))
+
 
 """
     true_dro_benders_optimize!(td::TrueDROData; ...)
@@ -45,7 +48,7 @@ Run outer Benders.
 - `inexact`: true이면 3회 중 2회는 OptimalityTarget=1 (local opt)으로 빠르게 풀고,
   3회째에만 global opt. Local opt에서도 valid cut 생성 (feasible point of max subproblem).
   UB는 global solve에서만 갱신.
-- `strengthen_cuts`: `:none` (default), `:mw` (cut strengthening).
+- `strengthen_cuts`: `:mw` (default, cut strengthening), `:none`.
   `:mw` — outer bilinear: Sherali perturbation (x_pert로 추가 solve, constraint 변경 없음).
          mini-benders: MW (ISP-L/F 독립 LP Phase 2, joint Pareto-optimality 미보장).
 - `boost_solver`: boost 단계 subproblem solver. `:gurobi` (default, 기존 Gurobi NonConvex) 또는
@@ -72,13 +75,13 @@ function true_dro_benders_optimize!(td::TrueDROData;
         lp_optimizer=nothing,
         max_mini_benders_iter::Int=5,
         inexact::Bool=false,
-        strengthen_cuts::Symbol=:none,
+        strengthen_cuts::Symbol=:mw,
         valid_inequality::Symbol=:none,
         add_objF_vi::Bool=false,
         phase2B_vi::Bool=false,
         source_sink_cut::Union{Nothing, Dict}=nothing,
         wall_time_limit::Union{Nothing, Float64}=7200.0,
-        boost_solver::Symbol=:gurobi,
+        boost_solver::Symbol=:alpha_bnb,
         boost_time_limit::Float64=3600.0,
         boost_nworkers::Int=12,
         belief_menu::Bool=false,

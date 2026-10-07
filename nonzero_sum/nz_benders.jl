@@ -1,7 +1,11 @@
 """
 nz_benders.jl — 비제로섬 Ω 위의 Benders 두 가지.
 
-  nz_standard_benders  : 매 반복 x̄ 에서 전역 Ω (Gurobi NonConvex) → cut, UB.
+기본 구성 (zero-sum 과 동일 방침): oracle = α-B&B (nz_alpha_bnb), cut = Magnanti–Wong 강화 (mw = true).
+  α-B&B oracle 은 nz_alpha_bnb.jl include 와 julia -t (nworkers+2),1 이 필요. Gurobi NonConvex oracle 은 oracle = :gurobi.
+  MW 는 LP (belief LP, α 고정 LP) 에서만 건다. 비볼록 Ω 에 걸면 문제가 어려워지므로 :gurobi oracle 의 cut 은 기본 cut.
+
+  nz_standard_benders  : 매 반복 x̄ 에서 전역 Ω → cut, UB.
   nz_belief_menu_benders: 설계 A (true_dro/belief_menu_benders.jl) 를 확장 belief 로.
       menu 원소 = (belief (a,b,r,d,e), follower 인증서 σ).  고정하면 Ω 가 LP (html "확장 belief").
       menu 단계: 모든 원소의 LP 값 v_b(x̄) 가 t₀ 보다 크면 그 LP 해로 cut.
@@ -14,6 +18,9 @@ OMP: min q_xᵀx + t₀, 1ᵀx ≤ γ, t₀ ≥ intercept + slopeᵀx.
 
 using JuMP, Printf, LinearAlgebra
 import MathOptInterface as MOI
+
+# 기본 oracle 이 α-B&B 이므로 미리 불러 둔다 (nz_omega.jl 이 먼저 include 되어 있어야 함). 실행은 julia -t (nworkers+2),1.
+isdefined(Main, :nz_alpha_bnb) || include(joinpath(@__DIR__, "nz_alpha_bnb.jl"))
 
 function _nz_omp(nd::NZData; optimizer, t_lb=-1e7)
     omp = Model(optimizer); set_silent(omp)
@@ -57,10 +64,44 @@ function _nz_oracle!(O, Fx, nd, x̄; oracle, time_limit, gap, nworkers, target=n
 end
 _rel(a, b) = abs(b - a) / max(abs(b), 1.0)
 
+"""MW core point: conv(X) 의 상대적 내부. 출점 가능 위치에 min(γ/n, 0.5) (zero-sum 의 γ/n 과 같고, γ ≥ n 이면 0.5)."""
+function nz_core_point(nd::NZData)
+    n = count(nd.x_allowed)
+    return [nd.x_allowed[i] ? min(nd.gamma / n, 0.5) : 0.0 for i in 1:nd.nx]
+end
+
+"""
+Magnanti–Wong 강화 (zero-sum `_mw_menu_cut!` 과 같은 Phase 2).
+L 은 x̄ 에서 막 풀린 LP (belief LP 또는 α 고정 LP), zstar 는 그 최적값.
+x̄ 에서의 값을 유지하는 (F(x̄) ≥ zstar − tol) 해 중 core point 에서 F 가 최대인 해로 cut → x̄ 에서 값은 같고 다른 x 에서 더 강함.
+실패 (OPTIMAL 아님) 시 nothing → 호출 측이 기본 cut 사용.
+"""
+function _nz_mw_cut!(L::NZOmega, nd::NZData, x̄, zstar, x_core)
+    con = @constraint(L.model, objective_function(L.model) >= zstar - 1e-6 * max(1.0, abs(zstar)))
+    nz_set_objective!(L, nd, x_core)
+    optimize!(L.model)
+    cut = termination_status(L.model) == MOI.OPTIMAL ? nz_cut_from_solution(L, nd, x_core) : nothing
+    delete(L.model, con)
+    nz_set_objective!(L, nd, x̄)
+    return cut
+end
+
+"LP 해 (값 z) 로 cut. mw 면 MW 를 시도하고 실패 시 기본 cut. 반환 (cut, mw 성공 여부)"
+function _nz_lp_cut!(L::NZOmega, nd::NZData, x̄, z; mw::Bool, x_core)
+    if mw
+        c = _nz_mw_cut!(L, nd, x̄, z, x_core)
+        c === nothing || return c, true
+        nz_set_objective!(L, nd, x̄); optimize!(L.model)        # 기본 cut 을 위해 x̄ 해 복원
+    end
+    return nz_cut_from_solution(L, nd, x̄), false
+end
+
 
 function nz_standard_benders(nd::NZData; optimizer, max_iter=200, tol=1e-4, oracle_time=600.0, boost_time=3600.0,
-                             oracle::Symbol=:gurobi, oracle_gap=1e-5, nworkers=12, bnb_kw=NamedTuple(), verbose=true)
+                             oracle::Symbol=:alpha_bnb, oracle_gap=1e-5, nworkers=12, bnb_kw=NamedTuple(),
+                             mw::Bool=true, verbose=true)
     oracle in (:gurobi, :alpha_bnb) || error("oracle = :gurobi | :alpha_bnb")
+    x_core = nz_core_point(nd); n_mw = 0
     omp, x, t0 = _nz_omp(nd; optimizer=optimizer)
     O = oracle == :gurobi ? build_nz_omega(nd; optimizer=optimizer) : nothing
     Fx = oracle == :alpha_bnb ? Main.nz_build_fixed_alpha(nd, zeros(nd.nx); optimizer=optimizer) : nothing
@@ -79,7 +120,11 @@ function nz_standard_benders(nd::NZData; optimizer, max_iter=200, tol=1e-4, orac
         ncalls += 1
         t_o = @elapsed ((zinc, zbd, src) = _nz_oracle!(O, Fx, nd, x̄; oracle=oracle, time_limit=lim, gap=oracle_gap,
                                                        nworkers=nworkers, bnb_kw=bnb_kw))
-        cut = nz_cut_from_solution(src, nd, x̄)
+        if oracle == :alpha_bnb                     # src = α 고정 LP → MW 가능
+            cut, ok = _nz_lp_cut!(src, nd, x̄, zinc; mw=mw, x_core=x_core); n_mw += ok
+        else
+            cut = nz_cut_from_solution(src, nd, x̄)
+        end
         _add_cut!(omp, x, t0, cut)
         ub_here = dot(nd.qx, x̄) + zbd
         ub_here < UB && (UB = ub_here; best_x = copy(x̄))
@@ -89,17 +134,18 @@ function nz_standard_benders(nd::NZData; optimizer, max_iter=200, tol=1e-4, orac
         verbose && flush(stdout)
     end
     return Dict(:status => status, :LB => LB, :UB => UB, :x => best_x, :iters => iter,
-                :oracle_calls => ncalls, :wall => time() - wall, :hist => hist)
+                :oracle_calls => ncalls, :mw_cuts => n_mw, :wall => time() - wall, :hist => hist)
 end
 
 
 function nz_belief_menu_benders(nd::NZData; optimizer, lp_optimizer=optimizer, cert::Symbol=:recompute,
                                 cert_rows::Symbol=:hrows, max_iter=500, tol=1e-4, oracle_time=600.0, boost_time=3600.0,
-                                oracle::Symbol=:gurobi, oracle_gap=1e-5, nworkers=12, bnb_kw=NamedTuple(),
-                                target_stop::Bool=false,
+                                oracle::Symbol=:alpha_bnb, oracle_gap=1e-5, nworkers=12, bnb_kw=NamedTuple(),
+                                target_stop::Bool=(oracle == :alpha_bnb), mw::Bool=true,
                                 verbose=true)
     cert in (:recompute, :solution) || error("cert = :recompute | :solution")
     oracle in (:gurobi, :alpha_bnb) || error("oracle = :gurobi | :alpha_bnb")
+    x_core = nz_core_point(nd); n_mw = 0
     target_stop && oracle != :alpha_bnb && error("target_stop 은 oracle=:alpha_bnb 에서만")
     omp, x, t0 = _nz_omp(nd; optimizer=optimizer)
     O = oracle == :gurobi ? build_nz_omega(nd; optimizer=optimizer) : nothing
@@ -127,7 +173,8 @@ function nz_belief_menu_benders(nd::NZData; optimizer, lp_optimizer=optimizer, c
             res = nz_solve!(B, nd, x̄)
             V_menu = max(V_menu, res[:Fval])
             if res[:Fval] > t0v + 1e-6 * max(1.0, abs(t0v))
-                _add_cut!(omp, x, t0, nz_cut_from_solution(B, nd, x̄)); nviol += 1; menu_cuts += 1
+                cut, ok = _nz_lp_cut!(B, nd, x̄, res[:Fval]; mw=mw, x_core=x_core); n_mw += ok
+                _add_cut!(omp, x, t0, cut); nviol += 1; menu_cuts += 1
             end
         end
         if nviol > 0
@@ -147,8 +194,12 @@ function nz_belief_menu_benders(nd::NZData; optimizer, lp_optimizer=optimizer, c
         t_o = @elapsed ((zinc, zbd, src) = _nz_oracle!(O, Fx, nd, x̄; oracle=oracle, time_limit=lim, gap=oracle_gap,
                                                        nworkers=nworkers, target=target, bnb_kw=bnb_kw))
         res = Dict(:Fval => zinc, :bound => zbd)
-        cut = nz_cut_from_solution(src, nd, x̄)
-        bel_raw = nz_read_belief(src, nd)
+        bel_raw = nz_read_belief(src, nd)                 # MW 재풀이 전에 읽음 (재풀이가 해를 바꿈)
+        if oracle == :alpha_bnb
+            cut, ok = _nz_lp_cut!(src, nd, x̄, zinc; mw=mw, x_core=x_core); n_mw += ok
+        else
+            cut = nz_cut_from_solution(src, nd, x̄)
+        end
         _add_cut!(omp, x, t0, cut)
         ub_here = dot(nd.qx, x̄) + res[:bound]
         ub_here < UB && (UB = ub_here; best_x = copy(x̄))
@@ -173,6 +224,6 @@ function nz_belief_menu_benders(nd::NZData; optimizer, lp_optimizer=optimizer, c
         verbose && flush(stdout)
     end
     return Dict(:status => status, :LB => LB, :UB => UB, :x => best_x, :iters => iter,
-                :oracle_calls => oracle_calls, :menu_cuts => menu_cuts, :menu => menu, :menu_size => length(menu),
+                :oracle_calls => oracle_calls, :menu_cuts => menu_cuts, :mw_cuts => n_mw, :menu => menu, :menu_size => length(menu),
                 :exact_log => exact_log, :wall => time() - wall, :hist => hist)
 end

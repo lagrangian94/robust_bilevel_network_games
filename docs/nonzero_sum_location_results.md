@@ -313,6 +313,22 @@ Worcester), 고객 = 5, 7, 8 (Wisconsin Dells, Winnipeg, Winchester). c_ij = XY 
 - 같은 x 에서 KKT 평가기 (big-M 없는 MIQCP) 는 ~1s 인데 Ω 전역 풀이는 수천 초 → KKT 를 oracle 로 쓰는 방안
   (KKT 최적 belief + 인증서로 belief LP cut, KKT 상한을 UB) 을 다음 후보로 둠.
 
+## 9d. 점포별 McCormick 상한 + 기본 구성 α-B&B·MW (2026-10-07)
+
+- `bigm = :tight` (기본): B 점포 i 의 용량 dual 상한을 max_j (c_Aj + p − c_ij)⁺ (리더 쪽은 × θᵁ) 로 조임.
+  A 점포는 항상 여유가 있어 수요 dual ≤ c_Aj + p 이고, 용량 dual 을 최소로 고른 최적 dual 이 존재하므로 엄밀한 상계.
+  SGB128: π̂ᵁ 15,860 → 6,115, π_Fᵁ 3,171 → 1,223. 무작위 좌표: 75 → 40~60.
+  확인 (`logs/test_omega_tight_random_*_seed4.log`): pooled 16/16 Ω OPTIMAL = KKT, pair 16/16 Ω incumbent = KKT
+  (일부 x 는 120s 에 상한 미종료, 과대평가 없음). 이전 상한은 `bigm = :loose`.
+- 기본 구성: 비제로섬 `nz_standard_benders`·`nz_belief_menu_benders` 의 oracle = α-B&B, MW 강화 (mw = true,
+  belief LP·α 고정 LP 에서 core point = min(γ/n, 0.5)). belief-menu 는 target_stop 기본 true (zero-sum 과 같음).
+  무작위 pooled seed 4: belief-menu·표준 모두 x* = [3,4], −1786 (MW 9/9 cut 적용).
+- zero-sum 도 기본값을 실험 구성과 맞춤: `true_dro_benders_optimize!` strengthen_cuts = :mw, boost_solver = :alpha_bnb,
+  `belief_menu_benders_optimize!` oracle = :alpha_bnb (menu_mw 는 원래 기본). 실험 스크립트는 이미 이 값을 명시해 동작 변화 없음.
+  grid 3×3 S=3 smoke: 같은 Z0·x*, 반복 4 → 3.
+- α-B&B 기본값이라 Benders 파일이 α-B&B 파일을 자동 include. 실행은 julia -t (nworkers+2),1 필요.
+- `tune_nz_constants.jl`: θ 진단·λ 스캔·인증 도구 (실험 머신용). SGB128 pair 에서 필요한 θ 최대 0.3125 (circuit 상계 5).
+
 ## 10. 요약
 
 1. 비제로섬 Ω (html Step 4′) 는 zero-sum 에서 원고 Ω 와 일치하고, location 에서 big-M 없는 독립 평가와 모든 x 에서 일치한다.

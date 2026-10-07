@@ -146,8 +146,8 @@ Gurobi NonConvex 는 RLT 를 쓰지 않고 원래 Ω 를 푼 것이다. 빨라�
 | 상수 | 역할 | location 에서 | 근거 |
 |---|---|---|---|
 | θᵁ | follower 최적성 벌점 (리더 블록) | Lemma 2: 1200 → circuit 상계 **50** (달성됨) | results §4 |
-| π̂ᵁ_k | x·π̂ McCormick (리더) | θᵁ(c^max + p) + v = 65~75 | 같은 곳 |
-| π_Fᵁ_k | x·π̃ McCormick (follower, × λᵁ) | c^max + p | nz_data.jl |
+| π̂ᵁ_k | x·π̂ McCormick (리더) | 점포별 θᵁ·max_j (c_Aj + p − c_ij)⁺ (`bigm=:tight`, 이전 θᵁ(c^max+p)+v) | nz_data.jl, results §9d |
+| π_Fᵁ_k | x·π̃ McCormick (follower, × λᵁ) | 점포별 max_j (c_Aj + p − c_ij)⁺ (이전 c^max + p) | 같은 곳 |
 | λᵁ | follower exact penalty | 경계 **50** (< 50 이면 과대평가 10·(50−λᵁ)) | results §8 |
 
 λᵁ 는 경계 바로 근처면 Ω 가 평평해져 Gurobi·α-B&B 모두 느려진다 (α-B&B x=[3,4]: 1000 → 노드 1, 50 → 노드 4,669).

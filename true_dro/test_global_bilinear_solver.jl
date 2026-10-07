@@ -5,7 +5,7 @@ test_global_bilinear_solver.jl — global_bilinear_solve (α-공간 B&B) vs Guro
 """
 
 include("test_structured_eval.jl")          # make_batch_instance, random_xs, grb
-include("global_bilinear_solver.jl")
+isdefined(Main, :global_bilinear_solve) || include("global_bilinear_solver.jl")
 
 gap(lb, ub) = (ub - lb) / max(1.0, abs(lb))
 

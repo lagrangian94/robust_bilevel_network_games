@@ -6,7 +6,7 @@ test_benders_boost.jl — Benders boost 단계 solver 비교: :gurobi (기존) v
 """
 
 include("test_structured_eval.jl")          # make_batch_instance, NetworkGenerator 등
-include("global_bilinear_solver.jl")
+isdefined(Main, :global_bilinear_solve) || include("global_bilinear_solver.jl")
 
 function make_ss_cut_for(name)
     gen = Dict("polska" => generate_polska_network, "abilene" => generate_abilene_network,

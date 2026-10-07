@@ -116,7 +116,7 @@ function make_location_instance(; coords::Symbol=:sgb128, n_loc=8, nA=1, nB=4, N
         p=nothing, f=nothing, wres=300.0, dist_res=nothing,
         reservation::Symbol=:pooled, quota=wres,
         eps_hat=0.2, eps_tilde=0.2, beta=0.4,
-        thetaU=:circuit, lambdaU=nothing)
+        thetaU=:circuit, lambdaU=nothing, bigm::Symbol=:tight)
     reservation in (:pooled, :pair) || error("reservation = :pooled | :pair")
     coords in (:sgb128, :random) || error("coords = :sgb128 | :random")
     # λᵁ (follower exact penalty) 는 비용 단위에 묶인 상수. follower McCormick 상한이 λᵁ·(c^max + p) 라
@@ -217,16 +217,28 @@ function make_location_instance(; coords::Symbol=:sgb128, n_loc=8, nA=1, nB=4, N
     θU = thetaU isa Real ? Float64(thetaU) :
          thetaU == :lemma2 ? D * norm(ell, 1) :
          thetaU == :circuit ? v * D : error("thetaU = 숫자 | :circuit | :lemma2")
-    # A 점포에 항상 여유 → 수요 dual μ_j ≤ θ(cmax+p), 용량 dual ≤ max μ (리더 벌점 LP: 비용 θc + v[B])
-    piLU_fn(θ) = [xrow[k] > 0 ? θ * (cmax + p) + v : 0.0 for k in 1:m]
-    piFU = [xrow[k] > 0 ? cmax + p : 0.0 for k in 1:m]          # follower 자신: 같은 논증, θ=1, v=0
+    # x 행 (B 후보의 용량 행) dual 상한. A 점포 총용량 > 총수요라 모든 최적해에서 A 에 여유가 있고 A 의 용량 dual 은 0.
+    #   → 수요 dual μ_j ≤ (A 에서 현장구매 비용) = θ(c_Aj + p)  (follower 자신은 θ = 1)
+    #   → B 점포 i 의 용량 dual 을 최소로 고른 최적 dual 이 존재하고 (용량 우변 ≥ 0 이라 목적 불증가),
+    #     그 값은 max_j (μ_j − 점포 i 의 구매비용)⁺ ≤ θ · max_j (c_Aj + p − c_ij)⁺
+    #   bigm = :tight (기본) 은 이 점포별 상한, :loose 는 이전의 c^max + p 공통 상한 (리더는 +v).
+    cA = [maximum(dist[a, j] for a in 1:nA) for j in 1:ncu]
+    gapB = [maximum(max(cA[j] + p - dist[i, j], 0.0) for j in 1:ncu) for i in 1:nst]
+    store_of_xrow = Dict(rcap(i) => i for i in 1:nst)
+    # (분기 안에서 같은 이름의 지역 함수를 정의하면 Julia 가 뒤의 정의로 덮어쓰므로 익명 함수로 대입)
+    bigm in (:tight, :loose) || error("bigm = :tight | :loose")
+    piLU_fn = bigm == :tight ?
+        (θ -> [xrow[k] > 0 ? θ * gapB[store_of_xrow[k]] : 0.0 for k in 1:m]) :
+        (θ -> [xrow[k] > 0 ? θ * (cmax + p) + v : 0.0 for k in 1:m])
+    piFU = bigm == :tight ? [xrow[k] > 0 ? gapB[store_of_xrow[k]] : 0.0 for k in 1:m] :
+                            [xrow[k] > 0 ? cmax + p : 0.0 for k in 1:m]
     varpiU = [hrow[k] > 0 ? p : Inf for k in 1:m]               # 예약 dual ≤ p (현장구매로 대체 가능)
 
     meta = Dict{Symbol,Any}(:kind => :location, :coords => coords, :cities => cities, :coord => coord, :dist => dist, :xi => ξ,
         :nA => nA, :nB => nB, :ncu => ncu, :p => p, :f => f, :v => v, :wres => wres,
         :bA => bA, :bB => bB, :cmax => cmax, :D => D, :piLU_fn => piLU_fn,
         :iyR => iyR, :iyS => iyS, :reservation => reservation, :nst => nst,
-        :rdem => rdem, :rres => rres, :rcap => rcap, :hidx => hidx, :isB => isB)
+        :rdem => rdem, :rres => rres, :rcap => rcap, :hidx => hidx, :isB => isB, :gapB => gapB, :bigm => bigm)
     return NZData((sgb ? "location_sgb128" : "location_n$(n_loc)_A$(nA)_B$(nB)") * "_S$(S)_seed$(seed)" * (pair ? "_pair" : ""),
         A, c, ell, u, hrow, hcoef, xrow, g, W, wvec, c0, hU,
         nx, fill(true, nx), NB, fill(qB, nx),

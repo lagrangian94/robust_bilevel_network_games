@@ -11,7 +11,7 @@ include(joinpath(root, "nonzero_sum", "nz_data.jl"))
 include(joinpath(root, "nonzero_sum", "nz_omega.jl"))
 include(joinpath(root, "nonzero_sum", "nz_kkt_eval.jl"))
 include(joinpath(root, "nonzero_sum", "nz_benders.jl"))
-include(joinpath(root, "nonzero_sum", "nz_alpha_bnb.jl"))
+isdefined(Main, :nz_alpha_bnb) || include(joinpath(root, "nonzero_sum", "nz_alpha_bnb.jl"))
 
 all_x(nd) = [Float64.(collect(bits)) for bits in Iterators.product(fill(0:1, nd.nx)...) if sum(bits) <= nd.gamma]
 
