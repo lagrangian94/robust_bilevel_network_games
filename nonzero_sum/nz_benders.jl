@@ -36,6 +36,63 @@ end
 
 _add_cut!(omp, x, t0, cut) = @constraint(omp, t0 >= cut[:intercept] + dot(cut[:slope], x))
 
+"""
+    nz_add_dual_vi!(omp, x, t0, nd) — 비제로섬 dual-VI (원고 Proposition dual-VI 의 비제로섬판, McCormick 선형화).
+
+  V*(x) ≥ E^q̂ φ(x, h̄, ξ) ≥ min_{h∈H} Σ_s q̂_s φ_s(x, h)        (q̂ ∈ D̂ ∩ D̃, CVaR ≥ E, h̄ ∈ Ψ(x, q̂) ⊂ H)
+  φ_s(x, h) ≤ r_s(x,h)ᵀπ_s − θᵁ cᵀy'_s   (Aᵀπ_s ≥ ℓ + θᵁc, π_s ≥ 0;  A y'_s ≤ r_s(x,h), y'_s ≥ 0)
+     약쌍대 + Q_s ≥ cᵀy'_s 로 항상 성립, θᵁ ≥ θ* 이면 등호 가능 (exact penalty).
+  h̄ = 0 은 쓸 수 없음 (φ 가 h 에 단조가 아님) → h 를 변수로 두고 최소화 (follower 선주문을 리더에게 가장 유리하게).
+  x_i·π_k : 이진×연속, π_k ≤ piLU[k] 로 exact McCormick.
+  h·π_k   : 연속×연속, π_k ≤ θᵁ·varpiU[k] 로 McCormick 완화 (master 가 t₀ 를 누르는 방향이므로 완화해도 유효).
+     exact_h = true 는 진단용: h·π 를 bilinear 그대로 둠 (McCormick 손실과 "h 최소화" 손실을 분리).
+     예약 행 dual 상한 θᵁ·p: 같은 점포의 예약/현장 열은 ℓ 이 같고 비용 차가 p 라, 예약 행 dual 을 최소로 고르면 ≤ θᵁ p.
+"""
+function nz_add_dual_vi!(omp, x, t0, nd::NZData; exact_h::Bool=false)
+    m, ny, S = nz_m(nd), nz_ny(nd), nd.S
+    xr = [k for k in 1:m if nd.xrow[k] > 0]
+    hr = [k for k in 1:m if nd.hrow[k] > 0]
+    all(isfinite, nd.varpiU[hr]) || error("nz_add_dual_vi!: h 행의 varpiU 가 유한해야 함")
+    h = @variable(omp, [j=1:nz_nh(nd)], lower_bound=0, upper_bound=nd.hU[j], base_name="vi_h")
+    @constraint(omp, nd.W * h .<= nd.wvec)
+    rhs = exact_h ? QuadExpr() : AffExpr(0.0)
+    for s in 1:S
+        π = @variable(omp, [1:m], lower_bound=0, base_name="vi_pi_$s")
+        y = @variable(omp, [1:ny], lower_bound=0, base_name="vi_y_$s")
+        @constraint(omp, nd.A' * π .>= nd.ell .+ nd.thetaU .* nd.c)
+        r = [nd.u[k, s] + (nd.hrow[k] > 0 ? nd.hcoef[k] * h[nd.hrow[k]] : 0.0) +
+             (nd.xrow[k] > 0 ? nd.g[k, s] * x[nd.xrow[k]] : 0.0) for k in 1:m]
+        @constraint(omp, nd.A * y .<= r)
+        obj = exact_h ? QuadExpr() : AffExpr(0.0)
+        add_to_expression!(obj, -nd.thetaU, dot(nd.c, y))
+        for k in 1:m
+            add_to_expression!(obj, nd.u[k, s], π[k])
+        end
+        for k in xr                                   # w = x_i π_k (exact)
+            U = nd.piLU[k]; xi = x[nd.xrow[k]]
+            w = @variable(omp, lower_bound=0, upper_bound=U)
+            @constraint(omp, π[k] <= U)
+            @constraint(omp, w <= U * xi); @constraint(omp, w <= π[k]); @constraint(omp, w >= π[k] - U * (1 - xi))
+            add_to_expression!(obj, nd.g[k, s], w)
+        end
+        for k in hr                                   # w ≈ h_j π_k (McCormick 완화)
+            U = nd.thetaU * nd.varpiU[k]; j = nd.hrow[k]; H = nd.hU[j]
+            if exact_h                                # 진단용: h·π 를 그대로 (비볼록, Gurobi NonConvex)
+                @constraint(omp, π[k] <= U)
+                add_to_expression!(obj, nd.hcoef[k], h[j] * π[k])
+                continue
+            end
+            w = @variable(omp)
+            @constraint(omp, π[k] <= U)
+            @constraint(omp, w >= 0); @constraint(omp, w >= H * π[k] + U * h[j] - H * U)
+            @constraint(omp, w <= H * π[k]); @constraint(omp, w <= U * h[j])
+            add_to_expression!(obj, nd.hcoef[k], w)
+        end
+        add_to_expression!(rhs, nd.q_hat[s], obj)
+    end
+    return @constraint(omp, t0 >= rhs)
+end
+
 # 같은 x̄ 에서 oracle 을 다시 부르면 (상한이 시간 제한 안에 안 닫혀 LB < UB 가 남은 경우) 시간 제한을 4배 (최대 boost_time).
 # 이미 boost_time 으로 풀었던 x̄ 가 또 나오면 더 할 수 있는 게 없으므로 :Stalled.
 function _oracle_limit!(tl::Dict, x̄, oracle_time, boost_time)
@@ -99,10 +156,11 @@ end
 
 function nz_standard_benders(nd::NZData; optimizer, max_iter=200, tol=1e-4, oracle_time=600.0, boost_time=3600.0,
                              oracle::Symbol=:alpha_bnb, oracle_gap=1e-5, nworkers=12, bnb_kw=NamedTuple(),
-                             mw::Bool=true, verbose=true)
+                             mw::Bool=true, vi::Bool=false, verbose=true)
     oracle in (:gurobi, :alpha_bnb) || error("oracle = :gurobi | :alpha_bnb")
     x_core = nz_core_point(nd); n_mw = 0
     omp, x, t0 = _nz_omp(nd; optimizer=optimizer)
+    vi && nz_add_dual_vi!(omp, x, t0, nd)
     O = oracle == :gurobi ? build_nz_omega(nd; optimizer=optimizer) : nothing
     Fx = oracle == :alpha_bnb ? Main.nz_build_fixed_alpha(nd, zeros(nd.nx); optimizer=optimizer) : nothing
     LB, UB, best_x = -Inf, Inf, zeros(nd.nx)
@@ -141,13 +199,14 @@ end
 function nz_belief_menu_benders(nd::NZData; optimizer, lp_optimizer=optimizer, cert::Symbol=:recompute,
                                 cert_rows::Symbol=:hrows, max_iter=500, tol=1e-4, oracle_time=600.0, boost_time=3600.0,
                                 oracle::Symbol=:alpha_bnb, oracle_gap=1e-5, nworkers=12, bnb_kw=NamedTuple(),
-                                target_stop::Bool=(oracle == :alpha_bnb), mw::Bool=true,
+                                target_stop::Bool=(oracle == :alpha_bnb), mw::Bool=true, vi::Bool=false,
                                 verbose=true)
     cert in (:recompute, :solution) || error("cert = :recompute | :solution")
     oracle in (:gurobi, :alpha_bnb) || error("oracle = :gurobi | :alpha_bnb")
     x_core = nz_core_point(nd); n_mw = 0
     target_stop && oracle != :alpha_bnb && error("target_stop 은 oracle=:alpha_bnb 에서만")
     omp, x, t0 = _nz_omp(nd; optimizer=optimizer)
+    vi && nz_add_dual_vi!(omp, x, t0, nd)
     O = oracle == :gurobi ? build_nz_omega(nd; optimizer=optimizer) : nothing
     Fx = oracle == :alpha_bnb ? Main.nz_build_fixed_alpha(nd, zeros(nd.nx); optimizer=optimizer) : nothing
     B = build_nz_omega(nd; optimizer=lp_optimizer, belief_lp=true, cert_rows=cert_rows)

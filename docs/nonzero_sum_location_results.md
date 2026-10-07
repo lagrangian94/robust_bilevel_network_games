@@ -329,6 +329,34 @@ Worcester), 고객 = 5, 7, 8 (Wisconsin Dells, Winnipeg, Winchester). c_ij = XY 
 - α-B&B 기본값이라 Benders 파일이 α-B&B 파일을 자동 include. 실행은 julia -t (nworkers+2),1 필요.
 - `tune_nz_constants.jl`: θ 진단·λ 스캔·인증 도구 (실험 머신용). SGB128 pair 에서 필요한 θ 최대 0.3125 (circuit 상계 5).
 
+## 9e. 비제로섬 dual-VI (McCormick 선형화) 비교 (2026-10-07)
+
+원고 Proposition dual-VI 의 비제로섬판 (`nz_add_dual_vi!`, `nz_benders.jl`, Benders 인자 `vi`, 기본 false).
+- 유도: V*(x) ≥ E^q̂ φ(x, h̄) ≥ min_{h∈H} Σ_s q̂_s φ_s(x,h).  φ_s ≤ r_s(x,h)ᵀπ_s − θᵁ cᵀy'_s
+  (Aᵀπ ≥ ℓ + θᵁc, A y' ≤ r_s(x,h)), θᵁ exact penalty 라 등호 가능.  zero-sum 의 h̄ = 0 은 쓸 수 없음
+  (φ 가 h 에 단조가 아님: 점포별 할당량이 차면 고객이 B 에 선주문해 B 판매가 늘 수 있음) → h 를 변수로 최소화.
+- x·π 는 exact McCormick (π ≤ piLU), h·π 는 McCormick 완화 (예약 행 dual ≤ θᵁp).
+- 스크립트 `compare_nz_dual_vi.jl` (NZ_VI_EXACT=1: h·π 를 bilinear 그대로 둔 값으로 손실 분해).
+  로그 `logs/dual_vi_random_pooled_seed4_S3.log`, `logs/dual_vi_sgb128_pair_seed1_S3.log`, `logs/dual_vi_exact_*.log`.
+
+결과
+- 유효성: 두 인스턴스 모든 x (16 + 16) 에서 L(x) ≤ V*(x).
+- 무작위 pooled seed 4: 간격 760~2,300 (|V*| 480~2,400). root 하한 −3,694 (참 최적 −1,786).
+  손실 분해: McCormick 26~1,660, "h 최소화" (follower 선주문을 리더에게 유리하게) 69~1,290 → 둘 다 큼.
+  Benders (α-B&B oracle, MW, 로컬 WLS worker 1):
+  | 방법 | vi | 결과 | 반복 | oracle |
+  |---|---|---|---|---|
+  | belief-menu | 없음 | x* = [3,4], −1786 | 10 | 2 |
+  | belief-menu | 있음 | 같음 | 8 | 2 |
+  | 표준 | 없음 | 같음 | 10 | 9 |
+  | 표준 | 있음 | 같음 | 7 | 6 |
+  (wall 은 첫 실행 컴파일이 섞여 비교 불가)
+- SGB128 pair seed 1: 간격 17,000~61,000 (|V*| ≤ 1,327). L(∅) = −17,154 인데 V*(∅) = 0.
+  h·π exact 로 두면 L(∅) = 0, x=[1] −2,544, x=[2] −1,382 → 손실 거의 전부가 h·π McCormick
+  (예약 dual 상한 θᵁp = 1,000, hᵁ = 100 이라 아래쪽 envelope 가 사실상 w ≥ 0: 선주문 혜택을 공짜로 계산).
+- 판단: 유효하지만 SGB128 에서는 무의미할 만큼 느슨하고, 무작위에서도 반복 수만 조금 줄임.
+  조이려면 h·π 손실 (h 이산화·분기, 더 작은 예약 dual 상한) 과 h 최소화 손실 (q̂ 아래 follower 1단계 최적성) 을 함께 줄여야 함.
+
 ## 10. 요약
 
 1. 비제로섬 Ω (html Step 4′) 는 zero-sum 에서 원고 Ω 와 일치하고, location 에서 big-M 없는 독립 평가와 모든 x 에서 일치한다.
