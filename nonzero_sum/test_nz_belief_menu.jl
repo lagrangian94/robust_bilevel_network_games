@@ -30,7 +30,9 @@ include(joinpath(root, "nonzero_sum", "nz_kkt_eval.jl"))
 function main()
 nd = make_location_instance(; S=parse(Int, get(ENV, "NZ_S", "3")), seed=parse(Int, get(ENV, "NZ_SEED", "4")),
                             wres=parse(Float64, get(ENV, "NZ_WRES", "100")),
-                            lambdaU=parse(Float64, get(ENV, "NZ_LAMBDA", "1000")))
+                            reservation=Symbol(get(ENV, "NZ_RES", "pooled")),          # pooled | pair (h_ij)
+                            quota=parse(Float64, get(ENV, "NZ_QUOTA", get(ENV, "NZ_WRES", "100"))),
+                            lambdaU=(haskey(ENV, "NZ_LAMBDA") ? parse(Float64, ENV["NZ_LAMBDA"]) : nothing))
 @printf("%s: θᵁ=%.1f  max π̂ᵁ=%.1f  λᵁ=%.1f\n", nd.name, nd.thetaU, maximum(nd.piLU), nd.lambdaU)
 X = all_x(nd)
 

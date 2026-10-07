@@ -51,7 +51,9 @@ end
 # ---------------------------------------------------------------- (2)
 println("="^70, "\n(2) location: Ω(x) vs KKT V*(x)\n", "="^70)
 nd = make_location_instance(; S=parse(Int, get(ENV, "NZ_S", "4")), seed=parse(Int, get(ENV, "NZ_SEED", "1")),
-                            lambdaU=parse(Float64, get(ENV, "NZ_LAMBDA", "1000")))
+                            lambdaU=(haskey(ENV, "NZ_LAMBDA") ? parse(Float64, ENV["NZ_LAMBDA"]) : nothing),
+                            reservation=Symbol(get(ENV, "NZ_RES", "pooled")),
+                            quota=parse(Float64, get(ENV, "NZ_QUOTA", "100")), wres=parse(Float64, get(ENV, "NZ_WRES", "300")))
 @printf("%s: θᵁ=%.1f  max π̂ᵁ=%.1f  λᵁ=%.1f  cmax=%.2f\n", nd.name, nd.thetaU, maximum(nd.piLU), nd.lambdaU, nd.meta[:cmax])
 println("  거리 (A행 먼저):"); display(nd.meta[:dist])
 println("  수요 ξ (고객 × S):"); display(nd.meta[:xi])

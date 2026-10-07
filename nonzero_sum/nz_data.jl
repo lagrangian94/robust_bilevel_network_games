@@ -83,6 +83,17 @@ end
 
 
 # =====================================================================
+# SGB128 (John Burkardt, https://people.sc.fsu.edu/~jburkardt/datasets/cities/cities.html), data/sgb128/
+# =====================================================================
+const _SGB128_DIR = joinpath(@__DIR__, "data", "sgb128")
+_sgb_lines(file) = [l for l in eachline(joinpath(_SGB128_DIR, file)) if !isempty(strip(l)) && !startswith(l, "#")]
+"128 × 2 XY 좌표"
+sgb128_xy() = permutedims(hcat([parse.(Float64, split(l)) for l in _sgb_lines("sgb128_xy.txt")]...))
+"128 개 도시 이름"
+sgb128_names() = strip.(_sgb_lines("sgb128_name.txt"))
+
+
+# =====================================================================
 # 사전예약 location (html "적용 예", Goyal et al. 2023 JOC §7.1 기본 사례 규모)
 # =====================================================================
 """
@@ -100,20 +111,42 @@ Goyal et al. (2023) §7.1 기본 사례를 따른다 (SGB128 좌표 대신 [0,1]
                                 (aggregate LP 가 개별 고객 선주문의 가격 균형과 같아지는 형태, test_nz_equilibrium.jl)
 RCR: A 총용량 > 최대 총수요 (assert).
 """
-function make_location_instance(; n_loc=8, nA=1, nB=4, NB=4, S=5, seed=1,
+function make_location_instance(; coords::Symbol=:sgb128, n_loc=8, nA=1, nB=4, NB=4, S=5, seed=1,
         bA=720.0, bB=360.0, qB=305.0, dlo=30.0, dhi=240.0, v=5.0,
-        p=0.3, f=0.1, wres=300.0, dist_res=0.1,
+        p=nothing, f=nothing, wres=300.0, dist_res=nothing,
         reservation::Symbol=:pooled, quota=wres,
         eps_hat=0.2, eps_tilde=0.2, beta=0.4,
-        thetaU=:circuit, lambdaU=1000.0)
+        thetaU=:circuit, lambdaU=nothing)
     reservation in (:pooled, :pair) || error("reservation = :pooled | :pair")
+    coords in (:sgb128, :random) || error("coords = :sgb128 | :random")
+    # λᵁ (follower exact penalty) 는 비용 단위에 묶인 상수. follower McCormick 상한이 λᵁ·(c^max + p) 라
+    # 척도를 따라가야 한다. random 에서 경계가 v/해상도 = 50 → λᵁ = 1000. sgb128 (해상도 1) 은 경계 ~5 로 보고 100.
+    lambdaU = lambdaU === nothing ? (coords == :sgb128 ? 100.0 : 1000.0) : Float64(lambdaU)
+    # 거리 척도가 좌표에 따라 다르므로 p, f, 해상도의 기본값도 다름
+    #   :sgb128 — XY 좌표가 마일 척도 (점포-고객 거리 217~2,971, 평균 1,162) → 정수 반올림, p = 200, f = 50
+    #   :random — [0,1]² → 0.1 단위 반올림, p = 0.3, f = 0.1 (2026-10-06~07 의 초기 실험)
+    sgb = coords == :sgb128
+    p = p === nothing ? (sgb ? 200.0 : 0.3) : Float64(p)
+    f = f === nothing ? (sgb ? 50.0 : 0.1) : Float64(f)
+    dist_res = dist_res === nothing ? (sgb ? 1.0 : 0.1) : Float64(dist_res)
     rng = MersenneTwister(seed)
     nst = nA + nB
     ncu = n_loc - nst
     @assert ncu >= 1
-    coord = rand(rng, n_loc, 2)
     st = 1:nst                      # 1..nA = A, nA+1..nst = B 후보
     cu = nst+1:n_loc
+    if sgb
+        # Goyal et al. (2023) §7.1 기본 사례: SGB128 (Burkardt) 의 처음 8 개 도시, 적격 위치 1,2,3,4,6 중 A 는 6,
+        # 나머지 5,7,8 이 고객. c_ij = 좌표 Euclidean 거리. 여기서는 점포 (A 먼저) → 고객 순으로 재배열
+        @assert (n_loc, nA, nB) == (8, 1, 4) "coords=:sgb128 은 Goyal 기본 사례 (n_loc=8, nA=1, nB=4) 전용"
+        xy = sgb128_xy()
+        order = [6, 1, 2, 3, 4, 5, 7, 8]
+        coord = xy[order, :]
+        cities = sgb128_names()[order]
+    else
+        coord = rand(rng, n_loc, 2)
+        cities = String[]
+    end
     dist = [round(norm(coord[i, :] .- coord[j, :]) / dist_res) * dist_res for i in st, j in cu]
     ξ = round.(dlo .+ (dhi - dlo) .* rand(rng, ncu, S); digits=1)
     @assert nA * bA > maximum(sum(ξ; dims=1)) "RCR/상계 논증: A 총용량 > 최대 총수요 필요"
@@ -179,7 +212,7 @@ function make_location_instance(; n_loc=8, nA=1, nB=4, NB=4, S=5, seed=1,
     #   :circuit — Y 의 edge 방향은 TU 행렬의 circuit (성분 ±1). circuit 하나가 바꾸는 B 총판매량은 ≤ 1 단위라
     #              Δ(ℓᵀy) ≤ v, follower 비용 변화는 0 이 아니면 dist_res 의 배수라 ≥ dist_res.
     #              θ* = max(Δℓ / −Δc) ≤ v / dist_res (기본 사례 50; nz_theta_diag 로 50 이 실제로 달성됨을 확인)
-    D = round(Int, 1 / dist_res)
+    D = 1 / dist_res                 # 비용이 1/D 단위 정수배 (sgb128: D = 1)
     @assert isapprox(p * D, round(p * D); atol=1e-9) "p 는 dist_res 의 배수여야 함"
     θU = thetaU isa Real ? Float64(thetaU) :
          thetaU == :lemma2 ? D * norm(ell, 1) :
@@ -189,12 +222,12 @@ function make_location_instance(; n_loc=8, nA=1, nB=4, NB=4, S=5, seed=1,
     piFU = [xrow[k] > 0 ? cmax + p : 0.0 for k in 1:m]          # follower 자신: 같은 논증, θ=1, v=0
     varpiU = [hrow[k] > 0 ? p : Inf for k in 1:m]               # 예약 dual ≤ p (현장구매로 대체 가능)
 
-    meta = Dict{Symbol,Any}(:kind => :location, :coord => coord, :dist => dist, :xi => ξ,
+    meta = Dict{Symbol,Any}(:kind => :location, :coords => coords, :cities => cities, :coord => coord, :dist => dist, :xi => ξ,
         :nA => nA, :nB => nB, :ncu => ncu, :p => p, :f => f, :v => v, :wres => wres,
         :bA => bA, :bB => bB, :cmax => cmax, :D => D, :piLU_fn => piLU_fn,
         :iyR => iyR, :iyS => iyS, :reservation => reservation, :nst => nst,
         :rdem => rdem, :rres => rres, :rcap => rcap, :hidx => hidx, :isB => isB)
-    return NZData("location_n$(n_loc)_A$(nA)_B$(nB)_S$(S)_seed$(seed)" * (pair ? "_pair" : ""),
+    return NZData((sgb ? "location_sgb128" : "location_n$(n_loc)_A$(nA)_B$(nB)") * "_S$(S)_seed$(seed)" * (pair ? "_pair" : ""),
         A, c, ell, u, hrow, hcoef, xrow, g, W, wvec, c0, hU,
         nx, fill(true, nx), NB, fill(qB, nx),
         S, fill(1.0 / S, S), eps_hat, eps_tilde, beta,

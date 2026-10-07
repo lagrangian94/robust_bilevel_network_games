@@ -1,0 +1,22 @@
+Set parameter WLSAccessID
+Set parameter WLSSecret
+Set parameter LicenseID to value 926906
+Academic license 926906 - for non-commercial use only - registered to se___@postech.ac.kr
+location_sgb128_S3_seed1_pair  θᵁ=5.00 λᵁ=100.0  oracle=alpha_bnb workers=1
+  점포 (A 먼저): Winston-Salem, NC / Youngstown, OH / Yankton, SD / Yakima, WA / Worcester, MA
+  고객: Wisconsin Dells, WI / Winnipeg, MB / Winchester, VA
+  [orcl] it   1 LB=-10000000.0000 UB= 42274.7930 x=Int64[]    Ω=     0.0000 (3.9s) menu=1 (+belief, LP@x̄=0.0000, gap -4.5e-10)
+  [menu] it   2 LB=-9999695.0000 UB= 42274.7930 x=[1]        menu cut 1/1 (V_menu=-130924.6667)
+  [menu] it   3 LB=-9999695.0000 UB= 42274.7930 x=[2]        menu cut 1/1 (V_menu=-170174.7778)
+  [menu] it   4 LB=-5034364.7778 UB= 42274.7930 x=[1, 2]     menu cut 1/1 (V_menu=-174699.2222)
+  [menu] it   5 LB=-2910295.0000 UB= 42274.7930 x=[3]        menu cut 1/1 (V_menu=-7558.3333)
+  [orcl] it   6 LB=-174089.2222 UB= 42274.7930 x=[1, 2]     Ω=-51816.6273 (0.4s) menu=2 (+belief, LP@x̄=-1375.5000, gap -5.0e+04)
+  [menu] it   7 LB=-169869.7778 UB= 42274.7930 x=[2]        menu cut 1/2 (V_menu=-2010.1667)
+  [menu] it   8 LB=-130619.6667 UB= 42274.7930 x=[1]        menu cut 1/2 (V_menu=-94150.1667)
+  [orcl] it   9 LB=-93845.1667 UB= 42274.7930 x=[1]        Ω=-28740.9825 (0.2s) menu=3 (+belief, LP@x̄=-1216.8333, gap -2.8e+04)
+  [menu] it  10 LB=-51206.6273 UB= 42274.7930 x=[1, 2]     menu cut 1/3 (V_menu=-1375.5000)
+  [menu] it  11 LB=-28435.9825 UB= 42274.7930 x=[1]        menu cut 1/3 (V_menu=-1216.8333)
+  [orcl] it  12 LB= -7253.3333 UB= 42274.7930 x=[3]        Ω=  -245.1719 (0.2s) menu=4 (+belief, LP@x̄=-225.0000, gap -2.0e+01)
+  [orcl] it  13 LB= -1705.1667 UB=  -483.0447 x=[2]        Ω= -1148.0000 (0.4s) menu=5 (+belief, LP@x̄=-1148.0000, gap -1.3e-10)
+  [orcl] it  14 LB=  -911.8333 UB=  -891.8184 x=[1]        Ω= -1264.9391 (2400.1s) menu=5
+belief-menu: Stalled x*=[1] LB=-911.8333 UB=-891.8184 iter=15 oracle=6 menu=5 wall=2408.3s

@@ -293,6 +293,26 @@ follower 의 aggregate 2단계 LP 는 개별 고객 선주문의 가격 균형�
 - 점포별 예약 풀 (pooled) 의 follower 값은 항상 pair 보다 큼 (완화).
 - 닫힌 B 후보지의 용량 dual 은 혼잡 가격이 아니므로 고객 선택지와 집계에서 제외.
 
+## 9c. SGB128 (Goyal 기본 사례 좌표) + 고객×점포 선주문 (2026-10-07)
+
+`make_location_instance` 기본값을 Goyal et al. (2023) §7.1 기본 사례로 바꿈: SGB128 (John Burkardt,
+`nonzero_sum/data/sgb128/`) 의 처음 8 개 도시, A = 6 (Winston-Salem), B 후보 = 1~4 (Youngstown, Yankton, Yakima,
+Worcester), 고객 = 5, 7, 8 (Wisconsin Dells, Winnipeg, Winchester). c_ij = XY 좌표 Euclidean 거리 (마일 척도, 217~2,971)
+를 정수로 반올림 (θᵁ = v/1 = 5). 확장 파라미터는 척도에 맞춰 p = 200, f = 50, λᵁ = 100 (기존 무작위 좌표는 `coords=:random`).
+
+결과 (S=3, seed 1, 선주문 할당량 100):
+- KKT 전수 열거 (`enumerate_nz_kkt.jl`, `logs/kkt_enum_sgb128_pair_S3_seed1.log`): x* = [1] (Youngstown), −911.8333,
+  2 등 [2] −843.0. x 당 0.0~6.5s 모두 OPTIMAL.
+- belief-menu (α-B&B oracle, 목표값 조기 종료, worker 1, `logs/benders_sgb128_pair_S3_seed1_menu_bnb.log`):
+  **LB = −911.8333 (참값과 일치)**, UB −891.8, Stalled (x=[1] 에서 α-B&B 2,400s 에도 상한 미종료), oracle 6 회, menu 5 개.
+  확장 belief LP cut 은 정확한 값을 줬고, 수렴 실패는 oracle 의 상한 증명 쪽.
+- 전역 Ω 가 어려운 이유 (추정 포함): (i) 고객×점포 예약으로 α 차원 5 → 15 (bilinear 항 3 배). 무작위 좌표에서도 pair 로
+  바꾸면 x=∅, [3,4] 등이 600s 제한에 걸림 (pooled 는 0.0s). (ii) 마일 척도라 big-M (π̂ᵁ 15,860, follower McCormick
+  λᵁ(c^max+p) 3.2×10⁵) 이 커져 완화가 느슨. 해상도 50 마일·λᵁ=1 로 줄여도 x=∅ 는 120s 에 미종료라 (i) 이 주된 요인으로 봄.
+- λᵁ 는 비용 단위에 묶인 상수: 무작위 좌표의 1000 을 그대로 쓰면 SGB128 에서 x=∅ Ω 가 600s 제한 + 값 0.0026 (참값 0).
+- 같은 x 에서 KKT 평가기 (big-M 없는 MIQCP) 는 ~1s 인데 Ω 전역 풀이는 수천 초 → KKT 를 oracle 로 쓰는 방안
+  (KKT 최적 belief + 인증서로 belief LP cut, KKT 상한을 UB) 을 다음 후보로 둠.
+
 ## 10. 요약
 
 1. 비제로섬 Ω (html Step 4′) 는 zero-sum 에서 원고 Ω 와 일치하고, location 에서 big-M 없는 독립 평가와 모든 x 에서 일치한다.
