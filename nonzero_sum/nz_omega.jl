@@ -35,7 +35,9 @@ struct NZOmega
 end
 
 function build_nz_omega(nd::NZData; optimizer, belief_lp::Bool=false, cert_rows::Symbol=:hrows,
-                        silent::Bool=true)
+                        silent::Bool=true, mode::Symbol=(belief_lp ? :belief_lp : :global),
+                        solver_params::Bool=true)
+    mode in (:global, :belief_lp, :fixed_alpha, :relax) || error("mode = :global | :belief_lp | :fixed_alpha | :relax")
     A, c, ℓ, u, g = nd.A, nd.c, nd.ell, nd.u, nd.g
     m, ny, nh, nx, S = nz_m(nd), nz_ny(nd), nz_nh(nd), nd.nx, nd.S
     nW = size(nd.W, 1)
@@ -46,9 +48,11 @@ function build_nz_omega(nd::NZData; optimizer, belief_lp::Bool=false, cert_rows:
 
     model = Model(optimizer)
     silent && set_silent(model)
-    # F 는 θ(cᵀŷ − rᵀϖ) 처럼 큰 두 항의 상쇄를 포함 → 허용오차를 조임
-    for (k, val) in (("FeasibilityTol", 1e-9), ("OptimalityTol", 1e-9), ("NumericFocus", 2))
-        try set_optimizer_attribute(model, k, val) catch end
+    # F 는 θ(cᵀŷ − rᵀϖ) 처럼 큰 두 항의 상쇄를 포함 → 허용오차를 조임 (Gurobi 전용, Ipopt 등에서는 solver_params=false)
+    if solver_params
+        for (k, val) in (("FeasibilityTol", 1e-9), ("OptimalityTol", 1e-9), ("NumericFocus", 2))
+            try set_optimizer_attribute(model, k, val) catch end
+        end
     end
 
     amin = [max(0.0, q[s] - 2ε̂) for s in 1:S]; amax = [min(1.0, q[s] + 2ε̂) for s in 1:S]
@@ -88,6 +92,9 @@ function build_nz_omega(nd::NZData; optimizer, belief_lp::Bool=false, cert_rows:
         <= u[k, s] * r[s] + (nd.hrow[k] > 0 ? nd.hcoef[k] * ζL[nd.hrow[k], s] : 0.0))
     @constraint(model, LMC[jj=1:nXr, s=1:S], ρ̂1[jj, s] + ρ̂2[jj, s] - ρ̂3[jj, s] >= -g[Xr[jj], s] * r[s])
     @constraint(model, N1[j=1:ny, s=1:S], sum(A[k, j] * ϖ[k, s] for k in 1:m if A[k, j] != 0) >= c[j] * r[s])
+    # ϖ_ks ≤ ϖᵁ_k r_s (H 행): ϖˢ/r_s 는 follower 최적 dual 이고 그중 H 행 성분이 ϖᵁ 이하인 것이 존재 (nz_data.jl)
+    # → 최적값을 바꾸지 않는 강화. α-B&B 의 α·ϖ RLT 가 이 행을 쓴다.
+    @constraint(model, Wcap[jj=1:nHr, s=1:S; isfinite(nd.varpiU[Hr[jj]])], ϖ[Hr[jj], s] <= nd.varpiU[Hr[jj]] * r[s])
 
     # ---------------- follower 블록 ----------------
     @variable(model, dmin[s] <= d[s=1:S] <= dmax[s])
@@ -130,19 +137,25 @@ function build_nz_omega(nd::NZData; optimizer, belief_lp::Bool=false, cert_rows:
     v = Dict{Symbol,Any}(:α => α, :a => a, :b => b, :r => r, :ŷ => ŷ, :ϖ => ϖ,
         :ρ̂1 => ρ̂1, :ρ̂3 => ρ̂3, :ζL => ζL, :ζW => ζW,
         :d => d, :e => e, :ȳ => ȳ, :π̃ => π̃, :κ => κ, :ρ̃1 => ρ̃1, :ρ̃3 => ρ̃3,
-        :ρ01 => ρ01, :ρ03 => ρ03, :ζF => ζF, :Xr => Xr, :Hr => Hr, :cert_rows => cert_rows)
-    if belief_lp
-        # 계수는 _nz_set_belief! 에서 채움
+        :ρ01 => ρ01, :ρ03 => ρ03, :ζF => ζF, :Xr => Xr, :Hr => Hr, :cert_rows => cert_rows, :mode => mode)
+    if mode == :belief_lp
+        # belief (r, d) 와 인증서 ϖ 고정 → α 의 계수. 계수는 nz_set_belief! 에서 채움
         v[:cL] = @constraint(model, [i=1:nh, s=1:S], ζL[i, s] - 0.0 * α[i] == 0)
         v[:cF] = @constraint(model, [i=1:nh, s=1:S], ζF[i, s] - 0.0 * α[i] == 0)
         v[:cW] = @constraint(model, [jj=1:nHr, s=1:S], ζW[jj, s] - 0.0 * α[nd.hrow[Hr[jj]]] == 0)
-    else
+    elseif mode == :fixed_alpha
+        # α 고정 → (r, d, ϖ) 의 계수. 계수는 nz_fix_alpha! 에서 채움 (α-B&B 의 정확한 평가)
+        v[:cL] = @constraint(model, [i=1:nh, s=1:S], ζL[i, s] - 0.0 * r[s] == 0)
+        v[:cF] = @constraint(model, [i=1:nh, s=1:S], ζF[i, s] - 0.0 * d[s] == 0)
+        v[:cW] = @constraint(model, [jj=1:nHr, s=1:S], ζW[jj, s] - 0.0 * ϖ[Hr[jj], s] == 0)
+    elseif mode == :global
         @constraint(model, [i=1:nh, s=1:S], ζL[i, s] == α[i] * r[s])
         @constraint(model, [i=1:nh, s=1:S], ζF[i, s] == α[i] * d[s])
         @constraint(model, [jj=1:nHr, s=1:S], ζW[jj, s] == α[nd.hrow[Hr[jj]]] * ϖ[Hr[jj], s])
-        set_optimizer_attribute(model, "NonConvex", 2)
+        solver_params && set_optimizer_attribute(model, "NonConvex", 2)
     end
-    O = NZOmega(model, v, belief_lp)
+    # mode == :relax: 곱 정의 없음 (α-B&B 노드 완화가 RLT 행을 붙임)
+    O = NZOmega(model, v, mode != :global)
     nz_set_objective!(O, nd, zeros(nx))
     return O
 end
@@ -250,6 +263,9 @@ function nz_repair_cert(nd::NZData, σ; lp_optimizer)
     for s in 1:S
         mdl = Model(lp_optimizer); set_silent(mdl)
         @variable(mdl, σp[1:m] >= 0); @variable(mdl, dev[1:m] >= 0)
+        for k in 1:m                                   # Ω 의 Wcap (ϖ ≤ ϖᵁ r) 과 맞춤
+            nd.hrow[k] > 0 && isfinite(nd.varpiU[k]) && set_upper_bound(σp[k], nd.varpiU[k])
+        end
         @constraint(mdl, [k=1:m], dev[k] >= σp[k] - σ[k, s]); @constraint(mdl, [k=1:m], dev[k] >= σ[k, s] - σp[k])
         @constraint(mdl, [j=1:ny], sum(nd.A[k, j] * σp[k] for k in 1:m if nd.A[k, j] != 0) >= nd.c[j])
         @objective(mdl, Min, sum(dev))
@@ -262,8 +278,8 @@ function nz_repair_cert(nd::NZData, σ; lp_optimizer)
         for j in 1:ny
             slack = dot(nd.A[:, j], out[:, s]) - nd.c[j]
             slack >= 0 && continue
-            cand = [k for k in 1:m if nonneg[k] && nd.A[k, j] > 0]
-            isempty(cand) && error("cert repair: 열 $j 를 보정할 비음 행이 없음")
+            cand = [k for k in 1:m if nonneg[k] && nd.A[k, j] > 0 && !(nd.hrow[k] > 0 && isfinite(nd.varpiU[k]))]
+            isempty(cand) && error("cert repair: 열 $j 를 보정할 비음 행이 없음 (상한 없는 행 중)")
             k = cand[argmax(nd.A[cand, j])]
             out[k, s] += (-slack) / nd.A[k, j] + 1e-12
         end

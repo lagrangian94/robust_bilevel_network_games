@@ -7,7 +7,8 @@
   - `nz_data.jl` — 일반 LP recourse 데이터 (`NZData`), location 인스턴스, 원고 max-flow 변환
   - `nz_omega.jl` — 비제로섬 Ω (html Step 4′, θ = θᵁ 고정), 확장 belief 고정 LP, follower 인증서
   - `nz_kkt_eval.jl` — big-M 없는 독립 평가기 (KKT 상보성 indicator + r·φ bilinear) 와 θ 진단
-  - `nz_benders.jl` — 표준 Benders, belief-menu Benders (확장 belief)
+  - `nz_benders.jl` — 표준 Benders, belief-menu Benders (확장 belief), oracle = Gurobi | α-B&B
+  - `nz_alpha_bnb.jl` — α 만 분기하는 전역 해법 (zero-sum α-B&B 를 비제로섬 Ω 로 확장, §9)
   - `test_nz_omega.jl`, `test_nz_belief_menu.jl`, `screen_location_params.jl` — 검증·탐색 스크립트
   - `logs/` — 실행 로그
 - 실행 환경: 이 PC 의 Julia 1.12 (juliaup), Gurobi 12 (Gurobi_jll), 기본 환경에 JuMP·Gurobi·HiGHS·Ipopt 설치.
@@ -185,7 +186,10 @@ follower 2단계 LP (h, y) 에도 θᵁ 와 같은 circuit 논증이 통하는 �
 (d_s 최솟값이 작으면 단위당 손실도 작아짐) 리더 쪽은 CVaR 가중 r 이라 일반 상계는 아직 유도하지 않았다.
 기존 원고 실험의 λᵁ = 10 (max-flow) 도 같은 방식으로 경계를 확인해 볼 만하다.
 
-### λᵁ 별 Benders (`test_nz_lambda_benders.jl`, `logs/lambda_benders_seed4_S3_stopped.log`, tol 1e-4, oracle 600s, 재방문 시 2400s)
+### λᵁ 별 Benders — Wcap 이전 Ω (`logs/lambda_benders_seed4_S3_stopped.log`, tol 1e-4, oracle 600s, 재방문 시 2400s)
+
+> **주의**: 이 절의 시간은 ϖ_ks ≤ p·r_s (Wcap, §9) 를 넣기 전 Ω 로 잰 것이다. Wcap 을 넣으면 Gurobi Ω 의 느림이
+> 사라져서 아래의 "λᵁ 를 줄이면 oracle 이 어려워진다" 는 결론은 대부분 그 강화가 없던 탓이었다. 갱신된 결과는 §9.
 
 λᵁ = 50 은 exact 경계 그 자체 (§8), Ω 는 λᵁ 에 단조 비증가라 50 이상은 모두 exact.
 
@@ -207,7 +211,7 @@ follower 2단계 LP (h, y) 에도 θᵁ 와 같은 circuit 논증이 통하는 �
 - λᵁ=100 표준 Benders 는 반복마다 Ω 가 600s 시간 제한에 걸려 반복 13 에서 중단했다 (결론에 영향 없음).
   λᵁ=1000 의 tol 1e-4 재측정도 생략 (tol 1e-5 결과가 §7 에 있음).
 
-### α-B&B 는 λᵁ 에 덜 민감한가 (미측정, 추론)
+### α-B&B 는 λᵁ 에 덜 민감한가 (측정 전 추론 — 결과는 §9)
 
 위 oracle 은 전부 Gurobi NonConvex 다. α 만 분기하는 `true_dro/global_bilinear_solver.jl` 은 zero-sum Ω 전용이라
 비제로섬의 새 bilinear α·ϖ 를 다루지 못한다. 예상은 양쪽 모두 민감하다는 쪽이다.
@@ -215,9 +219,66 @@ follower 2단계 LP (h, y) 에도 θᵁ 와 같은 circuit 논증이 통하는 �
   λᵁ 크기라 노드 상한의 느슨함이 대략 λᵁ × 상자 폭에 비례할 것 → 더 잘게 분기.
 - λᵁ 가 경계 근처일 때: 반응집합 밖 α 가 최적값과 거의 같은 평평한 영역은 Ω 자체의 성질이라 α-B&B 도 덮어야 함.
 - 유리한 점: α (여기선 5 차원, S 무관) 만 분기하고 상자가 점이면 정확한 LP. zero-sum 에서 Gurobi boost 1,148s → 7s 전례.
-→ 비제로섬에 α-B&B 를 연결해 λᵁ ∈ {50, 100, 1000} 에서 Gurobi 와 비교하는 작업을 진행 (§10).
+→ 비제로섬에 α-B&B 를 연결해 λᵁ ∈ {50, 100, 1000} 에서 Gurobi 와 비교하는 작업을 진행 (§9).
 
-## 9. 요약
+## 9. 비제로섬 α-B&B 와 Wcap 강화 (2026-10-07)
+
+### 구현 (`nz_alpha_bnb.jl`)
+
+`true_dro/global_bilinear_solver.jl` 의 α-공간 B&B (병렬 best-first + diving, 위반 RLT 행 분리, Ipopt 휴리스틱) 를
+비제로섬 Ω 로 옮겼다. 바뀐 것:
+- bilinear 이 α·r, α·d 에 더해 **α_{h(j)}·ϖ_js** (H 행 j 의 인증서). 상자가 점이면 Ω 는 정확한 LP.
+- 노드 완화: belief 행 (a, b, r, d, e 상·하한, TV 볼, CVaR) × 모든 α_i, **인증서 행 (ϖ ≥ 0, ϖ ≤ ϖᵁ r) × 자기 α_{h(j)}**.
+  α_i·ϖ_js (i ≠ h(j)) 는 Ω 에 없으므로 만들지 않는다.
+- Ω 빌더에 mode (`:global`, `:belief_lp`, `:fixed_alpha`, `:relax`) 추가. α-B&B 는 `:relax` (노드) 와 `:fixed_alpha` (평가) 를 쓴다.
+- Benders 에 `oracle = :gurobi | :alpha_bnb` (α-B&B 는 incumbent α 를 고정한 LP 의 해로 cut·belief), belief-menu 에
+  목표값 조기 종료 `target_stop` (α-B&B 전용) 추가.
+- Gurobi Env 는 프로세스 안에서 풀로 재사용 (`_nz_envs`, 성능 중립). 선택 인자 `envs`, `heuristic` 은 이 PC 의 학술 WLS
+  라이선스 (동시 세션 2 개) 에서 worker 1 개로 검증할 때만 쓴다. 기본값은 worker 12 + 휴리스틱 그대로.
+
+### Wcap: ϖ_ks ≤ p·r_s
+
+α·ϖ 의 RLT 를 만들려고 Ω 에 ϖ_ks ≤ ϖᵁ_k r_s (H 행) 를 넣었다. ϖˢ/r_s 는 follower 최적 dual 이고 예약 dual ≤ p 인
+최적 dual 이 존재하므로 (nz_data.jl 논증) 최적값을 바꾸지 않는다. 확인: λᵁ ∈ {50, 100, 1000} 에서 16 개 x 모두
+Ω = KKT V* (최대 차이 1.3e-7). 이전에는 ϖ ≤ p·r_max 만 있어서 α·ϖ 의 McCormick 이 매우 느슨했다.
+
+효과 (Gurobi Ω, x=[3,4]): λᵁ=1000 66~87s → 0.0s, λᵁ=50 2400s 에도 미종료 → 1.5s.
+
+### α-B&B 정확성과 λᵁ 민감도 (`test_nz_alpha_bnb.jl`, `logs/alpha_bnb_lambda_seed4_S3.log`, worker 1, 휴리스틱 끔)
+
+12 개 (λᵁ, x) 모두 α-B&B 의 [LB, UB] 가 KKT V* 를 포함. 대부분 root 노드 하나 (0.2s) 에서 exact.
+민감한 곳은 x=[3,4] 하나:
+
+| λᵁ | α-B&B 노드 | α-B&B 시간 | Gurobi Ω (Wcap) |
+|---|---|---|---|
+| 1000 | 1 | 0.2s | 0.0s |
+| 100 | 34 | 0.6s | 0.1s |
+| 50 | 4,669 | 94s | 1.5s |
+
+→ α-B&B 는 λᵁ 에 덜 민감하지 않다. λᵁ 가 경계 (50) 에 가까우면 반응집합 밖 α 가 평평해져 노드가 폭증한다 (§8 의 추론 중
+두 번째). λᵁ 가 클 때 노드 상한이 느슨해지는 효과 (첫 번째 추론) 는 보이지 않았다 (1000 에서 root 하나로 종료).
+worker 1 개·휴리스틱 없이 잰 것이라 Gurobi 와의 속도 비교는 실험 머신에서 다시 해야 한다.
+
+### λᵁ × oracle × Benders (Wcap 적용, `logs/lambda_benders_wcap_seed4_S3.log`, tol 1e-4)
+
+| λᵁ | oracle | belief-menu | 표준 |
+|---|---|---|---|
+| 50 | Gurobi | 6.2s (Ω 2, menu 2) | 27.3s (Ω 16) |
+| 50 | α-B&B (worker 1) | 602.7s (Ω 2, menu 1) | 1,202s (Ω 10) |
+| 100 | Gurobi | 0.2s | 3.4s (Ω 16) |
+| 100 | α-B&B | 0.7s | 2.4s (Ω 9) |
+| 1000 | Gurobi | 0.1s | 2.4s (Ω 16) |
+| 1000 | α-B&B | 0.5s | 2.0s (Ω 9) |
+
+모두 x* = [3, 4], −1786.0 (λᵁ=50 α-B&B 의 UB 는 −1785.89, gap 6e-5 < tol).
+
+- Wcap 하나로 이전 측정 (§7 E: 표준 3,754s, belief-menu 69.5s, λᵁ=1000) 이 2.4s, 0.1s 가 됐다.
+- α-B&B oracle 을 쓴 표준 Benders 는 반복 10 (Ω 9 회) 로, Gurobi oracle (반복 17, Ω 16 회) 보다 적다. α-B&B 는 incumbent α
+  를 고정한 LP 의 해 (꼭짓점) 로 cut 을 만드는데, 이 cut 이 Gurobi 비볼록 해의 cut 보다 강하다 (반복 9 의 LB: −1,925 vs
+  Gurobi 쪽은 같은 시점 −10⁴~10⁵ 규모). 원인 확인 안 함.
+- λᵁ 는 이제 경계 근처 (50) 만 피하면 Gurobi·α-B&B 모두 빠르다. λᵁ 를 경계의 2 배 (100) 이상으로 잡으면 충분.
+
+## 10. 요약
 
 1. 비제로섬 Ω (html Step 4′) 는 zero-sum 에서 원고 Ω 와 일치하고, location 에서 big-M 없는 독립 평가와 모든 x 에서 일치한다.
 2. θᵁ 는 Lemma 2 대신 구조 상계 (location: v/거리해상도 = 50) 를 써야 한다. 1200 은 수치 상쇄로 Ω 를 과대평가했다.
@@ -225,4 +286,6 @@ follower 2단계 LP (h, y) 에도 θᵁ 와 같은 circuit 논증이 통하는 �
    (iii) 모은 원소의 max 가 모든 x 에서 Ω 를 복원한다. html "확장 belief" 절의 검증 항목이 이 인스턴스에서 성립.
 4. belief-menu Benders 는 전역 Ω 2 회, menu 2 개로 수렴해 표준 Benders 보다 54 배 빨랐다.
 5. λᵁ (follower exact penalty) 는 이 인스턴스에서 경계가 정확히 50 (= v/해상도, θᵁ 와 같음). 그 미만이면 Ω 가 V* 를 10·(50−λᵁ) 만큼 과대평가 (cut 무효), 이상이면 exact (λᵁ=50 에서 16 개 x 모두 확인, `logs/lambda50_allx_seed4_S3.log`). λᵁ 를 줄이면 cut 은 강해지지만 Gurobi 전역 Ω 가 크게 어려워져 이 인스턴스에서는 λᵁ=1000 이 가장 빨랐다 (belief-menu 69.5s, 100: 600s, 50: 3,010s).
-6. 진행 중: 비제로섬 Ω 에 α-B&B 연결 (α·ϖ RLT 추가) 후 λᵁ 민감도를 Gurobi 와 비교.
+6. α-B&B 를 비제로섬에 연결했다 (§9). 정확성 확인. α-B&B 도 λᵁ 경계 근처에서 노드가 폭증해 덜 민감하지 않다.
+7. α·ϖ RLT 를 위해 넣은 Wcap (ϖ ≤ p·r) 이 Ω 를 크게 강화해서 Gurobi Ω 가 수백 초 → 1 초 안팎, Benders 전체가 수 초가 됐다.
+   §7(E)·§8 의 시간 측정은 Wcap 이전 Ω 기준이다.

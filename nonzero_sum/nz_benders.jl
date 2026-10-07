@@ -37,13 +37,33 @@ function _oracle_limit!(tl::Dict, x̄, oracle_time, boost_time)
     tl[x̄] = min(4 * tl[x̄], boost_time)
     return (tl[x̄], false)
 end
+
+"""
+전역 Ω 풀이 (oracle). 반환 (Fval = incumbent 값, bound = 상한, src = 해가 들어 있는 모델).
+  :gurobi    — Ω NonConvex (O)
+  :alpha_bnb — nz_alpha_bnb (nz_alpha_bnb.jl include, julia -t (nworkers+2),1 필요), incumbent α 를 고정한 LP (Fx) 를
+               다시 풀어 그 해로 cut·belief 를 만든다.  target: 목표값 조기 종료 (LB ≥ target 또는 UB ≤ target).
+"""
+function _nz_oracle!(O, Fx, nd, x̄; oracle, time_limit, gap, nworkers, target=nothing, bnb_kw=NamedTuple())
+    if oracle == :gurobi
+        res = nz_solve!(O, nd, x̄; time_limit=time_limit, gap=gap)
+        return res[:Fval], res[:bound], O
+    end
+    r = Main.nz_alpha_bnb(nd, x̄; nworkers=nworkers, time_limit=time_limit, rel_gap=gap, verbose=false, target=target,
+                          bnb_kw...)
+    nz_set_objective!(Fx, nd, x̄)
+    z = Main.nz_eval_alpha!(Fx, nd, r[:α])
+    return z, max(r[:UB], z), Fx
+end
 _rel(a, b) = abs(b - a) / max(abs(b), 1.0)
 
 
 function nz_standard_benders(nd::NZData; optimizer, max_iter=200, tol=1e-4, oracle_time=600.0, boost_time=3600.0,
-                             verbose=true)
+                             oracle::Symbol=:gurobi, oracle_gap=1e-5, nworkers=12, bnb_kw=NamedTuple(), verbose=true)
+    oracle in (:gurobi, :alpha_bnb) || error("oracle = :gurobi | :alpha_bnb")
     omp, x, t0 = _nz_omp(nd; optimizer=optimizer)
-    O = build_nz_omega(nd; optimizer=optimizer)
+    O = oracle == :gurobi ? build_nz_omega(nd; optimizer=optimizer) : nothing
+    Fx = oracle == :alpha_bnb ? Main.nz_build_fixed_alpha(nd, zeros(nd.nx); optimizer=optimizer) : nothing
     LB, UB, best_x = -Inf, Inf, zeros(nd.nx)
     hist = NamedTuple[]
     tl = Dict{Vector{Float64},Float64}(); ncalls = 0
@@ -57,14 +77,15 @@ function nz_standard_benders(nd::NZData; optimizer, max_iter=200, tol=1e-4, orac
         lim, stalled = _oracle_limit!(tl, x̄, oracle_time, boost_time)
         stalled && (status = :Stalled; break)
         ncalls += 1
-        t_o = @elapsed (res = nz_solve!(O, nd, x̄; time_limit=lim))
-        cut = nz_cut_from_solution(O, nd, x̄)
+        t_o = @elapsed ((zinc, zbd, src) = _nz_oracle!(O, Fx, nd, x̄; oracle=oracle, time_limit=lim, gap=oracle_gap,
+                                                       nworkers=nworkers, bnb_kw=bnb_kw))
+        cut = nz_cut_from_solution(src, nd, x̄)
         _add_cut!(omp, x, t0, cut)
-        ub_here = dot(nd.qx, x̄) + res[:bound]
+        ub_here = dot(nd.qx, x̄) + zbd
         ub_here < UB && (UB = ub_here; best_x = copy(x̄))
-        push!(hist, (iter=iter, LB=LB, UB=UB, x=findall(x̄ .> 0.5), F=res[:Fval], t=t_o))
-        verbose && @printf("  [std] it %3d LB=%11.4f UB=%11.4f x=%-10s Ω=%11.4f (%.1fs)\n",
-                           iter, LB, UB, string(findall(x̄ .> 0.5)), res[:Fval], t_o)
+        push!(hist, (iter=iter, LB=LB, UB=UB, x=findall(x̄ .> 0.5), F=zinc, t=t_o))
+        verbose && @printf("  [std] it %3d LB=%11.4f UB=%11.4f x=%-10s Ω=%11.4f bd=%11.4f (%.1fs)\n",
+                           iter, LB, UB, string(findall(x̄ .> 0.5)), zinc, zbd, t_o)
         verbose && flush(stdout)
     end
     return Dict(:status => status, :LB => LB, :UB => UB, :x => best_x, :iters => iter,
@@ -74,10 +95,15 @@ end
 
 function nz_belief_menu_benders(nd::NZData; optimizer, lp_optimizer=optimizer, cert::Symbol=:recompute,
                                 cert_rows::Symbol=:hrows, max_iter=500, tol=1e-4, oracle_time=600.0, boost_time=3600.0,
+                                oracle::Symbol=:gurobi, oracle_gap=1e-5, nworkers=12, bnb_kw=NamedTuple(),
+                                target_stop::Bool=false,
                                 verbose=true)
     cert in (:recompute, :solution) || error("cert = :recompute | :solution")
+    oracle in (:gurobi, :alpha_bnb) || error("oracle = :gurobi | :alpha_bnb")
+    target_stop && oracle != :alpha_bnb && error("target_stop 은 oracle=:alpha_bnb 에서만")
     omp, x, t0 = _nz_omp(nd; optimizer=optimizer)
-    O = build_nz_omega(nd; optimizer=optimizer)
+    O = oracle == :gurobi ? build_nz_omega(nd; optimizer=optimizer) : nothing
+    Fx = oracle == :alpha_bnb ? Main.nz_build_fixed_alpha(nd, zeros(nd.nx); optimizer=optimizer) : nothing
     B = build_nz_omega(nd; optimizer=lp_optimizer, belief_lp=true, cert_rows=cert_rows)
     menu = Tuple{Dict{Symbol,Any},Matrix{Float64}}[]
     LB, UB, best_x = -Inf, Inf, zeros(nd.nx)
@@ -116,9 +142,13 @@ function nz_belief_menu_benders(nd::NZData; optimizer, lp_optimizer=optimizer, c
         lim, stalled = _oracle_limit!(tl, x̄, oracle_time, boost_time)
         stalled && (status = :Stalled; break)
         oracle_calls += 1
-        t_o = @elapsed (res = nz_solve!(O, nd, x̄; time_limit=lim))
-        cut = nz_cut_from_solution(O, nd, x̄)
-        bel_raw = nz_read_belief(O, nd)
+        # 목표값: menu 가 x̄ 에서 수렴했으므로 oracle 은 "t₀ 보다 의미 있게 큰 값이 있는가" 만 판정하면 됨
+        target = target_stop ? t0v + 0.99 * tol * max(1.0, abs(t0v)) : nothing
+        t_o = @elapsed ((zinc, zbd, src) = _nz_oracle!(O, Fx, nd, x̄; oracle=oracle, time_limit=lim, gap=oracle_gap,
+                                                       nworkers=nworkers, target=target, bnb_kw=bnb_kw))
+        res = Dict(:Fval => zinc, :bound => zbd)
+        cut = nz_cut_from_solution(src, nd, x̄)
+        bel_raw = nz_read_belief(src, nd)
         _add_cut!(omp, x, t0, cut)
         ub_here = dot(nd.qx, x̄) + res[:bound]
         ub_here < UB && (UB = ub_here; best_x = copy(x̄))

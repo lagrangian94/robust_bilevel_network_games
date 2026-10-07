@@ -11,6 +11,7 @@ include(joinpath(root, "nonzero_sum", "nz_data.jl"))
 include(joinpath(root, "nonzero_sum", "nz_omega.jl"))
 include(joinpath(root, "nonzero_sum", "nz_kkt_eval.jl"))
 include(joinpath(root, "nonzero_sum", "nz_benders.jl"))
+include(joinpath(root, "nonzero_sum", "nz_alpha_bnb.jl"))
 
 all_x(nd) = [Float64.(collect(bits)) for bits in Iterators.product(fill(0:1, nd.nx)...) if sum(bits) <= nd.gamma]
 
@@ -20,6 +21,12 @@ function main()
     tol = parse(Float64, get(ENV, "NZ_TOL", "1e-4"))
     otime = parse(Float64, get(ENV, "NZ_ORACLE_TIME", "600"))
     boost = parse(Float64, get(ENV, "NZ_BOOST", "2400"))
+    oracles = Symbol.(split(get(ENV, "NZ_ORACLES", "gurobi"), ","))
+    nw = parse(Int, get(ENV, "NZ_WORKERS", "12"))
+    # NZ_LOCAL_WLS=1: 학술 WLS (동시 세션 2) — α-B&B worker 1 개가 공용 Env, 휴리스틱 끔
+    local_wls = get(ENV, "NZ_LOCAL_WLS", "0") == "1"
+    local_wls && (nw = 1)
+    bkw = local_wls ? (envs=[GRB_ENV], heuristic=false) : NamedTuple()
     X = all_x(nd0)
     kkt = get(ENV, "NZ_SKIP_ALLX", "0") == "1" ? Dict() : Dict(x => nz_kkt_value(nd0, x; optimizer=GRB)[:value] for x in X)
     for λ in lams
@@ -39,17 +46,20 @@ function main()
             end
             @printf("  max(Ω incumbent − V*) = %.2e  (> 0 이면 과대평가)\n", worst)
         end
-        println("-- belief-menu Benders")
-        rm = nz_belief_menu_benders(nd; optimizer=GRB, tol=tol, oracle_time=otime, boost_time=boost)
+        for orc in oracles
+        okw = (oracle=orc, nworkers=nw, bnb_kw=bkw)
+        println("-- belief-menu Benders [oracle=$orc]")
+        rm = nz_belief_menu_benders(nd; optimizer=GRB, tol=tol, oracle_time=otime, boost_time=boost, okw...)
         @printf("  belief-menu: %s x*=%s LB=%.4f UB=%.4f iter=%d oracle=%d menu=%d wall=%.1fs\n", rm[:status],
                 string(findall(rm[:x] .> 0.5)), rm[:LB], rm[:UB], rm[:iters], rm[:oracle_calls], rm[:menu_size], rm[:wall])
         if get(ENV, "NZ_SKIP_STD", "0") != "1"
-            println("-- 표준 Benders")
-            rs = nz_standard_benders(nd; optimizer=GRB, tol=tol, oracle_time=otime, boost_time=boost)
+            println("-- 표준 Benders [oracle=$orc]")
+            rs = nz_standard_benders(nd; optimizer=GRB, tol=tol, oracle_time=otime, boost_time=boost, okw...)
             @printf("  standard: %s x*=%s LB=%.4f UB=%.4f iter=%d oracle=%d wall=%.1fs\n", rs[:status],
                     string(findall(rs[:x] .> 0.5)), rs[:LB], rs[:UB], rs[:iters], rs[:oracle_calls], rs[:wall])
         end
         flush(stdout)
+        end
     end
 end
 main()
