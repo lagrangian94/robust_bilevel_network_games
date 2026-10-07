@@ -18,6 +18,7 @@ using JuMP, Printf, LinearAlgebra
 
 # 기본 oracle 이 α-B&B (oracle = :alpha_bnb) 이므로 미리 불러 둔다. 실행은 julia -t (nworkers+2),1.
 isdefined(Main, :global_bilinear_solve) || include(joinpath(@__DIR__, "global_bilinear_solver.jl"))
+isdefined(Main, :add_phase1_mincut_vi!) || include(joinpath(@__DIR__, "true_dro_mincut_vi.jl"))
 
 
 # ---------------------------------------------------------------------
@@ -191,6 +192,7 @@ function belief_menu_benders_optimize!(td::TrueDROData;
         target_stop::Bool=true, repeat_boost::Bool=true, local_first::Bool=(oracle == :alpha_bnb), local_time=60.0,
         menu_mw::Bool=true,
         nworkers=12, max_iter=1000, tol=5e-3, verbose=true,
+        # min-cut VI (원고 Proposition dual-VI) 기본 사용. α-B&B oracle·belief-menu 와의 조합은 아직 미검증.
         valid_inequality::Symbol=:mincut, source_sink_cut=nothing, wall_time_limit=7200.0)
     oracle in (:gurobi, :alpha_bnb) || error("oracle must be :gurobi or :alpha_bnb (got $oracle)")
     if oracle == :alpha_bnb

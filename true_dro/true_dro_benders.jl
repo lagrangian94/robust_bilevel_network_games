@@ -28,6 +28,7 @@ using Statistics
 
 # 기본 boost 해법이 α-B&B (boost_solver = :alpha_bnb) 이므로 미리 불러 둔다. 실행은 julia -t (boost_nworkers+2),1.
 isdefined(Main, :global_bilinear_solve) || include(joinpath(@__DIR__, "global_bilinear_solver.jl"))
+isdefined(Main, :add_phase1_mincut_vi!) || include(joinpath(@__DIR__, "true_dro_mincut_vi.jl"))
 
 
 """
@@ -60,8 +61,11 @@ Run outer Benders.
   매 반복 menu 의 belief 고정 LP 를 현재 x̄ 에서 풀어 t₀ 보다 큰 것을 cut 으로 추가
   (docs/benders_belief_menu_design.md). belief_menu_benders.jl 을 먼저 include 해야 함.
 - `boost_nworkers`: `:alpha_bnb` 의 worker 수 (default 12).
-- `valid_inequality`: `:none` (default), `:mincut`.
-  `:mincut` — Phase 1 (all S, 1회) + Phase 2B (comp-min + α*, 매 iter) min-cut valid inequalities.
+- `valid_inequality`: `:mincut` (default), `:none`.
+  `:mincut` — Phase 1 (all S, 1회) min-cut valid inequalities (원고 Proposition dual-VI, h̄ = 0).
+  Phase 2B (comp-min + α*, 매 iter) 는 `phase2B_vi=true` 일 때만 추가.
+  주의: 기본 구성인 α-B&B boost (`boost_solver=:alpha_bnb`) 및 belief-menu (`belief_menu=true`) 와
+  함께 쓴 경우는 아직 검증하지 않았음.
 
 Returns Dict with :status, :Z0, :x, :α, :lower_bound, :upper_bound, :iters, :history.
 """
@@ -76,7 +80,7 @@ function true_dro_benders_optimize!(td::TrueDROData;
         max_mini_benders_iter::Int=5,
         inexact::Bool=false,
         strengthen_cuts::Symbol=:mw,
-        valid_inequality::Symbol=:none,
+        valid_inequality::Symbol=:mincut,   # α-B&B·belief-menu 와의 조합은 아직 미검증
         add_objF_vi::Bool=false,
         phase2B_vi::Bool=false,
         source_sink_cut::Union{Nothing, Dict}=nothing,
