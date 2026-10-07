@@ -185,7 +185,7 @@ follower 2단계 LP (h, y) 에도 θᵁ 와 같은 circuit 논증이 통하는 �
 (d_s 최솟값이 작으면 단위당 손실도 작아짐) 리더 쪽은 CVaR 가중 r 이라 일반 상계는 아직 유도하지 않았다.
 기존 원고 실험의 λᵁ = 10 (max-flow) 도 같은 방식으로 경계를 확인해 볼 만하다.
 
-### λᵁ 별 Benders (`test_nz_lambda_benders.jl`, `logs/lambda_benders_seed4_S3.log`, tol 1e-4, oracle 600s, 재방문 시 2400s)
+### λᵁ 별 Benders (`test_nz_lambda_benders.jl`, `logs/lambda_benders_seed4_S3_stopped.log`, tol 1e-4, oracle 600s, 재방문 시 2400s)
 
 λᵁ = 50 은 exact 경계 그 자체 (§8), Ω 는 λᵁ 에 단조 비증가라 50 이상은 모두 exact.
 
@@ -194,7 +194,7 @@ follower 2단계 LP (h, y) 에도 θᵁ 와 같은 circuit 논증이 통하는 �
 | 50 | belief-menu | Optimal | [3,4] | −1785.96 | 11 | 3 | 2 | 3,010s |
 | 50 | 표준 | Stalled (gap 2.2e-4) | [3,4] | −1785.61 | 18 | 17 | − | 8,485s |
 | 100 | belief-menu | Optimal | [3,4] | −1785.97 | 10 | 2 | 2 | 600s |
-| 100 | 표준 | (측정 중) | | | | | | |
+| 100 | 표준 | 중단 (반복 13, LB −6.8×10⁴) | [3,4] (UB) | −1785.96 | 13+ | 13 | − | ~7,000s+ |
 | 1000 | belief-menu (tol 1e-5, §7) | Optimal | [3,4] | −1786.00 | 10 | 2 | 2 | 69.5s |
 | 1000 | 표준 (tol 1e-5, §7) | Optimal | [3,4] | −1786.00 | 17 | 16 | − | 3,754s |
 
@@ -204,6 +204,18 @@ follower 2단계 LP (h, y) 에도 θᵁ 와 같은 circuit 논증이 통하는 �
   50 은 2400s 보강 뒤에도 gap 2.2e-4. 경계에 가까운 λᵁ 에서는 반응집합 밖 α 의 벌점이 리더 이득과 거의 같아
   (§8: 기울기 10·(50−λᵁ)) Ω 의 최적해 근처가 평평해지는 것으로 보인다.
 - 이 인스턴스에서는 cut 강화보다 oracle 난이도 증가가 커서 λᵁ=1000 (경계의 20 배) 이 가장 빨랐다.
+- λᵁ=100 표준 Benders 는 반복마다 Ω 가 600s 시간 제한에 걸려 반복 13 에서 중단했다 (결론에 영향 없음).
+  λᵁ=1000 의 tol 1e-4 재측정도 생략 (tol 1e-5 결과가 §7 에 있음).
+
+### α-B&B 는 λᵁ 에 덜 민감한가 (미측정, 추론)
+
+위 oracle 은 전부 Gurobi NonConvex 다. α 만 분기하는 `true_dro/global_bilinear_solver.jl` 은 zero-sum Ω 전용이라
+비제로섬의 새 bilinear α·ϖ 를 다루지 못한다. 예상은 양쪽 모두 민감하다는 쪽이다.
+- λᵁ 가 클 때: 노드 RLT 완화에서 ζF = α·d 가 어긋날 여지를 follower 블록이 이용하는데, 그 블록의 벌점 계수가
+  λᵁ 크기라 노드 상한의 느슨함이 대략 λᵁ × 상자 폭에 비례할 것 → 더 잘게 분기.
+- λᵁ 가 경계 근처일 때: 반응집합 밖 α 가 최적값과 거의 같은 평평한 영역은 Ω 자체의 성질이라 α-B&B 도 덮어야 함.
+- 유리한 점: α (여기선 5 차원, S 무관) 만 분기하고 상자가 점이면 정확한 LP. zero-sum 에서 Gurobi boost 1,148s → 7s 전례.
+→ 비제로섬에 α-B&B 를 연결해 λᵁ ∈ {50, 100, 1000} 에서 Gurobi 와 비교하는 작업을 진행 (§10).
 
 ## 9. 요약
 
@@ -212,4 +224,5 @@ follower 2단계 LP (h, y) 에도 θᵁ 와 같은 circuit 논증이 통하는 �
 3. 확장 belief (belief + follower 인증서) 를 고정하면 Ω 가 LP 가 되고, (i) 얻은 x 에서 exact, (ii) 다른 x 에서 유효,
    (iii) 모은 원소의 max 가 모든 x 에서 Ω 를 복원한다. html "확장 belief" 절의 검증 항목이 이 인스턴스에서 성립.
 4. belief-menu Benders 는 전역 Ω 2 회, menu 2 개로 수렴해 표준 Benders 보다 54 배 빨랐다.
-5. λᵁ (follower exact penalty) 는 이 인스턴스에서 경계가 정확히 50 (= v/해상도, θᵁ 와 같음). 그 미만이면 Ω 가 V* 를 10·(50−λᵁ) 만큼 과대평가 (cut 무효), 이상이면 exact (λᵁ=50 에서 16 개 x 모두 확인, `logs/lambda50_allx_seed4_S3.log`). λᵁ=1000 은 cut 을 크게 약화 → λᵁ 별 Benders 비교 측정 중.
+5. λᵁ (follower exact penalty) 는 이 인스턴스에서 경계가 정확히 50 (= v/해상도, θᵁ 와 같음). 그 미만이면 Ω 가 V* 를 10·(50−λᵁ) 만큼 과대평가 (cut 무효), 이상이면 exact (λᵁ=50 에서 16 개 x 모두 확인, `logs/lambda50_allx_seed4_S3.log`). λᵁ 를 줄이면 cut 은 강해지지만 Gurobi 전역 Ω 가 크게 어려워져 이 인스턴스에서는 λᵁ=1000 이 가장 빨랐다 (belief-menu 69.5s, 100: 600s, 50: 3,010s).
+6. 진행 중: 비제로섬 Ω 에 α-B&B 연결 (α·ϖ RLT 추가) 후 λᵁ 민감도를 Gurobi 와 비교.
