@@ -7,7 +7,9 @@ run_loc_base_scaling.jl — 기본 인스턴스 (SGB128 Goyal 기본 사례 + �
   SBA  : 같은 구조, 전역은 α-B&B (남은 시간 전체). MW 는 α-B&B 의 restricted cut 에만 (SB-G 전역 cut, local cut 은 MW 없음)
   ALG  : oracle 600 s, 재방문 시 2,400 s, 모두 남은 시간으로 자름
   ALG  : Algorithm 2 (belief-menu + α-B&B, MW)
-작은 S 부터. 어떤 방법이 시간 제한 (또는 Optimal 이 아닌 종료) 이면 그 방법은 더 큰 S 를 건너뜀.
+작은 S 부터. E 는 미해결이면 더 큰 S 를 건너뜀. Benders 계열은 LB_SKIP_BENDERS=1 일 때만 같은 규칙 (기본 0: 모든 S 를
+시간 제한까지 돌려 최종 gap 과 t_LB (LB 가 최종 LB 에 처음 도달한 경과 시간) 를 기록. 기본 인스턴스에서는 모든 방법이 최적해는
+금방 찾고 x 인증 (상한) 에서 막히므로, 건너뛰면 큰 S 의 정보가 사라짐).
 
 환경변수
   LB_S = "3,20,50,200"   LB_METHODS = "E,SBG,SBA,ALG"   LB_EPS = 0.3   LB_BETA = 0.4   LB_DELTA = 0.1   LB_QUOTA = 150
@@ -82,11 +84,13 @@ for S in Ss
                 nz_standard_benders(nd; oracle=(meth == "SBG" ? :gurobi : :alpha_bnb), local_first=true,
                                     local_time=local_time, oracle_remaining=true, common...)
             t = time() - t0
-            r[:status] == :Optimal || push!(given_up, meth)
+            envf("LB_SKIP_BENDERS", "0") == "1" && r[:status] != :Optimal && push!(given_up, meth)
             gap = abs(r[:UB] - r[:LB]) / max(1.0, abs(r[:UB]))
-            @printf("RESULT S=%d method=%s status=%s x=%s LB=%.6f UB=%.6f gap=%.2e iters=%d global=%d local=%s menu=%s time=%.1f\n",
+            iLB = findfirst(h -> h.LB >= r[:LB] - 1e-4 * max(1.0, abs(r[:LB])), r[:hist])
+            tLB = iLB === nothing ? t : r[:hist][iLB].w        # 마지막 반복에서 처음 도달 (기록 전 종료) 이면 종료 시각
+            @printf("RESULT S=%d method=%s status=%s x=%s LB=%.6f UB=%.6f gap=%.2e iters=%d global=%d local=%s menu=%s t_LB=%.1f time=%.1f\n",
                     S, meth, r[:status], xstr(r[:x]), r[:LB], r[:UB], gap, r[:iters], r[:oracle_calls],
-                    string(get(r, :local_cuts, "-")), string(get(r, :menu_size, "-")), t)
+                    string(get(r, :local_cuts, "-")), string(get(r, :menu_size, "-")), tLB, t)
         end
         flush(stdout)
     end

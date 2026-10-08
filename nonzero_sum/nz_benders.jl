@@ -237,7 +237,7 @@ function nz_standard_benders(nd::NZData; optimizer, max_iter=200, tol=1e-4, orac
                 cval = cut[:intercept] + dot(cut[:slope], x̄)
                 if cval > value(t0) + tol * max(1.0, abs(value(t0)))
                     _add_cut!(omp, x, t0, cut); _log_cut!(cuts, :local, iter, x̄, cut, ok); n_local += 1; n_mw += ok
-                    push!(hist, (iter=iter, LB=LB, UB=UB, x=findall(x̄ .> 0.5), F=rl[:Fval], t=t_l))
+                    push!(hist, (iter=iter, LB=LB, UB=UB, x=findall(x̄ .> 0.5), F=rl[:Fval], t=t_l, w=time() - wall))
                     verbose && @printf("  [loc] it %3d LB=%11.4f UB=%11.4f x=%-10s Ω_loc=%11.4f (%.1fs)\n",
                                        iter, LB, UB, string(findall(x̄ .> 0.5)), rl[:Fval], t_l)
                     verbose && flush(stdout)
@@ -266,7 +266,7 @@ function nz_standard_benders(nd::NZData; optimizer, max_iter=200, tol=1e-4, orac
         _add_cut!(omp, x, t0, cut)
         ub_here = dot(nd.qx, x̄) + zbd
         ub_here < UB && (UB = ub_here; best_x = copy(x̄))
-        push!(hist, (iter=iter, LB=LB, UB=UB, x=findall(x̄ .> 0.5), F=zinc, t=t_o))
+        push!(hist, (iter=iter, LB=LB, UB=UB, x=findall(x̄ .> 0.5), F=zinc, t=t_o, w=time() - wall))
         verbose && @printf("  [std] it %3d LB=%11.4f UB=%11.4f x=%-10s Ω=%11.4f bd=%11.4f (%.1fs)\n",
                            iter, LB, UB, string(findall(x̄ .> 0.5)), zinc, zbd, t_o)
         verbose && flush(stdout)
@@ -321,7 +321,7 @@ function nz_belief_menu_benders(nd::NZData; optimizer, lp_optimizer=optimizer, c
             end
         end
         if nviol > 0
-            push!(hist, (iter=iter, LB=LB, UB=UB, x=findall(x̄ .> 0.5), kind=:menu, n=nviol))
+            push!(hist, (iter=iter, LB=LB, UB=UB, x=findall(x̄ .> 0.5), kind=:menu, n=nviol, w=time() - wall))
             verbose && @printf("  [menu] it %3d LB=%11.4f UB=%11.4f x=%-10s menu cut %d/%d (V_menu=%.4f)\n",
                                iter, LB, UB, string(findall(x̄ .> 0.5)), nviol, length(menu), V_menu)
             verbose && flush(stdout)
@@ -366,7 +366,7 @@ function nz_belief_menu_benders(nd::NZData; optimizer, lp_optimizer=optimizer, c
             vb = nz_solve!(B, nd, x̄)[:Fval]
             push!(exact_log, (iter=iter, x=findall(x̄ .> 0.5), omega=res[:Fval], lp=vb, gap=res[:Fval] - vb))
         end
-        push!(hist, (iter=iter, LB=LB, UB=UB, x=findall(x̄ .> 0.5), kind=:oracle, n=length(menu)))
+        push!(hist, (iter=iter, LB=LB, UB=UB, x=findall(x̄ .> 0.5), kind=:oracle, n=length(menu), w=time() - wall))
         verbose && @printf("  [orcl] it %3d LB=%11.4f UB=%11.4f x=%-10s Ω=%11.4f (%.1fs) menu=%d%s\n",
                            iter, LB, UB, string(findall(x̄ .> 0.5)), res[:Fval], t_o, length(menu),
                            new_b ? @sprintf(" (+belief, LP@x̄=%.4f, gap %.1e)", exact_log[end].lp, exact_log[end].gap) : "")
