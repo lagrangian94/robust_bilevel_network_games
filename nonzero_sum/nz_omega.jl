@@ -367,8 +367,9 @@ function nz_solve!(O::NZOmega, nd::NZData, x̄; time_limit=nothing, gap=1e-5)
     O.belief_lp || set_optimizer_attribute(O.model, "MIPGap", gap)
     optimize!(O.model)
     st = termination_status(O.model)
-    ok = st == MOI.OPTIMAL || (st == MOI.TIME_LIMIT && has_values(O.model))
+    # LOCALLY_SOLVED: local 모드 (OptimalityTarget = 1) 의 정상 종료. 값은 실행가능해의 값일 뿐 상한이 아니므로 bound = NaN
+    ok = st == MOI.OPTIMAL || st == MOI.LOCALLY_SOLVED || (st == MOI.TIME_LIMIT && has_values(O.model))
     ok || error("nz Ω: $st")
-    bd = st == MOI.OPTIMAL ? objective_value(O.model) : objective_bound(O.model)
+    bd = st == MOI.OPTIMAL ? objective_value(O.model) : st == MOI.LOCALLY_SOLVED ? NaN : objective_bound(O.model)
     return Dict(:status => st, :Fval => objective_value(O.model), :bound => bd)
 end

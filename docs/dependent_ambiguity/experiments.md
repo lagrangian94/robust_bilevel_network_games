@@ -12,8 +12,7 @@
 | 기본 인스턴스 | Goyal 기본 사례 (SGB128 8 도시) + 예약, **quota w_i = 150** (기존 100 에서 변경) | quota 100 은 최적점에서 결합 효과 0, 150 은 δ 가 결정을 바꿈 (§2). 기존 결과는 표 1 개 + Benders 1 회라 재실행 비용 작음 |
 | 인스턴스 역할 | 기본 = 모형 해석 (loc-values, loc-insample, loc-delta, loc-oos) + S 스케일링 비교. 무작위 = 크기 스케일링 (loc-comp) | 원고 6.1 Instances and Setup, Goyal §7.2 / §7.3 구성 |
 | E (KKT 전수) | **기본 인스턴스에서만 보고**. 개선 시도 후 안 풀리면 "미해결" 로 정직하게 | 무작위 d = 15 에서 S = 3 부터 시간 제한 (§3) |
-| 시간 제한 | 방법당 3,600 s, E 는 x 하나당 300 s. 작은 S 에서 실패한 방법은 큰 S 생략 | 안 풀리는 문제에 시간 쓰지 않음 |
-| 자원 | 이 PC (Ryzen 9 9950X) 는 α-B&B worker 12, 휴리스틱 켬 (`julia -t 14,1`) | worker 1 제한은 다른 PC 의 WLS 사정 |
+| 시간 제한 | 방법당 3,600 s (모든 oracle 호출을 남은 시간으로 자름), E 는 x 하나당 300 s. 작은 S 에서 실패한 방법은 큰 S 생략 | 안 풀리는 문제에 시간 쓰지 않음 |
 | 남은 결정 | ε = 0.3 의 근거 (validation 또는 표본 수 규칙) | 현재는 효과가 보이는 값으로 고른 것 |
 
 ## 1. 방법 (원고 6.1 Algorithms)
@@ -21,11 +20,12 @@
 | 이름 | 내용 | 코드 |
 |---|---|---|
 | E | 모든 x 에서 V*(x) 를 KKT 단일수준 MINLP 로 (Benders·minimax·big-M 없음) | `nz_kkt_value` (원래), `nz_kkt_value_reduced` (축소판, §3) |
-| SB-G | 표준 Benders: Ω local 해 (Gurobi OptimalityTarget=1) cut 먼저, 위반 cut 없을 때만 Gurobi 전역 Ω | `nz_standard_benders(...; oracle=:gurobi, local_first=true)` |
-| SB-A | 같음, 전역은 α-B&B | `nz_standard_benders(...; oracle=:alpha_bnb, local_first=true)` |
-| Algorithm 2 | belief-menu + α-B&B | `nz_belief_menu_benders` |
+| SB-G | 표준 Benders: Ω local 해 (Gurobi OptimalityTarget=1) cut 먼저, 위반 cut 없을 때만 Gurobi 전역 Ω. 전역 호출에는 남은 시간 전체 | `nz_standard_benders(...; oracle=:gurobi, local_first=true, oracle_remaining=true)` |
+| SB-A | 같음, 전역은 α-B&B (남은 시간 전체) | `nz_standard_benders(...; oracle=:alpha_bnb, local_first=true, oracle_remaining=true)` |
+| Algorithm 2 | belief-menu + α-B&B. oracle 600 s, 같은 후보 재방문 시 2,400 s (첫 호출이 부정확했다는 뜻이므로), 남은 시간으로 자름 | `nz_belief_menu_benders` |
 
-공통: ε = 1e-4, oracle 600 s (재방문 2,400 s), worker 12.
+공통: ε = 1e-4. Magnanti–Wong: Algorithm 2 (menu cut, restricted cut) 와 SB-A 의 전역 (restricted) cut 에 적용. SB-G 의 전역 cut (Ω 해) 과 local cut 에는 없음 (MW 를 하려면 bilinear 문제를 한 번 더 풀어야 함).
+유한 수렴: local cut 은 x̄ 에서 허용오차 이상 위반될 때만 추가 → 같은 x̄ 에서 t₀ 가 매번 tol 이상 오르고 V*(x̄) 로 막혀 있음 → x̄ 마다 유한, 𝒳 유한.
 
 ## 2. 기본 인스턴스 (SGB128 + 예약 quota 150, S = 3, seed 1, β = 0.4, ε = 0.3)
 
@@ -61,6 +61,31 @@
 | 300 | 없음 |
 
 참고: 원고 tex 의 TODO (−871.67 vs −911.8) 는 quota 불일치 (결합 로그 300, 원고 100) 가 원인.
+
+### S=3 스모크 (`logs/loc_base_scaling_smoke_S3.log`, 방법당 900 s, δ = 0.1) — 2026-10-08 저녁
+
+| 방법 | 결과 | LB 가 최적 (−860.5) 에 도달 | 막힌 곳 |
+|---|---|---|---|
+| E (KKT 축소판) | **Optimal 14 s** (16 개 x 전부) | — | — |
+| SB-G | TimeLimit, LB −860.50, UB −639.4 (gap 35%) | local cut 5 개, 수 초 | x={1,2} 인증용 Gurobi 전역 1 회가 남은 시간 전부 |
+| SB-A | TimeLimit, LB −860.52, UB +1848 | local cut 5 개, 수 초 | x={1,2} 인증용 α-B&B 1 회 |
+| Algorithm 2 | TimeLimit, LB −860.50, UB +2169 | belief 5 개, ~10 s | x={1,2} α-B&B 600 s + 290 s |
+
+수정한 버그: Gurobi local 모드는 `LOCALLY_SOLVED` 를 반환하는데 `nz_solve!` 가 이를 오류로 처리했고, local 단계의 try/catch 가 오류를 삼켜
+SB-G/SB-A 가 사실상 전역만 쓰는 Benders 로 돌았다 (이전 두 실행 `loc_base_scaling_v0/v1_aborted.log` 는 무효). try/catch 제거, 상태 명시 검사.
+
+### α-B&B 상한 진단 (`diag_abb_base.jl`, x = {1,2}, ε = 0.3, 600 s, worker 12, `logs/diag_abb_base_x12.log`)
+
+| quota | δ | KKT V* | α-B&B LB | α-B&B UB | gap | 노드 |
+|---|---|---|---|---|---|---|
+| 100 | Inf | −1283.5 | −1283.54 | −142.2 | 89% | 37,836 |
+| 100 | 0.1 | −1283.5 | −1283.54 | +248.1 | 119% | 19,283 |
+| 150 | Inf | −1437.0 | −1437.06 | +980.9 | 168% | 32,219 |
+| 150 | 0.1 | −1470.5 | −1470.52 | +1531.2 | 204% | 17,960 |
+
+- α-B&B 는 해는 즉시 찾지만 상한이 느슨하다. quota (h^r 상자 폭) 가 클수록, 결합이 있을수록 (노드 처리 속도 절반) 나빠짐.
+- 같은 점에서 Gurobi Ω (spatial B&B) 상한 −1249 (900 s) 가 α-B&B 보다 훨씬 좋고, KKT 는 수 초에 정확한 값.
+- 3,600 s 상한 추이 (α-B&B, Gurobi Ω) 진행 중: `logs/diag_abb_base_x12_q150_d0p1_3600.log`.
 
 ### 남은 작업 (기본 인스턴스)
 

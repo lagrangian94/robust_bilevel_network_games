@@ -3,9 +3,10 @@ run_loc_base_scaling.jl — 기본 인스턴스 (SGB128 Goyal 기본 사례 + �
 
 방법 (원고 6.1 Algorithms)
   E    : 모든 x 를 KKT 독립 평가 (big-M·재정식화 없음). x 하나라도 시간 제한이면 미해결.
-  SBG  : 표준 Benders, local (OptimalityTarget=1) cut 먼저, 위반 cut 이 없을 때만 Gurobi 전역 Ω
-  SBA  : 같은 구조, 전역은 α-B&B
-  ALG  : Algorithm 2 (belief-menu + α-B&B)
+  SBG  : 표준 Benders, local (OptimalityTarget=1) cut 먼저, 위반 cut 이 없을 때만 Gurobi 전역 Ω (남은 시간 전체)
+  SBA  : 같은 구조, 전역은 α-B&B (남은 시간 전체). MW 는 α-B&B 의 restricted cut 에만 (SB-G 전역 cut, local cut 은 MW 없음)
+  ALG  : oracle 600 s, 재방문 시 2,400 s, 모두 남은 시간으로 자름
+  ALG  : Algorithm 2 (belief-menu + α-B&B, MW)
 작은 S 부터. 어떤 방법이 시간 제한 (또는 Optimal 이 아닌 종료) 이면 그 방법은 더 큰 S 를 건너뜀.
 
 환경변수
@@ -35,7 +36,7 @@ TL = parse(Float64, envf("LB_TL", "3600")); E_TL = parse(Float64, envf("LB_E_TL"
 kkt = envf("LB_E_FORM", "reduced") == "full" ? nz_kkt_value : nz_kkt_value_reduced
 nw = parse(Int, envf("LB_WORKERS", "12"))
 Threads.nthreads() >= nw + 2 || error("α-B&B: Julia 스레드 $(Threads.nthreads()) < LB_WORKERS+2 = $(nw + 2) (julia -t $(nw + 2),1)")
-common = (optimizer=GRB, tol=1e-4, nworkers=nw, time_limit=TL, verbose=false,
+common = (optimizer=GRB, tol=1e-4, nworkers=nw, time_limit=TL, verbose=true,
           oracle_time=min(parse(Float64, envf("LB_ORACLE_TIME", "600")), TL),
           boost_time=min(parse(Float64, envf("LB_BOOST", "2400")), TL))
 local_time = parse(Float64, envf("LB_LOCAL_TIME", "60"))
@@ -79,7 +80,7 @@ for S in Ss
         else
             r = meth == "ALG" ? nz_belief_menu_benders(nd; oracle=:alpha_bnb, common...) :
                 nz_standard_benders(nd; oracle=(meth == "SBG" ? :gurobi : :alpha_bnb), local_first=true,
-                                    local_time=local_time, common...)
+                                    local_time=local_time, oracle_remaining=true, common...)
             t = time() - t0
             r[:status] == :Optimal || push!(given_up, meth)
             gap = abs(r[:UB] - r[:LB]) / max(1.0, abs(r[:UB]))

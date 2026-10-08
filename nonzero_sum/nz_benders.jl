@@ -103,6 +103,9 @@ end
 
 # 같은 x̄ 에서 oracle 을 다시 부르면 (상한이 시간 제한 안에 안 닫혀 LB < UB 가 남은 경우) 시간 제한을 4배 (최대 boost_time).
 # 이미 boost_time 으로 풀었던 x̄ 가 또 나오면 더 할 수 있는 게 없으므로 :Stalled.
+"oracle 호출 시간을 전체 시간 제한의 남은 시간으로 자름 (최소 1 s). 전체 제한을 넘겨 도는 일을 막는다."
+_remaining(wall, time_limit, lim) = isfinite(time_limit) ? min(lim, max(time_limit - (time() - wall), 1.0)) : lim
+
 function _oracle_limit!(tl::Dict, x̄, oracle_time, boost_time)
     haskey(tl, x̄) || return (tl[x̄] = oracle_time; (oracle_time, false))
     tl[x̄] >= boost_time && return (tl[x̄], true)
@@ -165,11 +168,40 @@ function _nz_lp_cut!(L::NZOmega, nd::NZData, x̄, z; mw::Bool, x_core)
 end
 
 
+"local Ω 풀이: 해가 있으면 (:status, :Fval), 시간 제한에 해가 없으면 nothing, 그 밖의 상태는 오류"
+function _nz_local_solve!(Oloc::NZOmega, nd::NZData, x̄; time_limit)
+    nz_set_objective!(Oloc, nd, x̄)
+    set_time_limit_sec(Oloc.model, time_limit)
+    optimize!(Oloc.model)
+    st = termination_status(Oloc.model)
+    st == MOI.TIME_LIMIT && !has_values(Oloc.model) && return nothing
+    ok = st == MOI.LOCALLY_SOLVED || st == MOI.OPTIMAL || (st == MOI.TIME_LIMIT && has_values(Oloc.model))
+    ok || error("nz Ω (local): $st")
+    return Dict(:status => st, :Fval => objective_value(Oloc.model))
+end
+
+"""
+Ω 해 (Gurobi 전역 또는 local) 로 cut. mw 면 그 해의 α (h^r) 를 고정한 LP 를 x̄ 에서 다시 풀고 (값 ≥ Ω 해의 값) 그 LP 에서
+MW 강화 (α-B&B 경로와 같은 _nz_lp_cut!). α 고정 LP 가 실패하면 Ω 해 그대로의 cut. 반환 (cut, MW 적용 여부).
+"""
+function _nz_alpha_cut(O::NZOmega, Fx, nd::NZData, x̄; mw::Bool, x_core)
+    (mw && Fx !== nothing) || return nz_cut_from_solution(O, nd, x̄), false
+    α̂ = [max(value(O.v[:α][i]), 0.0) for i in 1:nz_nh(nd)]
+    nz_set_objective!(Fx, nd, x̄)
+    z = Main.nz_eval_alpha!(Fx, nd, α̂)
+    isfinite(z) || return nz_cut_from_solution(O, nd, x̄), false
+    return _nz_lp_cut!(Fx, nd, x̄, z; mw=true, x_core=x_core)
+end
+
+
 function nz_standard_benders(nd::NZData; optimizer, max_iter=200, tol=1e-4, oracle_time=600.0, boost_time=3600.0,
                              oracle::Symbol=:alpha_bnb, oracle_gap=1e-5, nworkers=12, bnb_kw=NamedTuple(),
                              mw::Bool=true, vi::Bool=false, verbose=true, time_limit=Inf,
-                             local_first::Bool=false, local_time=60.0)
+                             local_first::Bool=false, local_time=60.0, oracle_remaining::Bool=false)
     oracle in (:gurobi, :alpha_bnb) || error("oracle = :gurobi | :alpha_bnb")
+    # oracle_remaining: 전역 호출에 처음부터 남은 시간 전체를 줌 (SB-G / SB-A: 전역은 local cut 이 막힌 뒤에만 불리므로
+    # 600 → 2,400 단계 증가 대신). time_limit 이 유한해야 함.
+    oracle_remaining && !isfinite(time_limit) && error("oracle_remaining 은 유한한 time_limit 이 필요")
     x_core = nz_core_point(nd); n_mw = 0
     omp, x, t0 = _nz_omp(nd; optimizer=optimizer)
     vi && nz_add_dual_vi!(omp, x, t0, nd)
@@ -183,7 +215,8 @@ function nz_standard_benders(nd::NZData; optimizer, max_iter=200, tol=1e-4, orac
         set_optimizer_attribute(Oloc.model, "OptimalityTarget", 1)
     end
     n_local = 0
-    Fx = oracle == :alpha_bnb ? Main.nz_build_fixed_alpha(nd, zeros(nd.nx); optimizer=optimizer) : nothing
+    # α (h^r) 고정 LP: α-B&B 의 cut 생성, 그리고 MW 를 켜면 Gurobi 전역 해·local 해의 α 를 고정해 같은 MW 를 적용
+    Fx = (oracle == :alpha_bnb || mw) ? Main.nz_build_fixed_alpha(nd, zeros(nd.nx); optimizer=optimizer) : nothing
     LB, UB, best_x = -Inf, Inf, zeros(nd.nx)
     hist = NamedTuple[]
     tl = Dict{Vector{Float64},Float64}(); ncalls = 0
@@ -197,12 +230,13 @@ function nz_standard_benders(nd::NZData; optimizer, max_iter=200, tol=1e-4, orac
         _rel(LB, UB) <= tol && (status = :Optimal; break)
         time() - wall > time_limit && (status = :TimeLimit; break)
         if local_first
-            t_l = @elapsed (rl = try nz_solve!(Oloc, nd, x̄; time_limit=local_time) catch; nothing end)
+            # local 해가 시간 안에 하나도 없으면 (TIME_LIMIT, 해 없음) 전역으로. 그 밖의 비정상 상태는 오류 (Ω 는 항상 실행가능)
+            t_l = @elapsed (rl = _nz_local_solve!(Oloc, nd, x̄; time_limit=_remaining(wall, time_limit, local_time)))
             if rl !== nothing
-                cut = nz_cut_from_solution(Oloc, nd, x̄)
+                cut, ok = _nz_alpha_cut(Oloc, Fx, nd, x̄; mw=mw, x_core=x_core)
                 cval = cut[:intercept] + dot(cut[:slope], x̄)
                 if cval > value(t0) + tol * max(1.0, abs(value(t0)))
-                    _add_cut!(omp, x, t0, cut); _log_cut!(cuts, :local, iter, x̄, cut, false); n_local += 1
+                    _add_cut!(omp, x, t0, cut); _log_cut!(cuts, :local, iter, x̄, cut, ok); n_local += 1; n_mw += ok
                     push!(hist, (iter=iter, LB=LB, UB=UB, x=findall(x̄ .> 0.5), F=rl[:Fval], t=t_l))
                     verbose && @printf("  [loc] it %3d LB=%11.4f UB=%11.4f x=%-10s Ω_loc=%11.4f (%.1fs)\n",
                                        iter, LB, UB, string(findall(x̄ .> 0.5)), rl[:Fval], t_l)
@@ -211,8 +245,13 @@ function nz_standard_benders(nd::NZData; optimizer, max_iter=200, tol=1e-4, orac
                 end
             end
         end
-        lim, stalled = _oracle_limit!(tl, x̄, oracle_time, boost_time)
-        stalled && (status = :Stalled; break)
+        if oracle_remaining
+            lim = _remaining(wall, time_limit, Inf)
+        else
+            lim, stalled = _oracle_limit!(tl, x̄, oracle_time, boost_time)
+            stalled && (status = :Stalled; break)
+            lim = _remaining(wall, time_limit, lim)
+        end
         ncalls += 1
         t_o = @elapsed ((zinc, zbd, src) = _nz_oracle!(O, Fx, nd, x̄; oracle=oracle, time_limit=lim, gap=oracle_gap,
                                                        nworkers=nworkers, bnb_kw=bnb_kw))
@@ -221,8 +260,8 @@ function nz_standard_benders(nd::NZData; optimizer, max_iter=200, tol=1e-4, orac
             cut, ok = _nz_lp_cut!(src, nd, x̄, zinc; mw=mw, x_core=x_core); n_mw += ok
             _log_cut!(cuts, :restricted, iter, x̄, cut, ok)
         else
-            cut = nz_cut_from_solution(src, nd, x̄)
-            _log_cut!(cuts, :omega, iter, x̄, cut, false)
+            cut, ok = _nz_alpha_cut(src, Fx, nd, x̄; mw=mw, x_core=x_core); n_mw += ok
+            _log_cut!(cuts, :omega, iter, x̄, cut, ok)
         end
         _add_cut!(omp, x, t0, cut)
         ub_here = dot(nd.qx, x̄) + zbd
@@ -292,6 +331,7 @@ function nz_belief_menu_benders(nd::NZData; optimizer, lp_optimizer=optimizer, c
         # ---- oracle 단계 ----
         lim, stalled = _oracle_limit!(tl, x̄, oracle_time, boost_time)
         stalled && (status = :Stalled; break)
+        lim = _remaining(wall, time_limit, lim)
         oracle_calls += 1
         # 목표값: menu 가 x̄ 에서 수렴했으므로 oracle 은 "t₀ 보다 의미 있게 큰 값이 있는가" 만 판정하면 됨
         target = target_stop ? t0v + 0.99 * tol * max(1.0, abs(t0v)) : nothing
