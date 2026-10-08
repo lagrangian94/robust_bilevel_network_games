@@ -38,7 +38,7 @@ struct _BeliefRow
     terms::Vector{Tuple{Symbol,Int,Float64}}    # (family, s, coef)
 end
 
-function _belief_rows(td, Y)
+function _belief_rows(td, Y; delta_couple=Inf)
     S, q = td.S, td.q_hat
     rows = _BeliefRow[]
     for fam in keys(Y), s in 1:S                                     # 상·하한 (McCormick 에 해당)
@@ -57,6 +57,13 @@ function _belief_rows(td, Y)
         for s in 1:S
             push!(rows, _BeliefRow(0.0, [(:a, s, 1.0 / (1.0 - td.beta)), (:r, s, -1.0)]))
         end
+    end
+    if haskey(Y, :c)                                                  # belief 결합: cpl ≥ |a − d|, Σ cpl ≤ 2δ
+        for s in 1:S
+            push!(rows, _BeliefRow(0.0, [(:c, s, 1.0), (:a, s, -1.0), (:d, s, 1.0)]))
+            push!(rows, _BeliefRow(0.0, [(:c, s, 1.0), (:a, s, 1.0), (:d, s, -1.0)]))
+        end
+        push!(rows, _BeliefRow(2delta_couple, [(:c, s, -1.0) for s in 1:S]))
     end
     return rows
 end
@@ -81,8 +88,8 @@ mutable struct _SepLP
     u::Vector{Float64}
 end
 
-function _build_sep_lp(td, x̄; optimizer)
-    model, vars = build_true_dro_subproblem(td, x̄; optimizer=optimizer, silent=true)
+function _build_sep_lp(td, x̄; optimizer, delta_couple=Inf)
+    model, vars = build_true_dro_subproblem(td, x̄; optimizer=optimizer, silent=true, delta_couple=delta_couple)
     for name in (:ζL_def, :ζF_def)
         delete.(model, model[name]); unregister(model, name)
     end
@@ -107,7 +114,11 @@ function _build_sep_lp(td, x̄; optimizer)
         @constraint(model, [k = 1:K], sum(Z[fam][k, s] for s in 1:S) == α[k])
         @constraint(model, [s = 1:S], sum(Z[fam][k, s] for k in 1:K) <= w * Y[fam][s])
     end
-    return _SepLP(model, vars, K, S, lead, fol, Y, Z, _belief_rows(td, Y),
+    if isfinite(delta_couple)                          # belief 결합 변수 cpl 과 곱 α_k cpl_s (RLT 전용 곱 변수)
+        Y[:c] = vec(model[:cpl]); Z[:c] = newZ("Zc")
+        @constraint(model, [s = 1:S], sum(Z[:c][k, s] for k in 1:K) <= w * Y[:c][s])   # (w − Σα)·cpl ≥ 0
+    end
+    return _SepLP(model, vars, K, S, lead, fol, Y, Z, _belief_rows(td, Y; delta_couple=delta_couple),
                   Tuple{Int,Bool,Float64,ConstraintRef,Float64,Int}[], Bool[], zeros(K), fill(w, K))
 end
 
@@ -165,10 +176,33 @@ function _sep_violations(P::_SepLP; tol=1e-6)
     return out
 end
 
-"""LP 값. infeasible → −Inf, 시간 초과 → NaN (호출 측에서 미처리로 다룸)."""
+const _GB_NUMERR = Threads.Atomic{Int}(0)
+const _GB_NUMERR_FAIL = Threads.Atomic{Int}(0)
+const _GB_RESTORE = IdDict{Any,Bool}()
+const _GB_RESTORE_LOCK = ReentrantLock()
+
+"""
+LP 값. infeasible → −Inf, 시간 초과 → NaN (호출 측에서 미처리로 다룸), 수치 오류가 재시도로도 안 풀림 → Inf.
+NUMERICAL_ERROR 재시도 (NumericFocus 3 → barrier) 는 비제로섬 nz_alpha_bnb 와 같은 처리
+(원인: 극단적으로 좁은 α 상자에서 bound-factor RLT 행 쌍이 거의 선형종속, docs/dependent_ambiguity/results.md §3).
+설정 복원은 다음 optimize 직전 (해를 읽은 뒤 속성을 바꾸면 JuMP 가 해를 무효로 봄).
+"""
 function _solve_lp!(model)
+    restore = lock(() -> pop!(_GB_RESTORE, model, false), _GB_RESTORE_LOCK)
+    restore && (set_optimizer_attribute(model, "NumericFocus", 0); set_optimizer_attribute(model, "Method", 1))
     optimize!(model)
     st = termination_status(model)
+    if st == MOI.NUMERICAL_ERROR || st == MOI.OTHER_ERROR
+        Threads.atomic_add!(_GB_NUMERR, 1)
+        lock(() -> (_GB_RESTORE[model] = true), _GB_RESTORE_LOCK)
+        for (nf, meth) in ((3, 1), (3, 2))
+            set_optimizer_attribute(model, "NumericFocus", nf); set_optimizer_attribute(model, "Method", meth)
+            optimize!(model)
+            st = termination_status(model)
+            st in (MOI.NUMERICAL_ERROR, MOI.OTHER_ERROR) || break
+        end
+        st in (MOI.NUMERICAL_ERROR, MOI.OTHER_ERROR) && (Threads.atomic_add!(_GB_NUMERR_FAIL, 1); return Inf)
+    end
     st == MOI.OPTIMAL && return objective_value(model)
     st == MOI.INFEASIBLE && return -Inf
     st == MOI.TIME_LIMIT && return NaN
@@ -180,7 +214,7 @@ function _sep_solve!(P::_SepLP; maxrounds=30, maxadd=5000, tol=1e-6, stall_tol=1
     zprev = Inf; nstall = 0
     for _ in 1:maxrounds
         z = _solve_lp!(P.model)
-        (isnan(z) || z == -Inf) && return z
+        (isnan(z) || isinf(z)) && return z
         V = _sep_violations(P; tol=tol)
         isempty(V) && return z
         nstall = (zprev - z <= stall_tol * max(1.0, abs(z))) ? nstall + 1 : 0
@@ -205,8 +239,8 @@ mutable struct _FixedAlphaLP
     cF::Matrix{ConstraintRef}
 end
 
-function _build_fixed_alpha_lp(td, x̄; optimizer)
-    model, vars = build_true_dro_subproblem(td, x̄; optimizer=optimizer, silent=true)
+function _build_fixed_alpha_lp(td, x̄; optimizer, delta_couple=Inf)
+    model, vars = build_true_dro_subproblem(td, x̄; optimizer=optimizer, silent=true, delta_couple=delta_couple)
     for name in (:ζL_def, :ζF_def)
         delete.(model, model[name]); unregister(model, name)
     end
@@ -221,8 +255,8 @@ function _build_fixed_alpha_lp(td, x̄; optimizer)
     return _FixedAlphaLP(model, vars, cL, cF)
 end
 
-"""α 고정 Ω 값 (실현 가능해의 정확한 목적값). 시간 초과 → NaN."""
-function _eval_alpha!(F::_FixedAlphaLP, α̂)
+"""α 를 α̂ 로 고정 (ζ 정의를 α̂ 계수의 선형 등식으로). 풀지는 않음 — 결합 mini-Benders 가 목적을 바꿔 가며 재사용."""
+function _fix_alpha!(F::_FixedAlphaLP, α̂)
     K, S = size(F.cL)
     lead = F.vars[:_use_cvar] ? vec(F.vars[:r]) : vec(F.vars[:a])
     fol = vec(F.vars[:d])
@@ -234,7 +268,13 @@ function _eval_alpha!(F::_FixedAlphaLP, α̂)
             set_normalized_coefficient(F.cF[k, s], fol[s], -α̂[k])
         end
     end
-    return _solve_lp!(F.model)
+end
+
+"""α 고정 Ω 값 (실현 가능해의 정확한 목적값). 시간 초과 → NaN."""
+function _eval_alpha!(F::_FixedAlphaLP, α̂)
+    _fix_alpha!(F, α̂)
+    z = _solve_lp!(F.model)
+    return z == Inf ? NaN : z        # 수치 오류 (Inf) 는 "값 모름": 실현 가능해 값으로 쓰면 안 됨
 end
 
 
@@ -244,9 +284,9 @@ end
 _capw(a, w) = (b = max.(a, 0.0); s = sum(b); s > w ? b .* (w / s) : b)
 
 """Ω 를 Ipopt 로 로컬 최적화. 출발점 = α̂ 고정 LP 해. 반환 로컬 해의 α (없으면 nothing)."""
-function _ipopt_local_alpha(td, x̄, F::_FixedAlphaLP, α̂; max_time=120.0, deadline=Inf)
+function _ipopt_local_alpha(td, x̄, F::_FixedAlphaLP, α̂; max_time=120.0, deadline=Inf, delta_couple=Inf)
     isnan(_eval_alpha!(F, α̂)) && return nothing
-    m, v = build_true_dro_subproblem(td, x̄; optimizer=Ipopt.Optimizer, silent=true)
+    m, v = build_true_dro_subproblem(td, x̄; optimizer=Ipopt.Optimizer, silent=true, delta_couple=delta_couple)
     delete!(unsafe_backend(m).options, "DualReductions")      # 빌더가 넣는 Gurobi 전용 옵션 제거
     set_optimizer_attribute(m, "max_wall_time", max(max_time, 1.0))
     set_optimizer_attribute(m, "print_level", 0)
@@ -277,7 +317,8 @@ target (선택): LB ≥ target 이거나 UB ≤ target 이면 즉시 종료 (Ben
 """
 function global_bilinear_solve(td, x̄; nworkers=Threads.nthreads() - 2, time_limit=300.0, rel_gap=5e-3,
                                dive_max=3, maxrounds=30, min_width=1e-7, ipopt_time=120.0,
-                               verbose=true, log_every=30.0, target=nothing)
+                               verbose=true, log_every=30.0, target=nothing,
+                               delta_couple=Inf, envs=nothing, heuristic::Bool=true)
     nworkers >= 1 || error("global_bilinear_solve: nworkers ≥ 1 필요 (Julia 를 -t (nworkers+2),1 로 실행)")
     # 메인 루프 (시간·종료 판정) 와 sleep 타이머는 스레드 1 의 이벤트 루프가 처리한다. worker 가 스레드 1 을
     # 점유하면 이들이 멈춘다 → interactive 스레드 (julia -t N,1) 로 스레드 1 을 비워 두어야 한다.
@@ -288,9 +329,12 @@ function global_bilinear_solve(td, x̄; nworkers=Threads.nthreads() - 2, time_li
     K, S, w = td.num_arcs, td.S, td.w
     mk(env) = () -> (o = Gurobi.Optimizer(env); MOI.set(o, MOI.Silent(), true);
                      MOI.set(o, MOI.RawOptimizerAttribute("Threads"), 1); o)
-    envs = [Gurobi.Env() for _ in 1:nworkers]
-    Ps = [_build_sep_lp(td, x̄; optimizer=mk(envs[i])) for i in 1:nworkers]
-    Fs = [_build_fixed_alpha_lp(td, x̄; optimizer=mk(envs[i])) for i in 1:nworkers]
+    # envs: 호출자가 Env 를 넘길 수 있음 (worker 당 하나 + heuristic 용 마지막 하나; 학술 WLS 처럼 세션이 적은 곳).
+    #   기본은 기존처럼 호출마다 새로 만듦.
+    envs_given = envs !== nothing
+    envs = envs_given ? envs : [Gurobi.Env() for _ in 1:nworkers]
+    Ps = [_build_sep_lp(td, x̄; optimizer=mk(envs[i]), delta_couple=delta_couple) for i in 1:nworkers]
+    Fs = [_build_fixed_alpha_lp(td, x̄; optimizer=mk(envs[i]), delta_couple=delta_couple) for i in 1:nworkers]
     tol(v) = rel_gap * (isfinite(v) ? max(1.0, abs(v)) : 1.0)
 
     lk = ReentrantLock()
@@ -369,9 +413,20 @@ function global_bilinear_solve(td, x̄; nworkers=Threads.nthreads() - 2, time_li
                 set_time_limit_sec(P.model, max(t_end - time(), 0.1))
                 z = _sep_solve!(P; maxrounds=maxrounds)
                 unfinished = isnan(z)
+                numfail = z == Inf               # 수치 오류가 재시도로도 안 풀림: 부모 상한 유지, 가장 넓은 α_k 를 반으로
+                if numfail
+                    z = ubp
+                    kk = argmax(u .- l)
+                    if u[kk] - l[kk] > min_width
+                        t = 0.5 * (l[kk] + u[kk]); u1 = copy(u); u1[kk] = t; l2 = copy(l); l2[kk] = t
+                        children = ((copy(l), u1, z), (l2, copy(u), z))
+                    else
+                        pruned_val = z
+                    end
+                end
                 z = unfinished ? ubp : min(z, ubp)
-                (!unfinished && z <= LB[] + tol(LB[])) && (pruned_val = z)
-                if !unfinished && z > LB[] + tol(LB[])
+                (!unfinished && !numfail && z <= LB[] + tol(LB[])) && (pruned_val = z)
+                if !unfinished && !numfail && z > LB[] + tol(LB[])
                     α̂ = clamp.(value.(P.vars[:α]), l, u)
                     rv = value.(P.lead); dv = value.(P.fol)
                     ζLv = value.(P.vars[:ζL]); ζFv = value.(P.vars[:ζF])
@@ -424,14 +479,15 @@ function global_bilinear_solve(td, x̄; nworkers=Threads.nthreads() - 2, time_li
     end
 
     # primal heuristic: Ipopt (균등 α 에서 1회 → 상한 높은 노드의 α̂ 에서 반복)
-    function heuristic()
-        henv = Gurobi.Env()
-        Fh = _build_fixed_alpha_lp(td, x̄; optimizer=mk(henv))
+    function heuristic_task()
+        henv = envs_given ? envs[end] : Gurobi.Env()
+        Fh = _build_fixed_alpha_lp(td, x̄; optimizer=mk(henv), delta_couple=delta_couple)
         tried = Set{Vector{Float64}}()
         a0 = fill(w / K, K)
         while !done[] && t_end - time() > 30.0       # 남은 시간이 짧으면 새 호출 안 함 (모델 생성 오버헤드)
             push!(tried, round.(a0; digits=3))
-            aloc = _ipopt_local_alpha(td, x̄, Fh, a0; max_time=min(ipopt_time, t_end - time()), deadline=t_end)
+            aloc = _ipopt_local_alpha(td, x̄, Fh, a0; max_time=min(ipopt_time, t_end - time()), deadline=t_end,
+                                      delta_couple=delta_couple)
             ipopt_calls[] += 1
             if aloc !== nothing
                 z = _eval_alpha!(Fh, aloc)
@@ -456,7 +512,7 @@ function global_bilinear_solve(td, x̄; nworkers=Threads.nthreads() - 2, time_li
     end
 
     tasks = [Threads.@spawn worker(i) for i in 1:nworkers]
-    push!(tasks, Threads.@spawn heuristic())
+    heuristic && push!(tasks, Threads.@spawn heuristic_task())
     t_log = time()
     while true
         sleep(0.2)
@@ -481,5 +537,6 @@ function global_bilinear_solve(td, x̄; nworkers=Threads.nthreads() - 2, time_li
     foreach(wait, tasks)
     UB = max(LB[], isempty(open) ? -Inf : maximum(n[3] for n in open), pruned_ub[])
     return Dict(:LB => LB[], :UB => UB, :α => best_α[], :is_exact => (UB - LB[] <= tol(LB[])),
-                :nodes => nodes[], :time => time() - t0, :root_UB => root_UB[], :ipopt_calls => ipopt_calls[])
+                :nodes => nodes[], :time => time() - t0, :root_UB => root_UB[], :ipopt_calls => ipopt_calls[],
+                :numerr => _GB_NUMERR[], :numerr_fail => _GB_NUMERR_FAIL[])
 end

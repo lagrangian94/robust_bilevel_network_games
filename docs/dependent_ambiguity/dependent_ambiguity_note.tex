@@ -1,0 +1,357 @@
+\documentclass[11pt]{article}
+\usepackage[margin=2.4cm]{geometry}
+\usepackage{amsmath,amssymb,amsthm,mathtools}
+\usepackage{enumitem}
+\usepackage{booktabs}
+\usepackage{xcolor}
+\usepackage[colorlinks=true,linkcolor=blue!50!black,citecolor=blue!50!black]{hyperref}
+\usepackage{kotex}
+
+\newtheorem{theorem}{Theorem}
+\newtheorem{proposition}{Proposition}
+\newtheorem{lemma}{Lemma}
+\newtheorem{corollary}{Corollary}
+\theoremstyle{definition}
+\newtheorem{assumption}{Assumption}
+\newtheorem{definition}{Definition}
+\theoremstyle{remark}
+\newtheorem{remark}{Remark}
+
+\renewcommand{\theassumption}{4$'$}
+\newcommand{\X}{\mathcal{X}}
+\newcommand{\D}{\mathcal{D}}
+\newcommand{\Dh}{\hat{\mathcal{D}}}
+\newcommand{\Dt}{\tilde{\mathcal{D}}}
+\newcommand{\tp}{\tilde{p}}
+\newcommand{\heps}{\hat{\varepsilon}}
+\newcommand{\teps}{\tilde{\varepsilon}}
+\newcommand{\dtv}{d_{\mathrm{TV}}}
+\newcommand{\B}{\mathfrak{B}}
+\newcommand{\R}{\mathcal{R}}
+\newcommand{\gap}{\mathrm{gap}}
+\DeclareMathOperator{\vertex}{vert}
+\DeclareMathOperator{\proj}{proj}
+\DeclareMathOperator{\dist}{dist}
+
+\title{Dependent ambiguity sets for the belief-ambiguity bilevel model:\\ complete extension of the results and proofs}
+\author{Working note, companion to the manuscript\\ \emph{A Distributionally Robust Model for Bilevel Programs under Asymmetric Beliefs}}
+\date{2026-10-07}
+
+\begin{document}
+\maketitle
+
+\section*{요약}
+
+본 노트는 원고(비제로섬 JOC 판, \texttt{paper/joc-non\_zero\_sum/})의 Assumption~4(곱집합 $\D=\Dh\times\Dt$)를 종속 집합
+\[
+  \D_\delta \;=\; \{(p,\tp)\in\Dh\times\Dt:\ \dtv(p,\tp)\le\delta\}
+\]
+(더 일반적으로 임의의 polytope $\D\subseteq\Dh\times\Dt$)로 바꿨을 때, 원고의 결과와 증명이 어떻게 확장되는지를 빠짐없이 정리한다.
+원고의 기호와 가정 1--3, Lemma~1(pessimistic recourse)은 그대로 쓴다.
+
+\begin{center}
+\small
+\begin{tabular}{p{0.36\textwidth}p{0.40\textwidth}p{0.16\textwidth}}
+\toprule
+원고 결과 & 종속 판 & 본 노트 \\
+\midrule
+식 (V-response), 분리 해석 & 응답마다 다른 리더 집합 $\Dh_\D(x,\alpha)$ & Prop.~\ref{prop:response} \\
+Lemma (certificate) (i)--(ii) & 결합 penalty 로 그대로 & Lemma~\ref{lem:cert} \\
+Lemma (certificate) (iii) & \textbf{새 증명} (유한 꼭짓점 + 단일 belief Hoffman) & Lemma~\ref{lem:cert} \\
+Theorem (minimax) & $\B\to\B_\D$, $F$ 불변. 증명은 belief 고정 쌍대로 단순화 & Theorem~\ref{thm:minimax} \\
+Theorem (finite-type) & type 마다 리더 집합 $\Dh_I$ 가 붙음 & Theorem~\ref{thm:types} \\
+Theorem ($\Sigma_2^p$), Corollary & 모든 $\teps,\delta>0$ 에서 성립 & Theorem~\ref{thm:hard} \\
+Prop.\ (belief cuts) (i)--(ii) & 그대로 & Prop.~\ref{prop:belief} \\
+Prop.\ (belief cuts) (iii) & 증명 수정 (joint 꼭짓점) & Prop.~\ref{prop:belief} \\
+Lemma (price bounds), $\alpha$-B\&B, Prop.\ (finite termination) & 그대로 ($\Gamma$ 에 결합 행 추가) & \S\ref{sec:alg} \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\noindent 새로 증명해야 했던 것은 Lemma~\ref{lem:cert}(iii) 하나이고, 그 증명은 직사각형 경우에도 그대로 적용된다(원고 증명의 Step~1--2를 대체 가능).
+나머지는 기계적 수정이다. 반경 민감도 절(supplement, 현재 미사용)은 다루지 않는다.
+
+%==============================================================================
+\section{Setting}
+%==============================================================================
+
+Throughout, Assumptions 1--3 of the manuscript hold, $\Xi=\{\xi^1,\dots,\xi^S\}$, and $\Dh,\Dt$ are the total-variation balls of radii $\heps,\teps$ centered at the leader's reference $\hat q$ (manuscript eq.~(TV-def)). Assumption~4 is replaced by the following.
+
+\begin{assumption}[Dependent ambiguity set]\label{asm:dep}
+The ambiguity set is a nonempty polytope $\D\subseteq\Dh\times\Dt$. The leading instance is the \emph{belief-coupled} set
+\begin{equation}\label{eq:Ddelta}
+  \D_\delta \;:=\; \big\{(p,\tp)\in\Dh\times\Dt:\ \dtv(p,\tp)\le\delta\big\},\qquad \delta\in[0,1],
+\end{equation}
+which is a polytope through the lift $-\varsigma\le p-\tp\le\varsigma$, $\mathbf 1^\top\varsigma\le 2\delta$.
+\end{assumption}
+
+The parameter $\delta$ bounds how far the follower's private belief may be from the true distribution; $\delta=0$ is a common (but ambiguous) prior, and the product set of the manuscript is recovered for $\delta\ge\heps+\teps$ (Lemma~\ref{lem:geom}). Another instance is the likelihood-ratio set $\D_\kappa:=\{(p,\tp)\in\Dh\times\Dt:\kappa\,\tp\le p\}$ (posterior of a private signal of probability at least $\kappa$); every result below that is stated for a general polytope $\D$ applies to it verbatim.
+
+For $x\in\X$, write $Q_x(\alpha):=(Q(x,\alpha,\xi^s))_{s}$, $\phi_x(\alpha):=(\phi(x,\alpha,\xi^s))_{s}$,
+\[
+  \psi_x(\tp):=\max_{h\in H}\tp^\top Q_x(h),\qquad
+  \gap_x(\tp,\alpha):=\psi_x(\tp)-\tp^\top Q_x(\alpha)\ \ (\ge 0),
+\]
+so that $\Psi(x,\tp)=\{\alpha\in H:\gap_x(\tp,\alpha)=0\}$,
+and the \emph{rationalizing set} $\mathcal{T}_x(\alpha):=\{\tp\in\Delta^S:\alpha\in\Psi(x,\tp)\}$. The leader's worst-case value is
+\begin{equation}\label{eq:Vstar}
+  V^*(x)\;:=\;\sup_{(p,\tp)\in\D}\ \sup_{\alpha\in\Psi(x,\tp)}\ \R^p\big[\phi(x,\alpha,\xi)\big].
+\end{equation}
+We use the dual representation of $\mathrm{CVaR}_\beta$ on a finite support,
+\begin{equation}\label{eq:cvar-dual}
+  \R^p[Z]=\max\big\{\nu^\top Z:\ \nu\in L_\beta(p)\big\},\qquad L_\beta(p):=\{\nu:\ 0\le\nu\le p/(1-\beta),\ \mathbf 1^\top\nu=1\},
+\end{equation}
+and the belief polytope
+\begin{equation}\label{eq:BD}
+  \B_\D:=\big\{(p,\nu,\tp):\ (p,\tp)\in\D,\ \nu\in L_\beta(p)\big\}
+  \quad\Big(\text{for }\D=\Dh\times\Dt\text{ this is the manuscript's }\B\Big).
+\end{equation}
+
+\begin{lemma}[Geometry of $\D_\delta$]\label{lem:geom}
+\begin{enumerate}[label=(\alph*),nosep]
+\item For $\tp\in\Delta^S$, $\dist_{\mathrm{TV}}(\tp,\Dh)=(\dtv(\tp,\hat q)-\heps)^+$, and symmetrically for $\Dt$.
+\item $\proj_{\tp}\D_\delta=\Dt_{\teps'}$ and $\proj_p\D_\delta=\Dh_{\heps'}$ with $\teps':=\min\{\teps,\heps+\delta\}$, $\heps':=\min\{\heps,\teps+\delta\}$, where $\Dt_r,\Dh_r$ denote the TV balls of radius $r$ around $\hat q$.
+\item $\D_\delta=\Dh\times\Dt$ whenever $\delta\ge\heps+\teps$; $\D_\delta$ is nondecreasing in $\delta$; and $(\hat q,\hat q)\in\D_\delta$ for every $\delta\ge0$.
+\end{enumerate}
+\end{lemma}
+\begin{proof}
+(a) Let $d:=\dtv(\tp,\hat q)>\heps$ (otherwise $\tp\in\Dh$). The point $p:=\hat q+(\heps/d)(\tp-\hat q)$ is a convex combination of $\hat q$ and $\tp$, hence in $\Delta^S$, with $\dtv(p,\hat q)=\heps$ and $\dtv(p,\tp)=d-\heps$. Conversely $\dtv(p',\tp)\ge\dtv(\tp,\hat q)-\dtv(p',\hat q)\ge d-\heps$ for every $p'\in\Dh$.
+(b) $\tp\in\proj_{\tp}\D_\delta$ iff $\tp\in\Dt$ and $\dist_{\mathrm{TV}}(\tp,\Dh)\le\delta$, i.e.\ by (a) $\dtv(\tp,\hat q)\le\min\{\teps,\heps+\delta\}$. The other projection is symmetric.
+(c) For $(p,\tp)\in\Dh\times\Dt$, $\dtv(p,\tp)\le\dtv(p,\hat q)+\dtv(\hat q,\tp)\le\heps+\teps$. Monotonicity and $(\hat q,\hat q)\in\D_\delta$ are immediate.
+\end{proof}
+
+%==============================================================================
+\section{Response representation}
+%==============================================================================
+
+\begin{proposition}[Response representation under dependence; replaces (V-response)]\label{prop:response}
+Under Assumptions 1--3 and \ref{asm:dep}, for every $x\in\X$,
+\begin{equation}\label{eq:Vresp}
+\begin{aligned}
+  V^*(x)&=\max\Big\{\R^p\big[\phi(x,\alpha,\xi)\big]:\ (p,\tp)\in\D,\ \alpha\in\Psi(x,\tp)\Big\}\\
+  &=\max_{\alpha\in\Psi(x,\proj_{\tp}\D)}\ \max_{p\in\Dh_\D(x,\alpha)}\R^p\big[\phi(x,\alpha,\xi)\big],
+\end{aligned}
+\end{equation}
+with all maxima attained, where $\Psi(x,\proj_{\tp}\D)=\bigcup_{\tp\in\proj_{\tp}\D}\Psi(x,\tp)$ and
+\[
+  \Dh_\D(x,\alpha):=\big\{p:\ \exists\,\tp\in\mathcal{T}_x(\alpha)\ \text{with}\ (p,\tp)\in\D\big\}
+\]
+is a nonempty convex compact set for every admissible $\alpha$. For $\D=\D_\delta$: $\Psi(x,\proj_{\tp}\D_\delta)=\Psi(x,\Dt_{\teps'})$ and $\Dh_{\D_\delta}(x,\alpha)=\Dh\cap\big((\mathcal{T}_x(\alpha)\cap\Dt)\oplus B^{\mathrm{TV}}_\delta\big)$.
+For the product set, $\Dh_\D(x,\alpha)=\Dh$ for every admissible $\alpha$, which is the manuscript's (V-response).
+\end{proposition}
+
+\begin{proof}
+The first equality is the definition~\eqref{eq:Vstar} written as one supremum. The feasible set $G_x:=\{(\alpha,p,\tp):(p,\tp)\in\D,\ \alpha\in\Psi(x,\tp)\}$ is compact: $\D$ and $H$ are compact, and the graph of $\tp\mapsto\Psi(x,\tp)$ is closed because this correspondence is upper hemicontinuous with closed values (Berge's maximum theorem, as in the supplement's section ``The response-set representation''). The objective $(\alpha,p)\mapsto\R^p[\phi_x(\alpha)]$ is continuous: $\phi_x$ is continuous by Lemma~1(iii), and $(p,z)\mapsto\R^p[z]$ is continuous by~\eqref{eq:cvar-dual} (a maximum of a bilinear function over the continuous compact-valued correspondence $L_\beta$). Hence the maximum is attained. Grouping the variables as $\alpha$ first gives the second expression. The set $\mathcal{T}_x(\alpha)=\{\tp\in\Delta^S:\psi_x(\tp)-\tp^\top Q_x(\alpha)\le0\}$ is a closed sublevel set of a convex function ($\psi_x$ is a maximum of linear functions of $\tp$), hence convex and compact, so $\Dh_\D(x,\alpha)$, the projection of the convex compact set $\D\cap(\Delta^S\times\mathcal{T}_x(\alpha))$, is convex and compact. For $\D_\delta$ the two identities follow from Lemma~\ref{lem:geom}(b) and the definition of $\D_\delta$.
+\end{proof}
+
+\begin{remark}[Interpretation]
+Under the product set, $\Dh$ enters only the objective and $\Dt$ only the response set. Under dependence the response set is still determined by the follower side alone (through $\proj_{\tp}\D$), but the leader-side set becomes response-dependent: observing which responses are rationalizable restricts the plausible truths to $\Dh_\D(x,\alpha)$. The sentences of the manuscript that assert the separation (Section~3 opening paragraph after (V-response), the paragraph after Lemma~2, the paragraph after Theorem~2, and the abstract) should be rephrased accordingly.
+\end{remark}
+
+%==============================================================================
+\section{Certificate of the reaction set}
+%==============================================================================
+
+For $\lambda^U\in[0,\infty]$ let $\mathfrak F_{\lambda^U}(x,\alpha;\tp)$ denote the follower block~(VF-def) of the manuscript \emph{at the fixed belief} $\tp$, i.e.\ (VF-def) without the supremum over $\tp$ and with $\lambda\le\lambda^U$. The proof of the manuscript's Lemma~2 shows, for fixed $\tp$,
+\begin{equation}\label{eq:F-fixed}
+  \mathfrak F_{\lambda^U}(x,\alpha;\tp)=\inf_{0\le\lambda\le\lambda^U}\big(-\lambda\,\gap_x(\tp,\alpha)\big)
+  =\begin{cases}-\lambda^U\gap_x(\tp,\alpha),&\lambda^U<\infty,\\ 0\ \text{if}\ \gap_x(\tp,\alpha)=0,\ -\infty\ \text{otherwise},&\lambda^U=\infty.\end{cases}
+\end{equation}
+Define the coupled penalized value
+\begin{equation}\label{eq:Vlam}
+  V^*_{\lambda^U}(x):=\sup_{\alpha\in H}\ \sup_{(p,\tp)\in\D}\Big[\R^p\big[\phi(x,\alpha,\xi)\big]+\mathfrak F_{\lambda^U}(x,\alpha;\tp)\Big].
+\end{equation}
+For the product set, $\sup_{\tp\in\Dt}\mathfrak F_{\lambda^U}$ is the manuscript's $\bar V^F_{\lambda^U}$, and~\eqref{eq:Vlam} is the manuscript's $V^*_{\lambda^U}$.
+
+\begin{lemma}[Certificate of the reaction set under dependence; replaces Lemma~2]\label{lem:cert}
+Under Assumptions 1--3 and \ref{asm:dep}, for every $x\in\X$:
+\begin{enumerate}[label=(\roman*),nosep]
+\item (Exact certificate) $V^*_\infty(x)=V^*(x)$.
+\item (Bounded multiplier) For $\lambda^U<\infty$, $V^*_{\lambda^U}(x)=\sup_{\alpha\in H}\sup_{(p,\tp)\in\D}\big[\R^p[\phi_x(\alpha)]-\lambda^U\gap_x(\tp,\alpha)\big]\ge V^*(x)$, and $V^*_{\lambda^U}(x)$ is nonincreasing in $\lambda^U$.
+\item (Exact penalty) There is $\bar\lambda<\infty$, independent of $x$, such that $V^*_{\lambda^U}(x)=V^*(x)$ for all $\lambda^U\ge\bar\lambda$.
+\end{enumerate}
+\end{lemma}
+
+\begin{proof}
+(i) By~\eqref{eq:F-fixed} with $\lambda^U=\infty$, the bracket in~\eqref{eq:Vlam} equals $\R^p[\phi_x(\alpha)]$ if $\alpha\in\Psi(x,\tp)$ and $-\infty$ otherwise, so $V^*_\infty(x)$ is~\eqref{eq:Vstar}.
+
+(ii) The formula is~\eqref{eq:F-fixed}. The penalty $\lambda^U\gap_x\ge0$ vanishes on $\{(\alpha,p,\tp):(p,\tp)\in\D,\alpha\in\Psi(x,\tp)\}$, so $V^*_{\lambda^U}(x)\ge V^*(x)$; the penalty is nondecreasing in $\lambda^U$, so $V^*_{\lambda^U}(x)$ is nonincreasing.
+
+(iii) Fix $x$. By~\eqref{eq:cvar-dual} and (ii),
+\begin{equation}\label{eq:pen-b}
+  V^*_{\lambda}(x)=\sup_{\alpha\in H}\ \max_{b\in\B_\D}\Phi_\lambda(\alpha,b),\qquad
+  \Phi_\lambda(\alpha,b):=\nu^\top\phi_x(\alpha)-\lambda\big[\psi_x(\tp)-\tp^\top Q_x(\alpha)\big],\quad b=(p,\nu,\tp).
+\end{equation}
+
+\emph{Step 1 (finitely many belief vertices).} Let $P_x$ be the lifted polytope of the supplement's proof of Theorem~2, so that $\psi_x(\tp)=\max\{\tp^\top\vartheta:(h,\vartheta)\in P_x\}$. $P_x$ is a pointed polyhedron ($h$ ranges over the compact $H$ and $\vartheta$ is bounded above), and the maximum is finite for $\tp\ge0$, so it is attained at one of the finitely many vertices $(h^v,\vartheta^v)$, $v\in\vertex(P_x)$. Hence $\psi_x(\tp)=\max_{v}\tp^\top\vartheta^v$ is convex and piecewise linear, and $\Delta^S$ is covered by the finitely many polytopes $C_v:=\{\tp\in\Delta^S:\tp^\top\vartheta^v\ge\tp^\top\vartheta^{v'}\ \forall v'\}$, on each of which $\psi_x(\tp)=\tp^\top\vartheta^v$. Put $K_v:=\B_\D\cap\{\tp\in C_v\}$, a polytope, and $V_x:=\bigcup_v\vertex(K_v)$, a finite set that depends on neither $\alpha$ nor $\lambda$. For fixed $(\alpha,\lambda)$, $\Phi_\lambda(\alpha,\cdot)$ is linear on each $K_v$, so its maximum over $K_v$ is attained at a vertex, and since $\B_\D=\bigcup_vK_v$,
+\[
+  V^*_{\lambda}(x)=\max_{b\in V_x}\ \sup_{\alpha\in H}\Phi_\lambda(\alpha,b).
+\]
+
+\emph{Step 2 (error bound for a single belief).} Fix $b=(p,\nu,\tp)\in V_x$ and put $f_b(\alpha):=\gap_x(\tp,\alpha)$. By LP duality and Assumption~3, $Q(x,\alpha,\xi^s)=\min_{\sigma\in\mathcal V_F}\sigma^\top(b_x(\xi^s)+B\alpha)$ with $\mathcal V_F$ the finite vertex set of $\{\sigma\ge0:A^\top\sigma\ge d_F\}$. Since $\tp\ge0$, $f_b(\alpha)=\psi_x(\tp)+\sum_s\max_{\sigma\in\mathcal V_F}\big(-\tp_s\sigma^\top(b_x(\xi^s)+B\alpha)\big)=\max_{j\in J}(a_j^\top\alpha-c_j)$ for a finite family of affine functions. Moreover $f_b\ge0$ on $H$ and $Z_b:=\{\alpha\in H:f_b(\alpha)\le0\}=\Psi(x,\tp)\neq\emptyset$. Applying Hoffman's error bound to the linear system $\{W\alpha\le w,\ \alpha\ge0,\ a_j^\top\alpha\le c_j\ (j\in J)\}$, whose solution set is $Z_b$, there is $\kappa_b<\infty$ with
+\[
+  \dist(\alpha,Z_b)\le\kappa_b\max_{j}(a_j^\top\alpha-c_j)^+=\kappa_b\,f_b(\alpha)\qquad\forall\alpha\in H,
+\]
+because the rows of $H$ are satisfied at $\alpha\in H$.
+
+\emph{Step 3 (Lipschitz objective).} Each $\phi(x,\cdot,\xi^s)$ is continuous and piecewise linear on the compact $H$ (Lemma~1(iii)), hence Lipschitz with some constant $L_s$; $\nu$ is a probability vector, so $\nu^\top\phi_x(\cdot)$ is Lipschitz with constant $L_x:=\max_sL_s$.
+
+\emph{Step 4 (conclusion).} Let $\lambda\ge\bar\lambda_x:=L_x\max_{b\in V_x}\kappa_b$. For $b\in V_x$ and $\alpha\in H$, let $\alpha'$ be a nearest point of $Z_b$. Then
+\[
+  \Phi_\lambda(\alpha,b)\le\nu^\top\phi_x(\alpha')+\big(L_x-\lambda/\kappa_b\big)\|\alpha-\alpha'\|\le\nu^\top\phi_x(\alpha')\le\R^p\big[\phi_x(\alpha')\big]\le V^*(x),
+\]
+where the third inequality is~\eqref{eq:cvar-dual} with $\nu\in L_\beta(p)$, and the last holds because $(p,\tp)\in\D$ and $\alpha'\in\Psi(x,\tp)$. By Step~1, $V^*_\lambda(x)\le V^*(x)$, and (ii) gives equality. Since $\X$ is finite, $\bar\lambda:=\max_{x\in\X}\bar\lambda_x<\infty$.
+\end{proof}
+
+\begin{remark}
+The argument uses the dependence only through the fact that $\B_\D$ is a polytope, so it covers the product set as well and can replace Steps~1--2 of the manuscript's proof (the conjugate representation of $G_x$ and the piecewise error bound). It also explains why the original route does not extend directly: there the follower's belief is eliminated first ($G_x=\min_{\tp}\gap_x$), which is impossible when the objective depends on $p$ and $p$ is tied to $\tp$; here the belief is fixed first at one of finitely many vertices, after which only a single-belief error bound is needed.
+\end{remark}
+
+%==============================================================================
+\section{Minimax reformulation}
+%==============================================================================
+
+Let $\Omega_\D$ be the set $\Omega$ of the manuscript (eq.~(Omega)) with $\B$ replaced by $\B_\D$; for $\D_\delta$ this adds the variables $\varsigma\in\mathbb R^S$ and the rows $-\varsigma\le p-\tp\le\varsigma$, $\mathbf 1^\top\varsigma\le2\delta$. The objective $F$ (eq.~(F-def)) is unchanged.
+
+\begin{theorem}[Minimax reformulation under dependence; replaces Theorem~1]\label{thm:minimax}
+Under Assumptions 1--3 and \ref{asm:dep}, let $\lambda^U\ge\bar\lambda$ (Lemma~\ref{lem:cert}). Then
+\[
+  \min_{x\in\X}V^*(x)=\min_{x\in\X}\ \max_{(\alpha,\zeta)\in\Omega_\D}F(x,\alpha,\zeta),
+\]
+the inner maximum equals $V^*(x)$ for every $x$, and (i) $\Omega_\D$ does not depend on $x$ and $F$ is affine in $x$; (ii) $\Omega_\D$ and $F$ are linear in $\mu$ and bilinear in $\alpha$ and $(b,t)$, and fixing either $\alpha$ or $(b,t)$ leaves a linear program. Consequently $V^*$ is the restriction to $\X$ of a convex function on $\mathrm{conv}(\X)$, and every $(\alpha,\zeta)\in\Omega_\D$ yields an affine minorant $F(\cdot,\alpha,\zeta)$ of $V^*$ on $\X$.
+\end{theorem}
+
+\begin{proof}
+Fix $x$, $\alpha\in H$ and $b=(p,\nu,\tp)\in\B_\D$. In $\Omega_\D$ the leader-block constraints (Om-L) involve $b$ only through $\nu$, and the follower-block constraints (Om-F)--(Om-lambda) only through $\tp$; $F=F^L+F^F$ splits accordingly. Two facts are established in the manuscript (proof of Theorem~1 and of Proposition~1(iii)):
+\begin{enumerate}[label=(\alph*),nosep]
+\item with $\nu$ fixed, the leader block decomposes by scenario into the linear programming duals of~(phi-fixed), with McCormick linearization of $x_i\pi$, scaled by $\nu_s$; its optimal value is $\sum_s\nu_s\phi(x,\alpha,\xi^s)$ (for $\nu_s=0$ the scaled dual is homogeneous and its value is $0$ because the primal is feasible);
+\item with $\tp$ fixed, the follower block is the linear programming dual of (app-VF-LP) with the worst-case expectation replaced by the expectation under $\tp$, and its optimal value is $\mathfrak F_{\lambda^U}(x,\alpha;\tp)=-\lambda^U\gap_x(\tp,\alpha)$ by~\eqref{eq:F-fixed}.
+\end{enumerate}
+Both blocks are feasible bounded linear programs, so their duals attain. Therefore
+\[
+\begin{aligned}
+  \sup_{(\alpha,\zeta)\in\Omega_\D}F(x,\alpha,\zeta)
+  &=\sup_{\alpha\in H}\ \sup_{b\in\B_\D}\Big[\nu^\top\phi_x(\alpha)-\lambda^U\gap_x(\tp,\alpha)\Big]\\
+  &=\sup_{\alpha\in H}\ \sup_{(p,\tp)\in\D}\Big[\R^p[\phi_x(\alpha)]-\lambda^U\gap_x(\tp,\alpha)\Big]=V^*_{\lambda^U}(x),
+\end{aligned}
+\]
+using~\eqref{eq:cvar-dual} for the middle equality, and $V^*_{\lambda^U}(x)=V^*(x)$ by Lemma~\ref{lem:cert}(iii). The supremum is attained: $\alpha\mapsto\max_{b\in\B_\D}\Phi_{\lambda^U}(\alpha,b)$ is continuous on the compact $H$, and for fixed $\alpha$ the remaining problem is a linear program over a polyhedron with finite value. Properties (i)--(ii) are those of the manuscript's $\Omega$, since $\Omega_\D$ differs from $\Omega$ only by linear constraints on $b$, which involve neither $x$ nor $\alpha$. The consequences follow as in the manuscript.
+\end{proof}
+
+\begin{remark}
+This proof does not dualize the total-variation balls and does not use Sion's theorem, so it is shorter than the manuscript's proof also in the product case; the manuscript's derivation through (app-TV-dual) can be kept as the explicit construction of $\Omega$, with the remark that the constraints on the multipliers $(p,\tp)$ may be replaced by any polyhedral description of $\D$.
+\end{remark}
+
+%==============================================================================
+\section{Follower types}
+%==============================================================================
+
+Recall from the supplement (proof of Theorem~2) the index sets $I\subseteq\{1,\dots,m\}$ of rows of the lifted polytope $P_x=\{(h,\vartheta):G(h,\vartheta)\le g_x\}$, the faces $\Phi_I(x)$, and the $x$-independent cones $N_I=\{\tp\in\Delta^S:\exists\mu\ge0,\ G_I^\top\mu=(0,\tp)\}$. The Separation lemma of the supplement states $\alpha\in\Psi(x,\tp)$ iff $\alpha\in\Phi_I(x)$ and $\tp\in N_I$ for some $I$, and its proof shows $\Phi_I(x)\subseteq\Psi(x,\tp)$ for \emph{every} $\tp\in N_I$.
+
+\begin{theorem}[Finite-type representation under dependence; replaces Theorem~2]\label{thm:types}
+Under Assumptions 1--3 and \ref{asm:dep}, let $\mathcal I_\D:=\{I:\ N_I\cap\proj_{\tp}\D\ne\emptyset\}$ and, for $I\in\mathcal I_\D$,
+\[
+  \Dh_I:=\proj_p\big(\D\cap(\Delta^S\times N_I)\big),
+\]
+a nonempty polytope. Both $\mathcal I_\D$ and $\Dh_I$ are independent of $x$, and for every $x\in\X$:
+\begin{enumerate}[label=(\roman*),nosep]
+\item $\Psi(x,\proj_{\tp}\D)=\bigcup_{I\in\mathcal I_\D}\Phi_I(x)$; for $\D_\delta$ this equals $\bigcup_{\tp\in\mathcal P_{\teps'}}\Psi(x,\tp)$ with the finite type set $\mathcal P_{\teps'}$ of the manuscript at radius $\teps'=\min\{\teps,\heps+\delta\}$;
+\item the leader's worst-case value is
+\begin{equation}\label{eq:Vtypes}
+  V^*(x)=\max_{I\in\mathcal I_\D,\ \Phi_I(x)\ne\emptyset}\ \max_{\alpha\in\Phi_I(x)}\ \max_{p\in\Dh_I}\R^p\big[\phi(x,\alpha,\xi)\big],
+\end{equation}
+with all maxima attained; for $\D_\delta$, $\Dh_I=\Dh\cap\big((N_I\cap\Dt)\oplus B^{\mathrm{TV}}_\delta\big)$;
+\item $V^*(x)$ is nondecreasing in $\delta$, and type $I$ is admitted ($I\in\mathcal I_{\D_\delta}$) exactly when $\gamma_I\le\teps'$, where $\gamma_I=\min\{\dtv(\tp,\hat q):\tp\in N_I\}$ is the manuscript's threshold.
+\end{enumerate}
+\end{theorem}
+
+\begin{proof}
+By Proposition~\ref{prop:response} and the Separation lemma,
+\[
+\begin{aligned}
+  V^*(x)&=\max\Big\{\R^p[\phi_x(\alpha)]:(p,\tp)\in\D,\ \exists I:\ \alpha\in\Phi_I(x),\ \tp\in N_I\Big\}\\
+  &=\max_I\ \max_{\alpha\in\Phi_I(x)}\ \max\big\{\R^p[\phi_x(\alpha)]:\ (p,\tp)\in\D,\ \tp\in N_I\big\},
+\end{aligned}
+\]
+where for the converse inclusion we use that every $\tp\in N_I$ satisfies $\Phi_I(x)\subseteq\Psi(x,\tp)$. The inner maximum is over $p\in\Dh_I$, which proves (ii); $\Dh_I$ is the projection of a polytope and does not involve $x$. The sets $\Phi_I(x)$ are faces' projections, hence compact, and $\R^p[\phi_x(\alpha)]$ is continuous, so the maxima are attained. (i) is the same computation without the objective, and for $\D_\delta$ it is Lemma~\ref{lem:geom}(b) combined with the manuscript's Theorem~2(i) at radius $\teps'$. (iii): $\D_\delta$ is nondecreasing in $\delta$; and $N_I\cap\proj_{\tp}\D_\delta=N_I\cap\Dt_{\teps'}\ne\emptyset$ iff $\gamma_I\le\teps'$.
+\end{proof}
+
+\begin{remark}[Types now carry their own leader set]
+In the product case $\Dh_I=\Dh$ for all admitted $I$, and one representative belief $\tp_I$ per type suffices. Under dependence each type carries the polytope $\Dh_I$ of truths compatible with that type, so the representation is a robust game against finitely many follower types in which a type also restricts the data-side ambiguity. Between consecutive admission thresholds the sets $\Dh_I$ grow continuously with $\delta$, so $\delta\mapsto V^*(x)$ combines jumps (new types) with continuous growth.
+\end{remark}
+
+%==============================================================================
+\section{Complexity}
+%==============================================================================
+
+\begin{theorem}[$\Sigma_2^p$-hardness under dependence; extends Theorem~3 and Corollary~1]\label{thm:hard}
+For every fixed $\teps\in(0,1]$ and $\delta\in(0,1]$, the decision version of~\eqref{eq:Vstar} with $\D=\D_\delta$ is $\Sigma_2^p$-hard already in the zero-sum case with $\heps=0$, and evaluating $V^*(\bar x)$ at a fixed $\bar x$ is NP-hard.
+\end{theorem}
+\begin{proof}
+With $\heps=0$, $\Dh=\{\hat q\}$ and, by Lemma~\ref{lem:geom}(b), $\D_\delta=\{\hat q\}\times\Dt_{\min\{\teps,\delta\}}$, a product set with follower radius $\min\{\teps,\delta\}\in(0,1]$. The manuscript's Theorem~3 and Corollary~1 hold for every fixed follower radius in $(0,1]$.
+\end{proof}
+
+\begin{remark}
+For $\delta=0$ (common ambiguous prior) and $\heps=0$ there is no ambiguity at all; for $\delta=0$ and $\heps>0$ the reduction of Theorem~3 does not apply, because a corner belief would also be the leader's evaluation measure. The complexity of this case is open.
+\end{remark}
+
+\begin{proposition}[Saturation under dependence]\label{prop:sat}
+In the zero-sum case ($\phi=Q$) with a risk-neutral leader and $\heps\le\teps$, $V^*(x)=\max_{p\in\Dh}\max_{h\in H}\mathbb E^p[Q(x,h,\xi)]$ for every $\delta\ge0$.
+\end{proposition}
+\begin{proof}
+($\le$) For feasible $(p,\tp,\alpha)$, $\mathbb E^p[Q(x,\alpha,\xi)]\le\max_h\mathbb E^p[Q(x,h,\xi)]$. ($\ge$) For $p\in\Dh\subseteq\Dt$, the pair $(p,p)$ lies in $\D_\delta$ and any $\alpha\in\Psi(x,p)$ attains $\max_h\mathbb E^p[Q]$.
+\end{proof}
+
+%==============================================================================
+\section{Algorithm}\label{sec:alg}
+%==============================================================================
+
+All components of Section~4 of the manuscript are used with $\Omega_\D$ in place of $\Omega$.
+
+\begin{itemize}[nosep]
+\item \textbf{Master problem and cuts.} Unchanged: validity of $\ell_{(\alpha,\zeta)}=F(\cdot,\alpha,\zeta)$ needs only $(\alpha,\zeta)\in\Omega_\D$ and Theorem~\ref{thm:minimax}.
+\item \textbf{Local-optimality and restricted ISP cuts.} Unchanged; the restricted ISP (fixed $\alpha$) is a linear program with $S$ more variables and $2S+1$ more rows for $\D_\delta$.
+\item \textbf{Lemma (price bounds).} Unchanged: its proof (Vertex-certificates lemma of the supplement) only modifies $(\varpi,t)$.
+\item \textbf{Spatial branch-and-bound.} The polytope $\Gamma(b,t)\le\gamma$ now contains the rows of $\B_\D$; for $\D_\delta$ the coupling rows $\varsigma_s-p_s+\tp_s\ge0$, $\varsigma_s+p_s-\tp_s\ge0$, $2\delta-\mathbf1^\top\varsigma\ge0$ and the bounds of $\varsigma$. (R1) multiplies them by the box factors of every $\alpha_i$, introducing the lifted products $[\alpha_i\varsigma_s]$; (R2) is unchanged and may also be applied to $\varsigma\ge0$. The relaxation remains valid and becomes exact as boxes shrink, so the proof of Proposition~2 (finite termination) is unchanged.
+\end{itemize}
+
+\begin{proposition}[Belief cuts under dependence; replaces Proposition~1]\label{prop:belief}
+Under the assumptions of Theorem~\ref{thm:minimax}, with $v(x;\bar b,\bar t):=\max\{F(x,\alpha,\zeta):(\alpha,\zeta)\in\Omega_\D,\ b=\bar b,\ t=\bar t\}$:
+\begin{enumerate}[label=(\roman*),nosep]
+\item (Validity) $v(x;\bar b,\bar t)\le V^*(x)$ for every $\bar b\in\B_\D$, prices $\bar t$ and $x\in\X$, and every optimal solution yields a valid cut.
+\item (Exactness) If $(\bar\alpha,\bar b,\bar t,\bar\mu)\in\Omega_\D$ then $v(\bar x;\bar b,\bar t)\ge F(\bar x,\bar\alpha,\bar b,\bar t,\bar\mu)$; in particular $v(\bar x;b^*,t^*)=V^*(\bar x)$ for the beliefs and prices of an optimal ISP solution.
+\item (Finiteness) Let $\B_{\D,I}:=\{b\in\B_\D:\tp\in N_I\}$ (a polytope) and let $\mathcal P^*_\D$ be the set of pairs $(b,t)$ with $b\in\vertex(\B_{\D,I})$ for some $I\in\mathcal I_\D$ and $t_s=\theta^U\nu_sB^\top\sigma_s$ for vertices $\sigma_s$ of $\Sigma_F$. Then $\mathcal P^*_\D$ is finite and independent of $x$, and $V^*(x)=\max_{(b,t)\in\mathcal P^*_\D}v(x;b,t)$ for every $x\in\X$.
+\end{enumerate}
+\end{proposition}
+\begin{proof}
+(i)--(ii) are verbatim the manuscript's proof, with Theorem~\ref{thm:minimax} in place of Theorem~1.
+(iii) Finiteness and $x$-independence follow from Theorem~\ref{thm:types} ($N_I$, $\mathcal I_\D$ do not depend on $x$). Fix $x$ and let $(\alpha^*,p^*,\tp^*)$ attain~\eqref{eq:Vresp}; by the Separation lemma there is $I^*$ with $\alpha^*\in\Phi_{I^*}(x)$ and $\tp^*\in N_{I^*}$, and $\nu^*\in L_\beta(p^*)$ attains $\R^{p^*}[\phi_x(\alpha^*)]$. Maximize the linear function $b\mapsto\nu^\top\phi_x(\alpha^*)$ over the polytope $\B_{\D,I^*}$; a maximizing vertex $b^\circ=(p^\circ,\nu^\circ,\tp^\circ)$ satisfies
+\[
+  V^*(x)=\nu^{*\top}\phi_x(\alpha^*)\le\nu^{\circ\top}\phi_x(\alpha^*)\le\R^{p^\circ}[\phi_x(\alpha^*)]\le V^*(x),
+\]
+the last step because $(p^\circ,\tp^\circ)\in\D$ and $\alpha^*\in\Phi_{I^*}(x)\subseteq\Psi(x,\tp^\circ)$. Fix $b=b^\circ$ in $\Omega_\D$ with $\alpha=\alpha^*$: by facts (a)--(b) in the proof of Theorem~\ref{thm:minimax}, the leader block attains $\nu^{\circ\top}\phi_x(\alpha^*)=V^*(x)$ and the follower block attains $-\lambda^U\gap_x(\tp^\circ,\alpha^*)=0$. The Vertex-certificates lemma of the supplement replaces the certificates and prices by vertex-induced ones without decreasing $F(x,\cdot)$, which produces $(b^\circ,t^\circ)\in\mathcal P^*_\D$ with $v(x;b^\circ,t^\circ)\ge V^*(x)$; (i) gives equality.
+\end{proof}
+
+%==============================================================================
+\section{Numerical verification}\label{sec:num}
+%==============================================================================
+
+\input{numerics_section}
+
+%==============================================================================
+\section{Integration checklist for the manuscript}
+%==============================================================================
+
+\begin{enumerate}[nosep]
+\item Assumption~4: state the dependent set (Assumption~\ref{asm:dep}) and keep the product set as the case $\delta\ge\heps+\teps$; delete ``the dependent case is left to future work''.
+\item Replace (V-response) and its paragraph by Proposition~\ref{prop:response}; the attainment argument of the supplement's response-set section becomes the compactness argument in its proof.
+\item Lemma~2: define $V^*_{\lambda^U}$ by~\eqref{eq:Vlam}; replace the proof of (iii) by Steps~1--4 of Lemma~\ref{lem:cert}.
+\item Theorem~1: replace $\B$ by $\B_\D$ in the definition of $\Omega$ (one line); the proof may be shortened as in Theorem~\ref{thm:minimax}.
+\item Theorem~2: restate (ii) as~\eqref{eq:Vtypes}; (i) holds at the effective radius $\teps'$.
+\item Theorem~3 and Corollary~1: add ``for every fixed $\delta\in(0,1]$'' and the one-line reduction.
+\item Proposition~1(iii): replace the independent choice of $(p,\nu)$ and $\tp$ by the joint vertex of $\B_{\D,I}$.
+\item Section~4.3: add the coupling rows to $\Gamma$.
+\item Prose: the separation statements (abstract, Section~3 opening, after Lemma~2, after Theorem~2) become ``the follower-side set determines the admissible responses, and each response restricts the leader-side set''.
+\end{enumerate}
+
+\end{document}

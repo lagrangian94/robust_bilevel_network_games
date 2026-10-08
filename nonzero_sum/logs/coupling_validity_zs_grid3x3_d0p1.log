@@ -1,0 +1,97 @@
+Set parameter WLSAccessID
+Set parameter WLSSecret
+Set parameter LicenseID to value 926906
+Academic license 926906 - for non-commercial use only - registered to se___@postech.ac.kr
+Set parameter WLSAccessID
+Set parameter WLSSecret
+Set parameter LicenseID to value 926906
+Academic license 926906 - for non-commercial use only - registered to se___@postech.ac.kr
+maxflow_K17_S5  nx=17 S=5 ε̂=0.20 ε̃=0.20 β=0.70 δ=0.1  workers=1
+==========================================================================================
+변형 menu_mw_bnb
+==========================================================================================
+
+******************************************************************************
+This program contains Ipopt, a library for large-scale nonlinear optimization.
+ Ipopt is released as open source code under the Eclipse Public License (EPL).
+         For more information visit https://github.com/coin-or/Ipopt
+******************************************************************************
+
+  [orcl] it   1 LB=-10000000.0000 UB=    44.1725 x=Int64[]    Ω=    44.1725 (8.0s) menu=1 (+belief, LP@x̄=44.1725, gap -2.8e-09)
+  [menu] it   2 LB=  -119.3879 UB=    44.1725 x=[10, 11]   menu cut 1/1 (V_menu=15.5635)
+  [menu] it   3 LB=  -104.2058 UB=    44.1725 x=[9, 10]    menu cut 1/1 (V_menu=18.1515)
+  [menu] it   4 LB=   -97.1904 UB=    44.1725 x=[9, 11]    menu cut 1/1 (V_menu=25.1669)
+  [menu] it   5 LB=   -32.9265 UB=    44.1725 x=[10]       menu cut 1/1 (V_menu=26.3603)
+  [menu] it   6 LB=   -25.9111 UB=    44.1725 x=[11]       menu cut 1/1 (V_menu=33.3757)
+  [menu] it   7 LB=   -23.3231 UB=    44.1725 x=[9]        menu cut 1/1 (V_menu=35.9637)
+  [orcl] it   8 LB=    15.5635 UB=    26.2496 x=[10, 11]   Ω=    26.2496 (2.5s) menu=2 (+belief, LP@x̄=26.2496, gap -3.6e-15)
+  [menu] it   9 LB=    18.1515 UB=    26.2496 x=[9, 10]    menu cut 1/2 (V_menu=21.6790)
+  [orcl] it  10 LB=    21.6790 UB=    22.9616 x=[9, 10]    Ω=    22.9616 (3.7s) menu=3 (+belief, LP@x̄=22.9616, gap 3.6e-15)
+→ menu_mw_bnb Optimal x*=[9, 10] LB=22.961563 UB=22.961563 iter=11 oracle=3 cuts belief/restricted/omega=7/3/0 (MW 10) wall=17s
+  belief exactness: max |Ω(x̄) − LP(x̄)| = 3.55e-15  (음수 gap 은 oracle 이 목표값 조기 종료한 incumbent)
+  α-B&B 노드 LP 수치 오류 누적: 0 회 (재시도로도 실패 0 회)
+==========================================================================================
+변형 menu_nomw_bnb
+==========================================================================================
+  [orcl] it   1 LB=-10000000.0000 UB=    44.1725 x=Int64[]    Ω=    44.1725 (2.8s) menu=1 (+belief, LP@x̄=44.1725, gap -2.8e-09)
+  [menu] it   2 LB=  -119.3879 UB=    44.1725 x=[10, 11]   menu cut 1/1 (V_menu=15.5635)
+  [menu] it   3 LB=  -104.2058 UB=    44.1725 x=[9, 10]    menu cut 1/1 (V_menu=18.1515)
+  [menu] it   4 LB=   -97.1904 UB=    44.1725 x=[9, 11]    menu cut 1/1 (V_menu=25.1669)
+  [menu] it   5 LB=   -63.1867 UB=    44.1725 x=[5, 10]    menu cut 1/1 (V_menu=26.3603)
+  [menu] it   6 LB=   -57.3670 UB=    44.1725 x=[5, 9]     menu cut 1/1 (V_menu=35.9637)
+  [menu] it   7 LB=   -56.1712 UB=    44.1725 x=[5, 11]    menu cut 1/1 (V_menu=33.3757)
+  [menu] it   8 LB=     7.2401 UB=    44.1725 x=[5, 6]     menu cut 1/1 (V_menu=44.1725)
+  [orcl] it   9 LB=    15.5635 UB=    26.2496 x=[10, 11]   Ω=    26.2496 (2.6s) menu=2 (+belief, LP@x̄=26.2496, gap 0.0e+00)
+  [menu] it  10 LB=    18.1515 UB=    26.2496 x=[9, 10]    menu cut 1/2 (V_menu=21.6790)
+  [menu] it  11 LB=    19.6881 UB=    26.2496 x=[6, 10]    menu cut 2/2 (V_menu=26.3603)
+  [orcl] it  12 LB=    21.6790 UB=    22.9616 x=[9, 10]    Ω=    22.9616 (3.7s) menu=3 (+belief, LP@x̄=22.9616, gap 3.6e-15)
+→ menu_nomw_bnb Optimal x*=[9, 10] LB=22.961563 UB=22.961563 iter=13 oracle=3 cuts belief/restricted/omega=10/3/0 (MW 0) wall=9s
+  belief exactness: max |Ω(x̄) − LP(x̄)| = 3.55e-15  (음수 gap 은 oracle 이 목표값 조기 종료한 incumbent)
+  α-B&B 노드 LP 수치 오류 누적: 0 회 (재시도로도 실패 0 회)
+==========================================================================================
+변형 std_mw_bnb
+==========================================================================================
+  [std] it   1 LB=-10000000.0000 UB=    44.1725 x=Int64[]    Ω=    44.1725 bd=    44.1725 (2.8s)
+  [std] it   2 LB=  -119.3879 UB=    26.2496 x=[10, 11]   Ω=    26.2496 bd=    26.2496 (2.5s)
+  [std] it   3 LB=  -104.2058 UB=    22.9616 x=[9, 10]    Ω=    22.9616 bd=    22.9616 (3.7s)
+  [std] it   4 LB=   -89.8981 UB=    22.9616 x=[9, 11]    Ω=    25.1669 bd=    25.1669 (0.6s)
+  [std] it   5 LB=   -32.9265 UB=    22.9616 x=[10]       Ω=    35.0945 bd=    35.0945 (1.2s)
+  [std] it   6 LB=   -14.4089 UB=    22.9616 x=[11]       Ω=    33.3757 bd=    33.3757 (0.7s)
+  [std] it   7 LB=    -9.2489 UB=    22.9616 x=[9]        Ω=    35.9637 bd=    35.9637 (2.7s)
+→ std_mw_bnb Optimal x*=[9, 10] LB=22.961563 UB=22.961563 iter=8 oracle=7 cuts belief/restricted/omega=0/7/0 (MW 7) wall=15s
+  α-B&B 노드 LP 수치 오류 누적: 0 회 (재시도로도 실패 0 회)
+==========================================================================================
+변형 menu_mw_grb
+==========================================================================================
+  [orcl] it   1 LB=-10000000.0000 UB=    44.1725 x=Int64[]    Ω=    44.1725 (0.1s) menu=1 (+belief, LP@x̄=44.1725, gap -2.7e-07)
+  [menu] it   2 LB=  -233.0115 UB=    44.1725 x=[10, 11]   menu cut 1/1 (V_menu=15.5635)
+  [menu] it   3 LB=  -167.3190 UB=    44.1725 x=[9, 10]    menu cut 1/1 (V_menu=18.1515)
+  [menu] it   4 LB=  -137.6510 UB=    44.1725 x=[9, 11]    menu cut 1/1 (V_menu=25.1669)
+  [menu] it   5 LB=   -95.8275 UB=    44.1725 x=[5, 6]     menu cut 1/1 (V_menu=44.1725)
+  [menu] it   6 LB=   -52.1452 UB=    44.1725 x=[10]       menu cut 1/1 (V_menu=26.3603)
+  [menu] it   7 LB=   -45.1298 UB=    44.1725 x=[11]       menu cut 1/1 (V_menu=33.3757)
+  [menu] it   8 LB=   -42.5418 UB=    44.1725 x=[9]        menu cut 1/1 (V_menu=35.9637)
+  [orcl] it   9 LB=    15.5635 UB=    26.2496 x=[10, 11]   Ω=    26.2496 (0.0s) menu=2 (+belief, LP@x̄=26.2496, gap -2.7e-07)
+  [menu] it  10 LB=    18.1515 UB=    26.2496 x=[9, 10]    menu cut 1/2 (V_menu=21.6790)
+  [orcl] it  11 LB=    21.6790 UB=    22.9616 x=[9, 10]    Ω=    22.9616 (0.0s) menu=3 (+belief, LP@x̄=22.9616, gap -2.6e-07)
+→ menu_mw_grb Optimal x*=[9, 10] LB=22.961563 UB=22.961563 iter=12 oracle=3 cuts belief/restricted/omega=8/0/3 (MW 8) wall=0s
+  belief exactness: max |Ω(x̄) − LP(x̄)| = 0.00e+00  (음수 gap 은 oracle 이 목표값 조기 종료한 incumbent)
+  α-B&B 노드 LP 수치 오류 누적: 0 회 (재시도로도 실패 0 회)
+==========================================================================================
+cut 유효성: 확인 x = [[9, 10], [10, 11], [9, 11], Int64[], [11], [10]]
+  KKT V*_δ([9, 10]) = 22.961564 [OPTIMAL 6s]
+  KKT V*_δ([10, 11]) = 26.249597 [OPTIMAL 0s]
+  KKT V*_δ([9, 11]) = 25.166910 [OPTIMAL 0s]
+  KKT V*_δ(Int64[]) = 44.172513 [OPTIMAL 1s]
+  KKT V*_δ([11]) = 33.375738 [OPTIMAL 0s]
+  KKT V*_δ([10]) = 35.094482 [OPTIMAL 0s]
+  menu_mw_bnb      cut   10 개 × x 6: max (cut(x) − V*(x))/|V*| = -6.31e-11  유효  (:restricted, true, Int64[])
+  menu_nomw_bnb    cut   13 개 × x 6: max (cut(x) − V*(x))/|V*| = +4.99e-15  유효  (:belief, false, Int64[])
+  std_mw_bnb       cut    7 개 × x 6: max (cut(x) − V*(x))/|V*| = -1.00e-09  유효  (:restricted, true, Int64[])
+  menu_mw_grb      cut   11 개 × x 6: max (cut(x) − V*(x))/|V*| = -2.48e-09  유효  (:belief, true, Int64[])
+==========================================================================================
+요약 (δ = 0.1)
+  menu_mw_bnb      Optimal   x*=[9, 10]    LB=     22.9616 UB=     22.9616 gap=1.00e-09 iter=  11 oracle=  3 wall=    17s
+  menu_nomw_bnb    Optimal   x*=[9, 10]    LB=     22.9616 UB=     22.9616 gap=1.08e-15 iter=  13 oracle=  3 wall=     9s
+  std_mw_bnb       Optimal   x*=[9, 10]    LB=     22.9616 UB=     22.9616 gap=1.00e-09 iter=   8 oracle=  7 wall=    15s
+  menu_mw_grb      Optimal   x*=[9, 10]    LB=     22.9616 UB=     22.9616 gap=0.00e+00 iter=  12 oracle=  3 wall=     0s

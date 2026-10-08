@@ -61,7 +61,8 @@ end
 function _nz_rows(nd::NZData, Y, wpos)
     S, q = nd.S, nd.q_hat
     rows = _NZRow[]
-    for fam in (:a, :b, :r, :d, :e), s in 1:S
+    fams = haskey(Y, :c) ? (:a, :b, :r, :d, :e, :c) : (:a, :b, :r, :d, :e)
+    for fam in fams, s in 1:S
         lo, hi = lower_bound(Y[fam][s]), upper_bound(Y[fam][s])
         push!(rows, _NZRow(-lo, [(fam, s, 1.0)], 0))
         push!(rows, _NZRow(hi, [(fam, s, -1.0)], 0))
@@ -75,6 +76,13 @@ function _nz_rows(nd::NZData, Y, wpos)
     end
     for s in 1:S
         push!(rows, _NZRow(0.0, [(:a, s, 1.0 / (1.0 - nd.beta)), (:r, s, -1.0)], 0))
+    end
+    if haskey(Y, :c)                                  # belief 결합: cpl − a + d ≥ 0, cpl + a − d ≥ 0, 2δ − Σcpl ≥ 0
+        for s in 1:S
+            push!(rows, _NZRow(0.0, [(:c, s, 1.0), (:a, s, -1.0), (:d, s, 1.0)], 0))
+            push!(rows, _NZRow(0.0, [(:c, s, 1.0), (:a, s, 1.0), (:d, s, -1.0)], 0))
+        end
+        push!(rows, _NZRow(2nz_delta(nd), [(:c, s, -1.0) for s in 1:S], 0))
     end
     Hr = findall(nd.hrow .> 0)
     for (idx, (jj, s, i)) in enumerate(wpos)
@@ -98,12 +106,16 @@ function _nz_build_sep(nd::NZData, x̄; optimizer)
     Y[:w] = [v[:ϖ][Hr[jj], s] for (jj, s, _) in wpos]
     newZ(name) = @variable(m, [1:nh, 1:S], lower_bound = 0.0, base_name = name)
     Z = Dict{Symbol,Matrix{VariableRef}}(:r => v[:ζL], :d => v[:ζF], :a => newZ("Za"), :b => newZ("Zb"), :e => newZ("Ze"))
+    if v[:cpl] !== nothing                           # belief 결합 변수 cpl 과 그 곱 α_i cpl_s
+        Y[:c] = vec(v[:cpl]); Z[:c] = newZ("Zc")
+    end
     α = v[:α]
     for fam in (:a, :r, :d)                          # Σ_s y_s = 1
         @constraint(m, [i = 1:nh], sum(Z[fam][i, s] for s in 1:S) == α[i])
     end
-    for fam in (:a, :b, :r, :d, :e), l in 1:size(nd.W, 1)   # (w_l − W_l α) y_s ≥ 0
-        @constraint(m, [s = 1:S], sum(nd.W[l, i] * Z[fam][i, s] for i in 1:nh) <= nd.wvec[l] * Y[fam][s])
+    for fam in keys(Z), l in 1:size(nd.W, 1)         # (w_l − W_l α) y_s ≥ 0
+        cs = @constraint(m, [s = 1:S], sum(nd.W[l, i] * Z[fam][i, s] for i in 1:nh) <= nd.wvec[l] * Y[fam][s])
+        fam == :c && for s in 1:S; set_name(cs[s], "rltc_static_$(l)_$(s)"); end   # 진단용 이름 (결합 RLT)
     end
     nz_set_objective!(O, nd, x̄)
     return _NZSepLP(O, nh, S, Y, Z, wpos, _nz_rows(nd, Y, wpos),
@@ -118,6 +130,8 @@ function _nz_sep_add!(P::_NZSepLP, i, j, islo, b)
     GZ = row.c0 * α[i] + sum(c * _nz_zvar(P, f, i, idx) for (f, idx, c) in row.terms)
     cref = islo ? @constraint(P.O.model, GZ - b * Gy >= b * row.c0) :
                   @constraint(P.O.model, b * Gy - GZ >= -b * row.c0)
+    # 진단용 이름: 결합 (cpl) 이 들어간 RLT 행 → "rltc_...", 나머지 → 이름 없음
+    any(t -> t[1] == :c, row.terms) && set_name(cref, "rltc_$(i)_$(j)_$(islo ? "lo" : "hi")_$(length(P.allrows) + 1)")
     push!(P.allrows, (i, islo, b, cref, normalized_rhs(cref), j))
     push!(P.active, true)
 end
@@ -160,9 +174,53 @@ function _nz_sep_violations(P::_NZSepLP; tol=1e-6)
     return out
 end
 
+"노드 LP 수치 오류 횟수 (재시도로 해결 / 끝내 실패)"
+const _NZ_NUMERR = Threads.Atomic{Int}(0)
+const _NZ_NUMERR_FAIL = Threads.Atomic{Int}(0)
+
+"""
+반환: 최적값, −Inf (infeasible), NaN (시간 제한), Inf (수치 오류가 재시도로도 안 풀림 → 호출 측이 부모 상한으로 분기).
+NUMERICAL_ERROR 는 결합 (δ) 행을 넣은 RLT 완화에서 처음 관찰됨 (SGB128 pair, x=∅, δ=0.1. δ=Inf 는 정상).
+재시도: NumericFocus=3 → 그다음 barrier (Method=2). 끝나면 원래 설정 (dual simplex, NumericFocus 0) 으로 되돌림.
+"""
+const _NZ_LPCOUNT = Threads.Atomic{Int}(0)
+const _NZ_RESTORE = IdDict{Any,Bool}()       # 재시도 설정을 다음 optimize 전에 되돌릴 모델
+const _NZ_RESTORE_LOCK = ReentrantLock()
+
 function _nz_solve_lp!(model)
+    # 직전 호출에서 재시도 설정을 바꿨으면 여기서 되돌림. 해를 읽은 뒤에 되돌리면 JuMP 가 해를 무효로 봐서
+    # (OptimizeNotCalled) 이어지는 value 읽기 (RLT 위반 계산, α 읽기) 가 깨진다.
+    restore = lock(() -> pop!(_NZ_RESTORE, model, false), _NZ_RESTORE_LOCK)
+    restore && (set_optimizer_attribute(model, "NumericFocus", 0); set_optimizer_attribute(model, "Method", 1))
     optimize!(model)
     st = termination_status(model)
+    if st == MOI.NUMERICAL_ERROR || st == MOI.OTHER_ERROR
+        k = Threads.atomic_add!(_NZ_NUMERR, 1) + 1
+        # 진단: NZ_NUMERR_DUMP=<폴더> 면 처음 3 개의 실패 LP 를 Gurobi 내부 모델 (.mps) 과 basis (.bas) 로 저장
+        if haskey(ENV, "NZ_NUMERR_DUMP") && k <= 3
+            o = JuMP.unsafe_backend(model); base = joinpath(ENV["NZ_NUMERR_DUMP"], "numerr_$k")
+            try
+                Gurobi.GRBwrite(o, base * ".mps"); Gurobi.GRBwrite(o, base * ".bas")
+            catch e
+                @warn "numerr dump 실패" e
+            end
+        end
+        lock(() -> (_NZ_RESTORE[model] = true), _NZ_RESTORE_LOCK)
+        for (nf, meth) in ((3, 1), (3, 2))
+            set_optimizer_attribute(model, "NumericFocus", nf); set_optimizer_attribute(model, "Method", meth)
+            optimize!(model)
+            st = termination_status(model)
+            st in (MOI.NUMERICAL_ERROR, MOI.OTHER_ERROR) || break
+        end
+        st in (MOI.NUMERICAL_ERROR, MOI.OTHER_ERROR) && (Threads.atomic_add!(_NZ_NUMERR_FAIL, 1); return Inf)
+    end
+    if st == MOI.OPTIMAL && haskey(ENV, "NZ_LP_DUMP_EVERY")      # 진단: 정상 노드 LP 를 N 번째마다 저장 (조건수 비교용)
+        n = Threads.atomic_add!(_NZ_LPCOUNT, 1) + 1
+        if n % parse(Int, ENV["NZ_LP_DUMP_EVERY"]) == 0 && n ÷ parse(Int, ENV["NZ_LP_DUMP_EVERY"]) <= 6
+            o = JuMP.unsafe_backend(model); base = joinpath(ENV["NZ_NUMERR_DUMP"], "ok_$n")
+            try Gurobi.GRBwrite(o, base * ".mps"); Gurobi.GRBwrite(o, base * ".bas") catch end
+        end
+    end
     st == MOI.OPTIMAL && return objective_value(model)
     st == MOI.INFEASIBLE && return -Inf
     st == MOI.TIME_LIMIT && return NaN
@@ -173,7 +231,7 @@ function _nz_sep_solve!(P::_NZSepLP; maxrounds=30, maxadd=5000, tol=1e-6, stall_
     zprev = Inf; nstall = 0
     for _ in 1:maxrounds
         z = _nz_solve_lp!(P.O.model)
-        (isnan(z) || z == -Inf) && return z
+        (isnan(z) || isinf(z)) && return z
         V = _nz_sep_violations(P; tol=tol)
         isempty(V) && return z
         nstall = (zprev - z <= stall_tol * max(1.0, abs(z))) ? nstall + 1 : 0
@@ -211,7 +269,8 @@ function nz_eval_alpha!(F::NZOmega, nd::NZData, α̂)
     for (jj, k) in enumerate(Hr), s in 1:S
         set_normalized_coefficient(v[:cW][jj, s], v[:ϖ][k, s], -α̂[nd.hrow[k]])
     end
-    return _nz_solve_lp!(F.model)
+    z = _nz_solve_lp!(F.model)
+    return z == Inf ? NaN : z          # 수치 오류 (Inf) 는 "값 모름" (NaN) 으로: 실현 가능해 값으로 쓰면 안 됨
 end
 
 "H = {α ≥ 0 : Wα ≤ w} 로 사영 (W ≥ 0 가정, 비례 축소)"
@@ -362,9 +421,20 @@ function nz_alpha_bnb(nd::NZData, x̄; nworkers=Threads.nthreads() - 2, time_lim
                 set_time_limit_sec(P.O.model, max(t_end - time(), 0.1))
                 z = _nz_sep_solve!(P; maxrounds=maxrounds)
                 unfinished = isnan(z)
+                numfail = z == Inf               # 수치 오류가 재시도로도 안 풀림: 부모 상한 유지, 가장 넓은 α_i 를 반으로
+                if numfail
+                    z = ubp
+                    i = argmax(u .- l)
+                    if u[i] - l[i] > min_width
+                        t = 0.5 * (l[i] + u[i]); u1 = copy(u); u1[i] = t; l2 = copy(l); l2[i] = t
+                        children = ((copy(l), u1, z), (l2, copy(u), z))
+                    else
+                        pruned_val = z           # 더 못 나누면 상한만 남김 (유효)
+                    end
+                end
                 z = unfinished ? ubp : min(z, ubp)
-                (!unfinished && z <= LB[] + tol(LB[])) && (pruned_val = z)
-                if !unfinished && z > LB[] + tol(LB[])
+                (!unfinished && !numfail && z <= LB[] + tol(LB[])) && (pruned_val = z)
+                if !unfinished && !numfail && z > LB[] + tol(LB[])
                     v = P.O.v
                     α̂ = clamp.(value.(v[:α]), l, u)
                     rv = value.(v[:r]); dv = value.(v[:d]); ϖv = value.(v[:ϖ])
@@ -477,5 +547,6 @@ function nz_alpha_bnb(nd::NZData, x̄; nworkers=Threads.nthreads() - 2, time_lim
     foreach(wait, tasks)
     UB = max(LB[], isempty(open) ? -Inf : maximum(n[3] for n in open), pruned_ub[])
     return Dict(:LB => LB[], :UB => UB, :α => best_α[], :is_exact => (UB - LB[] <= tol(LB[])),
-                :nodes => nodes[], :time => time() - t0, :root_UB => root_UB[], :ipopt_calls => ipopt_calls[])
+                :nodes => nodes[], :time => time() - t0, :root_UB => root_UB[], :ipopt_calls => ipopt_calls[],
+                :numerr => _NZ_NUMERR[], :numerr_fail => _NZ_NUMERR_FAIL[])
 end

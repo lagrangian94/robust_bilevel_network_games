@@ -1,0 +1,31 @@
+Set parameter WLSAccessID
+Set parameter WLSSecret
+Set parameter LicenseID to value 926906
+Academic license 926906 - for non-commercial use only - registered to se___@postech.ac.kr
+Set parameter WLSAccessID
+Set parameter WLSSecret
+Set parameter LicenseID to value 926906
+Academic license 926906 - for non-commercial use only - registered to se___@postech.ac.kr
+grid3x4 S=5 seed=1 β=0.7 ε̂=0.1 ε̃=0.3  K=22 interdictable=10 γ=2 w=7.8492
+==========================================================================================
+δ = 0.0
+==========================================================================================
+Set parameter OutputFlag to value 1
+Set parameter LogFile to value "global_miqcp.log"
+Set parameter NonConvex to value 2
+Set parameter DualReductions to value 0
+  ("(1) true_dro_benders", :Optimal, [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0], 29.604600500000004, 29.604601440992468, 29.2100843)
+
+******************************************************************************
+This program contains Ipopt, a library for large-scale nonlinear optimization.
+ Ipopt is released as open source code under the Eclipse Public License (EPL).
+         For more information visit https://github.com/coin-or/Ipopt
+******************************************************************************
+
+  ("(2) belief_menu", :Optimal, [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0], 29.6046015, 29.604601440992468, 15.1406415)
+  ("(3) nz 기준", :Optimal, [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0], 29.604592483628025, 29.604601440992468, 17.8181054)
+  KKT V*_δ([11, 15]) = 29.604602 [OPTIMAL]
+  요약:
+    (1) true_dro_benders   Optimal   x*=[11, 15]   LB=29.604601 UB=29.604601 29s
+    (2) belief_menu        Optimal   x*=[11, 15]   LB=29.604602 UB=29.604601 15s
+    (3) nz 기준            Optimal   x*=[11, 15]   LB=29.604592 UB=29.604601 18s

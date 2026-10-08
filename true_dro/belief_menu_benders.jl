@@ -55,18 +55,13 @@ belief 를 정확히 실현 가능한 점으로 정리 (solver 허용오차로 �
   a, d: 음수 제거·합 1, TV 볼 밖이면 q̂ 쪽으로 축소, b = |a − q̂|, e = |d − q̂|
   r (CVaR): [0, a/(1−β)] 로 자르고 합 1 (부족분은 여유 비율로 배분, 초과는 비례 축소)
 정리된 belief 도 belief 다면체 안 → 고정 LP 는 Ω 의 restriction → cut 유효성 유지.
+delta_couple (belief 결합, 유한) 이면 (a, d) 를 함께 같은 비율로 줄여 d_TV(a, d) ≤ δ 도 맞춘다 (couple_clean).
 """
-function _clean_belief(b, td)
+function _clean_belief(b, td; delta_couple=Inf)
     q = td.q_hat
-    function proj(y, ε)
-        y = max.(y, 0.0); y ./= sum(y)
-        dev = sum(abs.(y .- q))
-        dev > 2ε && (y = q .+ (y .- q) .* (2ε / dev))
-        return y
-    end
     out = Dict{Symbol,Vector{Float64}}()
-    out[:a] = proj(b[:a], td.eps_hat);   out[:b] = abs.(out[:a] .- q)
-    out[:d] = proj(b[:d], td.eps_tilde); out[:e] = abs.(out[:d] .- q)
+    out[:a], out[:d] = couple_clean(b[:a], b[:d], q, td.eps_hat, td.eps_tilde, delta_couple)
+    out[:b] = abs.(out[:a] .- q); out[:e] = abs.(out[:d] .- q)
     if haskey(b, :r)
         cap = out[:a] ./ (1.0 - td.beta)
         r = clamp.(b[:r], 0.0, cap)
@@ -193,7 +188,10 @@ function belief_menu_benders_optimize!(td::TrueDROData;
         menu_mw::Bool=true,
         nworkers=12, max_iter=1000, tol=5e-3, verbose=true,
         # min-cut VI (원고 Proposition dual-VI) 기본 사용. α-B&B oracle·belief-menu 와의 조합은 아직 미검증.
-        valid_inequality::Symbol=:mincut, source_sink_cut=nothing, wall_time_limit=7200.0)
+        valid_inequality::Symbol=:mincut, source_sink_cut=nothing, wall_time_limit=7200.0,
+        # 종속 ambiguity set (belief 결합) 반경. Inf = 기존 rectangular. bnb_envs/bnb_heuristic 은 α-B&B 로 그대로 전달
+        # (학술 WLS 처럼 세션이 적은 곳에서 Env 를 재사용할 때).
+        delta_couple::Real=Inf, bnb_envs=nothing, bnb_heuristic::Bool=true)
     oracle in (:gurobi, :alpha_bnb) || error("oracle must be :gurobi or :alpha_bnb (got $oracle)")
     if oracle == :alpha_bnb
         isdefined(Main, :global_bilinear_solve) || error("oracle=:alpha_bnb: global_bilinear_solver.jl 을 먼저 include 하세요")
@@ -202,6 +200,8 @@ function belief_menu_benders_optimize!(td::TrueDROData;
     local_first && oracle != :alpha_bnb && error("local_first=true 는 oracle=:alpha_bnb 에서만 지원")
     wall_start = time()
     K = td.num_arcs
+    # 결합이 곱집합으로 바뀌는 경우 (δ ≥ ε̂+ε̃, ε̂=0, ε̃=0) 는 반경을 줄인 rectangular 문제로 (reduce_coupling)
+    td, δc = reduce_coupling(td, delta_couple)
 
     # ---- OMP (기존과 동일 구성) ----
     omp_model, omp_vars = build_true_dro_omp(td; optimizer=mip_optimizer, silent=true)
@@ -215,10 +215,10 @@ function belief_menu_benders_optimize!(td::TrueDROData;
     valid_inequality == :mincut && add_phase1_mincut_vi!(omp_model, omp_vars, td)
 
     # ---- oracle 용 Ω (Gurobi NonConvex) 와 belief LP ----
-    sub_model, sub_vars = build_true_dro_subproblem(td, zeros(K); optimizer=nlp_optimizer, silent=true)
+    sub_model, sub_vars = build_true_dro_subproblem(td, zeros(K); optimizer=nlp_optimizer, silent=true, delta_couple=δc)
     set_optimizer_attribute(sub_model, "NonConvex", 2)
-    B = _build_belief_lp(td; optimizer=lp_optimizer)
-    Floc = local_first ? Main._build_fixed_alpha_lp(td, zeros(K); optimizer=lp_optimizer) : nothing
+    B = _build_belief_lp(td; optimizer=lp_optimizer)     # belief 고정이라 결합 행 불필요 (고정 belief 는 _clean_belief 가 맞춤)
+    Floc = local_first ? Main._build_fixed_alpha_lp(td, zeros(K); optimizer=lp_optimizer, delta_couple=δc) : nothing
 
     menu = Vector{Dict{Symbol,Vector{Float64}}}()
     menu_keys = Set{Any}()
@@ -320,7 +320,8 @@ function belief_menu_benders_optimize!(td::TrueDROData;
                         starts = α_menu === nothing ? [fill(td.w / K, K)] : [α_menu, fill(td.w / K, K)]
                         for a0 in starts
                             aloc = Main._ipopt_local_alpha(td, x̄, Floc, Main._capw(a0, td.w);
-                                                           max_time=local_time, deadline=time() + local_time)
+                                                           max_time=local_time, deadline=time() + local_time,
+                                                           delta_couple=δc)
                             aloc === nothing && continue
                             inf_, b_ = eval_fixed(aloc)
                             if inf_[:Z0_val] >= target
@@ -335,7 +336,8 @@ function belief_menu_benders_optimize!(td::TrueDROData;
                 if !hit
                     t_b = @elapsed (ab = Main.global_bilinear_solve(td, x̄; nworkers=nworkers, time_limit=tl,
                                                     rel_gap=oracle_gap, verbose=false,
-                                                    target=(target_stop ? target : nothing)))
+                                                    target=(target_stop ? target : nothing),
+                                                    delta_couple=δc, envs=bnb_envs, heuristic=bnb_heuristic))
                     bnb_calls += 1; bnb_t += t_b
                     info, b_star = eval_fixed(ab[:α])
                     Zbd = ab[:UB]
@@ -350,7 +352,7 @@ function belief_menu_benders_optimize!(td::TrueDROData;
         add_cut!(info, x̄)
         new_belief = Zinc > V_menu + 1e-6 * max(1.0, abs(Zinc))
         if new_belief
-            b_clean = _clean_belief(b_star, td)
+            b_clean = _clean_belief(b_star, td; delta_couple=δc)
             if !(_belief_key(b_clean) in menu_keys)
                 push!(menu, b_clean); push!(menu_keys, _belief_key(b_clean))
             end

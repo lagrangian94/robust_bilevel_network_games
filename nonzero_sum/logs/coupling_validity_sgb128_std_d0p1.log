@@ -1,0 +1,31 @@
+Set parameter WLSAccessID
+Set parameter WLSSecret
+Set parameter LicenseID to value 926906
+Academic license 926906 - for non-commercial use only - registered to se___@postech.ac.kr
+Set parameter WLSAccessID
+Set parameter WLSSecret
+Set parameter LicenseID to value 926906
+Academic license 926906 - for non-commercial use only - registered to se___@postech.ac.kr
+location_sgb128_S3_seed1_pair  nx=4 S=3 ε̂=0.20 ε̃=0.20 β=0.40 δ=0.1  workers=1
+==========================================================================================
+변형 std_mw_bnb
+==========================================================================================
+
+******************************************************************************
+This program contains Ipopt, a library for large-scale nonlinear optimization.
+ Ipopt is released as open source code under the Eclipse Public License (EPL).
+         For more information visit https://github.com/coin-or/Ipopt
+******************************************************************************
+
+  [std] it   1 LB=-10000000.0000 UB=     0.0000 x=Int64[]    Ω=     0.0000 bd=     0.0000 (317.9s)
+  [std] it   2 LB=-9999695.0000 UB=     0.0000 x=[1]        Ω=  -893.7479 bd=  7400.5835 (600.2s)
+→ std_mw_bnb TimeLimit x*=Int64[] LB=-9999695.000000 UB=0.000000 iter=3 oracle=2 cuts belief/restricted/omega=0/2/0 (MW 2) wall=919s
+  α-B&B 노드 LP 수치 오류 누적: 9 회 (재시도로도 실패 0 회)
+==========================================================================================
+cut 유효성: 확인 x = [Int64[], [1]]
+  KKT V*_δ(Int64[]) = -0.000000 [OPTIMAL 5s]
+  KKT V*_δ([1]) = -893.745740 [OPTIMAL 19s]
+  std_mw_bnb       cut    2 개 × x 2: max (cut(x) − V*(x))/|V*| = +0.00e+00  유효  (:restricted, true, Int64[])
+==========================================================================================
+요약 (δ = 0.1)
+  std_mw_bnb       TimeLimit x*=Int64[]    LB=-9999695.0000 UB=      0.0000 gap=1.00e+07 iter=   3 oracle=  2 wall=   919s

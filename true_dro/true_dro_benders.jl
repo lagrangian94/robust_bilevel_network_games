@@ -67,6 +67,15 @@ Run outer Benders.
   주의: 기본 구성인 α-B&B boost (`boost_solver=:alpha_bnb`) 및 belief-menu (`belief_menu=true`) 와
   함께 쓴 경우는 아직 검증하지 않았음.
 
+- `delta_couple`: 종속 ambiguity set (belief 결합) 반경 δ, 𝒟_δ = {(p, p̃) : d_TV(p, p̃) ≤ δ} (docs/dependent_ambiguity/).
+  `Inf` (default) = 기존 rectangular. 유한하면
+    · subproblem (전역·local·Sherali) 과 α-B&B boost 에 결합 행,
+    · mini-Benders 는 α 고정 후 ISP-L/ISP-F 를 따로 풀지 않고 **α 고정 joint LP** 로 (분리는 결합에서 성립하지 않음),
+      MW 도 joint LP 에서 (joint Pareto),
+    · α-step 과 belief menu 의 고정 belief 는 결합까지 맞춰 정리 (couple_clean).
+  δ ≥ ε̂+ε̃, ε̂ = 0, ε̃ = 0 이면 reduce_coupling 이 반경을 줄인 rectangular 문제로 바꿈.
+- `boost_envs`, `boost_heuristic`: α-B&B boost 에 그대로 전달 (Env 재사용, 휴리스틱 on/off).
+
 Returns Dict with :status, :Z0, :x, :α, :lower_bound, :upper_bound, :iters, :history.
 """
 function true_dro_benders_optimize!(td::TrueDROData;
@@ -89,9 +98,16 @@ function true_dro_benders_optimize!(td::TrueDROData;
         boost_time_limit::Float64=3600.0,
         boost_nworkers::Int=12,
         belief_menu::Bool=false,
-        menu_max::Int=20)
+        menu_max::Int=20,
+        delta_couple::Real=Inf,
+        boost_envs=nothing,
+        boost_heuristic::Bool=true)
 
     K = td.num_arcs
+    td, δc = reduce_coupling(td, delta_couple)
+    coupled = isfinite(δc)
+    _skw = coupled ? (delta_couple=δc,) : NamedTuple()     # 결합이면 full 빌더만 쓰임 (ε̂, ε̃ > 0)
+    coupled && verbose && @info "belief 결합 δ=$δc: mini-Benders 는 α 고정 joint LP 사용"
 
     boost_solver in (:gurobi, :alpha_bnb) || error("boost_solver must be :gurobi or :alpha_bnb (got $boost_solver)")
     if boost_solver == :alpha_bnb
@@ -185,7 +201,7 @@ function true_dro_benders_optimize!(td::TrueDROData;
         _sub_builder = build_true_dro_subproblem
     end
     sub_model, sub_vars = _sub_builder(td, x_init; optimizer=nlp_optimizer, silent=!sub_verbose,
-                                       add_objF_vi=add_objF_vi)
+                                       add_objF_vi=add_objF_vi, _skw...)
     if nonconvex_attr !== nothing && !_use_nominal_compact
         try
             set_optimizer_attribute(sub_model, nonconvex_attr.first, nonconvex_attr.second)
@@ -206,7 +222,7 @@ function true_dro_benders_optimize!(td::TrueDROData;
         # feasible point 탐색 실패 (ITERATION_LIMIT) 관측됨.
         sub_model_local, sub_vars_local = _sub_builder(td, x_init;
             optimizer=nlp_optimizer, silent=!sub_verbose, rho_upper_bound=const_rho_bound,
-            add_objF_vi=false)
+            add_objF_vi=false, _skw...)
         if nonconvex_attr !== nothing && !_use_nominal_compact
             try
                 set_optimizer_attribute(sub_model_local, nonconvex_attr.first, nonconvex_attr.second)
@@ -234,8 +250,13 @@ function true_dro_benders_optimize!(td::TrueDROData;
     local astep_lp_model, astep_lp_vars
     if mini_benders
         α_init = zeros(K)
-        isp_l_model, isp_l_vars = build_true_dro_isp_leader(td, x_init, α_init; optimizer=lp_optimizer)
-        isp_f_model, isp_f_vars = build_true_dro_isp_follower(td, x_init, α_init; optimizer=lp_optimizer)
+        if !coupled
+            isp_l_model, isp_l_vars = build_true_dro_isp_leader(td, x_init, α_init; optimizer=lp_optimizer)
+            isp_f_model, isp_f_vars = build_true_dro_isp_follower(td, x_init, α_init; optimizer=lp_optimizer)
+        else
+            # 결합: α 고정이어도 leader·follower 블록이 (a, d) 결합으로 묶여 따로 풀 수 없음 → α 고정 joint LP
+            jlp = Main._build_fixed_alpha_lp(td, x_init; optimizer=lp_optimizer, delta_couple=δc)
+        end
         # α-step LP: a,d,r 파라미터로 고정한 순수 LP (pre-build)
         a_dummy = fill(1.0 / td.S, td.S)
         d_dummy = fill(1.0 / td.S, td.S)
@@ -386,6 +407,7 @@ function true_dro_benders_optimize!(td::TrueDROData;
                 # α-B&B: UB = α-B&B 상한, 해 = α-B&B incumbent α*.
                 # cut 용 ρ 값은 α* 를 Ω 에 고정해 풀어서 얻음 (α 고정 → 실현 가능해 → valid cut).
                 ab = Main.global_bilinear_solve(td, x_sol; nworkers=boost_nworkers, time_limit=const_boost_time_limit,
+                                                delta_couple=δc, envs=boost_envs, heuristic=boost_heuristic,
                                                 rel_gap=5e-3, verbose=verbose, log_every=120.0)
                 α_star = ab[:α]
                 α_v = cur_sub_vars[:α]
@@ -512,7 +534,7 @@ function true_dro_benders_optimize!(td::TrueDROData;
         # ---- (하이브리드) belief menu: 해의 belief 추가 → menu LP cut ----
         if belief_menu
             if sub_belief !== nothing
-                bc = Main._clean_belief(sub_belief, td)
+                bc = Main._clean_belief(sub_belief, td; delta_couple=δc)
                 key = Main._belief_key(bc)
                 if !(key in menu_keys)
                     push!(menu, bc); push!(menu_keys, key)
@@ -610,8 +632,12 @@ function true_dro_benders_optimize!(td::TrueDROData;
 
             for phase in 1:2
                 # Set α for this phase
-                update_isp_leader_alpha!(isp_l_model, isp_l_vars, td, α_fixed)
-                update_isp_follower_alpha!(isp_f_model, isp_f_vars, td, α_fixed)
+                if coupled
+                    Main._fix_alpha!(jlp, α_fixed)
+                else
+                    update_isp_leader_alpha!(isp_l_model, isp_l_vars, td, α_fixed)
+                    update_isp_follower_alpha!(isp_f_model, isp_f_vars, td, α_fixed)
+                end
 
                 phase_tag = phase == 1 ? "Mini" : "Alt"
                 prev_lb_mb = lower_bound
@@ -654,6 +680,58 @@ function true_dro_benders_optimize!(td::TrueDROData;
                     # 이 경우 mini-benders phase만 중단하고 outer loop은 계속 진행.
                     local l_info, f_info
                     local t_isp_l, t_isp_f
+                    if coupled
+                        # ---- 결합: α 고정 joint LP 하나로 (ISP-L + ISP-F 를 대신함) ----
+                        local j_info
+                        try
+                            t_isp_l = @elapsed (j_info = solve_true_dro_subproblem!(jlp.model, jlp.vars, td, x_mb;
+                                                                                     is_global=false))
+                        catch e
+                            verbose && @printf("  %s-Benders[%d]: joint LP failed (%s), break\n", phase_tag, j,
+                                               sprint(showerror, e))
+                            break
+                        end
+                        t_isp_f = 0.0
+                        last_a_val = [value(jlp.vars[:a][s]) for s in 1:td.S]
+                        last_r_val = get(jlp.vars, :_use_cvar, false) ? [value(jlp.vars[:r][s]) for s in 1:td.S] : nothing
+                        last_d_val = [value(jlp.vars[:d][s]) for s in 1:td.S]
+                        Z0_mini = j_info[:Z0_val]
+                        local jcut_tag, jcut
+                        jt_mw = 0.0
+                        if strengthen_cuts == :mw
+                            # joint MW: x_mb 값 유지 (≥ z* − 1e-6) 하는 해 중 core point 에서 최대
+                            jt_mw = @elapsed begin
+                                jmw_con = @constraint(jlp.model, objective_function(jlp.model) >= Z0_mini - 1e-6)
+                                local jmw_info = nothing
+                                try
+                                    jmw_info = solve_true_dro_subproblem!(jlp.model, jlp.vars, td, x_core; is_global=false)
+                                catch
+                                end
+                                delete(jlp.model, jmw_con)
+                            end
+                            if jmw_info !== nothing
+                                jcut = compute_true_dro_outer_cut(td, jmw_info, x_core); jcut_tag = "mw-joint"
+                            else
+                                jcut = compute_true_dro_outer_cut(td, j_info, x_mb); jcut_tag = "base*"
+                            end
+                        else
+                            jcut = compute_true_dro_outer_cut(td, j_info, x_mb); jcut_tag = "base"
+                        end
+                        cut_count += 1
+                        add_true_dro_optimality_cut!(omp_model, omp_vars, jcut, cut_count)
+                        if verbose
+                            @printf("  %s-Benders[%d] (%s): LB=%.6f, Z₀(α*)=%.6f, intercept=%.6f (%.3fs) [OMP=%.3f jointLP=%.3f MW=%.3f]\n",
+                                    phase_tag, j, jcut_tag, lb_mb, Z0_mini, jcut[:intercept],
+                                    time() - t_mini_iter_start, t_omp_mb, t_isp_l, jt_mw)
+                            flush(stdout)
+                        end
+                        mini_gap = abs(upper_bound - lb_mb) / max(abs(upper_bound), 1e-10)
+                        if mini_gap <= tol
+                            verbose && @printf("  %s-Benders[%d]: gap=%.2e ≤ tol, break\n", phase_tag, j, mini_gap)
+                            break
+                        end
+                        continue
+                    end
                     try
                         update_isp_leader_objective!(isp_l_model, isp_l_vars, td, x_mb)
                         t_isp_l = @elapsed (l_info = solve_isp_leader!(isp_l_model, isp_l_vars, td))
@@ -807,6 +885,11 @@ function true_dro_benders_optimize!(td::TrueDROData;
                     a_clamped = _has_a_var ? [max(last_a_val[s], sub_vars[:a_min][s]) for s in 1:S] : td.q_hat
                     r_clamped = _has_r_var ? [clamp(last_r_val[s], 0.0, sub_vars[:r_max][s]) for s in 1:S] : nothing
                     d_clamped = _use_single_compact ? td.q_hat : [max(last_d_val[s], sub_vars[:d_min][s]) for s in 1:S]
+                    if coupled
+                        # 결합: 고정할 (a, d) 가 TV 볼 둘과 d_TV(a, d) ≤ δ 를 정확히 만족하도록 함께 축소, r 도 다시 맞춤
+                        a_clamped, d_clamped = couple_clean(last_a_val, last_d_val, td.q_hat, td.eps_hat, td.eps_tilde, δc)
+                        _has_r_var && (r_clamped = clean_r(last_r_val, a_clamped, td.beta))
+                    end
 
                     # OMP x̄ for objective
                     t_omp_alt = @elapsed optimize!(omp_model)

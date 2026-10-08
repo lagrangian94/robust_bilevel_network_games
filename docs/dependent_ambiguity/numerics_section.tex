@@ -1,0 +1,7 @@
+The implementation and all numerical checks are recorded in \texttt{docs/dependent\_ambiguity/results.md}. In summary:
+\begin{itemize}[nosep]
+\item \textbf{Exactness of $\Omega_\D$ and of the penalty $\lambda^U$ (Theorem~\ref{thm:minimax}, Lemma~\ref{lem:cert}).} At fixed $x$, the general $\Omega_\D$, the manuscript's zero-sum $\Omega$ with the coupling rows, and a big-M-free KKT evaluation agree to $\le 3\times10^{-7}$ (relative) on all tested $(x,\delta)$ pairs (zero-sum grid $3\times3$, location instance).
+\item \textbf{Validity of all algorithmic components under a binding coupling} (location SGB128, $\delta=0.1$, where $V^*_{0.1}([1])=-893.75<V^*_{\mathrm{rect}}([1])=-871.67$): every belief cut, restricted cut, Magnanti--Wong cut and Gurobi cut satisfies $\mathrm{cut}(x)\le V^*_\delta(x)$ at the checked points (up to solver tolerance); the $\alpha$-B\&B bounds bracket the KKT value; belief cuts are exact at their generating point ($3\times10^{-11}$).
+\item \textbf{Zero-sum code.} \texttt{true\_dro\_benders\_optimize!} (mini-Benders replaced by the $\alpha$-fixed joint LP under coupling) and \texttt{belief\_menu\_benders\_optimize!} reach the same optimum as the validated general code on a grid instance with a binding coupling, for $\delta\in\{0.05,0,\infty\}$.
+\item \textbf{Numerics.} Node LPs of the $\alpha$-B\&B can become ill-conditioned in very narrow $\alpha$ boxes (bound-factor RLT pairs become nearly dependent); the coupling only deepens the tree. A retry with \texttt{NumericFocus}=3 resolves all observed cases.
+\end{itemize}

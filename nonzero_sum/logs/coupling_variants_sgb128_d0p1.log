@@ -1,0 +1,28 @@
+Set parameter WLSAccessID
+Set parameter WLSSecret
+Set parameter LicenseID to value 926906
+Academic license 926906 - for non-commercial use only - registered to se___@postech.ac.kr
+Set parameter WLSAccessID
+Set parameter WLSSecret
+Set parameter LicenseID to value 926906
+Academic license 926906 - for non-commercial use only - registered to se___@postech.ac.kr
+location_sgb128_S3_seed1_pair  nx=4 S=3 ε̂=0.20 ε̃=0.20 β=0.40 δ=0.1  workers=1
+==========================================================================================
+변형 menu_mw_bnb
+==========================================================================================
+
+******************************************************************************
+This program contains Ipopt, a library for large-scale nonlinear optimization.
+ Ipopt is released as open source code under the Eclipse Public License (EPL).
+         For more information visit https://github.com/coin-or/Ipopt
+******************************************************************************
+
+  [orcl] it   1 LB=-10000000.0000 UB=160698.4036 x=Int64[]    Ω=    -0.0000 (6.1s) menu=1 (+belief, LP@x̄=-0.0000, gap 2.7e-11)
+  [menu] it   2 LB=-9999695.0000 UB=160698.4036 x=[1]        menu cut 1/1 (V_menu=-131715.7222)
+  [menu] it   3 LB=-9999695.0000 UB=160698.4036 x=[2]        menu cut 1/1 (V_menu=-22392.4444)
+  [menu] it   4 LB=-1851582.4445 UB=160698.4036 x=[1, 2]     menu cut 1/1 (V_menu=-29711.7222)
+  [orcl] it   5 LB=-131410.7224 UB=160698.4036 x=[1]        Ω=  -893.8043 (0.8s) menu=2 (+belief, LP@x̄=-893.7468, gap -5.8e-02)
+  [orcl] it   6 LB=-29101.7223 UB=136858.9356 x=[1, 2]     Ω= -1535.1057 (1.0s) menu=3 (+belief, LP@x̄=-1535.0556, gap -5.0e-02)
+  [orcl] it   7 LB=-22087.4445 UB=136858.9356 x=[2]        Ω= -1155.0593 (0.7s) menu=4 (+belief, LP@x̄=-1155.0000, gap -5.9e-02)
+  [menu] it   8 LB=  -925.1057 UB=136858.9356 x=[1, 2]     menu cut 1/4 (V_menu=-1535.0556)
+  [orcl] it   9 LB=  -925.0556 UB=  -145.0375 x=[1, 2]     Ω= -1535.0556 (600.1s) menu=4

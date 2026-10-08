@@ -69,6 +69,23 @@ function nz_rhs(nd::NZData, x, h, s)
     return r
 end
 
+"""
+종속 ambiguity set (belief 결합) 반경 δ: 𝒟_δ = {(p, p̃) ∈ D̂ × D̃ : d_TV(p, p̃) ≤ δ}.
+meta[:delta] 에 저장 (없으면 Inf = 기존 rectangular). δ ≥ ε̂ + ε̃ 이면 결합은 비활성 (삼각부등식).
+"""
+nz_delta(nd::NZData) = Float64(get(nd.meta, :delta, Inf))
+"결합 제약을 Ω 등에 넣어야 하는가 (유한 δ)"
+nz_coupled(nd::NZData) = isfinite(nz_delta(nd))
+
+"δ 만 바꾼 사본 (meta 는 얕은 복사라 원본과 공유하지 않음). δ = Inf 는 rectangular"
+function nz_with_delta(nd::NZData, δ::Real)
+    meta = copy(nd.meta); meta[:delta] = Float64(δ)
+    return NZData(nd.name, nd.A, nd.c, nd.ell, nd.u, nd.hrow, nd.hcoef, nd.xrow, nd.g,
+                  nd.W, nd.wvec, nd.c0, nd.hU, nd.nx, nd.x_allowed, nd.gamma, nd.qx,
+                  nd.S, nd.q_hat, nd.eps_hat, nd.eps_tilde, nd.beta,
+                  nd.thetaU, nd.piLU, nd.piFU, nd.lambdaU, nd.varpiU, meta)
+end
+
 "같은 데이터에서 상계만 바꾼 사본"
 function nz_with_bounds(nd::NZData; thetaU=nd.thetaU, lambdaU=nd.lambdaU, piLU=nothing)
     if piLU === nothing

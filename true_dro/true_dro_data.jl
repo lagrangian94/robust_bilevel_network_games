@@ -105,3 +105,58 @@ function make_true_dro_data(network, scenarios, q_hat, eps_hat, eps_tilde;
                        eps_hat, eps_tilde, v, gamma, w, lambda_U,
                        network.interdictable_arcs, phi_hat_U, phi_tilde_U, beta)
 end
+
+
+# =====================================================================
+# 종속 ambiguity set (belief 결합) 𝒟_δ = {(p, p̃) ∈ D̂ × D̃ : d_TV(p, p̃) ≤ δ} 공통 도우미
+# (docs/dependent_ambiguity/). 결합 반경 δ 는 TrueDROData 에 넣지 않고 함수 키워드 delta_couple 로 넘긴다
+# (Inf = 기존 rectangular).
+# =====================================================================
+"반경만 바꾼 사본"
+td_with_eps(td::TrueDROData, eps_hat, eps_tilde) =
+    TrueDROData(td.Ny, td.Nts, td.nv1, td.num_arcs, td.S, td.xi_bar, td.q_hat, Float64(eps_hat), Float64(eps_tilde),
+                td.v, td.gamma, td.w, td.lambda_U, td.interdictable_arcs, td.phi_hat_U, td.phi_tilde_U, td.beta)
+
+"""
+    reduce_coupling(td, δ) → (td′, δ′)
+
+결합이 곱집합으로 바뀌는 경우를 미리 정리해 결합 행 없는 (δ′ = Inf) 문제로 바꾼다 (Lemma geom, 노트 §1).
+  δ ≥ ε̂ + ε̃ : 결합 비활성 (삼각부등식)        → (td, Inf)
+  ε̂ = 0      : p = q̂ → p̃ 의 반경 min(ε̃, δ)    → (ε̃ ← min(ε̃, δ), Inf)
+  ε̃ = 0      : p̃ = q̂ → p 의 반경 min(ε̂, δ)    → (ε̂ ← min(ε̂, δ), Inf)
+그 외는 그대로 (td, δ). nominal / single-layer compact 빌더가 결합을 모르므로 Benders 진입 시 반드시 거친다.
+"""
+function reduce_coupling(td::TrueDROData, δ::Real)
+    isfinite(δ) || return td, Inf
+    δ >= td.eps_hat + td.eps_tilde && return td, Inf
+    td.eps_hat == 0.0 && return td_with_eps(td, 0.0, min(td.eps_tilde, δ)), Inf
+    td.eps_tilde == 0.0 && return td_with_eps(td, min(td.eps_hat, δ), 0.0), Inf
+    return td, Float64(δ)
+end
+
+"""
+(a, d) 를 결합 다면체 안으로: 음수 제거·합 1 후, ‖a−q̂‖₁ ≤ 2ε̂, ‖d−q̂‖₁ ≤ 2ε̃, ‖a−d‖₁ ≤ 2δ 를 모두 만족하도록
+둘을 q̂ 쪽으로 같은 비율 t 만큼 줄인다 (세 거리가 모두 (1−t) 배가 됨). δ = Inf 면 각자 따로 줄인다 (기존 규칙).
+"""
+function couple_clean(a, d, q, ε̂, ε̃, δ)
+    simp(y) = (y = max.(y, 0.0); y ./ sum(y))
+    a = simp(a); d = simp(d)
+    ratio(dev, ε) = dev > 2ε ? 2ε / dev : 1.0
+    ta = ratio(sum(abs.(a .- q)), ε̂); td_ = ratio(sum(abs.(d .- q)), ε̃)
+    if isfinite(δ)
+        t = min(ta, td_, ratio(sum(abs.(a .- d)), δ)); ta = td_ = t
+    end
+    return q .+ (a .- q) .* ta, q .+ (d .- q) .* td_
+end
+
+"""CVaR 재가중 r 을 [0, a/(1−β)] 로 자르고 합 1 로 (부족분은 여유 비율로 배분, 초과는 비례 축소). belief_menu 의 규칙과 같음."""
+function clean_r(r, a, β)
+    cap = a ./ (1.0 - β)
+    r = clamp.(r, 0.0, cap); sr = sum(r)
+    if sr > 1.0
+        r = r ./ sr
+    elseif sr < 1.0
+        slack = cap .- r; r = r .+ slack .* ((1.0 - sr) / sum(slack))
+    end
+    return r
+end

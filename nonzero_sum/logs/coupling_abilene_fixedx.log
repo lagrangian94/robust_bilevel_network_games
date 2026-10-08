@@ -1,0 +1,22 @@
+Set parameter WLSAccessID
+Set parameter WLSSecret
+Set parameter LicenseID to value 926906
+Academic license 926906 - for non-commercial use only - registered to se___@postech.ac.kr
+abilene K=30 S=10 w=10.8146 ε̂=0.20 ε̃=0.20 β=0.70 card=[([27, 28], 1), ([7, 26], 1)]
+ERROR: LoadError: KKT eval: TIME_LIMIT
+Stacktrace:
+ [1] error(s::String)
+   @ Base .\error.jl:44
+ [2] nz_kkt_value(nd::NZData, x̄::Vector{Float64}; optimizer::Function, time_limit::Float64, gap::Float64, silent::Bool)
+   @ Main F:\github_projects\robust_bilevel_network_games\nonzero_sum\nz_kkt_eval.jl:92
+ [3] macro expansion
+   @ .\timing.jl:461 [inlined]
+ [4] top-level scope
+   @ F:\github_projects\robust_bilevel_network_games\nonzero_sum\test_coupling_paper_x.jl:38
+ [5] include(mod::Module, _path::String)
+   @ Base .\Base.jl:306
+ [6] exec_options(opts::Base.JLOptions)
+   @ Base .\client.jl:317
+ [7] _start()
+   @ Base .\client.jl:550
+in expression starting at F:\github_projects\robust_bilevel_network_games\nonzero_sum\test_coupling_paper_x.jl:32

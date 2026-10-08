@@ -1,0 +1,46 @@
+Set parameter WLSAccessID
+Set parameter WLSSecret
+Set parameter LicenseID to value 926906
+Academic license 926906 - for non-commercial use only - registered to se___@postech.ac.kr
+Set parameter WLSAccessID
+Set parameter WLSSecret
+Set parameter LicenseID to value 926906
+Academic license 926906 - for non-commercial use only - registered to se___@postech.ac.kr
+grid3x4 S=5 seed=1 β=0.7 ε̂=0.1 ε̃=0.3  K=22 interdictable=10 γ=2 w=7.8492
+==========================================================================================
+δ = 0.05
+==========================================================================================
+Set parameter OutputFlag to value 1
+Set parameter LogFile to value "global_miqcp.log"
+Set parameter NonConvex to value 2
+Set parameter DualReductions to value 0
+  ("(1) true_dro_benders", :Optimal, [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0], 29.60460040000001, 29.604600938999884, 26.5683724)
+
+******************************************************************************
+This program contains Ipopt, a library for large-scale nonlinear optimization.
+ Ipopt is released as open source code under the Eclipse Public License (EPL).
+         For more information visit https://github.com/coin-or/Ipopt
+******************************************************************************
+
+  ("(2) belief_menu", :Optimal, [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0], 29.604601300000013, 29.604601440992475, 12.0816777)
+  ("(3) nz 기준", :Optimal, [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0], 29.604593715391843, 29.604601440992468, 16.8962221)
+  KKT V*_δ([11, 15]) = 29.604602 [OPTIMAL]
+  요약:
+    (1) true_dro_benders   Optimal   x*=[11, 15]   LB=29.604600 UB=29.604601 27s
+    (2) belief_menu        Optimal   x*=[11, 15]   LB=29.604601 UB=29.604601 12s
+    (3) nz 기준            Optimal   x*=[11, 15]   LB=29.604594 UB=29.604601 17s
+==========================================================================================
+δ = Inf
+==========================================================================================
+Set parameter OutputFlag to value 1
+Set parameter LogFile to value "global_miqcp.log"
+Set parameter NonConvex to value 2
+Set parameter DualReductions to value 0
+  ("(1) true_dro_benders", :Optimal, [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0], 29.604599499999992, 29.60460144099247, 4.99844)
+  ("(2) belief_menu", :Optimal, [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0], 29.604601499999944, 29.604601440992468, 4.3223681)
+  ("(3) nz 기준", :Optimal, [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0], 29.604601385990676, 29.604601440992468, 22.2566688)
+  KKT V*_δ([11, 15]) = 29.604602 [OPTIMAL]
+  요약:
+    (1) true_dro_benders   Optimal   x*=[11, 15]   LB=29.604599 UB=29.604601 5s
+    (2) belief_menu        Optimal   x*=[11, 15]   LB=29.604601 UB=29.604601 4s
+    (3) nz 기준            Optimal   x*=[11, 15]   LB=29.604601 UB=29.604601 22s

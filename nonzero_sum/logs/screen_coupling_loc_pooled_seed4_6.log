@@ -1,0 +1,34 @@
+Set parameter WLSAccessID
+Set parameter WLSSecret
+Set parameter LicenseID to value 926906
+Academic license 926906 - for non-commercial use only - registered to se___@postech.ac.kr
+location_n8_A1_B4_S3_seed4         ε̂=0.20 ε̃=0.20 β=0.4 | x with R>V0:  0/16 | max rel(R−Vδ)=6.654e-10 (x = [1, 3, 4], R = -2395.9999984055976, Rp = -2395.9999984055976, Vd = -2396.0, V0 = -2395.999996934823) | max rel(Rp−Vδ)=6.654e-10 (x = [1, 3, 4], R = -2395.9999984055976, Rp = -2395.9999984055976, Vd = -2396.0, V0 = -2395.999996934823) (36s)
+location_n8_A1_B4_S3_seed4         ε̂=0.10 ε̃=0.30 β=0.4 | x with R>V0:  0/16 | max rel(R−Vδ)=9.250e-11 (x = [1, 4], R = -1528.6111109697224, Rp = -1528.6111109697224, Vd = -1528.6111111111113, V0 = -1528.6111111111113) | max rel(Rp−Vδ)=9.250e-11 (x = [1, 4], R = -1528.6111109697224, Rp = -1528.6111109697224, Vd = -1528.6111111111113, V0 = -1528.6111111111113) (28s)
+location_n8_A1_B4_S3_seed4         ε̂=0.05 ε̃=0.30 β=0.4 | x with R>V0:  0/16 | max rel(R−Vδ)=9.225e-11 (x = [1, 4], R = -1532.694444303058, Rp = -1532.6944444444443, Vd = -1532.6944444444443, V0 = -1532.6944444444443) | max rel(Rp−Vδ)=4.440e-10 (x = [1, 2, 3], R = -1327.2083333333333, Rp = -1327.2083327440723, Vd = -1327.2083333333333, V0 = -1327.2083333333333) (25s)
+location_n8_A1_B4_S3_seed4         ε̂=0.00 ε̃=0.30 β=0.4 | x with R>V0:  0/16 | max rel(R−Vδ)=0.000e+00  | max rel(Rp−Vδ)=0.000e+00  (21s)
+location_n8_A1_B4_S3_seed6         ε̂=0.20 ε̃=0.20 β=0.4 | x with R>V0:  0/16 | max rel(R−Vδ)=3.104e-07 (x = [2], R = 8.870187278934906e-7, Rp = 8.870187278934906e-7, Vd = 5.766516978846423e-7, V0 = -0.0) | max rel(Rp−Vδ)=3.104e-07 (x = [2], R = 8.870187278934906e-7, Rp = 8.870187278934906e-7, Vd = 5.766516978846423e-7, V0 = -0.0) (584s)
+ERROR: LoadError: KKT eval: TIME_LIMIT
+Stacktrace:
+  [1] error(s::String)
+    @ Base .\error.jl:44
+  [2] nz_kkt_value(nd::NZData, x̄::Vector{Float64}; optimizer::Function, time_limit::Float64, gap::Float64, silent::Bool)
+    @ Main F:\github_projects\robust_bilevel_network_games\nonzero_sum\nz_kkt_eval.jl:92
+  [3] nz_kkt_value
+    @ F:\github_projects\robust_bilevel_network_games\nonzero_sum\nz_kkt_eval.jl:24 [inlined]
+  [4] kv(nd::NZData, x::Vector{Float64})
+    @ Main F:\github_projects\robust_bilevel_network_games\nonzero_sum\screen_coupling.jl:34
+  [5] macro expansion
+    @ F:\github_projects\robust_bilevel_network_games\nonzero_sum\screen_coupling.jl:43 [inlined]
+  [6] macro expansion
+    @ .\timing.jl:461 [inlined]
+  [7] screen(nd0::NZData, label::String; xs::Vector{Vector{Float64}}, ε_pairs::Vector{Tuple{Float64, Float64}}, betas::Vector{Float64})
+    @ Main F:\github_projects\robust_bilevel_network_games\nonzero_sum\screen_coupling.jl:41
+  [8] top-level scope
+    @ F:\github_projects\robust_bilevel_network_games\nonzero_sum\screen_coupling.jl:72
+  [9] include(mod::Module, _path::String)
+    @ Base .\Base.jl:306
+ [10] exec_options(opts::Base.JLOptions)
+    @ Base .\client.jl:317
+ [11] _start()
+    @ Base .\client.jl:550
+in expression starting at F:\github_projects\robust_bilevel_network_games\nonzero_sum\screen_coupling.jl:57

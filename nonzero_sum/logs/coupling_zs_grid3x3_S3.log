@@ -1,0 +1,94 @@
+Set parameter WLSAccessID
+Set parameter WLSSecret
+Set parameter LicenseID to value 926906
+Academic license 926906 - for non-commercial use only - registered to se___@postech.ac.kr
+==========================================================================================
+(ZS) zero-sum max-flow grid 3×3, S=3, β=0.4, ε̂=ε̃=0.2, λᵁ=10 — δ = [Inf, 0.4, 0.3, 0.2, 0.1, 0.05, 0.0]
+==========================================================================================
+  K=17, 평가 x 11 개
+  x=Int64[]      δ=Inf   Ω=     11.7778 [OPTIMAL 1.2s]  KKT=     11.7778 [OPTIMAL 3.3s]  old=     11.7778 (Ω−old -1.0e-08)  Ω−KKT=-2.18e-07  TV(a,d)=0.3667
+  x=Int64[]      δ=0.4   Ω=     11.7778 [OPTIMAL 0.0s]  KKT=     11.7778 [OPTIMAL 0.2s]  old=     11.7778 (Ω−old -1.0e-08)  Ω−KKT=-2.18e-07  TV(a,d)=0.3667
+  x=Int64[]      δ=0.3   Ω=     11.7778 [OPTIMAL 0.1s]  KKT=     11.7778 [OPTIMAL 0.3s]  old=     11.7778 (Ω−old -1.0e-08)  Ω−KKT=-1.11e-06  TV(a,d)=0.2248
+  x=Int64[]      δ=0.2   Ω=     11.7778 [OPTIMAL 0.0s]  KKT=     11.7778 [OPTIMAL 0.2s]  old=     11.7778 (Ω−old -1.0e-08)  Ω−KKT=-1.11e-06  TV(a,d)=0.1064
+  x=Int64[]      δ=0.1   Ω=     11.7778 [OPTIMAL 0.0s]  KKT=     11.7778 [OPTIMAL 0.2s]  old=     11.7778 (Ω−old -1.0e-08)  Ω−KKT=-1.11e-06  TV(a,d)=0.1000
+  x=Int64[]      δ=0.05  Ω=     11.7778 [OPTIMAL 0.0s]  KKT=     11.7778 [OPTIMAL 0.2s]  old=     11.7778 (Ω−old -1.0e-08)  Ω−KKT=-1.11e-06  TV(a,d)=0.0500
+  x=Int64[]      δ=0.0   Ω=     11.7778 [OPTIMAL 0.0s]  KKT=     11.7778 [OPTIMAL 0.2s]  old=     11.7778 (Ω−old -7.0e-09)  Ω−KKT=-3.66e-07  TV(a,d)=0.0000
+  x=[6]          δ=Inf   Ω=     11.7778 [OPTIMAL 0.0s]  KKT=     11.7778 [OPTIMAL 0.2s]  old=     11.7778 (Ω−old -1.0e-08)  Ω−KKT=-2.25e-07  TV(a,d)=0.4000
+  x=[6]          δ=0.4   Ω=     11.7778 [OPTIMAL 0.0s]  KKT=     11.7778 [OPTIMAL 0.2s]  old=     11.7778 (Ω−old -1.0e-08)  Ω−KKT=-1.11e-06  TV(a,d)=0.2557
+  x=[6]          δ=0.3   Ω=     11.7778 [OPTIMAL 0.0s]  KKT=     11.7778 [OPTIMAL 0.2s]  old=     11.7778 (Ω−old -1.0e-08)  Ω−KKT=-1.11e-06  TV(a,d)=0.3000
+  x=[6]          δ=0.2   Ω=     11.7778 [OPTIMAL 0.0s]  KKT=     11.7778 [OPTIMAL 0.2s]  old=     11.7778 (Ω−old -1.0e-08)  Ω−KKT=-1.11e-06  TV(a,d)=0.2000
+  x=[6]          δ=0.1   Ω=     11.7778 [OPTIMAL 0.0s]  KKT=     11.7778 [OPTIMAL 0.2s]  old=     11.7778 (Ω−old -1.0e-08)  Ω−KKT=-1.11e-06  TV(a,d)=0.1000
+  x=[6]          δ=0.05  Ω=     11.7778 [OPTIMAL 0.0s]  KKT=     11.7778 [OPTIMAL 0.2s]  old=     11.7778 (Ω−old -1.0e-08)  Ω−KKT=-1.11e-06  TV(a,d)=0.0500
+  x=[6]          δ=0.0   Ω=     11.7778 [OPTIMAL 0.0s]  KKT=     11.7778 [OPTIMAL 0.2s]  old=     11.7778 (Ω−old -7.0e-09)  Ω−KKT=-1.11e-06  TV(a,d)=0.0000
+  x=[9]          δ=Inf   Ω=      9.6667 [OPTIMAL 0.0s]  KKT=      9.6667 [OPTIMAL 0.1s]  old=      9.6667 (Ω−old -1.0e-08)  Ω−KKT=-2.19e-07  TV(a,d)=0.4000
+  x=[9]          δ=0.4   Ω=      9.6667 [OPTIMAL 0.0s]  KKT=      9.6667 [OPTIMAL 0.1s]  old=      9.6667 (Ω−old -1.0e-08)  Ω−KKT=-2.14e-07  TV(a,d)=0.2583
+  x=[9]          δ=0.3   Ω=      9.6667 [OPTIMAL 0.0s]  KKT=      9.6667 [OPTIMAL 0.1s]  old=      9.6667 (Ω−old -1.0e-08)  Ω−KKT=-2.14e-07  TV(a,d)=0.2313
+  x=[9]          δ=0.2   Ω=      9.6667 [OPTIMAL 0.0s]  KKT=      9.6667 [OPTIMAL 0.1s]  old=      9.6667 (Ω−old -1.0e-08)  Ω−KKT=-2.14e-07  TV(a,d)=0.1844
+  x=[9]          δ=0.1   Ω=      9.6667 [OPTIMAL 0.0s]  KKT=      9.6667 [OPTIMAL 0.1s]  old=      9.6667 (Ω−old -1.0e-08)  Ω−KKT=-2.15e-07  TV(a,d)=0.0418
+  x=[9]          δ=0.05  Ω=      9.6667 [OPTIMAL 0.0s]  KKT=      9.6667 [OPTIMAL 0.1s]  old=      9.6667 (Ω−old -1.0e-08)  Ω−KKT=-2.19e-07  TV(a,d)=0.0500
+  x=[9]          δ=0.0   Ω=      9.6667 [OPTIMAL 0.0s]  KKT=      9.6667 [OPTIMAL 0.1s]  old=      9.6667 (Ω−old -7.1e-09)  Ω−KKT=-2.19e-07  TV(a,d)=0.0000
+  x=[6, 9]       δ=Inf   Ω=      9.6667 [OPTIMAL 0.0s]  KKT=      9.6667 [OPTIMAL 0.1s]  old=      9.6667 (Ω−old -1.0e-08)  Ω−KKT=-2.24e-07  TV(a,d)=0.3667
+  x=[6, 9]       δ=0.4   Ω=      9.6667 [OPTIMAL 0.0s]  KKT=      9.6667 [OPTIMAL 0.1s]  old=      9.6667 (Ω−old -1.0e-08)  Ω−KKT=-3.35e-07  TV(a,d)=0.1667
+  x=[6, 9]       δ=0.3   Ω=      9.6667 [OPTIMAL 0.0s]  KKT=      9.6667 [OPTIMAL 0.1s]  old=      9.6667 (Ω−old -1.0e-08)  Ω−KKT=-3.35e-07  TV(a,d)=0.1667
+  x=[6, 9]       δ=0.2   Ω=      9.6667 [OPTIMAL 0.0s]  KKT=      9.6667 [OPTIMAL 0.1s]  old=      9.6667 (Ω−old -1.0e-08)  Ω−KKT=-2.24e-07  TV(a,d)=0.1667
+  x=[6, 9]       δ=0.1   Ω=      9.6667 [OPTIMAL 0.0s]  KKT=      9.6667 [OPTIMAL 0.1s]  old=      9.6667 (Ω−old -1.0e-08)  Ω−KKT=-2.24e-07  TV(a,d)=0.1000
+  x=[6, 9]       δ=0.05  Ω=      9.6667 [OPTIMAL 0.0s]  KKT=      9.6667 [OPTIMAL 0.1s]  old=      9.6667 (Ω−old -1.0e-08)  Ω−KKT=-2.19e-07  TV(a,d)=0.0279
+  x=[6, 9]       δ=0.0   Ω=      9.6667 [OPTIMAL 0.0s]  KKT=      9.6667 [OPTIMAL 0.1s]  old=      9.6667 (Ω−old +3.0e-09)  Ω−KKT=-2.06e-07  TV(a,d)=0.0000
+  x=[10]         δ=Inf   Ω=      9.0000 [OPTIMAL 0.0s]  KKT=      9.0000 [OPTIMAL 0.0s]  old=      9.0000 (Ω−old -1.6e-12)  Ω−KKT=-2.08e-07  TV(a,d)=0.0142
+  x=[10]         δ=0.4   Ω=      9.0000 [OPTIMAL 0.0s]  KKT=      9.0000 [OPTIMAL 0.0s]  old=      9.0000 (Ω−old -1.0e-08)  Ω−KKT=-2.19e-07  TV(a,d)=0.0107
+  x=[10]         δ=0.3   Ω=      9.0000 [OPTIMAL 0.0s]  KKT=      9.0000 [OPTIMAL 0.0s]  old=      9.0000 (Ω−old -1.0e-08)  Ω−KKT=-2.19e-07  TV(a,d)=0.0092
+  x=[10]         δ=0.2   Ω=      9.0000 [OPTIMAL 0.0s]  KKT=      9.0000 [OPTIMAL 0.0s]  old=      9.0000 (Ω−old -1.0e-08)  Ω−KKT=-2.19e-07  TV(a,d)=0.0065
+  x=[10]         δ=0.1   Ω=      9.0000 [OPTIMAL 0.0s]  KKT=      9.0000 [OPTIMAL 0.1s]  old=      9.0000 (Ω−old -1.0e-08)  Ω−KKT=-2.19e-07  TV(a,d)=0.0026
+  x=[10]         δ=0.05  Ω=      9.0000 [OPTIMAL 0.0s]  KKT=      9.0000 [OPTIMAL 0.0s]  old=      9.0000 (Ω−old -1.0e-08)  Ω−KKT=-2.19e-07  TV(a,d)=0.0009
+  x=[10]         δ=0.0   Ω=      9.0000 [OPTIMAL 0.0s]  KKT=      9.0000 [OPTIMAL 0.0s]  old=      9.0000 (Ω−old -1.6e-12)  Ω−KKT=-2.09e-07  TV(a,d)=0.0000
+  x=[6, 10]      δ=Inf   Ω=      9.0000 [OPTIMAL 0.1s]  KKT=      9.0000 [OPTIMAL 0.0s]  old=      9.0000 (Ω−old -1.0e-08)  Ω−KKT=-2.23e-07  TV(a,d)=0.0142
+  x=[6, 10]      δ=0.4   Ω=      9.0000 [OPTIMAL 0.0s]  KKT=      9.0000 [OPTIMAL 0.0s]  old=      9.0000 (Ω−old -1.0e-08)  Ω−KKT=-2.24e-07  TV(a,d)=0.0107
+  x=[6, 10]      δ=0.3   Ω=      9.0000 [OPTIMAL 0.1s]  KKT=      9.0000 [OPTIMAL 0.0s]  old=      9.0000 (Ω−old -1.0e-08)  Ω−KKT=-2.24e-07  TV(a,d)=0.0092
+  x=[6, 10]      δ=0.2   Ω=      9.0000 [OPTIMAL 0.0s]  KKT=      9.0000 [OPTIMAL 0.1s]  old=      9.0000 (Ω−old -1.0e-08)  Ω−KKT=-2.24e-07  TV(a,d)=0.0065
+  x=[6, 10]      δ=0.1   Ω=      9.0000 [OPTIMAL 0.0s]  KKT=      9.0000 [OPTIMAL 0.1s]  old=      9.0000 (Ω−old -1.0e-08)  Ω−KKT=-2.24e-07  TV(a,d)=0.0026
+  x=[6, 10]      δ=0.05  Ω=      9.0000 [OPTIMAL 0.0s]  KKT=      9.0000 [OPTIMAL 0.0s]  old=      9.0000 (Ω−old -1.0e-08)  Ω−KKT=-2.24e-07  TV(a,d)=0.0009
+  x=[6, 10]      δ=0.0   Ω=      9.0000 [OPTIMAL 0.1s]  KKT=      9.0000 [OPTIMAL 0.0s]  old=      9.0000 (Ω−old -3.5e-12)  Ω−KKT=-2.14e-07  TV(a,d)=0.0000
+  x=[9, 10]      δ=Inf   Ω=      4.8889 [OPTIMAL 0.0s]  KKT=      4.8889 [OPTIMAL 0.1s]  old=      4.8889 (Ω−old +1.8e-11)  Ω−KKT=-1.75e-07  TV(a,d)=0.1948
+  x=[9, 10]      δ=0.4   Ω=      4.8889 [OPTIMAL 0.0s]  KKT=      4.8889 [OPTIMAL 0.1s]  old=      4.8889 (Ω−old +1.8e-11)  Ω−KKT=-1.77e-07  TV(a,d)=0.1615
+  x=[9, 10]      δ=0.3   Ω=      4.8889 [OPTIMAL 0.0s]  KKT=      4.8889 [OPTIMAL 0.1s]  old=      4.8889 (Ω−old +1.8e-11)  Ω−KKT=-1.77e-07  TV(a,d)=0.1402
+  x=[9, 10]      δ=0.2   Ω=      4.8889 [OPTIMAL 0.0s]  KKT=      4.8889 [OPTIMAL 0.1s]  old=      4.8889 (Ω−old +1.8e-11)  Ω−KKT=-1.77e-07  TV(a,d)=0.1053
+  x=[9, 10]      δ=0.1   Ω=      4.8889 [OPTIMAL 0.0s]  KKT=      4.8889 [OPTIMAL 0.1s]  old=      4.8889 (Ω−old +1.8e-11)  Ω−KKT=-1.77e-07  TV(a,d)=0.0558
+  x=[9, 10]      δ=0.05  Ω=      4.8889 [OPTIMAL 0.0s]  KKT=      4.8889 [OPTIMAL 0.2s]  old=      4.8889 (Ω−old +1.8e-11)  Ω−KKT=-1.07e-06  TV(a,d)=0.0000
+  x=[9, 10]      δ=0.0   Ω=      4.8889 [OPTIMAL 0.0s]  KKT=      4.8889 [OPTIMAL 0.1s]  old=      4.8889 (Ω−old +3.0e-09)  Ω−KKT=-1.74e-07  TV(a,d)=0.0000
+  x=[11]         δ=Inf   Ω=      8.8889 [OPTIMAL 0.0s]  KKT=      8.8889 [OPTIMAL 0.2s]  old=      8.8889 (Ω−old -4.1e-12)  Ω−KKT=-2.87e-06  TV(a,d)=0.2000
+  x=[11]         δ=0.4   Ω=      8.8889 [OPTIMAL 0.0s]  KKT=      8.8889 [OPTIMAL 0.2s]  old=      8.8889 (Ω−old -1.0e-08)  Ω−KKT=-1.10e-06  TV(a,d)=0.2000
+  x=[11]         δ=0.3   Ω=      8.8889 [OPTIMAL 0.0s]  KKT=      8.8889 [OPTIMAL 0.3s]  old=      8.8889 (Ω−old -1.0e-08)  Ω−KKT=-1.10e-06  TV(a,d)=0.0000
+  x=[11]         δ=0.2   Ω=      8.8889 [OPTIMAL 0.0s]  KKT=      8.8889 [OPTIMAL 0.2s]  old=      8.8889 (Ω−old -1.0e-08)  Ω−KKT=-2.11e-07  TV(a,d)=0.2000
+  x=[11]         δ=0.1   Ω=      8.8889 [OPTIMAL 0.0s]  KKT=      8.8889 [OPTIMAL 0.1s]  old=      8.8889 (Ω−old -1.0e-08)  Ω−KKT=-1.10e-06  TV(a,d)=0.0000
+  x=[11]         δ=0.05  Ω=      8.8889 [OPTIMAL 0.0s]  KKT=      8.8889 [OPTIMAL 0.1s]  old=      8.8889 (Ω−old -1.0e-08)  Ω−KKT=-1.10e-06  TV(a,d)=0.0280
+  x=[11]         δ=0.0   Ω=      8.8889 [OPTIMAL 0.0s]  KKT=      8.8889 [OPTIMAL 0.2s]  old=      8.8889 (Ω−old +3.0e-09)  Ω−KKT=-1.09e-06  TV(a,d)=0.0000
+  x=[6, 11]      δ=Inf   Ω=      8.0000 [OPTIMAL 0.0s]  KKT=      8.0000 [OPTIMAL 0.2s]  old=      8.0000 (Ω−old -1.0e-08)  Ω−KKT=-2.12e-07  TV(a,d)=0.4000
+  x=[6, 11]      δ=0.4   Ω=      8.0000 [OPTIMAL 0.1s]  KKT=      8.0000 [OPTIMAL 0.1s]  old=      8.0000 (Ω−old -1.0e-08)  Ω−KKT=-1.10e-06  TV(a,d)=0.1647
+  x=[6, 11]      δ=0.3   Ω=      8.0000 [OPTIMAL 0.0s]  KKT=      8.0000 [OPTIMAL 0.2s]  old=      8.0000 (Ω−old -1.0e-08)  Ω−KKT=-1.10e-06  TV(a,d)=0.1427
+  x=[6, 11]      δ=0.2   Ω=      8.0000 [OPTIMAL 0.0s]  KKT=      8.0000 [OPTIMAL 0.2s]  old=      8.0000 (Ω−old -1.0e-08)  Ω−KKT=-1.10e-06  TV(a,d)=0.1055
+  x=[6, 11]      δ=0.1   Ω=      8.0000 [OPTIMAL 0.0s]  KKT=      8.0000 [OPTIMAL 0.2s]  old=      8.0000 (Ω−old -1.0e-08)  Ω−KKT=-1.09e-06  TV(a,d)=0.0517
+  x=[6, 11]      δ=0.05  Ω=      8.0000 [OPTIMAL 0.0s]  KKT=      8.0000 [OPTIMAL 0.2s]  old=      8.0000 (Ω−old -1.0e-08)  Ω−KKT=-1.09e-06  TV(a,d)=0.0213
+  x=[6, 11]      δ=0.0   Ω=      8.0000 [OPTIMAL 0.0s]  KKT=      8.0000 [OPTIMAL 0.1s]  old=      8.0000 (Ω−old -3.0e-12)  Ω−KKT=-2.02e-07  TV(a,d)=0.0000
+  x=[9, 11]      δ=Inf   Ω=      5.7778 [OPTIMAL 0.0s]  KKT=      5.7778 [OPTIMAL 0.1s]  old=      5.7778 (Ω−old -1.0e-08)  Ω−KKT=-2.13e-07  TV(a,d)=0.2000
+  x=[9, 11]      δ=0.4   Ω=      5.7778 [OPTIMAL 0.0s]  KKT=      5.7778 [OPTIMAL 0.2s]  old=      5.7778 (Ω−old -1.0e-08)  Ω−KKT=-6.58e-07  TV(a,d)=0.2000
+  x=[9, 11]      δ=0.3   Ω=      5.7778 [OPTIMAL 0.1s]  KKT=      5.7778 [OPTIMAL 0.1s]  old=      5.7778 (Ω−old -1.0e-08)  Ω−KKT=-3.24e-07  TV(a,d)=0.1412
+  x=[9, 11]      δ=0.2   Ω=      5.7778 [OPTIMAL 0.0s]  KKT=      5.7778 [OPTIMAL 0.2s]  old=      5.7778 (Ω−old -1.0e-08)  Ω−KKT=-3.24e-07  TV(a,d)=0.1032
+  x=[9, 11]      δ=0.1   Ω=      5.7778 [OPTIMAL 0.0s]  KKT=      5.7778 [OPTIMAL 0.2s]  old=      5.7778 (Ω−old -1.0e-08)  Ω−KKT=-3.24e-07  TV(a,d)=0.0551
+  x=[9, 11]      δ=0.05  Ω=      5.7778 [OPTIMAL 0.0s]  KKT=      5.7778 [OPTIMAL 0.1s]  old=      5.7778 (Ω−old -1.0e-08)  Ω−KKT=-3.24e-07  TV(a,d)=0.0279
+  x=[9, 11]      δ=0.0   Ω=      5.7778 [OPTIMAL 0.0s]  KKT=      5.7778 [OPTIMAL 0.1s]  old=      5.7778 (Ω−old +2.9e-09)  Ω−KKT=-2.03e-07  TV(a,d)=0.0000
+  x=[10, 11]     δ=Inf   Ω=      5.8889 [OPTIMAL 0.0s]  KKT=      5.8889 [OPTIMAL 0.1s]  old=      5.8889 (Ω−old -1.0e-08)  Ω−KKT=-2.15e-07  TV(a,d)=0.2000
+  x=[10, 11]     δ=0.4   Ω=      5.8889 [OPTIMAL 0.0s]  KKT=      5.8889 [OPTIMAL 0.1s]  old=      5.8889 (Ω−old -1.0e-08)  Ω−KKT=-1.10e-06  TV(a,d)=0.2000
+  x=[10, 11]     δ=0.3   Ω=      5.8889 [OPTIMAL 0.0s]  KKT=      5.8889 [OPTIMAL 0.1s]  old=      5.8889 (Ω−old -1.0e-08)  Ω−KKT=-1.10e-06  TV(a,d)=0.2000
+  x=[10, 11]     δ=0.2   Ω=      5.8889 [OPTIMAL 0.0s]  KKT=      5.8889 [OPTIMAL 0.1s]  old=      5.8889 (Ω−old -1.0e-08)  Ω−KKT=-2.15e-07  TV(a,d)=0.2000
+  x=[10, 11]     δ=0.1   Ω=      5.8889 [OPTIMAL 0.0s]  KKT=      5.8889 [OPTIMAL 0.1s]  old=      5.8889 (Ω−old -1.0e-08)  Ω−KKT=-2.15e-07  TV(a,d)=0.0000
+  x=[10, 11]     δ=0.05  Ω=      5.8889 [OPTIMAL 0.0s]  KKT=      5.8889 [OPTIMAL 0.1s]  old=      5.8889 (Ω−old -1.0e-08)  Ω−KKT=-2.15e-07  TV(a,d)=0.0000
+  x=[10, 11]     δ=0.0   Ω=      5.8889 [OPTIMAL 0.0s]  KKT=      5.8889 [OPTIMAL 0.1s]  old=      5.8889 (Ω−old +3.0e-09)  Ω−KKT=-2.05e-07  TV(a,d)=0.0000
+  최대 상대 |Ω − KKT| = 3.23e-07
+  ZS (P1) δ ≥ ε̂+ε̃ ⇒ rect: 11/11 일치   (P2) δ 단조: 66/66
+    δ=0    : V*_rect − V*_δ  최대 0.0000, 평균 0.0000, 감소한 x 1/11
+    δ=0.05 : V*_rect − V*_δ  최대 0.0000, 평균 -0.0000, 감소한 x 1/11
+    δ=0.1  : V*_rect − V*_δ  최대 0.0000, 평균 -0.0000, 감소한 x 1/11
+    δ=0.2  : V*_rect − V*_δ  최대 0.0000, 평균 -0.0000, 감소한 x 1/11
+    δ=0.3  : V*_rect − V*_δ  최대 0.0000, 평균 -0.0000, 감소한 x 1/11
+    δ=0.4  : V*_rect − V*_δ  최대 0.0000, 평균 -0.0000, 감소한 x 1/11
+  (P3) 0/0 성립

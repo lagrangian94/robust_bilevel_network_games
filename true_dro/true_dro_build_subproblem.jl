@@ -79,7 +79,8 @@ end
 function build_true_dro_subproblem(td::TrueDROData, x_bar::Vector{Float64};
                                    optimizer, silent=true, rho_upper_bound::Union{Float64,Nothing}=nothing,
                                    add_objF_vi::Bool=false,
-                                   add_objF_vi_arcwise::Bool=false)
+                                   add_objF_vi_arcwise::Bool=false,
+                                   delta_couple::Real=Inf)
     S = td.S
     K = td.num_arcs
     m = td.nv1
@@ -232,6 +233,13 @@ function build_true_dro_subproblem(td::TrueDROData, x_bar::Vector{Float64};
     @constraint(model, DF3, sum(e[s] for s in 1:S) <= 2 * ε̃)
     # --- (DF-4): Σ_s d_s = 1 ---
     @constraint(model, DF4, sum(d[s] for s in 1:S) == 1)
+    # --- 종속 ambiguity set (belief 결합): d_TV(a, d) ≤ δ  (delta_couple = Inf 이면 기존 rectangular) ---
+    if isfinite(delta_couple)
+        @variable(model, 0 <= cpl[1:S] <= 2 * delta_couple)
+        @constraint(model, [s=1:S], a[s] - d[s] <= cpl[s])
+        @constraint(model, [s=1:S], d[s] - a[s] <= cpl[s])
+        @constraint(model, sum(cpl) <= 2 * delta_couple)
+    end
 
     # --- (DF-5): N_y ũ^s + N_ts σ̃^s = 0  ∀s ---
     @constraint(model, DF5[j=1:m, s=1:S],

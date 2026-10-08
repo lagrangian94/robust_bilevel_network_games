@@ -43,6 +43,12 @@ function nz_kkt_value(nd::NZData, x̄; optimizer, time_limit=600.0, gap=1e-6, si
     @constraint(model, sum(d) == 1)
     @constraint(model, [s=1:S], d[s] - e[s] <= q[s]); @constraint(model, [s=1:S], d[s] + e[s] >= q[s])
     @constraint(model, sum(e) <= 2ε̃)
+    # belief 결합 (종속 ambiguity set): d_TV(a, d) ≤ δ
+    if nz_coupled(nd)
+        @variable(model, cpl[1:S] >= 0)
+        @constraint(model, [s=1:S], a[s] - d[s] <= cpl[s]); @constraint(model, [s=1:S], d[s] - a[s] <= cpl[s])
+        @constraint(model, sum(cpl) <= 2nz_delta(nd))
+    end
 
     # follower 2단계 LP: max c0ᵀα + Σ_s d_s cᵀyˢ  s.t. A yˢ ≤ r_s(x̄, α), Wα ≤ w, α, y ≥ 0
     @variable(model, 0 <= α[i=1:nh] <= nd.hU[i])
@@ -85,7 +91,7 @@ function nz_kkt_value(nd::NZData, x̄; optimizer, time_limit=600.0, gap=1e-6, si
     st = termination_status(model)
     (st == MOI.OPTIMAL || (st == MOI.TIME_LIMIT && has_values(model))) || error("KKT eval: $st")
     return Dict(:value => objective_value(model), :bound => objective_bound(model), :status => st,
-                :α => value.(α), :d => value.(d), :r => value.(r), :φ => value.(φ))
+                :α => value.(α), :a => value.(a), :d => value.(d), :r => value.(r), :φ => value.(φ))
 end
 
 function _phi_range(nd::NZData, x̄; optimizer)

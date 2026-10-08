@@ -27,6 +27,10 @@ function _nz_omp(nd::NZData; optimizer, t_lb=-1e7)
     @variable(omp, x[1:nd.nx], Bin)
     @variable(omp, t0 >= t_lb)
     @constraint(omp, sum(x) <= nd.gamma)
+    # 추가 카디널리티 (원고 실험의 source/sink cut: 출발·도착 arc 를 모두 막지 못하게): meta[:omp_card] = [(idx, rhs), ...]
+    for (idx, rhs) in get(nd.meta, :omp_card, Tuple{Vector{Int},Int}[])
+        @constraint(omp, sum(x[i] for i in idx) <= rhs)
+    end
     for i in 1:nd.nx
         nd.x_allowed[i] || fix(x[i], 0.0; force=true)
     end
@@ -35,6 +39,10 @@ function _nz_omp(nd::NZData; optimizer, t_lb=-1e7)
 end
 
 _add_cut!(omp, x, t0, cut) = @constraint(omp, t0 >= cut[:intercept] + dot(cut[:slope], x))
+
+"cut 기록 (검증용): kind = :restricted (α 고정 LP) | :omega (Gurobi Ω 해) | :belief (menu belief LP), mw = MW 강화 여부"
+_log_cut!(cuts, kind, iter, x̄, cut, mw) =
+    push!(cuts, (kind=kind, iter=iter, x=copy(x̄), intercept=cut[:intercept], slope=copy(cut[:slope]), mw=mw))
 
 """
     nz_add_dual_vi!(omp, x, t0, nd) — 비제로섬 dual-VI (원고 Proposition dual-VI 의 비제로섬판, McCormick 선형화).
@@ -134,7 +142,9 @@ x̄ 에서의 값을 유지하는 (F(x̄) ≥ zstar − tol) 해 중 core point 
 실패 (OPTIMAL 아님) 시 nothing → 호출 측이 기본 cut 사용.
 """
 function _nz_mw_cut!(L::NZOmega, nd::NZData, x̄, zstar, x_core)
-    con = @constraint(L.model, objective_function(L.model) >= zstar - 1e-6 * max(1.0, abs(zstar)))
+    # x̄ 에서의 값 손실 허용치는 menu 의 위반 판정 여유 (1e-6 상대) 보다 훨씬 작아야 한다. 같은 크기면 t₀ 가 그 사이에 끼어
+    # 같은 cut 이 무한히 반복된다 (Abilene δ=0.1 에서 발생). 채택 여부는 _nz_lp_cut! 가 x̄ 값으로 다시 확인.
+    con = @constraint(L.model, objective_function(L.model) >= zstar - 1e-9 * max(1.0, abs(zstar)))
     nz_set_objective!(L, nd, x_core)
     optimize!(L.model)
     cut = termination_status(L.model) == MOI.OPTIMAL ? nz_cut_from_solution(L, nd, x_core) : nothing
@@ -147,7 +157,8 @@ end
 function _nz_lp_cut!(L::NZOmega, nd::NZData, x̄, z; mw::Bool, x_core)
     if mw
         c = _nz_mw_cut!(L, nd, x̄, z, x_core)
-        c === nothing || return c, true
+        # x̄ 에서 값을 (거의) 유지하는 경우에만 MW cut 채택
+        c !== nothing && c[:intercept] + dot(c[:slope], x̄) >= z - 1e-7 * max(1.0, abs(z)) && return c, true
         nz_set_objective!(L, nd, x̄); optimize!(L.model)        # 기본 cut 을 위해 x̄ 해 복원
     end
     return nz_cut_from_solution(L, nd, x̄), false
@@ -156,7 +167,7 @@ end
 
 function nz_standard_benders(nd::NZData; optimizer, max_iter=200, tol=1e-4, oracle_time=600.0, boost_time=3600.0,
                              oracle::Symbol=:alpha_bnb, oracle_gap=1e-5, nworkers=12, bnb_kw=NamedTuple(),
-                             mw::Bool=true, vi::Bool=false, verbose=true)
+                             mw::Bool=true, vi::Bool=false, verbose=true, time_limit=Inf)
     oracle in (:gurobi, :alpha_bnb) || error("oracle = :gurobi | :alpha_bnb")
     x_core = nz_core_point(nd); n_mw = 0
     omp, x, t0 = _nz_omp(nd; optimizer=optimizer)
@@ -166,6 +177,7 @@ function nz_standard_benders(nd::NZData; optimizer, max_iter=200, tol=1e-4, orac
     LB, UB, best_x = -Inf, Inf, zeros(nd.nx)
     hist = NamedTuple[]
     tl = Dict{Vector{Float64},Float64}(); ncalls = 0
+    cuts = NamedTuple[]
     wall = time(); iter = 0; status = :MaxIter
     while iter < max_iter
         iter += 1
@@ -173,15 +185,19 @@ function nz_standard_benders(nd::NZData; optimizer, max_iter=200, tol=1e-4, orac
         x̄ = Float64.(value.(x) .> 0.5)
         LB = objective_value(omp)
         _rel(LB, UB) <= tol && (status = :Optimal; break)
+        time() - wall > time_limit && (status = :TimeLimit; break)
         lim, stalled = _oracle_limit!(tl, x̄, oracle_time, boost_time)
         stalled && (status = :Stalled; break)
         ncalls += 1
         t_o = @elapsed ((zinc, zbd, src) = _nz_oracle!(O, Fx, nd, x̄; oracle=oracle, time_limit=lim, gap=oracle_gap,
                                                        nworkers=nworkers, bnb_kw=bnb_kw))
+        t_o < 0.9 * lim && delete!(tl, x̄)           # 시간 제한에 걸린 호출만 stall 판정에 셈
         if oracle == :alpha_bnb                     # src = α 고정 LP → MW 가능
             cut, ok = _nz_lp_cut!(src, nd, x̄, zinc; mw=mw, x_core=x_core); n_mw += ok
+            _log_cut!(cuts, :restricted, iter, x̄, cut, ok)
         else
             cut = nz_cut_from_solution(src, nd, x̄)
+            _log_cut!(cuts, :omega, iter, x̄, cut, false)
         end
         _add_cut!(omp, x, t0, cut)
         ub_here = dot(nd.qx, x̄) + zbd
@@ -192,7 +208,7 @@ function nz_standard_benders(nd::NZData; optimizer, max_iter=200, tol=1e-4, orac
         verbose && flush(stdout)
     end
     return Dict(:status => status, :LB => LB, :UB => UB, :x => best_x, :iters => iter,
-                :oracle_calls => ncalls, :mw_cuts => n_mw, :wall => time() - wall, :hist => hist)
+                :oracle_calls => ncalls, :mw_cuts => n_mw, :wall => time() - wall, :hist => hist, :cuts => cuts)
 end
 
 
@@ -200,7 +216,7 @@ function nz_belief_menu_benders(nd::NZData; optimizer, lp_optimizer=optimizer, c
                                 cert_rows::Symbol=:hrows, max_iter=500, tol=1e-4, oracle_time=600.0, boost_time=3600.0,
                                 oracle::Symbol=:alpha_bnb, oracle_gap=1e-5, nworkers=12, bnb_kw=NamedTuple(),
                                 target_stop::Bool=(oracle == :alpha_bnb), mw::Bool=true, vi::Bool=false,
-                                verbose=true)
+                                verbose=true, time_limit=Inf)
     cert in (:recompute, :solution) || error("cert = :recompute | :solution")
     oracle in (:gurobi, :alpha_bnb) || error("oracle = :gurobi | :alpha_bnb")
     x_core = nz_core_point(nd); n_mw = 0
@@ -216,6 +232,7 @@ function nz_belief_menu_benders(nd::NZData; optimizer, lp_optimizer=optimizer, c
     exact_log = NamedTuple[]
     hist = NamedTuple[]
     tl = Dict{Vector{Float64},Float64}()
+    cuts = NamedTuple[]
     wall = time(); iter = 0; status = :MaxIter
     while iter < max_iter
         iter += 1
@@ -224,6 +241,7 @@ function nz_belief_menu_benders(nd::NZData; optimizer, lp_optimizer=optimizer, c
         LB = objective_value(omp)
         t0v = value(t0)
         _rel(LB, UB) <= tol && (status = :Optimal; break)
+        time() - wall > time_limit && (status = :TimeLimit; break)
 
         # ---- menu 단계 ----
         V_menu = -Inf; nviol = 0
@@ -233,6 +251,7 @@ function nz_belief_menu_benders(nd::NZData; optimizer, lp_optimizer=optimizer, c
             V_menu = max(V_menu, res[:Fval])
             if res[:Fval] > t0v + 1e-6 * max(1.0, abs(t0v))
                 cut, ok = _nz_lp_cut!(B, nd, x̄, res[:Fval]; mw=mw, x_core=x_core); n_mw += ok
+                _log_cut!(cuts, :belief, iter, x̄, cut, ok)
                 _add_cut!(omp, x, t0, cut); nviol += 1; menu_cuts += 1
             end
         end
@@ -252,12 +271,17 @@ function nz_belief_menu_benders(nd::NZData; optimizer, lp_optimizer=optimizer, c
         target = target_stop ? t0v + 0.99 * tol * max(1.0, abs(t0v)) : nothing
         t_o = @elapsed ((zinc, zbd, src) = _nz_oracle!(O, Fx, nd, x̄; oracle=oracle, time_limit=lim, gap=oracle_gap,
                                                        nworkers=nworkers, target=target, bnb_kw=bnb_kw))
+        # 시간 제한에 걸린 호출만 stall 판정에 셈. 목표값 조기 종료 (target_stop) 로 끝난 호출은 같은 x̄ 를 다시 불러도
+        # 정상이다 (t₀ 가 올라간 뒤 다시 확인하는 것). 이전에는 같은 x̄ 세 번째 호출에서 무조건 :Stalled.
+        t_o < 0.9 * lim && delete!(tl, x̄)
         res = Dict(:Fval => zinc, :bound => zbd)
         bel_raw = nz_read_belief(src, nd)                 # MW 재풀이 전에 읽음 (재풀이가 해를 바꿈)
         if oracle == :alpha_bnb
             cut, ok = _nz_lp_cut!(src, nd, x̄, zinc; mw=mw, x_core=x_core); n_mw += ok
+            _log_cut!(cuts, :restricted, iter, x̄, cut, ok)
         else
             cut = nz_cut_from_solution(src, nd, x̄)
+            _log_cut!(cuts, :omega, iter, x̄, cut, false)
         end
         _add_cut!(omp, x, t0, cut)
         ub_here = dot(nd.qx, x̄) + res[:bound]
@@ -284,5 +308,5 @@ function nz_belief_menu_benders(nd::NZData; optimizer, lp_optimizer=optimizer, c
     end
     return Dict(:status => status, :LB => LB, :UB => UB, :x => best_x, :iters => iter,
                 :oracle_calls => oracle_calls, :menu_cuts => menu_cuts, :mw_cuts => n_mw, :menu => menu, :menu_size => length(menu),
-                :exact_log => exact_log, :wall => time() - wall, :hist => hist)
+                :exact_log => exact_log, :wall => time() - wall, :hist => hist, :cuts => cuts)
 end

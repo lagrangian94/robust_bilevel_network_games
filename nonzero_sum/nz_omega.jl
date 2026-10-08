@@ -103,6 +103,17 @@ function build_nz_omega(nd::NZData; optimizer, belief_lp::Bool=false, cert_rows:
     @constraint(model, [s=1:S], d[s] - e[s] <= q[s])
     @constraint(model, [s=1:S], d[s] + e[s] >= q[s])
     @constraint(model, sum(e) <= 2ε̃)
+    # ---------------- belief 결합 (종속 ambiguity set) ----------------
+    # 𝔅_δ = 𝔅 ∩ {|a_s − d_s| ≤ cpl_s, Σ cpl_s ≤ 2δ}  (a = 리더 TV 분포 p, d = follower belief p̃)
+    # belief_lp 는 belief 를 고정하므로 넣지 않는다 (고정 belief 가 결합을 만족하도록 nz_clean_belief 가 보장).
+    δc = nz_delta(nd)
+    cpl = nothing
+    if isfinite(δc) && mode != :belief_lp
+        @variable(model, 0 <= cpl[s=1:S] <= min(2δc, max(amax[s], dmax[s])))
+        @constraint(model, cpl_ad[s=1:S], a[s] - d[s] <= cpl[s])
+        @constraint(model, cpl_da[s=1:S], d[s] - a[s] <= cpl[s])
+        @constraint(model, cpl_sum, sum(cpl) <= 2δc)
+    end
     @variable(model, ȳ[1:ny, 1:S] >= 0)
     @variable(model, π̃[1:m, 1:S] >= 0)
     @variable(model, κ[1:nW] >= 0)
@@ -137,7 +148,8 @@ function build_nz_omega(nd::NZData; optimizer, belief_lp::Bool=false, cert_rows:
     v = Dict{Symbol,Any}(:α => α, :a => a, :b => b, :r => r, :ŷ => ŷ, :ϖ => ϖ,
         :ρ̂1 => ρ̂1, :ρ̂3 => ρ̂3, :ζL => ζL, :ζW => ζW,
         :d => d, :e => e, :ȳ => ȳ, :π̃ => π̃, :κ => κ, :ρ̃1 => ρ̃1, :ρ̃3 => ρ̃3,
-        :ρ01 => ρ01, :ρ03 => ρ03, :ζF => ζF, :Xr => Xr, :Hr => Hr, :cert_rows => cert_rows, :mode => mode)
+        :ρ01 => ρ01, :ρ03 => ρ03, :ζF => ζF, :Xr => Xr, :Hr => Hr, :cert_rows => cert_rows, :mode => mode,
+        :cpl => cpl)
     if mode == :belief_lp
         # belief (r, d) 와 인증서 ϖ 고정 → α 의 계수. 계수는 nz_set_belief! 에서 채움
         v[:cL] = @constraint(model, [i=1:nh, s=1:S], ζL[i, s] - 0.0 * α[i] == 0)
@@ -291,18 +303,22 @@ end
 """
 TV 볼·CVaR 다면체 안으로 정리 (solver 허용오차 제거). belief_menu_benders.jl 의 _clean_belief 와 같은 규칙.
 ϖ 는 그대로 둔다 (인증서는 r 과 별도로 σ 로 저장).
+결합 (δ 유한): (a, d) 를 함께 q̂ 쪽으로 같은 비율 t 만큼 줄인다. ‖a−q̂‖, ‖d−q̂‖, ‖a−d‖ 가 모두 (1−t) 배가
+되므로 세 제약 (ε̂, ε̃, δ) 을 동시에 만족시키는 가장 작은 축소다 ((q̂, q̂) 는 모든 δ ≥ 0 에서 허용).
 """
 function nz_clean_belief(bel, nd::NZData)
     q = nd.q_hat
-    function proj(y, ε)
-        y = max.(y, 0.0); y ./= sum(y)
-        dev = sum(abs.(y .- q))
-        dev > 2ε && (y = q .+ (y .- q) .* (2ε / dev))
-        return y
+    simp(y) = (y = max.(y, 0.0); y ./ sum(y))
+    a = simp(bel[:a]); d = simp(bel[:d])
+    ratio(dev, ε) = dev > 2ε ? 2ε / dev : 1.0
+    ta = ratio(sum(abs.(a .- q)), nd.eps_hat); td = ratio(sum(abs.(d .- q)), nd.eps_tilde)
+    if nz_coupled(nd)
+        t = min(ta, td, ratio(sum(abs.(a .- d)), nz_delta(nd)))
+        ta = td = t
     end
     out = Dict{Symbol,Any}()
-    out[:a] = proj(bel[:a], nd.eps_hat); out[:b] = abs.(out[:a] .- q)
-    out[:d] = proj(bel[:d], nd.eps_tilde); out[:e] = abs.(out[:d] .- q)
+    out[:a] = q .+ (a .- q) .* ta; out[:b] = abs.(out[:a] .- q)
+    out[:d] = q .+ (d .- q) .* td; out[:e] = abs.(out[:d] .- q)
     cap = out[:a] ./ (1 - nd.beta)
     r = clamp.(bel[:r], 0.0, cap); sr = sum(r)
     if sr > 1

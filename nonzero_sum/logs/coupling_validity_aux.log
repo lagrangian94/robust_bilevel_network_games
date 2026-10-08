@@ -1,0 +1,14 @@
+Set parameter WLSAccessID
+Set parameter WLSSecret
+Set parameter LicenseID to value 926906
+Academic license 926906 - for non-commercial use only - registered to se___@postech.ac.kr
+(a) zero-sum grid3x3 S=5 seed=1 β=0.7
+  x=[9, 10]  V*_Inf=22.961564  V*_0.1=22.961564  V*_0=22.961564
+  x=[10, 11] V*_Inf=26.249597  V*_0.1=26.249597  V*_0=26.249597
+  x=[9, 11]  V*_Inf=25.166910  V*_0.1=25.166910  V*_0=25.166911
+  x=Int64[]  V*_Inf=44.172515  V*_0.1=44.172513  V*_0=44.172515
+  x=[11]     V*_Inf=33.375738  V*_0.1=33.375738  V*_0=33.375737
+  x=[10]     V*_Inf=35.094482  V*_0.1=35.094482  V*_0=35.094483
+(b) SGB128 pair x=∅, Gurobi 전역 Ω (기본 gap, 600s)
+  δ=Inf  incumbent=3.132e-05 bound=9.533e+02 TIME_LIMIT  (참값 0)
+  δ=0.1  incumbent=7.097e-05 bound=1.365e+03 TIME_LIMIT  (참값 0)
