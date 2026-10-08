@@ -3,12 +3,15 @@ run_coupling_benders.jl — 종속 ambiguity set (δ 결합) 에서 Benders (bel
 
 환경변수
   CB_KIND = loc | maxflow
-    loc    : NZ_COORDS (random) NZ_RES (pooled) NZ_SEED (4) NZ_S (3) NZ_EPSH NZ_EPST (0.2) NZ_BETA (0.4)
+    loc    : NZ_COORDS (random) NZ_RES (pooled) NZ_QUOTA (100, 원고 w_i) NZ_WRES (300) NZ_SEED (4) NZ_S (3) NZ_EPSH NZ_EPST (0.2) NZ_BETA (0.4)
     maxflow: CB_NET (abilene) CB_BETA (0.7) CB_EPSH CB_EPST (0.2)  — 원고 실험 인스턴스 (nz_paper_instances.jl)
   CB_DELTAS = "Inf,0.1"   CB_METHOD = menu | std   CB_ORACLE = alpha_bnb | gurobi
   CB_TOL = 1e-4  CB_ORACLE_TIME = 600  CB_BOOST = 2400  CB_MAXITER = 300
   CB_CHECK = 1 : 끝난 뒤 x* 에서 KKT 독립 평가로 V*_δ(x*) 확인 (CB_CHECK_TL = 1800)
-실행 (학술 WLS, worker 1): julia -t 3,1 nonzero_sum/run_coupling_benders.jl
+  CB_LOCAL_WLS = 0 (기본: CB_WORKERS=12, 휴리스틱 켬) | 1 이면 worker 1, 휴리스틱 끔 (학술 WLS 가 worker 를 제한하는 다른 PC 용)
+  CB_MW = 1
+실행: julia -t 14,1 nonzero_sum/run_coupling_benders.jl
+실행 (worker 제한 PC): CB_LOCAL_WLS=1 julia -t 3,1 nonzero_sum/run_coupling_benders.jl
 """
 root = dirname(@__DIR__)
 using JuMP, Gurobi, Printf, LinearAlgebra
@@ -32,6 +35,7 @@ if kind == "maxflow"
         eps_hat=parse(Float64, envf("CB_EPSH", "0.2")), eps_tilde=parse(Float64, envf("CB_EPST", "0.2")))
 else
     nd0 = make_location_instance(; coords=Symbol(envf("NZ_COORDS", "random")), reservation=Symbol(envf("NZ_RES", "pooled")),
+        quota=parse(Float64, envf("NZ_QUOTA", "100")), wres=parse(Float64, envf("NZ_WRES", "300")),
         S=parse(Int, envf("NZ_S", "3")), seed=parse(Int, envf("NZ_SEED", "4")),
         eps_hat=parse(Float64, envf("NZ_EPSH", "0.2")), eps_tilde=parse(Float64, envf("NZ_EPST", "0.2")),
         beta=parse(Float64, envf("NZ_BETA", "0.4")))
@@ -41,9 +45,13 @@ end
 flush(stdout)
 
 oracle = Symbol(envf("CB_ORACLE", "alpha_bnb"))
+local_wls = envf("CB_LOCAL_WLS", "0") == "1"        # 학술 WLS (worker 2 이상이면 Error 10009): worker 1, Env 재사용, 휴리스틱 끔
+nw = local_wls ? 1 : parse(Int, envf("CB_WORKERS", "12"))
 common = (optimizer=GRB, tol=parse(Float64, envf("CB_TOL", "1e-4")), oracle_time=parse(Float64, envf("CB_ORACLE_TIME", "600")),
-          boost_time=parse(Float64, envf("CB_BOOST", "2400")), oracle=oracle, nworkers=1,
-          bnb_kw=(envs=[GRB_ENV], heuristic=false), max_iter=parse(Int, envf("CB_MAXITER", "300")))
+          boost_time=parse(Float64, envf("CB_BOOST", "2400")), oracle=oracle, nworkers=nw,
+          bnb_kw=local_wls ? (envs=[GRB_ENV], heuristic=false) : NamedTuple(), mw=envf("CB_MW", "1") == "1",
+          max_iter=parse(Int, envf("CB_MAXITER", "300")))
+@printf("oracle=%s workers=%d local_wls=%s mw=%s\n", oracle, nw, local_wls, common.mw)
 summary = []
 for δ in pd.(split(envf("CB_DELTAS", "Inf,0.1"), ","))
     nd = nz_with_delta(nd0, δ)

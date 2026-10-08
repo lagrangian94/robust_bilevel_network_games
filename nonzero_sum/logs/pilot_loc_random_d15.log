@@ -1,0 +1,85 @@
+Set parameter Username
+Set parameter LicenseID to value 2839433
+Academic license - for non-commercial use only - expires 2027-06-29
+====================================================================================================
+pilot (Goyal §7.3 최소: d=15, A 2, B 후보 3, N_B=3)  ε̂=ε̃=0.30 β=0.40 δ=0.1  E TL/x=300s  ALG TL=3600s  workers=12
+====================================================================================================
+
+--- pooled seed=1 S=3: n_h=5, |X|=8, θᵁ=50.0 λᵁ=1000.0
+  KKT 오류: ErrorException("KKT eval: TIME_LIMIT")
+  E: x={1} 에서 오류 (306s) → 미해결, 이 seed 의 더 큰 S 는 E 생략
+RESULT method=E res=pooled seed=1 S=3 nh=5 solved=false x=- value=NaN time=305.8
+Set parameter Username
+Set parameter LicenseID to value 2839433
+Academic license - for non-commercial use only - expires 2027-06-29
+Set parameter Username
+Set parameter LicenseID to value 2839433
+Academic license - for non-commercial use only - expires 2027-06-29
+Set parameter Username
+Set parameter LicenseID to value 2839433
+Academic license - for non-commercial use only - expires 2027-06-29
+Set parameter Username
+Set parameter LicenseID to value 2839433
+Academic license - for non-commercial use only - expires 2027-06-29
+Set parameter Username
+Set parameter LicenseID to value 2839433
+Academic license - for non-commercial use only - expires 2027-06-29
+Set parameter Username
+Set parameter LicenseID to value 2839433
+Academic license - for non-commercial use only - expires 2027-06-29
+Set parameter Username
+Set parameter LicenseID to value 2839433
+Academic license - for non-commercial use only - expires 2027-06-29
+Set parameter Username
+Set parameter LicenseID to value 2839433
+Academic license - for non-commercial use only - expires 2027-06-29
+Set parameter Username
+Set parameter LicenseID to value 2839433
+Academic license - for non-commercial use only - expires 2027-06-29
+Set parameter Username
+Set parameter LicenseID to value 2839433
+Academic license - for non-commercial use only - expires 2027-06-29
+Set parameter Username
+Set parameter LicenseID to value 2839433
+Academic license - for non-commercial use only - expires 2027-06-29
+Set parameter Username
+Set parameter LicenseID to value 2839433
+Academic license - for non-commercial use only - expires 2027-06-29
+Set parameter Username
+Set parameter LicenseID to value 2839433
+Academic license - for non-commercial use only - expires 2027-06-29
+
+******************************************************************************
+This program contains Ipopt, a library for large-scale nonlinear optimization.
+ Ipopt is released as open source code under the Eclipse Public License (EPL).
+         For more information visit https://github.com/coin-or/Ipopt
+******************************************************************************
+
+RESULT method=ALG res=pooled seed=1 S=3 nh=5 status=Optimal x={1} LB=-116.500001 UB=-116.500000 gap=7.44e-09 iters=11 oracle=3 menu=2 time=16.3
+
+--- pooled seed=1 S=5: n_h=5, |X|=8, θᵁ=50.0 λᵁ=1000.0
+  E: 작은 S 에서 시간 제한 → 건너뜀
+RESULT method=ALG res=pooled seed=1 S=5 nh=5 status=Optimal x={1} LB=-126.666668 UB=-126.666551 gap=9.20e-07 iters=9 oracle=3 menu=2 time=19.1
+
+--- pooled seed=1 S=10: n_h=5, |X|=8, θᵁ=50.0 λᵁ=1000.0
+  E: 작은 S 에서 시간 제한 → 건너뜀
+RESULT method=ALG res=pooled seed=1 S=10 nh=5 status=Optimal x={} LB=-0.000000 UB=0.000000 gap=9.94e-10 iters=14 oracle=5 menu=4 time=5.4
+
+--- pooled seed=2 S=3: n_h=5, |X|=8, θᵁ=50.0 λᵁ=1000.0
+  KKT 오류: ErrorException("KKT eval: TIME_LIMIT")
+  E: x={1} 에서 오류 (301s) → 미해결, 이 seed 의 더 큰 S 는 E 생략
+RESULT method=E res=pooled seed=2 S=3 nh=5 solved=false x=- value=NaN time=300.9
+RESULT method=ALG res=pooled seed=2 S=3 nh=5 status=Optimal x={3} LB=-1798.000003 UB=-1798.000000 gap=1.42e-09 iters=11 oracle=2 menu=2 time=3.1
+
+--- pooled seed=2 S=5: n_h=5, |X|=8, θᵁ=50.0 λᵁ=1000.0
+  E: 작은 S 에서 시간 제한 → 건너뜀
+RESULT method=ALG res=pooled seed=2 S=5 nh=5 status=Optimal x={3} LB=-1835.000003 UB=-1835.000000 gap=1.41e-09 iters=11 oracle=2 menu=2 time=0.9
+
+--- pooled seed=2 S=10: n_h=5, |X|=8, θᵁ=50.0 λᵁ=1000.0
+  E: 작은 S 에서 시간 제한 → 건너뜀
+RESULT method=ALG res=pooled seed=2 S=10 nh=5 status=Optimal x={3} LB=-1517.666669 UB=-1517.666667 gap=1.49e-09 iters=14 oracle=5 menu=4 time=16.6
+
+--- pair seed=1 S=3: n_h=50, |X|=8, θᵁ=50.0 λᵁ=1000.0
+  KKT 오류: ErrorException("KKT eval: TIME_LIMIT")
+  E: x={} 에서 오류 (300s) → 미해결, 이 seed 의 더 큰 S 는 E 생략
+RESULT method=E res=pair seed=1 S=3 nh=50 solved=false x=- value=NaN time=300.0

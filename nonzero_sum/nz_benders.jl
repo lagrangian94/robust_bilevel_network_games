@@ -167,12 +167,22 @@ end
 
 function nz_standard_benders(nd::NZData; optimizer, max_iter=200, tol=1e-4, oracle_time=600.0, boost_time=3600.0,
                              oracle::Symbol=:alpha_bnb, oracle_gap=1e-5, nworkers=12, bnb_kw=NamedTuple(),
-                             mw::Bool=true, vi::Bool=false, verbose=true, time_limit=Inf)
+                             mw::Bool=true, vi::Bool=false, verbose=true, time_limit=Inf,
+                             local_first::Bool=false, local_time=60.0)
     oracle in (:gurobi, :alpha_bnb) || error("oracle = :gurobi | :alpha_bnb")
     x_core = nz_core_point(nd); n_mw = 0
     omp, x, t0 = _nz_omp(nd; optimizer=optimizer)
     vi && nz_add_dual_vi!(omp, x, t0, nd)
     O = oracle == :gurobi ? build_nz_omega(nd; optimizer=optimizer) : nothing
+    # 원고 SB-G / SB-A: Ω 를 local 해법 (Gurobi OptimalityTarget = 1, barrier 기반 local) 으로 먼저 풀고,
+    # 그 해의 cut 이 x̄ 에서 위반되면 그것만 추가. 위반되지 않을 때만 전역 oracle. Ω 의 모든 실행가능해는 유효 cut 을
+    # 주므로 (Theorem structural-minsup) local 해의 cut 도 유효하지만, local 값은 V*(x̄) 의 하한일 뿐이라 UB 에는 쓰지 않음.
+    Oloc = nothing
+    if local_first
+        Oloc = build_nz_omega(nd; optimizer=optimizer)
+        set_optimizer_attribute(Oloc.model, "OptimalityTarget", 1)
+    end
+    n_local = 0
     Fx = oracle == :alpha_bnb ? Main.nz_build_fixed_alpha(nd, zeros(nd.nx); optimizer=optimizer) : nothing
     LB, UB, best_x = -Inf, Inf, zeros(nd.nx)
     hist = NamedTuple[]
@@ -186,6 +196,21 @@ function nz_standard_benders(nd::NZData; optimizer, max_iter=200, tol=1e-4, orac
         LB = objective_value(omp)
         _rel(LB, UB) <= tol && (status = :Optimal; break)
         time() - wall > time_limit && (status = :TimeLimit; break)
+        if local_first
+            t_l = @elapsed (rl = try nz_solve!(Oloc, nd, x̄; time_limit=local_time) catch; nothing end)
+            if rl !== nothing
+                cut = nz_cut_from_solution(Oloc, nd, x̄)
+                cval = cut[:intercept] + dot(cut[:slope], x̄)
+                if cval > value(t0) + tol * max(1.0, abs(value(t0)))
+                    _add_cut!(omp, x, t0, cut); _log_cut!(cuts, :local, iter, x̄, cut, false); n_local += 1
+                    push!(hist, (iter=iter, LB=LB, UB=UB, x=findall(x̄ .> 0.5), F=rl[:Fval], t=t_l))
+                    verbose && @printf("  [loc] it %3d LB=%11.4f UB=%11.4f x=%-10s Ω_loc=%11.4f (%.1fs)\n",
+                                       iter, LB, UB, string(findall(x̄ .> 0.5)), rl[:Fval], t_l)
+                    verbose && flush(stdout)
+                    continue
+                end
+            end
+        end
         lim, stalled = _oracle_limit!(tl, x̄, oracle_time, boost_time)
         stalled && (status = :Stalled; break)
         ncalls += 1
@@ -208,7 +233,8 @@ function nz_standard_benders(nd::NZData; optimizer, max_iter=200, tol=1e-4, orac
         verbose && flush(stdout)
     end
     return Dict(:status => status, :LB => LB, :UB => UB, :x => best_x, :iters => iter,
-                :oracle_calls => ncalls, :mw_cuts => n_mw, :wall => time() - wall, :hist => hist, :cuts => cuts)
+                :oracle_calls => ncalls, :mw_cuts => n_mw, :local_cuts => n_local, :wall => time() - wall,
+                :hist => hist, :cuts => cuts)
 end
 
 
