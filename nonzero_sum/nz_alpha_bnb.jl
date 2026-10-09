@@ -49,6 +49,9 @@ mutable struct _NZSepLP
     active::Vector{Bool}
     l::Vector{Float64}
     u::Vector{Float64}
+    mcW::Vector{NTuple{4,ConstraintRef}}         # ζW = α_i ϖ 의 노드별 McCormick 4 행 (wpos 순서), ϖ 분기용
+    Lw::Vector{Float64}                          # 노드의 ϖ 상자 (wpos 순서)
+    Uw::Vector{Float64}
 end
 
 function _nz_zvar(P::_NZSepLP, f, i, idx)
@@ -117,9 +120,38 @@ function _nz_build_sep(nd::NZData, x̄; optimizer)
         cs = @constraint(m, [s = 1:S], sum(nd.W[l, i] * Z[fam][i, s] for i in 1:nh) <= nd.wvec[l] * Y[fam][s])
         fam == :c && for s in 1:S; set_name(cs[s], "rltc_static_$(l)_$(s)"); end   # 진단용 이름 (결합 RLT)
     end
+    # ζW = α_i ϖ 의 McCormick (α 상자 × 노드 ϖ 상자). 계수·rhs 는 _nz_sep_set_wbox! 가 노드마다 채움.
+    # α 만 분기하면 α·ϖ 오차가 (α 폭) × (ϖ 범위 0 ~ p r) 에 비례해 θ·비용 스케일로 증폭됨 → ϖ 도 분기 (diag_box_width.jl)
+    mcW = NTuple{4,ConstraintRef}[]
+    Lw = zeros(length(wpos)); Uw = zeros(length(wpos))
+    for (idx, (jj, s, i)) in enumerate(wpos)
+        z = v[:ζW][jj, s]; w = Y[:w][idx]; a = α[i]
+        c1 = @constraint(m, z - 0.0 * w - 0.0 * a >= 0.0); c2 = @constraint(m, z - 0.0 * w - 0.0 * a >= 0.0)
+        c3 = @constraint(m, z - 0.0 * w - 0.0 * a <= 0.0); c4 = @constraint(m, z - 0.0 * w - 0.0 * a <= 0.0)
+        push!(mcW, (c1, c2, c3, c4))
+        Uw[idx] = has_upper_bound(w) ? upper_bound(w) : Inf
+    end
     nz_set_objective!(O, nd, x̄)
-    return _NZSepLP(O, nh, S, Y, Z, wpos, _nz_rows(nd, Y, wpos),
-                    Tuple{Int,Bool,Float64,ConstraintRef,Float64,Int}[], Bool[], zeros(nh), copy(nd.hU))
+    P = _NZSepLP(O, nh, S, Y, Z, wpos, _nz_rows(nd, Y, wpos),
+                 Tuple{Int,Bool,Float64,ConstraintRef,Float64,Int}[], Bool[], zeros(nh), copy(nd.hU), mcW, Lw, Uw)
+    _nz_sep_set_box!(P, zeros(nh), copy(nd.hU))      # 자리표시 계수 (0) 를 기본 상자의 McCormick 으로 채움
+    _nz_sep_set_wbox!(P, copy(Lw), copy(Uw))
+    return P
+end
+
+"노드의 ϖ 상자와 ζW McCormick 갱신 (α 상자 P.l, P.u 를 먼저 _nz_sep_set_box! 로 설정한 뒤 호출)"
+function _nz_sep_set_wbox!(P::_NZSepLP, Lw, Uw)
+    for (idx, (_, _, i)) in enumerate(P.wpos)
+        w = P.Y[:w][idx]; a = P.O.v[:α][i]
+        L, U = Lw[idx], Uw[idx]; la, ua = P.l[i], P.u[i]
+        set_lower_bound(w, L); isfinite(U) && set_upper_bound(w, U)
+        c1, c2, c3, c4 = P.mcW[idx]
+        isfinite(U) || (U = 1e6)                    # ϖ 상한이 없으면 (H 행 밖) 위쪽 두 행은 사실상 비활성
+        for (c, cw, ca, rhs) in ((c1, la, L, -la * L), (c2, ua, U, -ua * U), (c3, ua, L, -ua * L), (c4, la, U, -la * U))
+            set_normalized_coefficient(c, w, -cw); set_normalized_coefficient(c, a, -ca); set_normalized_rhs(c, rhs)
+        end
+    end
+    P.Lw .= Lw; P.Uw .= Uw
 end
 
 """RLT 행 (i, j, side, b) 추가.  lo: (α_i − b)·g_j ≥ 0,  hi: (b − α_i)·g_j ≥ 0."""
@@ -340,7 +372,7 @@ target: LB ≥ target 이거나 UB ≤ target 이면 즉시 종료 (Benders "t�
 function nz_alpha_bnb(nd::NZData, x̄; nworkers=Threads.nthreads() - 2, time_limit=300.0, rel_gap=1e-4,
                       dive_max=3, maxrounds=30, min_width=1e-7, ipopt_time=60.0,
                       verbose=true, log_every=30.0, target=nothing, envs=nothing, heuristic::Bool=true,
-                      presolve::Bool=true)
+                      presolve::Bool=true, varpi_branch::Bool=false, varpi_alpha_width=3.0)   # ϖ 분기: 시험 결과 더 나빠 기본 끔 (experiments.md)
     # 프리솔브: x̄ 에서 최적 반응이 항상 0 인 예약 좌표를 고정 (nz_presolve_hU). 내부 모델은 줄인 상자로 만들고,
     # 반환 α 는 원래 정의역의 점이다 (호출자는 원래 nd 로 cut 을 만듦).
     nfix = 0
@@ -366,7 +398,9 @@ function nz_alpha_bnb(nd::NZData, x̄; nworkers=Threads.nthreads() - 2, time_lim
     boxok(l) = all(nd.W * l .<= nd.wvec .+ 1e-9)
 
     lk = ReentrantLock()
-    open = Any[(zeros(nh), copy(nd.hU), Inf)]
+    Lw0 = copy(Ps[1].Lw); Uw0 = copy(Ps[1].Uw)
+    wmax = [isfinite(U) ? max(U, 1e-9) : 1.0 for U in Uw0]       # ϖ 정규화 폭
+    open = Any[(zeros(nh), copy(nd.hU), Inf, Lw0, Uw0)]
     inflight = fill(-Inf, nworkers)
     LB = Ref(-Inf); best_α = Ref(zeros(nh))
     nodes = Ref(0); done = Ref(false); root_UB = Ref(Inf)
@@ -416,7 +450,7 @@ function nz_alpha_bnb(nd::NZData, x̄; nworkers=Threads.nthreads() - 2, time_lim
             if node === nothing
                 sleep(0.05); continue
             end
-            l, u, ubp = node
+            l, u, ubp, Lw, Uw = node
             if !synced && root_rows[] !== nothing && isempty(P.allrows) && t_end - time() > 30.0
                 for (i, j, islo, b) in root_rows[]; _nz_sep_add!(P, i, j, islo, b); end
                 synced = true
@@ -426,6 +460,7 @@ function nz_alpha_bnb(nd::NZData, x̄; nworkers=Threads.nthreads() - 2, time_lim
             boxok(l) && ubp <= LB[] + tol(LB[]) && (pruned_val = ubp)
             if ubp > LB[] + tol(LB[]) && boxok(l)
                 _nz_sep_set_box!(P, l, u)
+                _nz_sep_set_wbox!(P, Lw, Uw)
                 set_time_limit_sec(P.O.model, max(t_end - time(), 0.1))
                 z = _nz_sep_solve!(P; maxrounds=maxrounds)
                 unfinished = isnan(z)
@@ -435,7 +470,7 @@ function nz_alpha_bnb(nd::NZData, x̄; nworkers=Threads.nthreads() - 2, time_lim
                     i = argmax(u .- l)
                     if u[i] - l[i] > min_width
                         t = 0.5 * (l[i] + u[i]); u1 = copy(u); u1[i] = t; l2 = copy(l); l2[i] = t
-                        children = ((copy(l), u1, z), (l2, copy(u), z))
+                        children = ((copy(l), u1, z, Lw, Uw), (l2, copy(u), z, Lw, Uw))
                     else
                         pruned_val = z           # 더 못 나누면 상한만 남김 (유효)
                     end
@@ -459,12 +494,30 @@ function nz_alpha_bnb(nd::NZData, x̄; nworkers=Threads.nthreads() - 2, time_lim
                             viol[i] += sum(abs(ζWv[jj, s] - α̂[i] * ϖv[k, s]) for s in 1:S)
                         end
                     end
+                    # ϖ 분기 후보: 위반이 가장 큰 ζW 곱에서 ϖ 의 정규화 폭이 α 의 정규화 폭보다 크면 ϖ 를 나눔
+                    wbr = 0
+                    if varpi_branch
+                        best_w = 0.0
+                        for (idx, (jj, s, i)) in enumerate(P.wpos)
+                            Uw[idx] - Lw[idx] > 1e-6 * wmax[idx] || continue
+                            vw = abs(ζWv[jj, s] - α̂[i] * ϖv[Hr[jj], s])
+                            # α 상자가 이미 좁을 때만 ϖ 를 나눔 (넓은 α 에서 ϖ 를 나누면 트리만 커짐: diag_box_width.jl, 1차 시도)
+                            u[i] - l[i] <= varpi_alpha_width || continue
+                            vw > best_w && (best_w = vw; wbr = idx)
+                        end
+                    end
                     i = argmax(viol)
-                    if viol[i] > 1e-9
+                    if wbr > 0
+                        jj, s, _ = P.wpos[wbr]
+                        t = ϖv[Hr[jj], s]; width = Uw[wbr] - Lw[wbr]
+                        (t - Lw[wbr] < 0.1 * width || Uw[wbr] - t < 0.1 * width) && (t = 0.5 * (Lw[wbr] + Uw[wbr]))
+                        U1 = copy(Uw); U1[wbr] = t; L2 = copy(Lw); L2[wbr] = t
+                        children = ((copy(l), copy(u), z, copy(Lw), U1), (copy(l), copy(u), z, L2, copy(Uw)))
+                    elseif viol[i] > 1e-9
                         width = u[i] - l[i]; t = α̂[i]
                         (t - l[i] < 0.1 * width || u[i] - t < 0.1 * width) && (t = 0.5 * (l[i] + u[i]))
                         u1 = copy(u); u1[i] = t; l2 = copy(l); l2[i] = t
-                        children = ((copy(l), u1, z), (l2, copy(u), z))
+                        children = ((copy(l), u1, z, Lw, Uw), (l2, copy(u), z, Lw, Uw))
                     else
                         zE = max(zE, z)      # 완화가 exact
                     end

@@ -2,7 +2,7 @@
 diag_abb_base.jl — 기본 인스턴스 x = {1,2} 에서 α-B&B 상한이 느슨한 원인 진단: quota × δ 별로 α-B&B 를 같은 시간 돌려 LB/UB/노드 비교.
 환경변수: DA_TL = 600   DA_QUOTAS = "100,150"   DA_DELTAS = "Inf,0.1"   DA_EPS = 0.3   DA_X = "1,2"
           DA_LAMBDAS = "100" (λᵁ 값들, 쉼표)   DA_THETAS = "" (비우면 인스턴스 기본 θᵁ, 아니면 nz_with_bounds 로 교체)
-          DA_WORKERS = 12 (α-B&B)   DA_GRB_THREADS = 0 (Gurobi Ω 스레드, 0 = 기본)   DA_SOLVERS = "abb" | "abb,gurobi"  (gurobi = Ω 를 Gurobi NonConvex 로 같은 시간)   DA_VERBOSE = 0 (1 이면 α-B&B 진행 로그, 60 s 마다)
+          DA_WORKERS = 12 (α-B&B)   DA_GRB_THREADS = 0 (Gurobi Ω 스레드, 0 = 기본)   DA_PRESOLVE = 1 (α-BDA_SOLVERS = "abb" | "abb,gurobi"B 닫힌 점포 프리솔브)   DA_SOLVERS = "abb" | "abb,gurobi"  (gurobi = Ω 를 Gurobi NonConvex 로 같은 시간)   DA_VERBOSE = 0 (1 이면 α-B&B 진행 로그, 60 s 마다)
 실행: julia -t 14,1 nonzero_sum/diag_abb_base.jl
 """
 root = dirname(@__DIR__)
@@ -23,10 +23,10 @@ for quota in pd.(split(envf("DA_QUOTAS", "100,150"), ",")), δ in pd.(split(envf
     k = nz_kkt_value(nd, x̄; optimizer=GRB, time_limit=300.0)
     solvers = split(envf("DA_SOLVERS", "abb"), ",")
     if "abb" in solvers
-        t = @elapsed r = nz_alpha_bnb(nd, x̄; nworkers=parse(Int, envf("DA_WORKERS", "12")), time_limit=TL, verbose=envf("DA_VERBOSE", "0") == "1", log_every=60.0)
-        @printf("RESULT quota=%g δ=%s x=%s KKT V*=%.4f | α-B&B LB=%.4f UB=%.4f gap=%.2e nodes=%s numerr=%s (%.0fs) | θᵁ=%.3f λᵁ=%.1f\n",
+        t = @elapsed r = nz_alpha_bnb(nd, x̄; nworkers=parse(Int, envf("DA_WORKERS", "12")), presolve=envf("DA_PRESOLVE", "1") == "1", varpi_branch=envf("DA_VARPI", "0") == "1", time_limit=TL, verbose=envf("DA_VERBOSE", "0") == "1", log_every=60.0)
+        @printf("RESULT quota=%g δ=%s x=%s KKT V*=%.4f | α-B&B LB=%.4f UB=%.4f gap=%.2e nodes=%s numerr=%s (%.0fs) | θᵁ=%.3f λᵁ=%.1f 고정=%d\n",
                 quota, string(δ), string(xi), k[:value], r[:LB], r[:UB], (r[:UB] - r[:LB]) / max(1, abs(r[:LB])),
-                string(get(r, :nodes, "-")), string(get(r, :numerr, "-")), t, nd.thetaU, nd.lambdaU)
+                string(get(r, :nodes, "-")), string(get(r, :numerr, "-")), t, nd.thetaU, nd.lambdaU, get(r, :presolve_fixed, 0))
         flush(stdout)
     end
     if "gurobi" in solvers

@@ -36,7 +36,7 @@ end
 
 function build_nz_omega(nd::NZData; optimizer, belief_lp::Bool=false, cert_rows::Symbol=:hrows,
                         silent::Bool=true, mode::Symbol=(belief_lp ? :belief_lp : :global),
-                        solver_params::Bool=true)
+                        solver_params::Bool=true, weak_duality::Bool=true)
     mode in (:global, :belief_lp, :fixed_alpha, :relax) || error("mode = :global | :belief_lp | :fixed_alpha | :relax")
     A, c, ℓ, u, g = nd.A, nd.c, nd.ell, nd.u, nd.g
     m, ny, nh, nx, S = nz_m(nd), nz_ny(nd), nz_nh(nd), nd.nx, nd.S
@@ -167,6 +167,22 @@ function build_nz_omega(nd::NZData; optimizer, belief_lp::Bool=false, cert_rows:
         solver_params && set_optimizer_attribute(model, "NonConvex", 2)
     end
     # mode == :relax: 곱 정의 없음 (α-B&B 노드 완화가 RLT 행을 붙임)
+
+    # 약쌍대 부등식 (WD): 시나리오마다 cᵀŷˢ ≤ (uˢ + Σ_X gˢ x̄)ᵀϖˢ + Σ_H hcoef ζWˢ.
+    # 리더 블록은 ℓᵀŷ + θ(cᵀŷ − 쌍대목적) 이고 최적점에서는 약쌍대성으로 θ 항 ≤ 0 (= 0). 완화에서는 ζL (primal 용량) 과
+    # ζW (쌍대목적) 가 따로 완화돼 이 부등식이 깨지고 벌점이 보상으로 바뀐다 → θ·비용 스케일로 증폭 (zero-sum 은 θ = 0).
+    # 최적점은 부등식을 만족하므로 값 불변, 줄인 집합의 점은 Ω 의 점이라 cut 도 유효. x 행 계수는 nz_set_objective! 가 x̄ 로 갱신.
+    # 노드 완화 상한 − V* (diag_box_width.jl, SGB128 x={1,2}): 루트 19,700 → 629, 상자 폭 1 에서 54.6 → 5.4.
+    # belief_lp / fixed_alpha 에는 넣지 않음 (fixed_alpha 는 정확, belief LP 의 정확성 논증은 그대로 둠).
+    if weak_duality && mode in (:global, :relax)
+        v[:wd] = @constraint(model, [s=1:S],
+            sum(c[j] * ŷ[j, s] for j in 1:ny if c[j] != 0)
+            - sum(u[k, s] * ϖ[k, s] for k in 1:m if u[k, s] != 0)
+            - sum(nd.hcoef[k] * ζW[jj, s] for (jj, k) in enumerate(Hr)) <= 0.0)
+        for k in Xr, s in 1:S
+            set_normalized_coefficient(v[:wd][s], ϖ[k, s], -u[k, s])     # x̄ 항은 nz_set_objective! 에서
+        end
+    end
     O = NZOmega(model, v, mode != :global)
     nz_set_objective!(O, nd, zeros(nx))
     return O
@@ -206,6 +222,11 @@ function nz_set_objective!(O::NZOmega, nd::NZData, x̄)
     for i in 1:nd.nx
         add_to_expression!(FL, -λU * x̄[i], v[:ρ01][i])
         add_to_expression!(FL, -λU * (1 - x̄[i]), v[:ρ03][i])
+    end
+    if haskey(v, :wd)                                   # 약쌍대 부등식의 x 행 계수: −(u + g x̄)
+        for k in Xr, s in 1:S
+            set_normalized_coefficient(v[:wd][s], ϖ[k, s], -(nd.u[k, s] + nd.g[k, s] * x̄[nd.xrow[k]]))
+        end
     end
     @objective(O.model, Max, FL)
     return nothing
