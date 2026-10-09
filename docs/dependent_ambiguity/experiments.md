@@ -145,7 +145,21 @@ primal 용량 (ζL = α r) 과 쌍대목적 (ζW = α ϖ) 이 따로 완화돼 *
 | E (KKT) | 14 s | 14.5 s | 14.7 s |
 | SB-G | TimeLimit, gap 8.2% | Optimal 1,816 s | **Optimal 153 s** |
 | SB-A | TimeLimit, gap 175% | (중단) | TimeLimit, gap 0.89% |
-| Algorithm 2 | Stalled, gap 165% | (중단) | 진행 중 |
+| Algorithm 2 (α-B&B oracle) | Stalled, gap 165% | (중단) | Stalled 3,181 s, gap 0.98% (LB 최적 180 s) |
+| ALGG (Algorithm 2 + Gurobi oracle) | — | — | **Optimal 168 s** |
+
+### S 스케일링, θᵁ = 1 + WD (`logs/loc_base_scaling_theta_wd_S20_200.log`, 방법당 3,600 s)
+
+| S | 방법 | 결과 | gap | 시간 | LB 최적 도달 |
+|---|---|---|---|---|---|
+| 20 | E | 미해결 (x={1} KKT 300 s) | — | — | — |
+| 20 | SB-G | TimeLimit (x={1,2} 인증 Gurobi 1 시간, bd −1171.3) | 22.2% | 3,600 s | — |
+| 20 | SB-A | TimeLimit (x={1,2} 인증 α-B&B 1 시간, bd −1176.4) | 21.1% | 3,600 s | — |
+| 20 | ALG | TimeLimit, x* = {1} | **0.011%** | 3,600 s | **83 s** |
+| 20 | ALGG | **Optimal**, x* = {1}, −685.917 | 0 | **2,045 s** | 1,537 s |
+
+S = 20: belief cut 이 비최적 x={1,2} 를 일찍 배제해 Algorithm 2 가 SB 를 크게 앞섬 (SB 는 x={1,2} 인증에 1 시간 전부).
+α-B&B oracle 은 최적해를 빨리 찾고 (83 s), Gurobi oracle 은 인증을 끝냄. x={1,2} 인증 상한은 S=20 에서 α-B&B 가 Gurobi 보다 조금 나음.
 
 ### 밤샘 실행 (`logs/loc_base_scaling.log`, S = 3, 20, 50, 방법당 3,600 s) — S = 20 의 E 후 중단 (θ 문제 먼저)
 

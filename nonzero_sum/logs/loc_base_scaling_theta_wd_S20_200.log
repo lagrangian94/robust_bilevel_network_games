@@ -1,0 +1,112 @@
+Set parameter Username
+Set parameter LicenseID to value 2839433
+Academic license - for non-commercial use only - expires 2027-06-29
+====================================================================================================
+기본 인스턴스 S 스케일링: SGB128 pair quota=150 ε̂=ε̃=0.30 β=0.40 δ=0.1 seed=1 | TL=3600s E_TL/x=300s E=nz_kkt_value_reduced workers=12 θᵁ=1.0000 (circuit)
+====================================================================================================
+
+--- S=20 (n_h=15, |X|=16)
+  E: x={1} 에서 TIME_LIMIT (304s)
+RESULT S=20 method=E status=Unsolved x=- value=NaN time=304.4
+  [loc] it   1 LB=-10000000.0000 UB=        Inf x=Int64[]    Ω_loc=    -0.0021 (0.2s)
+  [loc] it   2 LB=-9999695.0000 UB=        Inf x=[1]        Ω_loc=  -990.9194 (0.3s)
+  [loc] it   3 LB=-9999695.0000 UB=        Inf x=[2]        Ω_loc=  -876.4820 (0.2s)
+  [loc] it   4 LB=-4831104.9106 UB=        Inf x=[1, 2]     Ω_loc= -1305.3073 (0.1s)
+  [loc] it   5 LB=-2376685.0007 UB=        Inf x=[3]        Ω_loc=  -113.1689 (0.2s)
+  [std] it   6 LB=  -695.3045 UB=  -561.3149 x=[1, 2]     Ω= -1200.7204 bd= -1171.3149 (3596.9s)
+RESULT S=20 method=SBG status=TimeLimit x={1,2} LB=-685.917031 UB=-561.314903 gap=2.22e-01 iters=7 global=1 local=5 menu=- t_LB=3604.2 time=3604.2
+  [loc] it   1 LB=-10000000.0000 UB=        Inf x=Int64[]    Ω_loc=    -0.0021 (0.1s)
+  [loc] it   2 LB=-9999695.0000 UB=        Inf x=[1]        Ω_loc=  -990.9194 (0.3s)
+  [loc] it   3 LB=-9999695.0000 UB=        Inf x=[2]        Ω_loc=  -876.4820 (0.2s)
+  [loc] it   4 LB=-4831104.9106 UB=        Inf x=[1, 2]     Ω_loc= -1305.3073 (0.1s)
+  [loc] it   5 LB=-2376685.0007 UB=        Inf x=[3]        Ω_loc=  -113.1689 (0.2s)
+Set parameter Username
+Set parameter LicenseID to value 2839433
+Academic license - for non-commercial use only - expires 2027-06-29
+Set parameter Username
+Set parameter LicenseID to value 2839433
+Academic license - for non-commercial use only - expires 2027-06-29
+Set parameter Username
+Set parameter LicenseID to value 2839433
+Academic license - for non-commercial use only - expires 2027-06-29
+Set parameter Username
+Set parameter LicenseID to value 2839433
+Academic license - for non-commercial use only - expires 2027-06-29
+Set parameter Username
+Set parameter LicenseID to value 2839433
+Academic license - for non-commercial use only - expires 2027-06-29
+Set parameter Username
+Set parameter LicenseID to value 2839433
+Academic license - for non-commercial use only - expires 2027-06-29
+Set parameter Username
+Set parameter LicenseID to value 2839433
+Academic license - for non-commercial use only - expires 2027-06-29
+Set parameter Username
+Set parameter LicenseID to value 2839433
+Academic license - for non-commercial use only - expires 2027-06-29
+Set parameter Username
+Set parameter LicenseID to value 2839433
+Academic license - for non-commercial use only - expires 2027-06-29
+Set parameter Username
+Set parameter LicenseID to value 2839433
+Academic license - for non-commercial use only - expires 2027-06-29
+Set parameter Username
+Set parameter LicenseID to value 2839433
+Academic license - for non-commercial use only - expires 2027-06-29
+Set parameter Username
+Set parameter LicenseID to value 2839433
+Academic license - for non-commercial use only - expires 2027-06-29
+Set parameter Username
+Set parameter LicenseID to value 2839433
+Academic license - for non-commercial use only - expires 2027-06-29
+
+******************************************************************************
+This program contains Ipopt, a library for large-scale nonlinear optimization.
+ Ipopt is released as open source code under the Eclipse Public License (EPL).
+         For more information visit https://github.com/coin-or/Ipopt
+******************************************************************************
+
+  [std] it   6 LB=  -695.3045 UB=  -566.4010 x=[1, 2]     Ω= -1200.7584 bd= -1176.4010 (3600.7s)
+RESULT S=20 method=SBA status=TimeLimit x={1,2} LB=-685.917031 UB=-566.400981 gap=2.11e-01 iters=7 global=1 local=5 menu=- t_LB=3603.3 time=3603.3
+  [orcl] it   1 LB=-10000000.0000 UB=     0.0000 x=Int64[]    Ω=     0.0000 (2.3s) menu=1 (+belief, LP@x̄=0.0000, gap -1.5e-11)
+  [menu] it   2 LB=-9999695.0000 UB=     0.0000 x=[1]        menu cut 1/1 (V_menu=-33046.6750)
+  [menu] it   3 LB=-9999695.0000 UB=     0.0000 x=[2]        menu cut 1/1 (V_menu=-19583.6250)
+  [menu] it   4 LB=-3725533.6241 UB=     0.0000 x=[1, 2]     menu cut 1/1 (V_menu=-32957.1083)
+  [menu] it   5 LB=-971695.0000 UB=     0.0000 x=[3]        menu cut 1/1 (V_menu=-932.3667)
+  [orcl] it   6 LB=-32741.6750 UB=  -457.4219 x=[1]        Ω= -1012.4501 (10.0s) menu=2 (+belief, LP@x̄=-1012.4375, gap -1.3e-02)
+  [menu] it   7 LB=-32347.1084 UB=  -457.4219 x=[1, 2]     menu cut 1/2 (V_menu=-10115.0250)
+  [menu] it   8 LB=-19278.6250 UB=  -457.4219 x=[2]        menu cut 1/2 (V_menu=-8847.4208)
+  [orcl] it   9 LB= -9505.0250 UB=  -457.4219 x=[1, 2]     Ω= -1266.0172 (15.8s) menu=3 (+belief, LP@x̄=-1265.5313, gap -4.9e-01)
+  [menu] it  10 LB= -8542.4208 UB=  -457.4219 x=[2]        menu cut 1/3 (V_menu=-4039.2269)
+  [orcl] it  11 LB= -3734.2269 UB=  -457.4219 x=[2]        Ω=  -770.9844 (4.2s) menu=4 (+belief, LP@x̄=-770.9167, gap -6.8e-02)
+  [menu] it  12 LB=  -707.4501 UB=  -457.4219 x=[1]        menu cut 1/4 (V_menu=-1012.4375)
+  [orcl] it  13 LB=  -707.4375 UB=  -633.1110 x=[1]        Ω=  -990.9548 (49.2s) menu=5 (+belief, LP@x̄=-990.9167, gap -3.8e-02)
+  [menu] it  14 LB=  -685.9548 UB=  -633.1110 x=[1]        menu cut 1/5 (V_menu=-990.9167)
+  [orcl] it  15 LB=  -685.9167 UB=  -685.6820 x=[1]        Ω=  -990.9303 (601.3s) menu=5
+  [orcl] it  16 LB=  -685.9167 UB=  -685.8201 x=[1]        Ω=  -990.9532 (964.9s) menu=5
+  [orcl] it  17 LB=  -685.9167 UB=  -685.8201 x=[1]        Ω=  -990.9530 (601.7s) menu=5
+  [orcl] it  18 LB=  -685.9167 UB=  -685.8428 x=[1]        Ω=  -990.9540 (900.0s) menu=5
+  [orcl] it  19 LB=  -685.9167 UB=  -685.8428 x=[1]        Ω=  -990.9528 (455.7s) menu=5
+RESULT S=20 method=ALG status=TimeLimit x={1} LB=-685.916668 UB=-685.842850 gap=1.08e-04 iters=20 global=10 local=- menu=5 t_LB=83.1 time=3607.7
+  [orcl] it   1 LB=-10000000.0000 UB=    -0.0000 x=Int64[]    Ω=    -0.0000 (0.2s) menu=1 (+belief, LP@x̄=-0.0000, gap -3.3e-11)
+  [menu] it   2 LB=-9999695.0000 UB=    -0.0000 x=[1]        menu cut 1/1 (V_menu=-28670.5167)
+  [menu] it   3 LB=-9999695.0000 UB=    -0.0000 x=[2]        menu cut 1/1 (V_menu=-7533.6667)
+  [menu] it   4 LB=-5774633.6653 UB=    -0.0000 x=[1, 2]     menu cut 1/1 (V_menu=-18574.2250)
+  [menu] it   5 LB=-2872495.0000 UB=    -0.0000 x=[3]        menu cut 1/1 (V_menu=-470.2000)
+  [orcl] it   6 LB=-28365.5167 UB=  -685.0304 x=[1]        Ω=  -990.9167 (600.0s) menu=2 (+belief, LP@x̄=-990.9167, gap 1.4e-05)
+  [menu] it   7 LB=-28060.5167 UB=  -685.0304 x=[1, 3]     menu cut 1/2 (V_menu=-990.9167)
+  [menu] it   8 LB=-17964.2250 UB=  -685.0304 x=[1, 2]     menu cut 1/2 (V_menu=-7811.6083)
+  [menu] it   9 LB= -7228.6667 UB=  -685.0304 x=[2]        menu cut 1/2 (V_menu=-7270.8833)
+  [orcl] it  10 LB= -7201.6083 UB=  -685.0304 x=[1, 2]     Ω= -1200.7191 (600.0s) menu=3 (+belief, LP@x̄=-1200.7191, gap -2.8e-06)
+  [menu] it  11 LB= -6965.8833 UB=  -685.0304 x=[2]        menu cut 1/3 (V_menu=-4209.4611)
+  [orcl] it  12 LB= -3904.4611 UB=  -685.0304 x=[2]        Ω=  -770.9167 (336.7s) menu=4 (+belief, LP@x̄=-770.9167, gap 1.6e-06)
+  [orcl] it  13 LB=  -685.9167 UB=  -685.9167 x=[1]        Ω=  -990.9167 (507.3s) menu=4
+RESULT S=20 method=ALGG status=Optimal x={1} LB=-685.916668 UB=-685.916667 gap=1.62e-09 iters=14 global=5 local=- menu=4 t_LB=1537.3 time=2044.7
+
+--- S=50 (n_h=15, |X|=16)
+  E: 더 작은 S 에서 미해결 → 건너뜀
+  [loc] it   1 LB=-10000000.0000 UB=        Inf x=Int64[]    Ω_loc=    -0.0051 (0.1s)
+  [loc] it   2 LB=-9999695.0000 UB=        Inf x=[1]        Ω_loc=  -730.4068 (1.7s)
+  [loc] it   3 LB=-9999695.0000 UB=        Inf x=[2]        Ω_loc=  -691.1901 (1.7s)
+  [loc] it   4 LB=-2506592.1900 UB=        Inf x=[1, 2]     Ω_loc= -1063.9243 (0.8s)
+  [loc] it   5 LB=-2209441.0019 UB=        Inf x=[3]        Ω_loc=   -52.5055 (2.4s)

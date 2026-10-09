@@ -82,3 +82,5 @@ RESULT S=3 method=SBA status=TimeLimit x={1,2} LB=-860.532753 UB=-852.911213 gap
   [orcl] it  13 LB=  -861.9093 UB=  -840.4547 x=[1, 2]     Ω= -1470.5347 (170.8s) menu=6 (+belief, LP@x̄=-1470.5000, gap -3.5e-02)
   [menu] it  14 LB=  -860.5347 UB=  -840.4547 x=[1, 2]     menu cut 1/6 (V_menu=-1470.5000)
   [orcl] it  15 LB=  -860.5000 UB=  -847.2527 x=[1, 2]     Ω= -1470.5347 (600.2s) menu=6
+  [orcl] it  16 LB=  -860.5000 UB=  -852.1288 x=[1, 2]     Ω= -1470.5287 (2400.2s) menu=6
+RESULT S=3 method=ALG status=Stalled x={1,2} LB=-860.500001 UB=-852.128764 gap=9.82e-03 iters=17 global=8 local=- menu=6 t_LB=179.9 time=3180.9
