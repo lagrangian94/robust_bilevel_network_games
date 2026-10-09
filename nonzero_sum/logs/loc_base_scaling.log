@@ -1,0 +1,492 @@
+Set parameter Username
+Set parameter LicenseID to value 2839433
+Academic license - for non-commercial use only - expires 2027-06-29
+====================================================================================================
+기본 인스턴스 S 스케일링: SGB128 pair quota=150 ε̂=ε̃=0.30 β=0.40 δ=0.1 seed=1 | TL=3600s E_TL/x=300s E=nz_kkt_value_reduced workers=12
+====================================================================================================
+
+--- S=3 (n_h=15, |X|=16)
+RESULT S=3 method=E status=Optimal x={1,2} value=-860.500000 time=14.2
+  [loc] it   1 LB=-10000000.0000 UB=        Inf x=Int64[]    Ω_loc=    -0.0003 (0.0s)
+  [loc] it   2 LB=-9999695.0000 UB=        Inf x=[1]        Ω_loc= -1134.0642 (0.0s)
+  [loc] it   3 LB=-9999695.0000 UB=        Inf x=[2]        Ω_loc= -1154.1253 (0.1s)
+  [loc] it   4 LB=-2678044.1250 UB=        Inf x=[1, 2]     Ω_loc= -1478.1000 (0.1s)
+  [loc] it   5 LB=-1110295.0001 UB=        Inf x=[3]        Ω_loc=   -24.5003 (0.0s)
+  [std] it   6 LB=  -868.0996 UB=  -795.3026 x=[1, 2]     Ω= -1470.5000 bd= -1405.3026 (3599.2s)
+RESULT S=3 method=SBG status=TimeLimit x={1,2} LB=-860.500001 UB=-795.302603 gap=8.20e-02 iters=7 global=1 local=5 menu=- t_LB=3603.8 time=3603.8
+  [loc] it   1 LB=-10000000.0000 UB=        Inf x=Int64[]    Ω_loc=    -0.0003 (0.0s)
+  [loc] it   2 LB=-9999695.0000 UB=        Inf x=[1]        Ω_loc= -1134.0642 (0.0s)
+  [loc] it   3 LB=-9999695.0000 UB=        Inf x=[2]        Ω_loc= -1154.1253 (0.1s)
+  [loc] it   4 LB=-2678044.1250 UB=        Inf x=[1, 2]     Ω_loc= -1478.1000 (0.1s)
+  [loc] it   5 LB=-1110295.0001 UB=        Inf x=[3]        Ω_loc=   -24.5003 (0.0s)
+Set parameter Username
+Set parameter LicenseID to value 2839433
+Academic license - for non-commercial use only - expires 2027-06-29
+Set parameter Username
+Set parameter LicenseID to value 2839433
+Academic license - for non-commercial use only - expires 2027-06-29
+Set parameter Username
+Set parameter LicenseID to value 2839433
+Academic license - for non-commercial use only - expires 2027-06-29
+Set parameter Username
+Set parameter LicenseID to value 2839433
+Academic license - for non-commercial use only - expires 2027-06-29
+Set parameter Username
+Set parameter LicenseID to value 2839433
+Academic license - for non-commercial use only - expires 2027-06-29
+Set parameter Username
+Set parameter LicenseID to value 2839433
+Academic license - for non-commercial use only - expires 2027-06-29
+Set parameter Username
+Set parameter LicenseID to value 2839433
+Academic license - for non-commercial use only - expires 2027-06-29
+Set parameter Username
+Set parameter LicenseID to value 2839433
+Academic license - for non-commercial use only - expires 2027-06-29
+Set parameter Username
+Set parameter LicenseID to value 2839433
+Academic license - for non-commercial use only - expires 2027-06-29
+Set parameter Username
+Set parameter LicenseID to value 2839433
+Academic license - for non-commercial use only - expires 2027-06-29
+Set parameter Username
+Set parameter LicenseID to value 2839433
+Academic license - for non-commercial use only - expires 2027-06-29
+Set parameter Username
+Set parameter LicenseID to value 2839433
+Academic license - for non-commercial use only - expires 2027-06-29
+Set parameter Username
+Set parameter LicenseID to value 2839433
+Academic license - for non-commercial use only - expires 2027-06-29
+
+******************************************************************************
+This program contains Ipopt, a library for large-scale nonlinear optimization.
+ Ipopt is released as open source code under the Eclipse Public License (EPL).
+         For more information visit https://github.com/coin-or/Ipopt
+******************************************************************************
+
+  [std] it   6 LB=  -868.0996 UB=  1142.8295 x=[1, 2]     Ω= -1470.5169 bd=   532.8295 (3600.0s)
+RESULT S=3 method=SBA status=TimeLimit x={1,2} LB=-860.516915 UB=1142.829456 gap=1.75e+00 iters=7 global=1 local=5 menu=- t_LB=3600.4 time=3600.4
+  [orcl] it   1 LB=-10000000.0000 UB= 67314.6000 x=Int64[]    Ω=    -0.0000 (0.4s) menu=1 (+belief, LP@x̄=-0.0000, gap 7.3e-12)
+  [menu] it   2 LB=-9999695.0000 UB= 67314.6000 x=[1]        menu cut 1/1 (V_menu=-143485.0000)
+  [menu] it   3 LB=-9999695.0000 UB= 67314.6000 x=[2]        menu cut 1/1 (V_menu=-1141.0000)
+  [menu] it   4 LB=-1865331.0000 UB= 67314.6000 x=[1, 2]     menu cut 1/1 (V_menu=-1819.5000)
+  [menu] it   5 LB=-971695.0000 UB= 67314.6000 x=[3]        menu cut 1/1 (V_menu=-686.5000)
+  [orcl] it   6 LB=-143180.0001 UB= 67314.6000 x=[1]        Ω= -1134.1114 (0.5s) menu=2 (+belief, LP@x̄=-1134.0639, gap -4.8e-02)
+  [orcl] it   7 LB= -1209.5000 UB= 58925.9524 x=[1, 2]     Ω= -1520.0241 (0.4s) menu=3 (+belief, LP@x̄=-1520.0128, gap -1.1e-02)
+  [menu] it   8 LB=  -910.0241 UB= 58925.9524 x=[1, 2]     menu cut 1/3 (V_menu=-1520.0128)
+  [orcl] it   9 LB=  -910.0128 UB= 25111.7670 x=[1, 2]     Ω= -1475.2876 (0.8s) menu=4 (+belief, LP@x̄=-1475.2407, gap -4.7e-02)
+  [menu] it  10 LB=  -865.2876 UB= 25111.7670 x=[1, 2]     menu cut 1/4 (V_menu=-1475.2407)
+  [orcl] it  11 LB=  -865.2407 UB= 18905.1023 x=[1, 2]     Ω= -1471.9567 (1.4s) menu=5 (+belief, LP@x̄=-1471.9093, gap -4.7e-02)
+  [menu] it  12 LB=  -861.9567 UB= 18905.1023 x=[1, 2]     menu cut 1/5 (V_menu=-1471.9093)
+  [orcl] it  13 LB=  -861.9093 UB=  5003.7253 x=[1, 2]     Ω= -1470.5204 (32.9s) menu=6 (+belief, LP@x̄=-1470.5000, gap -2.0e-02)
+  [menu] it  14 LB=  -860.5204 UB=  5003.7253 x=[1, 2]     menu cut 1/6 (V_menu=-1470.5000)
+  [orcl] it  15 LB=  -860.5000 UB=  2120.4278 x=[1, 2]     Ω= -1470.5215 (600.1s) menu=6
+  [orcl] it  16 LB=  -860.5000 UB=  1321.8065 x=[1, 2]     Ω= -1470.5170 (2400.7s) menu=6
+RESULT S=3 method=ALG status=Stalled x={1,2} LB=-860.500001 UB=1321.806543 gap=1.65e+00 iters=17 global=8 local=- menu=6 t_LB=37.4 time=3038.9
+
+--- S=20 (n_h=15, |X|=16)
+  E: x={1} 에서 TIME_LIMIT (300s)
+RESULT S=20 method=E status=Unsolved x=- value=NaN time=300.3
+  [loc] it   1 LB=-10000000.0000 UB=        Inf x=Int64[]    Ω_loc=    -0.0018 (0.1s)
+  [loc] it   2 LB=-9999695.0000 UB=        Inf x=[1]        Ω_loc=  -990.9189 (0.4s)
+  [loc] it   3 LB=-9999695.0000 UB=        Inf x=[2]        Ω_loc=  -770.9189 (0.1s)
+  [loc] it   4 LB=-3519086.3461 UB=        Inf x=[1, 2]     Ω_loc= -1305.3069 (0.1s)
+  [loc] it   5 LB=-1096945.0007 UB=        Inf x=[3]        Ω_loc=  -113.1687 (0.3s)
+
+[392638] signal 15: Terminated
+in expression starting at /home/swkim/robust_bilevel_network_games/nonzero_sum/run_loc_base_scaling.jl:58
+unknown function (ip: 0x786bdfeac800) at /usr/lib/x86_64-linux-gnu/libc.so.6
+unknown function (ip: 0x786bdfea030b) at /usr/lib/x86_64-linux-gnu/libc.so.6
+unknown function (ip: 0x786bdfea06e6) at /usr/lib/x86_64-linux-gnu/libc.so.6
+pthread_cond_wait at /usr/lib/x86_64-linux-gnu/libc.so.6 (unknown line)
+uv_cond_wait at /workspace/srcdir/libuv/src/unix/thread.c:822
+jl_parallel_gc_threadfun at /cache/build/builder-amdci4-8/julialang/julia-ci/src/gc-stock.c:3729
+unknown function (ip: 0x786bdfea3df9) at /usr/lib/x86_64-linux-gnu/libc.so.6
+unknown function (ip: 0x786bdff375cb) at /usr/lib/x86_64-linux-gnu/libc.so.6
+unknown function (ip: (nil)) at (unknown file)
+unknown function (ip: 0x786bdfeac800) at /usr/lib/x86_64-linux-gnu/libc.so.6
+unknown function (ip: 0x786bdfea030b) at /usr/lib/x86_64-linux-gnu/libc.so.6
+unknown function (ip: 0x786bdfea06e6) at /usr/lib/x86_64-linux-gnu/libc.so.6
+pthread_cond_wait at /usr/lib/x86_64-linux-gnu/libc.so.6 (unknown line)
+uv_cond_wait at /workspace/srcdir/libuv/src/unix/thread.c:822
+jl_parallel_gc_threadfun at /cache/build/builder-amdci4-8/julialang/julia-ci/src/gc-stock.c:3729
+unknown function (ip: 0x786bdfea3df9) at /usr/lib/x86_64-linux-gnu/libc.so.6
+unknown function (ip: 0x786bdff375cb) at /usr/lib/x86_64-linux-gnu/libc.so.6
+unknown function (ip: (nil)) at (unknown file)
+unknown function (ip: 0x786bdfeac800) at /usr/lib/x86_64-linux-gnu/libc.so.6
+unknown function (ip: 0x786bdfea030b) at /usr/lib/x86_64-linux-gnu/libc.so.6
+unknown function (ip: 0x786bdfea06e6) at /usr/lib/x86_64-linux-gnu/libc.so.6
+pthread_cond_wait at /usr/lib/x86_64-linux-gnu/libc.so.6 (unknown line)
+uv_cond_wait at /workspace/srcdir/libuv/src/unix/thread.c:822
+jl_parallel_gc_threadfun at /cache/build/builder-amdci4-8/julialang/julia-ci/src/gc-stock.c:3729
+unknown function (ip: 0x786bdfea3df9) at /usr/lib/x86_64-linux-gnu/libc.so.6
+unknown function (ip: 0x786bdff375cb) at /usr/lib/x86_64-linux-gnu/libc.so.6
+unknown function (ip: (nil)) at (unknown file)
+unknown function (ip: 0x786bdfeac800) at /usr/lib/x86_64-linux-gnu/libc.so.6
+unknown function (ip: 0x786bdfea030b) at /usr/lib/x86_64-linux-gnu/libc.so.6
+unknown function (ip: 0x786bdfea06e6) at /usr/lib/x86_64-linux-gnu/libc.so.6
+pthread_cond_wait at /usr/lib/x86_64-linux-gnu/libc.so.6 (unknown line)
+uv_cond_wait at /workspace/srcdir/libuv/src/unix/thread.c:822
+jl_parallel_gc_threadfun at /cache/build/builder-amdci4-8/julialang/julia-ci/src/gc-stock.c:3729
+unknown function (ip: 0x786bdfea3df9) at /usr/lib/x86_64-linux-gnu/libc.so.6
+unknown function (ip: 0x786bdff375cb) at /usr/lib/x86_64-linux-gnu/libc.so.6
+unknown function (ip: (nil)) at (unknown file)
+unknown function (ip: 0x786bdfeac800) at /usr/lib/x86_64-linux-gnu/libc.so.6
+unknown function (ip: 0x786bdfea030b) at /usr/lib/x86_64-linux-gnu/libc.so.6
+unknown function (ip: 0x786bdfea06e6) at /usr/lib/x86_64-linux-gnu/libc.so.6
+pthread_cond_wait at /usr/lib/x86_64-linux-gnu/libc.so.6 (unknown line)
+uv_cond_wait at /workspace/srcdir/libuv/src/unix/thread.c:822
+jl_parallel_gc_threadfun at /cache/build/builder-amdci4-8/julialang/julia-ci/src/gc-stock.c:3729
+unknown function (ip: 0x786bdfea3df9) at /usr/lib/x86_64-linux-gnu/libc.so.6
+unknown function (ip: 0x786bdff375cb) at /usr/lib/x86_64-linux-gnu/libc.so.6
+unknown function (ip: (nil)) at (unknown file)
+unknown function (ip: 0x786bdfeac800) at /usr/lib/x86_64-linux-gnu/libc.so.6
+unknown function (ip: 0x786bdfea030b) at /usr/lib/x86_64-linux-gnu/libc.so.6
+unknown function (ip: 0x786bdfea06e6) at /usr/lib/x86_64-linux-gnu/libc.so.6
+pthread_cond_wait at /usr/lib/x86_64-linux-gnu/libc.so.6 (unknown line)
+uv_cond_wait at /workspace/srcdir/libuv/src/unix/thread.c:822
+jl_parallel_gc_threadfun at /cache/build/builder-amdci4-8/julialang/julia-ci/src/gc-stock.c:3729
+unknown function (ip: 0x786bdfea3df9) at /usr/lib/x86_64-linux-gnu/libc.so.6
+unknown function (ip: 0x786bdff375cb) at /usr/lib/x86_64-linux-gnu/libc.so.6
+unknown function (ip: (nil)) at (unknown file)
+unknown function (ip: 0x786bdfeac800) at /usr/lib/x86_64-linux-gnu/libc.so.6
+unknown function (ip: 0x786bdfea030b) at /usr/lib/x86_64-linux-gnu/libc.so.6
+unknown function (ip: 0x786bdfea06e6) at /usr/lib/x86_64-linux-gnu/libc.so.6
+pthread_cond_wait at /usr/lib/x86_64-linux-gnu/libc.so.6 (unknown line)
+uv_cond_wait at /workspace/srcdir/libuv/src/unix/thread.c:822
+jl_parallel_gc_threadfun at /cache/build/builder-amdci4-8/julialang/julia-ci/src/gc-stock.c:3729
+unknown function (ip: 0x786bdfea3df9) at /usr/lib/x86_64-linux-gnu/libc.so.6
+unknown function (ip: 0x786bdff375cb) at /usr/lib/x86_64-linux-gnu/libc.so.6
+unknown function (ip: (nil)) at (unknown file)
+unknown function (ip: 0x786bdfeac800) at /usr/lib/x86_64-linux-gnu/libc.so.6
+unknown function (ip: 0x786bdfea030b) at /usr/lib/x86_64-linux-gnu/libc.so.6
+unknown function (ip: 0x786bdfea06e6) at /usr/lib/x86_64-linux-gnu/libc.so.6
+pthread_cond_wait at /usr/lib/x86_64-linux-gnu/libc.so.6 (unknown line)
+uv_cond_wait at /workspace/srcdir/libuv/src/unix/thread.c:822
+jl_parallel_gc_threadfun at /cache/build/builder-amdci4-8/julialang/julia-ci/src/gc-stock.c:3729
+unknown function (ip: 0x786bdfea3df9) at /usr/lib/x86_64-linux-gnu/libc.so.6
+unknown function (ip: 0x786bdff375cb) at /usr/lib/x86_64-linux-gnu/libc.so.6
+unknown function (ip: (nil)) at (unknown file)
+unknown function (ip: 0x786bdfeac800) at /usr/lib/x86_64-linux-gnu/libc.so.6
+unknown function (ip: 0x786bdfea030b) at /usr/lib/x86_64-linux-gnu/libc.so.6
+unknown function (ip: 0x786bdfea06e6) at /usr/lib/x86_64-linux-gnu/libc.so.6
+pthread_cond_wait at /usr/lib/x86_64-linux-gnu/libc.so.6 (unknown line)
+uv_cond_wait at /workspace/srcdir/libuv/src/unix/thread.c:822
+jl_parallel_gc_threadfun at /cache/build/builder-amdci4-8/julialang/julia-ci/src/gc-stock.c:3729
+unknown function (ip: 0x786bdfea3df9) at /usr/lib/x86_64-linux-gnu/libc.so.6
+unknown function (ip: 0x786bdff375cb) at /usr/lib/x86_64-linux-gnu/libc.so.6
+unknown function (ip: (nil)) at (unknown file)
+unknown function (ip: 0x786bdfeac800) at /usr/lib/x86_64-linux-gnu/libc.so.6
+unknown function (ip: 0x786bdfea030b) at /usr/lib/x86_64-linux-gnu/libc.so.6
+unknown function (ip: 0x786bdfea06e6) at /usr/lib/x86_64-linux-gnu/libc.so.6
+pthread_cond_wait at /usr/lib/x86_64-linux-gnu/libc.so.6 (unknown line)
+uv_cond_wait at /workspace/srcdir/libuv/src/unix/thread.c:822
+jl_parallel_gc_threadfun at /cache/build/builder-amdci4-8/julialang/julia-ci/src/gc-stock.c:3729
+unknown function (ip: 0x786bdfea3df9) at /usr/lib/x86_64-linux-gnu/libc.so.6
+unknown function (ip: 0x786bdff375cb) at /usr/lib/x86_64-linux-gnu/libc.so.6
+unknown function (ip: (nil)) at (unknown file)
+unknown function (ip: 0x786bdfeac800) at /usr/lib/x86_64-linux-gnu/libc.so.6
+unknown function (ip: 0x786bdfea030b) at /usr/lib/x86_64-linux-gnu/libc.so.6
+unknown function (ip: 0x786bdfea06e6) at /usr/lib/x86_64-linux-gnu/libc.so.6
+pthread_cond_wait at /usr/lib/x86_64-linux-gnu/libc.so.6 (unknown line)
+uv_cond_wait at /workspace/srcdir/libuv/src/unix/thread.c:822
+jl_parallel_gc_threadfun at /cache/build/builder-amdci4-8/julialang/julia-ci/src/gc-stock.c:3729
+unknown function (ip: 0x786bdfea3df9) at /usr/lib/x86_64-linux-gnu/libc.so.6
+unknown function (ip: 0x786bdff375cb) at /usr/lib/x86_64-linux-gnu/libc.so.6
+unknown function (ip: (nil)) at (unknown file)
+unknown function (ip: 0x786bdfeac800) at /usr/lib/x86_64-linux-gnu/libc.so.6
+unknown function (ip: 0x786bdfea030b) at /usr/lib/x86_64-linux-gnu/libc.so.6
+unknown function (ip: 0x786bdfea06e6) at /usr/lib/x86_64-linux-gnu/libc.so.6
+pthread_cond_wait at /usr/lib/x86_64-linux-gnu/libc.so.6 (unknown line)
+uv_cond_wait at /workspace/srcdir/libuv/src/unix/thread.c:822
+jl_parallel_gc_threadfun at /cache/build/builder-amdci4-8/julialang/julia-ci/src/gc-stock.c:3729
+unknown function (ip: 0x786bdfea3df9) at /usr/lib/x86_64-linux-gnu/libc.so.6
+unknown function (ip: 0x786bdff375cb) at /usr/lib/x86_64-linux-gnu/libc.so.6
+unknown function (ip: (nil)) at (unknown file)
+unknown function (ip: 0x786bdfeac800) at /usr/lib/x86_64-linux-gnu/libc.so.6
+unknown function (ip: 0x786bdfea030b) at /usr/lib/x86_64-linux-gnu/libc.so.6
+unknown function (ip: 0x786bdfea06e6) at /usr/lib/x86_64-linux-gnu/libc.so.6
+pthread_cond_wait at /usr/lib/x86_64-linux-gnu/libc.so.6 (unknown line)
+uv_cond_wait at /workspace/srcdir/libuv/src/unix/thread.c:822
+jl_parallel_gc_threadfun at /cache/build/builder-amdci4-8/julialang/julia-ci/src/gc-stock.c:3729
+unknown function (ip: 0x786bdfea3df9) at /usr/lib/x86_64-linux-gnu/libc.so.6
+unknown function (ip: 0x786bdff375cb) at /usr/lib/x86_64-linux-gnu/libc.so.6
+unknown function (ip: (nil)) at (unknown file)
+unknown function (ip: 0x786bdfeac800) at /usr/lib/x86_64-linux-gnu/libc.so.6
+unknown function (ip: 0x786bdfea030b) at /usr/lib/x86_64-linux-gnu/libc.so.6
+unknown function (ip: 0x786bdfea06e6) at /usr/lib/x86_64-linux-gnu/libc.so.6
+pthread_cond_wait at /usr/lib/x86_64-linux-gnu/libc.so.6 (unknown line)
+uv_cond_wait at /workspace/srcdir/libuv/src/unix/thread.c:822
+ijl_task_get_next at /cache/build/builder-amdci4-8/julialang/julia-ci/src/scheduler.c:599
+wait at ./task.jl:1297
+wait_forever at ./task.jl:1196
+jfptr_wait_forever_70523.1 at /home/swkim/.julia/juliaup/julia-1.13.1+0.x64.linux.gnu/lib/julia/sys.so (unknown line)
+jl_apply at /cache/build/builder-amdci4-8/julialang/julia-ci/src/julia.h:2318 [inlined]
+start_task at /cache/build/builder-amdci4-8/julialang/julia-ci/src/task.c:1285
+unknown function (ip: (nil)) at (unknown file)
+unknown function (ip: 0x786bdfeac800) at /usr/lib/x86_64-linux-gnu/libc.so.6
+unknown function (ip: 0x786bdfea030b) at /usr/lib/x86_64-linux-gnu/libc.so.6
+unknown function (ip: 0x786bdfea06e6) at /usr/lib/x86_64-linux-gnu/libc.so.6
+pthread_cond_wait at /usr/lib/x86_64-linux-gnu/libc.so.6 (unknown line)
+uv_cond_wait at /workspace/srcdir/libuv/src/unix/thread.c:822
+ijl_task_get_next at /cache/build/builder-amdci4-8/julialang/julia-ci/src/scheduler.c:599
+wait at ./task.jl:1297
+wait_forever at ./task.jl:1196
+jfptr_wait_forever_70523.1 at /home/swkim/.julia/juliaup/julia-1.13.1+0.x64.linux.gnu/lib/julia/sys.so (unknown line)
+jl_apply at /cache/build/builder-amdci4-8/julialang/julia-ci/src/julia.h:2318 [inlined]
+start_task at /cache/build/builder-amdci4-8/julialang/julia-ci/src/task.c:1285
+unknown function (ip: (nil)) at (unknown file)
+unknown function (ip: 0x786bdfeac800) at /usr/lib/x86_64-linux-gnu/libc.so.6
+unknown function (ip: 0x786bdfea030b) at /usr/lib/x86_64-linux-gnu/libc.so.6
+unknown function (ip: 0x786bdfea06e6) at /usr/lib/x86_64-linux-gnu/libc.so.6
+pthread_cond_wait at /usr/lib/x86_64-linux-gnu/libc.so.6 (unknown line)
+uv_cond_wait at /workspace/srcdir/libuv/src/unix/thread.c:822
+ijl_task_get_next at /cache/build/builder-amdci4-8/julialang/julia-ci/src/scheduler.c:599
+wait at ./task.jl:1297
+wait_forever at ./task.jl:1196
+jfptr_wait_forever_70523.1 at /home/swkim/.julia/juliaup/julia-1.13.1+0.x64.linux.gnu/lib/julia/sys.so (unknown line)
+jl_apply at /cache/build/builder-amdci4-8/julialang/julia-ci/src/julia.h:2318 [inlined]
+start_task at /cache/build/builder-amdci4-8/julialang/julia-ci/src/task.c:1285
+unknown function (ip: (nil)) at (unknown file)
+unknown function (ip: 0x786bdfeac800) at /usr/lib/x86_64-linux-gnu/libc.so.6
+unknown function (ip: 0x786bdfea030b) at /usr/lib/x86_64-linux-gnu/libc.so.6
+unknown function (ip: 0x786bdfea06e6) at /usr/lib/x86_64-linux-gnu/libc.so.6
+pthread_cond_wait at /usr/lib/x86_64-linux-gnu/libc.so.6 (unknown line)
+uv_cond_wait at /workspace/srcdir/libuv/src/unix/thread.c:822
+ijl_task_get_next at /cache/build/builder-amdci4-8/julialang/julia-ci/src/scheduler.c:599
+wait at ./task.jl:1297
+wait_forever at ./task.jl:1196
+jfptr_wait_forever_70523.1 at /home/swkim/.julia/juliaup/julia-1.13.1+0.x64.linux.gnu/lib/julia/sys.so (unknown line)
+jl_apply at /cache/build/builder-amdci4-8/julialang/julia-ci/src/julia.h:2318 [inlined]
+start_task at /cache/build/builder-amdci4-8/julialang/julia-ci/src/task.c:1285
+unknown function (ip: (nil)) at (unknown file)
+unknown function (ip: 0x786bdfeac800) at /usr/lib/x86_64-linux-gnu/libc.so.6
+unknown function (ip: 0x786bdfea030b) at /usr/lib/x86_64-linux-gnu/libc.so.6
+unknown function (ip: 0x786bdfea06e6) at /usr/lib/x86_64-linux-gnu/libc.so.6
+pthread_cond_wait at /usr/lib/x86_64-linux-gnu/libc.so.6 (unknown line)
+uv_cond_wait at /workspace/srcdir/libuv/src/unix/thread.c:822
+ijl_task_get_next at /cache/build/builder-amdci4-8/julialang/julia-ci/src/scheduler.c:599
+wait at ./task.jl:1297
+wait_forever at ./task.jl:1196
+jfptr_wait_forever_70523.1 at /home/swkim/.julia/juliaup/julia-1.13.1+0.x64.linux.gnu/lib/julia/sys.so (unknown line)
+jl_apply at /cache/build/builder-amdci4-8/julialang/julia-ci/src/julia.h:2318 [inlined]
+start_task at /cache/build/builder-amdci4-8/julialang/julia-ci/src/task.c:1285
+unknown function (ip: (nil)) at (unknown file)
+unknown function (ip: 0x786bdfeac800) at /usr/lib/x86_64-linux-gnu/libc.so.6
+unknown function (ip: 0x786bdfea030b) at /usr/lib/x86_64-linux-gnu/libc.so.6
+unknown function (ip: 0x786bdfea06e6) at /usr/lib/x86_64-linux-gnu/libc.so.6
+pthread_cond_wait at /usr/lib/x86_64-linux-gnu/libc.so.6 (unknown line)
+uv_cond_wait at /workspace/srcdir/libuv/src/unix/thread.c:822
+ijl_task_get_next at /cache/build/builder-amdci4-8/julialang/julia-ci/src/scheduler.c:599
+wait at ./task.jl:1297
+wait_forever at ./task.jl:1196
+jfptr_wait_forever_70523.1 at /home/swkim/.julia/juliaup/julia-1.13.1+0.x64.linux.gnu/lib/julia/sys.so (unknown line)
+jl_apply at /cache/build/builder-amdci4-8/julialang/julia-ci/src/julia.h:2318 [inlined]
+start_task at /cache/build/builder-amdci4-8/julialang/julia-ci/src/task.c:1285
+unknown function (ip: (nil)) at (unknown file)
+unknown function (ip: 0x786bdfeac800) at /usr/lib/x86_64-linux-gnu/libc.so.6
+unknown function (ip: 0x786bdfea030b) at /usr/lib/x86_64-linux-gnu/libc.so.6
+unknown function (ip: 0x786bdfea06e6) at /usr/lib/x86_64-linux-gnu/libc.so.6
+pthread_cond_wait at /usr/lib/x86_64-linux-gnu/libc.so.6 (unknown line)
+uv_cond_wait at /workspace/srcdir/libuv/src/unix/thread.c:822
+ijl_task_get_next at /cache/build/builder-amdci4-8/julialang/julia-ci/src/scheduler.c:599
+wait at ./task.jl:1297
+wait_forever at ./task.jl:1196
+jfptr_wait_forever_70523.1 at /home/swkim/.julia/juliaup/julia-1.13.1+0.x64.linux.gnu/lib/julia/sys.so (unknown line)
+jl_apply at /cache/build/builder-amdci4-8/julialang/julia-ci/src/julia.h:2318 [inlined]
+start_task at /cache/build/builder-amdci4-8/julialang/julia-ci/src/task.c:1285
+unknown function (ip: (nil)) at (unknown file)
+unknown function (ip: 0x786bdfeac800) at /usr/lib/x86_64-linux-gnu/libc.so.6
+unknown function (ip: 0x786bdfea030b) at /usr/lib/x86_64-linux-gnu/libc.so.6
+unknown function (ip: 0x786bdfea06e6) at /usr/lib/x86_64-linux-gnu/libc.so.6
+pthread_cond_wait at /usr/lib/x86_64-linux-gnu/libc.so.6 (unknown line)
+uv_cond_wait at /workspace/srcdir/libuv/src/unix/thread.c:822
+ijl_task_get_next at /cache/build/builder-amdci4-8/julialang/julia-ci/src/scheduler.c:599
+wait at ./task.jl:1297
+wait_forever at ./task.jl:1196
+jfptr_wait_forever_70523.1 at /home/swkim/.julia/juliaup/julia-1.13.1+0.x64.linux.gnu/lib/julia/sys.so (unknown line)
+jl_apply at /cache/build/builder-amdci4-8/julialang/julia-ci/src/julia.h:2318 [inlined]
+start_task at /cache/build/builder-amdci4-8/julialang/julia-ci/src/task.c:1285
+unknown function (ip: (nil)) at (unknown file)
+unknown function (ip: 0x786bdfeac800) at /usr/lib/x86_64-linux-gnu/libc.so.6
+unknown function (ip: 0x786bdfea030b) at /usr/lib/x86_64-linux-gnu/libc.so.6
+unknown function (ip: 0x786bdfea06e6) at /usr/lib/x86_64-linux-gnu/libc.so.6
+pthread_cond_wait at /usr/lib/x86_64-linux-gnu/libc.so.6 (unknown line)
+uv_cond_wait at /workspace/srcdir/libuv/src/unix/thread.c:822
+ijl_task_get_next at /cache/build/builder-amdci4-8/julialang/julia-ci/src/scheduler.c:599
+wait at ./task.jl:1297
+wait_forever at ./task.jl:1196
+jfptr_wait_forever_70523.1 at /home/swkim/.julia/juliaup/julia-1.13.1+0.x64.linux.gnu/lib/julia/sys.so (unknown line)
+jl_apply at /cache/build/builder-amdci4-8/julialang/julia-ci/src/julia.h:2318 [inlined]
+start_task at /cache/build/builder-amdci4-8/julialang/julia-ci/src/task.c:1285
+unknown function (ip: (nil)) at (unknown file)
+unknown function (ip: 0x786bdfeac800) at /usr/lib/x86_64-linux-gnu/libc.so.6
+unknown function (ip: 0x786bdfea030b) at /usr/lib/x86_64-linux-gnu/libc.so.6
+unknown function (ip: 0x786bdfea06e6) at /usr/lib/x86_64-linux-gnu/libc.so.6
+pthread_cond_wait at /usr/lib/x86_64-linux-gnu/libc.so.6 (unknown line)
+uv_cond_wait at /workspace/srcdir/libuv/src/unix/thread.c:822
+ijl_task_get_next at /cache/build/builder-amdci4-8/julialang/julia-ci/src/scheduler.c:599
+wait at ./task.jl:1297
+wait_forever at ./task.jl:1196
+jfptr_wait_forever_70523.1 at /home/swkim/.julia/juliaup/julia-1.13.1+0.x64.linux.gnu/lib/julia/sys.so (unknown line)
+jl_apply at /cache/build/builder-amdci4-8/julialang/julia-ci/src/julia.h:2318 [inlined]
+start_task at /cache/build/builder-amdci4-8/julialang/julia-ci/src/task.c:1285
+unknown function (ip: (nil)) at (unknown file)
+unknown function (ip: 0x786bdfeac800) at /usr/lib/x86_64-linux-gnu/libc.so.6
+unknown function (ip: 0x786bdfea030b) at /usr/lib/x86_64-linux-gnu/libc.so.6
+unknown function (ip: 0x786bdfea06e6) at /usr/lib/x86_64-linux-gnu/libc.so.6
+pthread_cond_wait at /usr/lib/x86_64-linux-gnu/libc.so.6 (unknown line)
+uv_cond_wait at /workspace/srcdir/libuv/src/unix/thread.c:822
+ijl_task_get_next at /cache/build/builder-amdci4-8/julialang/julia-ci/src/scheduler.c:599
+wait at ./task.jl:1297
+wait_forever at ./task.jl:1196
+jfptr_wait_forever_70523.1 at /home/swkim/.julia/juliaup/julia-1.13.1+0.x64.linux.gnu/lib/julia/sys.so (unknown line)
+jl_apply at /cache/build/builder-amdci4-8/julialang/julia-ci/src/julia.h:2318 [inlined]
+start_task at /cache/build/builder-amdci4-8/julialang/julia-ci/src/task.c:1285
+unknown function (ip: (nil)) at (unknown file)
+unknown function (ip: 0x786bdfeac800) at /usr/lib/x86_64-linux-gnu/libc.so.6
+unknown function (ip: 0x786bdfea030b) at /usr/lib/x86_64-linux-gnu/libc.so.6
+unknown function (ip: 0x786bdfea06e6) at /usr/lib/x86_64-linux-gnu/libc.so.6
+pthread_cond_wait at /usr/lib/x86_64-linux-gnu/libc.so.6 (unknown line)
+uv_cond_wait at /workspace/srcdir/libuv/src/unix/thread.c:822
+ijl_task_get_next at /cache/build/builder-amdci4-8/julialang/julia-ci/src/scheduler.c:599
+wait at ./task.jl:1297
+wait_forever at ./task.jl:1196
+jfptr_wait_forever_70523.1 at /home/swkim/.julia/juliaup/julia-1.13.1+0.x64.linux.gnu/lib/julia/sys.so (unknown line)
+jl_apply at /cache/build/builder-amdci4-8/julialang/julia-ci/src/julia.h:2318 [inlined]
+start_task at /cache/build/builder-amdci4-8/julialang/julia-ci/src/task.c:1285
+unknown function (ip: (nil)) at (unknown file)
+unknown function (ip: 0x786bdfeac800) at /usr/lib/x86_64-linux-gnu/libc.so.6
+unknown function (ip: 0x786bdfea030b) at /usr/lib/x86_64-linux-gnu/libc.so.6
+unknown function (ip: 0x786bdfea06e6) at /usr/lib/x86_64-linux-gnu/libc.so.6
+pthread_cond_wait at /usr/lib/x86_64-linux-gnu/libc.so.6 (unknown line)
+uv_cond_wait at /workspace/srcdir/libuv/src/unix/thread.c:822
+ijl_task_get_next at /cache/build/builder-amdci4-8/julialang/julia-ci/src/scheduler.c:599
+wait at ./task.jl:1297
+wait_forever at ./task.jl:1196
+jfptr_wait_forever_70523.1 at /home/swkim/.julia/juliaup/julia-1.13.1+0.x64.linux.gnu/lib/julia/sys.so (unknown line)
+jl_apply at /cache/build/builder-amdci4-8/julialang/julia-ci/src/julia.h:2318 [inlined]
+start_task at /cache/build/builder-amdci4-8/julialang/julia-ci/src/task.c:1285
+unknown function (ip: (nil)) at (unknown file)
+unknown function (ip: 0x786bdfeac800) at /usr/lib/x86_64-linux-gnu/libc.so.6
+unknown function (ip: 0x786bdfea030b) at /usr/lib/x86_64-linux-gnu/libc.so.6
+unknown function (ip: 0x786bdfea06e6) at /usr/lib/x86_64-linux-gnu/libc.so.6
+pthread_cond_wait at /usr/lib/x86_64-linux-gnu/libc.so.6 (unknown line)
+uv_cond_wait at /workspace/srcdir/libuv/src/unix/thread.c:822
+ijl_task_get_next at /cache/build/builder-amdci4-8/julialang/julia-ci/src/scheduler.c:599
+wait at ./task.jl:1297
+wait_forever at ./task.jl:1196
+jfptr_wait_forever_70523.1 at /home/swkim/.julia/juliaup/julia-1.13.1+0.x64.linux.gnu/lib/julia/sys.so (unknown line)
+jl_apply at /cache/build/builder-amdci4-8/julialang/julia-ci/src/julia.h:2318 [inlined]
+start_task at /cache/build/builder-amdci4-8/julialang/julia-ci/src/task.c:1285
+unknown function (ip: (nil)) at (unknown file)
+PRIVATE0000000000ac7c59 at /home/swkim/.julia/artifacts/1b5c4a597631092283e0c71596b2f708afc5054b/gurobi1303/linux64/lib/libgurobi130.so (unknown line)
+PRIVATE00000000005bf638 at /home/swkim/.julia/artifacts/1b5c4a597631092283e0c71596b2f708afc5054b/gurobi1303/linux64/lib/libgurobi130.so (unknown line)
+PRIVATE00000000005bbf7f at /home/swkim/.julia/artifacts/1b5c4a597631092283e0c71596b2f708afc5054b/gurobi1303/linux64/lib/libgurobi130.so (unknown line)
+PRIVATE0000000000c23877 at /home/swkim/.julia/artifacts/1b5c4a597631092283e0c71596b2f708afc5054b/gurobi1303/linux64/lib/libgurobi130.so (unknown line)
+PRIVATE00000000009828a1 at /home/swkim/.julia/artifacts/1b5c4a597631092283e0c71596b2f708afc5054b/gurobi1303/linux64/lib/libgurobi130.so (unknown line)
+GRBoptimize at /home/swkim/.julia/artifacts/1b5c4a597631092283e0c71596b2f708afc5054b/gurobi1303/linux64/lib/libgurobi130.so (unknown line)
+GRBoptimize at /home/swkim/.julia/packages/Gurobi/hs8RH/src/gen130/libgrb_api.jl:374 [inlined]
+#49 at /home/swkim/.julia/packages/Gurobi/hs8RH/src/MOI_wrapper/MOI_wrapper.jl:2820 [inlined]
+disable_sigint at ./c.jl:167 [inlined]
+optimize! at /home/swkim/.julia/packages/Gurobi/hs8RH/src/MOI_wrapper/MOI_wrapper.jl:2819
+optimize! at /home/swkim/.julia/packages/MathOptInterface/lY2WB/src/Bridges/bridge_optimizer.jl:367 [inlined]
+optimize! at /home/swkim/.julia/packages/MathOptInterface/lY2WB/src/MathOptInterface.jl:122 [inlined]
+optimize! at /home/swkim/.julia/packages/MathOptInterface/lY2WB/src/Utilities/cachingoptimizer.jl:370
+unknown function (ip: 0x786b401abb22) at (unknown file)
+#optimize!#96 at /home/swkim/.julia/packages/JuMP/insRt/src/optimizer_interface.jl:633
+optimize! at /home/swkim/.julia/packages/JuMP/insRt/src/optimizer_interface.jl:569 [inlined]
+#nz_solve!#289 at /home/swkim/robust_bilevel_network_games/nonzero_sum/nz_omega.jl:368
+nz_solve! at /home/swkim/robust_bilevel_network_games/nonzero_sum/nz_omega.jl:364 [inlined]
+#_nz_oracle!#645 at /home/swkim/robust_bilevel_network_games/nonzero_sum/nz_benders.jl:124
+_nz_oracle! at /home/swkim/robust_bilevel_network_games/nonzero_sum/nz_benders.jl:122 [inlined]
+macro expansion at ./timing.jl:463 [inlined]
+#nz_standard_benders#653 at /home/swkim/robust_bilevel_network_games/nonzero_sum/nz_benders.jl:256
+nz_standard_benders at /home/swkim/robust_bilevel_network_games/nonzero_sum/nz_benders.jl:197
+unknown function (ip: 0x786b401f928b) at (unknown file)
+jl_apply at /cache/build/builder-amdci4-8/julialang/julia-ci/src/julia.h:2318 [inlined]
+do_call at /cache/build/builder-amdci4-8/julialang/julia-ci/src/interpreter.c:123
+eval_value at /cache/build/builder-amdci4-8/julialang/julia-ci/src/interpreter.c:243
+eval_body at /cache/build/builder-amdci4-8/julialang/julia-ci/src/interpreter.c:581
+jl_interpret_toplevel_thunk at /cache/build/builder-amdci4-8/julialang/julia-ci/src/interpreter.c:884
+jl_toplevel_eval_flex at /cache/build/builder-amdci4-8/julialang/julia-ci/src/toplevel.c:742
+jl_eval_toplevel_stmts at /cache/build/builder-amdci4-8/julialang/julia-ci/src/toplevel.c:585
+jl_toplevel_eval_flex at /cache/build/builder-amdci4-8/julialang/julia-ci/src/toplevel.c:683
+ijl_toplevel_eval at /cache/build/builder-amdci4-8/julialang/julia-ci/src/toplevel.c:754
+ijl_toplevel_eval_in at /cache/build/builder-amdci4-8/julialang/julia-ci/src/toplevel.c:799
+eval at ./boot.jl:489
+include_string at ./loading.jl:3033
+_include at ./loading.jl:3093
+include at ./Base.jl:309
+exec_options at ./client.jl:344
+_start at ./client.jl:577
+jfptr__start_58396.1 at /home/swkim/.julia/juliaup/julia-1.13.1+0.x64.linux.gnu/lib/julia/sys.so (unknown line)
+jl_apply at /cache/build/builder-amdci4-8/julialang/julia-ci/src/julia.h:2318 [inlined]
+true_main at /cache/build/builder-amdci4-8/julialang/julia-ci/src/jlapi.c:985
+jl_repl_entrypoint at /cache/build/builder-amdci4-8/julialang/julia-ci/src/jlapi.c:1152
+main at /cache/build/builder-amdci4-8/julialang/julia-ci/cli/loader_exe.c:58
+unknown function (ip: 0x786bdfe2a600) at /usr/lib/x86_64-linux-gnu/libc.so.6
+__libc_start_main at /usr/lib/x86_64-linux-gnu/libc.so.6 (unknown line)
+unknown function (ip: 0x4010b8) at /workspace/srcdir/glibc-2.17/csu/../sysdeps/x86_64/start.S
+unknown function (ip: (nil)) at (unknown file)
+Allocations: 23994173376 (Pool: 23994172660; Big: 716); GC: 1951
+error in running finalizer: ErrorException("Gurobi Error 10017: ")
+_check_ret at /home/swkim/.julia/packages/Gurobi/hs8RH/src/MOI_wrapper/MOI_wrapper.jl:417 [inlined]
+#13 at /home/swkim/.julia/packages/Gurobi/hs8RH/src/MOI_wrapper/MOI_wrapper.jl:393
+jfptr_YY.13_3659 at /home/swkim/.julia/compiled/v1.13/Gurobi/do9v6_EqQOZ.so (unknown line)
+run_finalizer at /cache/build/builder-amdci4-8/julialang/julia-ci/src/gc-common.c:180
+jl_gc_run_finalizers_in_list at /cache/build/builder-amdci4-8/julialang/julia-ci/src/gc-common.c:270
+run_finalizers at /cache/build/builder-amdci4-8/julialang/julia-ci/src/gc-common.c:316
+ijl_atexit_hook at /cache/build/builder-amdci4-8/julialang/julia-ci/src/init.c:295
+jl_exit_thread0_cb at /cache/build/builder-amdci4-8/julialang/julia-ci/src/signals-unix.c:678
+jl_fake_signal_return at /home/swkim/.julia/juliaup/julia-1.13.1+0.x64.linux.gnu/bin/../lib/julia/libjulia-internal.so.1.13 (unknown line)
+PRIVATE0000000000ac7c59 at /home/swkim/.julia/artifacts/1b5c4a597631092283e0c71596b2f708afc5054b/gurobi1303/linux64/lib/libgurobi130.so (unknown line)
+PRIVATE00000000005bf638 at /home/swkim/.julia/artifacts/1b5c4a597631092283e0c71596b2f708afc5054b/gurobi1303/linux64/lib/libgurobi130.so (unknown line)
+PRIVATE00000000005bbf7f at /home/swkim/.julia/artifacts/1b5c4a597631092283e0c71596b2f708afc5054b/gurobi1303/linux64/lib/libgurobi130.so (unknown line)
+PRIVATE0000000000c23877 at /home/swkim/.julia/artifacts/1b5c4a597631092283e0c71596b2f708afc5054b/gurobi1303/linux64/lib/libgurobi130.so (unknown line)
+PRIVATE00000000009828a1 at /home/swkim/.julia/artifacts/1b5c4a597631092283e0c71596b2f708afc5054b/gurobi1303/linux64/lib/libgurobi130.so (unknown line)
+GRBoptimize at /home/swkim/.julia/artifacts/1b5c4a597631092283e0c71596b2f708afc5054b/gurobi1303/linux64/lib/libgurobi130.so (unknown line)
+GRBoptimize at /home/swkim/.julia/packages/Gurobi/hs8RH/src/gen130/libgrb_api.jl:374 [inlined]
+#49 at /home/swkim/.julia/packages/Gurobi/hs8RH/src/MOI_wrapper/MOI_wrapper.jl:2820 [inlined]
+disable_sigint at ./c.jl:167 [inlined]
+optimize! at /home/swkim/.julia/packages/Gurobi/hs8RH/src/MOI_wrapper/MOI_wrapper.jl:2819
+optimize! at /home/swkim/.julia/packages/MathOptInterface/lY2WB/src/Bridges/bridge_optimizer.jl:367 [inlined]
+optimize! at /home/swkim/.julia/packages/MathOptInterface/lY2WB/src/MathOptInterface.jl:122 [inlined]
+optimize! at /home/swkim/.julia/packages/MathOptInterface/lY2WB/src/Utilities/cachingoptimizer.jl:370
+unknown function (ip: 0x786b401abb22) at (unknown file)
+#optimize!#96 at /home/swkim/.julia/packages/JuMP/insRt/src/optimizer_interface.jl:633
+optimize! at /home/swkim/.julia/packages/JuMP/insRt/src/optimizer_interface.jl:569 [inlined]
+#nz_solve!#289 at /home/swkim/robust_bilevel_network_games/nonzero_sum/nz_omega.jl:368
+nz_solve! at /home/swkim/robust_bilevel_network_games/nonzero_sum/nz_omega.jl:364 [inlined]
+#_nz_oracle!#645 at /home/swkim/robust_bilevel_network_games/nonzero_sum/nz_benders.jl:124
+_nz_oracle! at /home/swkim/robust_bilevel_network_games/nonzero_sum/nz_benders.jl:122 [inlined]
+macro expansion at ./timing.jl:463 [inlined]
+#nz_standard_benders#653 at /home/swkim/robust_bilevel_network_games/nonzero_sum/nz_benders.jl:256
+nz_standard_benders at /home/swkim/robust_bilevel_network_games/nonzero_sum/nz_benders.jl:197
+unknown function (ip: 0x786b401f928b) at (unknown file)
+jl_apply at /cache/build/builder-amdci4-8/julialang/julia-ci/src/julia.h:2318 [inlined]
+do_call at /cache/build/builder-amdci4-8/julialang/julia-ci/src/interpreter.c:123
+eval_value at /cache/build/builder-amdci4-8/julialang/julia-ci/src/interpreter.c:243
+eval_body at /cache/build/builder-amdci4-8/julialang/julia-ci/src/interpreter.c:581
+jl_interpret_toplevel_thunk at /cache/build/builder-amdci4-8/julialang/julia-ci/src/interpreter.c:884
+jl_toplevel_eval_flex at /cache/build/builder-amdci4-8/julialang/julia-ci/src/toplevel.c:742
+jl_eval_toplevel_stmts at /cache/build/builder-amdci4-8/julialang/julia-ci/src/toplevel.c:585
+jl_toplevel_eval_flex at /cache/build/builder-amdci4-8/julialang/julia-ci/src/toplevel.c:683
+ijl_toplevel_eval at /cache/build/builder-amdci4-8/julialang/julia-ci/src/toplevel.c:754
+ijl_toplevel_eval_in at /cache/build/builder-amdci4-8/julialang/julia-ci/src/toplevel.c:799
+eval at ./boot.jl:489
+include_string at ./loading.jl:3033
+_include at ./loading.jl:3093
+include at ./Base.jl:309
+exec_options at ./client.jl:344
+_start at ./client.jl:577
+jfptr__start_58396.1 at /home/swkim/.julia/juliaup/julia-1.13.1+0.x64.linux.gnu/lib/julia/sys.so (unknown line)
+jl_apply at /cache/build/builder-amdci4-8/julialang/julia-ci/src/julia.h:2318 [inlined]
+true_main at /cache/build/builder-amdci4-8/julialang/julia-ci/src/jlapi.c:985
+jl_repl_entrypoint at /cache/build/builder-amdci4-8/julialang/julia-ci/src/jlapi.c:1152
+main at /cache/build/builder-amdci4-8/julialang/julia-ci/cli/loader_exe.c:58
+unknown function (ip: 0x786bdfe2a600) at /usr/lib/x86_64-linux-gnu/libc.so.6
+__libc_start_main at /usr/lib/x86_64-linux-gnu/libc.so.6 (unknown line)
+unknown function (ip: 0x4010b8) at /workspace/srcdir/glibc-2.17/csu/../sysdeps/x86_64/start.S
+--- (중단: α-B&B 수렴 문제 먼저, 2026-10-09 01:0x)

@@ -86,6 +86,66 @@ function nz_with_delta(nd::NZData, δ::Real)
                   nd.thetaU, nd.piLU, nd.piFU, nd.lambdaU, nd.varpiU, meta)
 end
 
+"""
+    nz_theta_circuit_exact(nd; maxpaths=10^8) -> (θ̄, 정보)
+
+location (reservation = :pair) 의 정확한 circuit 상계 θ̄ = max { ℓᵀg / (−cᵀg) : g 는 [A; −I] 의 circuit, cᵀg < 0, ℓᵀg > 0 }.
+
+Lemma phi (ii) 에 쓰이는 근거: 비관적 최적 꼭짓점 y* 에서 Y(b) = {y ≥ 0 : Ay ≤ b} 의 접뿔은 모서리 방향 (= circuit) 들로
+생성되고, 최적면 안의 방향은 ℓᵀg ≤ 0 이므로 ℓᵀ(y − y*) ≤ θ̄ (z* − cᵀy) 가 모든 y ∈ Y(b), 모든 b 에서 성립 → θᵁ = θ̄ 로 충분.
+
+pair 행렬의 행은 수요 (고객 j), 선주문 (y^R_ij 하나만), 용량 (점포 i) 이고 선주문 행은 열 하나에만 걸려 circuit 조건에
+제약을 더하지 않는다. 따라서 circuit 은 점포–고객 이분 다중그래프 (쌍마다 R, S 두 호) 의 단순 교대 경로 (부호 +, −, + …,
+끝점 행은 여유) 또는 짝수 사이클이다. 사이클과 고객–고객 경로는 점포마다 들어오고 나가는 흐름이 같아 ℓᵀg = 0 이므로,
+모든 단순 경로를 열거해 비율의 최댓값을 구한다 (g 와 −g 모두). 기존 :circuit (v / 거리 해상도) 은 비용 변화를 해상도로
+하한한 것이라 이 값 이상이다.
+"""
+function nz_theta_circuit_exact(nd::NZData; maxpaths::Int=10^8)
+    meta = nd.meta
+    get(meta, :reservation, :none) == :pair || error("nz_theta_circuit_exact: location reservation = :pair 전용")
+    nst, ncu = meta[:nst], meta[:ncu]
+    iyR, iyS = meta[:iyR], meta[:iyS]
+    cost(col) = -nd.c[col]                                  # follower 비용 (nd.c 는 follower 가 최대화하는 −비용)
+    # 호: (열, 점포, 고객). 노드 번호: 점포 1..nst, 고객 nst+1..nst+ncu
+    arcs = [(col, i, j) for i in 1:nst, j in 1:ncu for col in (iyR(i, j), iyS(i, j))]
+    inc = [Int[] for _ in 1:(nst + ncu)]
+    for (a, (_, i, j)) in enumerate(arcs); push!(inc[i], a); push!(inc[nst + j], a); end
+    best = 0.0; arg = nothing; npaths = 0
+    visited = falses(nst + ncu)
+    path = Int[]
+    function visit(node, sign, gc, gl)
+        for a in inc[node]
+            col, i, j = arcs[a]
+            nxt = node == i ? nst + j : i
+            visited[nxt] && continue
+            gc2 = gc + sign * cost(col); gl2 = gl + sign * nd.ell[col]
+            npaths += 1
+            npaths > maxpaths && error("nz_theta_circuit_exact: 경로 수가 maxpaths 를 넘음")
+            push!(path, a)
+            for σ in (1.0, -1.0)                            # g 와 −g
+                dc, dl = σ * gc2, σ * gl2                     # dc = 비용 증가 = −cᵀg, dl = ℓᵀg
+                if dc > 1e-9 && dl > 1e-12 && dl / dc > best
+                    best = dl / dc; arg = (copy(path), σ, dc, dl)
+                end
+            end
+            visited[nxt] = true
+            visit(nxt, -sign, gc2, gl2)
+            visited[nxt] = false
+            pop!(path)
+        end
+    end
+    for start in 1:(nst + ncu)
+        visited[start] = true
+        visit(start, 1.0, 0.0, 0.0)
+        visited[start] = false
+    end
+    desc = arg === nothing ? "ℓᵀg > 0 인 비용 증가 circuit 없음" :
+        join([(s = (k % 2 == 1 ? "+" : "−"); (col, i, j) = arcs[a];
+               "$(s)$(col == iyR(i, j) ? "R" : "S")($(i),$(j))") for (k, a) in enumerate(arg[1])], " ") *
+        "  (부호 $(arg[2] > 0 ? "+" : "−"), 비용 증가 $(arg[3]), ℓ 변화 $(arg[4]))"
+    return best, Dict(:npaths => npaths, :circuit => desc)
+end
+
 "같은 데이터에서 상계만 바꾼 사본"
 function nz_with_bounds(nd::NZData; thetaU=nd.thetaU, lambdaU=nd.lambdaU, piLU=nothing)
     if piLU === nothing
