@@ -146,6 +146,37 @@ function nz_theta_circuit_exact(nd::NZData; maxpaths::Int=10^8)
     return best, Dict(:npaths => npaths, :circuit => desc)
 end
 
+"h 상한 (hU) 만 바꾼 사본 (α-B&B 프리솔브용)"
+nz_with_hU(nd::NZData, hU) = NZData(nd.name, nd.A, nd.c, nd.ell, nd.u, nd.hrow, nd.hcoef, nd.xrow, nd.g,
+    nd.W, nd.wvec, nd.c0, Float64.(hU), nd.nx, nd.x_allowed, nd.gamma, nd.qx,
+    nd.S, nd.q_hat, nd.eps_hat, nd.eps_tilde, nd.beta,
+    nd.thetaU, nd.piLU, nd.piFU, nd.lambdaU, nd.varpiU, nd.meta)
+
+"""
+    nz_presolve_hU(nd, x̄) -> (hU', 고정된 좌표 수)
+
+x̄ 에서 follower 의 최적 반응이 항상 0 인 예약 좌표의 상한을 0 으로 (location 전용, 다른 인스턴스는 그대로).
+x̄ 에서 닫힌 B 점포는 용량이 0 이라 그 점포의 예약분을 받을 수 없는데 예약비 f > 0 (c0 < 0) 는 내므로, 그 예약은
+엄격히 지배되어 Ψ(x̄, p̃) 의 모든 원소에서 0 이다. 정의역을 {그 좌표 = 0} 으로 줄여도 Ψ 를 포함하므로 V*(x̄) 는 그대로이고,
+줄인 정의역의 점은 원래 Ω 의 실행가능해라 거기서 만든 cut 도 유효하다.
+"""
+function nz_presolve_hU(nd::NZData, x̄)
+    hU = copy(nd.hU)
+    get(nd.meta, :kind, nothing) == :location || return hU, 0
+    nA, nst, ncu = nd.meta[:nA], nd.meta[:nst], nd.meta[:ncu]
+    hidx = nd.meta[:hidx]
+    nfix = 0
+    for i in nA+1:nst
+        x̄[i - nA] > 0.5 && continue
+        for j in (nd.meta[:reservation] == :pair ? (1:ncu) : (1:1))
+            k = hidx(i, j)
+            nd.c0[k] < 0 || error("nz_presolve_hU: 예약비가 양수가 아님 (c0[$k] = $(nd.c0[k])) — 지배 논증이 성립 안 함")
+            hU[k] > 0 && (hU[k] = 0.0; nfix += 1)
+        end
+    end
+    return hU, nfix
+end
+
 "같은 데이터에서 상계만 바꾼 사본"
 function nz_with_bounds(nd::NZData; thetaU=nd.thetaU, lambdaU=nd.lambdaU, piLU=nothing)
     if piLU === nothing

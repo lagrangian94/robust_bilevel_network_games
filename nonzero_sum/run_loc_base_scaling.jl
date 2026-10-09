@@ -14,7 +14,7 @@ run_loc_base_scaling.jl — 기본 인스턴스 (SGB128 Goyal 기본 사례 + �
 환경변수
   LB_S = "3,20,50,200"   LB_METHODS = "E,SBG,SBA,ALG"   LB_EPS = 0.3   LB_BETA = 0.4   LB_DELTA = 0.1   LB_QUOTA = 150
   LB_TL = 3600 (방법당 전체)   LB_E_TL = 300 (E 의 x 하나당)   LB_E_FORM = reduced | full
-  LB_ORACLE_TIME = 600   LB_BOOST = 2400   LB_LOCAL_TIME = 60   LB_WORKERS = 12   NZ_SEED = 1
+  LB_THETA = circuit | res | 숫자 (θᵁ)   LB_ORACLE_TIME = 600   LB_BOOST = 2400   LB_LOCAL_TIME = 60   LB_WORKERS = 12   NZ_SEED = 1
 실행: julia -t 14,1 nonzero_sum/run_loc_base_scaling.jl
 """
 root = dirname(@__DIR__)
@@ -43,15 +43,21 @@ common = (optimizer=GRB, tol=1e-4, nworkers=nw, time_limit=TL, verbose=true,
           boost_time=min(parse(Float64, envf("LB_BOOST", "2400")), TL))
 local_time = parse(Float64, envf("LB_LOCAL_TIME", "60"))
 
-mk(S) = nz_with_delta(make_location_instance(; coords=:sgb128, reservation=:pair, quota=quota, wres=300.0, S=S, seed=seed,
-                                             eps_hat=ε, eps_tilde=ε, beta=β), δ)
+# LB_THETA = circuit (기본: nz_theta_circuit_exact 의 정확한 circuit 값, 증명 가능) | res (기존 v / 거리 해상도) | 숫자
+function mk(S)
+    nd = nz_with_delta(make_location_instance(; coords=:sgb128, reservation=:pair, quota=quota, wres=300.0, S=S, seed=seed,
+                                              eps_hat=ε, eps_tilde=ε, beta=β), δ)
+    th = envf("LB_THETA", "circuit")
+    th == "res" && return nd
+    return nz_with_bounds(nd; thetaU=(th == "circuit" ? nz_theta_circuit_exact(nd)[1] : parse(Float64, th)))
+end
 all_x(nd) = [Float64.(collect(bits)) for bits in Iterators.product(fill(0:1, nd.nx)...)
              if sum(bits) <= nd.gamma && all(nd.x_allowed[i] || bits[i] == 0 for i in 1:nd.nx)]
 xstr(x) = "{" * join(findall(x .> 0.5), ",") * "}"
 
 println("="^100)
-@printf("기본 인스턴스 S 스케일링: SGB128 pair quota=%g ε̂=ε̃=%.2f β=%.2f δ=%s seed=%d | TL=%.0fs E_TL/x=%.0fs E=%s workers=%d\n",
-        quota, ε, β, string(δ), seed, TL, E_TL, string(kkt), nw)
+@printf("기본 인스턴스 S 스케일링: SGB128 pair quota=%g ε̂=ε̃=%.2f β=%.2f δ=%s seed=%d | TL=%.0fs E_TL/x=%.0fs E=%s workers=%d θᵁ=%.4f (%s)\n",
+        quota, ε, β, string(δ), seed, TL, E_TL, string(kkt), nw, mk(3).thetaU, envf("LB_THETA", "circuit"))
 println("="^100); flush(stdout)
 
 given_up = Set{String}()

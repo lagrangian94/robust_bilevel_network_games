@@ -339,7 +339,15 @@ target: LB ≥ target 이거나 UB ≤ target 이면 즉시 종료 (Benders "t�
 """
 function nz_alpha_bnb(nd::NZData, x̄; nworkers=Threads.nthreads() - 2, time_limit=300.0, rel_gap=1e-4,
                       dive_max=3, maxrounds=30, min_width=1e-7, ipopt_time=60.0,
-                      verbose=true, log_every=30.0, target=nothing, envs=nothing, heuristic::Bool=true)
+                      verbose=true, log_every=30.0, target=nothing, envs=nothing, heuristic::Bool=true,
+                      presolve::Bool=true)
+    # 프리솔브: x̄ 에서 최적 반응이 항상 0 인 예약 좌표를 고정 (nz_presolve_hU). 내부 모델은 줄인 상자로 만들고,
+    # 반환 α 는 원래 정의역의 점이다 (호출자는 원래 nd 로 cut 을 만듦).
+    nfix = 0
+    if presolve
+        hUp, nfix = nz_presolve_hU(nd, x̄)
+        nfix > 0 && (nd = nz_with_hU(nd, hUp))
+    end
     nworkers >= 1 || error("nz_alpha_bnb: nworkers ≥ 1 필요 (Julia 를 -t (nworkers+2),1 로 실행)")
     Threads.nthreads(:interactive) >= 1 ||
         error("nz_alpha_bnb: interactive 스레드가 필요합니다. julia -t $(nworkers + 2),1 로 실행하세요")
@@ -547,6 +555,6 @@ function nz_alpha_bnb(nd::NZData, x̄; nworkers=Threads.nthreads() - 2, time_lim
     foreach(wait, tasks)
     UB = max(LB[], isempty(open) ? -Inf : maximum(n[3] for n in open), pruned_ub[])
     return Dict(:LB => LB[], :UB => UB, :α => best_α[], :is_exact => (UB - LB[] <= tol(LB[])),
-                :nodes => nodes[], :time => time() - t0, :root_UB => root_UB[], :ipopt_calls => ipopt_calls[],
+                :nodes => nodes[], :time => time() - t0, :root_UB => root_UB[], :ipopt_calls => ipopt_calls[], :presolve_fixed => nfix,
                 :numerr => _NZ_NUMERR[], :numerr_fail => _NZ_NUMERR_FAIL[])
 end
