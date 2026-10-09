@@ -110,3 +110,76 @@ RESULT S=20 method=ALGG status=Optimal x={1} LB=-685.916668 UB=-685.916667 gap=1
   [loc] it   3 LB=-9999695.0000 UB=        Inf x=[2]        Ω_loc=  -691.1901 (1.7s)
   [loc] it   4 LB=-2506592.1900 UB=        Inf x=[1, 2]     Ω_loc= -1063.9243 (0.8s)
   [loc] it   5 LB=-2209441.0019 UB=        Inf x=[3]        Ω_loc=   -52.5055 (2.4s)
+  [std] it   6 LB=  -453.9175 UB=  -356.2092 x=[1, 2]     Ω= -1055.1348 bd=  -966.2092 (3588.0s)
+RESULT S=50 method=SBG status=TimeLimit x={1,2} LB=-445.134823 UB=-356.209167 gap=2.50e-01 iters=7 global=1 local=5 menu=- t_LB=3600.2 time=3600.2
+  [loc] it   1 LB=-10000000.0000 UB=        Inf x=Int64[]    Ω_loc=    -0.0051 (0.1s)
+  [loc] it   2 LB=-9999695.0000 UB=        Inf x=[1]        Ω_loc=  -730.4068 (1.6s)
+  [loc] it   3 LB=-9999695.0000 UB=        Inf x=[2]        Ω_loc=  -691.1901 (1.7s)
+  [loc] it   4 LB=-2506592.1900 UB=        Inf x=[1, 2]     Ω_loc= -1063.9243 (0.8s)
+  [loc] it   5 LB=-2209441.0019 UB=        Inf x=[3]        Ω_loc=   -52.5055 (2.4s)
+  [std] it   6 LB=  -453.9175 UB=  -315.0925 x=[1, 2]     Ω= -1048.4724 bd=  -925.0925 (3593.4s)
+RESULT S=50 method=SBA status=TimeLimit x={1,2} LB=-438.472440 UB=-315.092505 gap=3.92e-01 iters=7 global=1 local=5 menu=- t_LB=3605.4 time=3605.4
+  [orcl] it   1 LB=-10000000.0000 UB=     0.0000 x=Int64[]    Ω=    -0.0000 (4.2s) menu=1 (+belief, LP@x̄=-0.0000, gap 5.3e-09)
+  [menu] it   2 LB=-9999695.0000 UB=     0.0000 x=[1]        menu cut 1/1 (V_menu=-23960.1300)
+  [menu] it   3 LB=-9999695.0000 UB=     0.0000 x=[2]        menu cut 1/1 (V_menu=-13139.7500)
+  [menu] it   4 LB=-3074809.7495 UB=     0.0000 x=[1, 2]     menu cut 1/1 (V_menu=-21606.1200)
+  [menu] it   5 LB=-971695.0000 UB=     0.0000 x=[3]        menu cut 1/1 (V_menu=-1535.1400)
+  [orcl] it   6 LB=-23655.1300 UB=  -291.0179 x=[1]        Ω=  -732.0260 (71.9s) menu=2 (+belief, LP@x̄=-730.7333, gap -1.3e+00)
+  [menu] it   7 LB=-20996.1200 UB=  -291.0179 x=[1, 2]     menu cut 1/2 (V_menu=-9571.6667)
+  [menu] it   8 LB=-12834.7500 UB=  -291.0179 x=[2]        menu cut 1/2 (V_menu=-5314.3000)
+  [orcl] it   9 LB= -8961.6667 UB=  -291.0179 x=[1, 2]     Ω= -1065.8003 (75.8s) menu=3 (+belief, LP@x̄=-1055.8662, gap -9.9e+00)
+  [menu] it  10 LB= -5009.3000 UB=  -291.0179 x=[2]        menu cut 1/3 (V_menu=-1225.0777)
+  [orcl] it  11 LB= -1230.1400 UB=  -291.0179 x=[3]        Ω=   -65.7601 (6.5s) menu=4 (+belief, LP@x̄=-64.7625, gap -1.0e+00)
+  [orcl] it  12 LB=  -920.0777 UB=  -329.5287 x=[2]        Ω=  -691.3504 (30.6s) menu=5 (+belief, LP@x̄=-691.1833, gap -1.7e-01)
+  [menu] it  13 LB=  -455.8003 UB=  -329.5287 x=[1, 2]     menu cut 1/5 (V_menu=-1055.8662)
+  [orcl] it  14 LB=  -445.8662 UB=  -329.5287 x=[1, 2]     Ω= -1053.8554 (601.6s) menu=6 (+belief, LP@x̄=-1052.6667, gap -1.2e+00)
+  [menu] it  15 LB=  -443.8554 UB=  -329.5287 x=[1, 2]     menu cut 1/6 (V_menu=-1052.6667)
+  [orcl] it  16 LB=  -442.6667 UB=  -329.5287 x=[1, 2]     Ω= -1051.5060 (607.6s) menu=7 (+belief, LP@x̄=-1051.4852, gap -2.1e-02)
+  [menu] it  17 LB=  -441.5060 UB=  -329.5287 x=[1, 2]     menu cut 1/7 (V_menu=-1051.4852)
+  [orcl] it  18 LB=  -441.4852 UB=  -329.5287 x=[1, 2]     Ω= -1051.8812 (602.6s) menu=7
+  [orcl] it  19 LB=  -441.4852 UB=  -329.5287 x=[1, 2]     Ω= -1051.0884 (1533.2s) menu=8 (+belief, LP@x̄=-1050.4167, gap -6.7e-01)
+  [menu] it  20 LB=  -441.0884 UB=  -329.5287 x=[1, 2]     menu cut 1/8 (V_menu=-1050.4167)
+RESULT S=50 method=ALG status=Stalled x={2} LB=-440.416668 UB=-329.528709 gap=3.37e-01 iters=21 global=9 local=- menu=8 t_LB=3537.2 time=3537.2
+  [orcl] it   1 LB=-10000000.0000 UB=     0.0000 x=Int64[]    Ω=     0.0000 (2.8s) menu=1 (+belief, LP@x̄=0.0000, gap -9.9e-09)
+  [menu] it   2 LB=-9999695.0000 UB=     0.0000 x=[1]        menu cut 1/1 (V_menu=-28973.8067)
+  [menu] it   3 LB=-9999695.0000 UB=     0.0000 x=[2]        menu cut 1/1 (V_menu=-22262.4667)
+  [menu] it   4 LB=-3373615.0000 UB=     0.0000 x=[3]        menu cut 1/1 (V_menu=-3196.8000)
+  [menu] it   5 LB=-3363844.4567 UB=     0.0000 x=[1, 2]     menu cut 1/1 (V_menu=-28093.2833)
+  [orcl] it   6 LB=-28668.8067 UB=  -339.3188 x=[1]        Ω=  -729.4500 (600.0s) menu=2 (+belief, LP@x̄=-729.4500, gap 8.8e-08)
+  [menu] it   7 LB=-28363.8067 UB=  -339.3188 x=[1, 3]     menu cut 1/2 (V_menu=-729.4500)
+  [menu] it   8 LB=-27483.2834 UB=  -339.3188 x=[1, 2]     menu cut 1/2 (V_menu=-10908.7567)
+  [menu] it   9 LB=-21957.4667 UB=  -339.3188 x=[2]        menu cut 1/2 (V_menu=-6782.5867)
+  [orcl] it  10 LB=-10298.7567 UB=  -339.3188 x=[1, 2]     Ω= -1054.5167 (600.0s) menu=3 (+belief, LP@x̄=-1054.5167, gap -4.5e-08)
+  [menu] it  11 LB= -6477.5867 UB=  -339.3188 x=[2]        menu cut 1/3 (V_menu=-1347.1667)
+  [orcl] it  12 LB= -2891.8000 UB=  -339.3188 x=[3]        Ω=   -11.6065 (600.0s) menu=4 (+belief, LP@x̄=-11.6057, gap -8.0e-04)
+  [orcl] it  13 LB= -1042.1667 UB=  -379.0110 x=[2]        Ω=  -691.1833 (600.1s) menu=5 (+belief, LP@x̄=-691.1833, gap 4.4e-07)
+  [orcl] it  14 LB=  -444.5167 UB=  -379.0110 x=[1, 2]     Ω= -1057.9182 (1196.1s) menu=5
+RESULT S=50 method=ALGG status=TimeLimit x={2} LB=-444.516667 UB=-379.010992 gap=1.73e-01 iters=15 global=6 local=- menu=5 t_LB=2403.8 time=3600.1
+
+--- S=200 (n_h=15, |X|=16)
+  E: 더 작은 S 에서 미해결 → 건너뜀
+  [loc] it   1 LB=-10000000.0000 UB=        Inf x=Int64[]    Ω_loc=    -0.0045 (0.6s)
+  [loc] it   2 LB=-9999695.0000 UB=        Inf x=[1]        Ω_loc=  -626.4770 (7.0s)
+  [loc] it   3 LB=-9999695.0000 UB=        Inf x=[2]        Ω_loc=  -583.6477 (6.7s)
+  [loc] it   4 LB=-6116145.6244 UB=        Inf x=[1, 2]     Ω_loc= -1034.8472 (5.7s)
+ERROR: LoadError: nz Ω (local): ITERATION_LIMIT
+Stacktrace:
+ [1] error(s::String)
+   @ Base ./error.jl:44
+ [2] _nz_local_solve!(Oloc::NZOmega, nd::NZData, x̄::Vector{Float64}; time_limit::Float64)
+   @ Main ~/robust_bilevel_network_games/nonzero_sum/nz_benders.jl:179
+ [3] _nz_local_solve!
+   @ ~/robust_bilevel_network_games/nonzero_sum/nz_benders.jl:172 [inlined]
+ [4] macro expansion
+   @ ./timing.jl:463 [inlined]
+ [5] nz_standard_benders(nd::NZData; optimizer::Function, max_iter::Int64, tol::Float64, oracle_time::Float64, boost_time::Float64, oracle::Symbol, oracle_gap::Float64, nworkers::Int64, bnb_kw::@NamedTuple{}, mw::Bool, vi::Bool, verbose::Bool, time_limit::Float64, local_first::Bool, local_time::Float64, oracle_remaining::Bool)
+   @ Main ~/robust_bilevel_network_games/nonzero_sum/nz_benders.jl:234
+ [6] top-level scope
+   @ ~/robust_bilevel_network_games/nonzero_sum/run_loc_base_scaling.jl:90
+ [7] include(mod::Module, _path::String)
+   @ Base ./Base.jl:309
+ [8] exec_options(opts::Base.JLOptions)
+   @ Base ./client.jl:344
+ [9] _start()
+   @ Base ./client.jl:577
+in expression starting at /home/swkim/robust_bilevel_network_games/nonzero_sum/run_loc_base_scaling.jl:65

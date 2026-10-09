@@ -174,8 +174,10 @@ function _nz_local_solve!(Oloc::NZOmega, nd::NZData, x̄; time_limit)
     set_time_limit_sec(Oloc.model, time_limit)
     optimize!(Oloc.model)
     st = termination_status(Oloc.model)
-    st == MOI.TIME_LIMIT && !has_values(Oloc.model) && return nothing
-    ok = st == MOI.LOCALLY_SOLVED || st == MOI.OPTIMAL || (st == MOI.TIME_LIMIT && has_values(Oloc.model))
+    # 한도 도달 (시간·반복) 은 정상 종료: 해가 있으면 쓰고 없으면 전역으로. 그 밖의 상태는 오류
+    lim = st == MOI.TIME_LIMIT || st == MOI.ITERATION_LIMIT
+    lim && !has_values(Oloc.model) && return nothing
+    ok = st == MOI.LOCALLY_SOLVED || st == MOI.OPTIMAL || (lim && has_values(Oloc.model))
     ok || error("nz Ω (local): $st")
     return Dict(:status => st, :Fval => objective_value(Oloc.model))
 end
