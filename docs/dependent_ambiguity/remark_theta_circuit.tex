@@ -1,0 +1,64 @@
+% 초안: supplementary.tex 의 Remark rem:theta-TU 바로 뒤 (Proof of Lemma phi 절) 에 넣을 후보.
+% 표기는 원고 그대로: follower 는 d_F^T y 최소화, 리더 평가 phi = max d_L^T y (follower 최적해 중), Y = {y >= 0 : Ay <= r},
+% z_F(r) = min d_F over Y, L(theta) = max_{y in Y} [ d_L^T y + theta (z_F(r) - d_F^T y) ] (Lemma phi (ii) 증명의 L).
+
+\begin{remark}[Circuit bound on the multiplier]\label{rem:theta-circuit}
+The constant $\theta^{U}$ enters the reformulation only through the
+fixed-$\theta$ form of~\eqref{eq:phi-min} in Lemma~\ref{lem:phi}(ii), that is,
+through the identity $L(\theta^{U}) = \phi(x,h,\xi)$ for every right-hand side
+$r$. Any constant with this property may therefore replace $\theta^{U}$
+throughout, and the following one is often much smaller. Call
+$g \in \mathbb{R}^{n_y}\setminus\{0\}$ a \emph{circuit} of $A$ if the support
+of $(Ag, g)$ is inclusion-minimal among nonzero vectors of this form, and let
+\[
+    \theta_{C} \;:=\; \max\Big\{ \frac{(d_L^\top g)^{+}}{d_F^\top g} \;:\; g \text{ a circuit of } A,\ d_F^\top g > 0 \Big\}.
+\]
+Circuits depend only on $A$ and are finitely many up to scaling, so $\theta_{C}$
+is a uniform constant. We claim that $L(\theta) = \phi(x,h,\xi)$ for every
+$\theta \ge \theta_{C}$ and every $r$.
+
+Fix $r$. By Assumption~\ref{asm:RCR}, $\mathcal{Y} := \{y \ge 0 : Ay \le r\}$
+is a polytope. Let $F$ be the face of minimizers of $d_F^\top y$ over
+$\mathcal{Y}$, and let $y^{*}$ be a vertex of $\mathcal{Y}$ in $F$ that
+maximizes $d_L^\top y$ over $F$, so that $\phi(x,h,\xi) = d_L^\top y^{*}$.
+Every $y \in \mathcal{Y}$ satisfies $y - y^{*} = \sum_{k}\lambda_k g_k$ with
+$\lambda_k \ge 0$, where the $g_k$ are the directions of the edges of
+$\mathcal{Y}$ at $y^{*}$. Each edge is defined by $n_y - 1$ linearly
+independent rows of $[A;\,-I]$ that are active along it, and its direction
+spans the null space of these rows; any nonzero $g'$ for which the support of
+$(Ag', g')$ is contained in that of $(Ag_k, g_k)$ vanishes on the same rows and
+is a multiple of $g_k$, so $g_k$ is a circuit. Since $y^{*}$ minimizes
+$d_F^\top y$, $d_F^\top g_k \ge 0$. If $d_F^\top g_k = 0$, the edge lies in
+$F$ and $d_L^\top g_k \le 0$ by the choice of $y^{*}$; otherwise
+$d_L^\top g_k \le \theta_{C}\, d_F^\top g_k$. Hence
+\[
+    d_L^\top (y - y^{*}) \;\le\; \theta_{C}\, d_F^\top (y - y^{*}) \;=\; \theta_{C}\big(d_F^\top y - z_F(r)\big)
+    \;\le\; \theta\big(d_F^\top y - z_F(r)\big),
+\]
+so $d_L^\top y + \theta\,(z_F(r) - d_F^\top y) \le \phi(x,h,\xi)$ for every
+$y \in \mathcal{Y}$, and $y = y^{*}$ attains equality.
+
+When the circuits have a combinatorial description, $\theta_{C}$ can be
+computed exactly. In the facility location problem of
+Section~\ref{subsec:exp-location}, each reservation row contains a single
+variable and imposes no condition on circuits, so the circuits are the
+alternating paths and even cycles of the bipartite multigraph of stores and
+customers, with one arc for reserved and one for on-site purchases. Along a
+cycle every store keeps its total, so $d_L^\top g = 0$; along a path the sales
+of B change by at most one unit. Hence $\theta_{C} = v/\Delta$, where $\Delta$
+is the smallest positive increase of the follower's cost along a path that
+lowers the sales of B by one unit. The argument in
+Section~\ref{subsec:exp-location} bounds $\Delta$ below by the resolution of the
+costs; enumerating the paths instead gives $\Delta$ itself.
+\end{remark}
+
+% 실험 절 (INFORMS-IJOC-Template.tex 6.1, "The constants of Section ... are set as follows") 교체 후보 문장:
+% The recourse matrix of~\eqref{eq:loc-Q} is totally unimodular, and Remark~\ref{S-rem:theta-circuit} reduces the
+% multiplier bound to the smallest increase $\Delta$ of the follower's cost along an alternating path of stores and
+% customers that lowers the sales of B. Enumerating the 79{,}140 such paths of the base instance takes 0.1 seconds
+% and gives $\Delta = 5$, so $\theta^{U} = v/\Delta = 1$; bounding $\Delta$ below by the resolution of the costs
+% would give $\theta^{U} = 5$. The constant matters for computation, because $\theta^{U}$ scales the difference
+% of two large terms in $F$: at $x = \{1,2\}$, a 600-second solve of the ISP leaves a relative gap of 95\% with
+% $\theta^{U} = 5$ and of 0.2\% with $\theta^{U} = 1$.
+% 수치 근거 (x={1,2}, quota 150, δ 0.1, 600 s): Gurobi Ω gap θ=5: 95% (4 스레드) / 15% (전체 스레드, 900 s), θ=1: 0.22% (전체 스레드).
+%   α-B&B (worker 12): θ=5 204%, θ=1 28%. logs/diag_abb_base_x12_q150_d0p1_theta*.log

@@ -110,7 +110,10 @@ SGB128 은 거리 (c) 가 마일 단위 (~1,000) 이고 θᵁ = v / 거리 해�
    단순 교대 경로·짝수 사이클이고, 사이클과 고객–고객 경로는 ℓᵀg = 0 → 모든 단순 경로 열거로 정확히 계산.
    SGB128: **θ̄ = 1.0** (경로 79,140 개, 0.1 s; 최대 비율 circuit +R(5,1) −R(1,1) +R(1,3) −R(3,3) +S(3,2), 비용 증가 5 마일, B 판매 1 단위).
    quota·S·x 와 무관. 경험값 0.3125 ≤ 1 로 일관. 기존 θᵁ = 5 는 비용 변화 하한을 해상도 1 마일로 둔 것.
-4. θᵁ = 1 로 x = {1,2} α-B&B / Gurobi 600 s: 진행 중 (`logs/diag_abb_base_x12_q150_d0p1_theta1.log`).
+4. θᵁ = 1 (증명 가능) 로 x = {1,2} 600 s (`logs/diag_abb_base_x12_q150_d0p1_theta1.log`, worker 12 / Gurobi 전체 스레드):
+   α-B&B UB −1057.2 (gap 28%, θ=5 에서 204%), **Gurobi Ω UB −1467.25 (gap 0.22%)**.
+   → θ 가 주원인. α-B&B 에는 다른 약점이 남음 (후보: h^r 로만 분기해 h^r × ϖ, ϖ ∈ [0, 200 r] 곱이 안 조여짐. Gurobi 는 ϖ 로도 분기).
+5. Remark 초안 (원고 supplement 용): `docs/dependent_ambiguity/remark_theta_circuit.tex`.
 
 ### 밤샘 실행 (`logs/loc_base_scaling.log`, S = 3, 20, 50, 방법당 3,600 s) — S = 20 의 E 후 중단 (θ 문제 먼저)
 
