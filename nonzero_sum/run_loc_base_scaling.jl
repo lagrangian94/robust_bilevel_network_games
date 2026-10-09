@@ -15,6 +15,7 @@ run_loc_base_scaling.jl — 기본 인스턴스 (SGB128 Goyal 기본 사례 + �
 환경변수
   LB_S = "3,20,50,200"   LB_METHODS = "E,SBG,SBA,ALG"   LB_EPS = 0.3   LB_BETA = 0.4   LB_DELTA = 0.1   LB_QUOTA = 150
   LB_TL = 3600 (방법당 전체)   LB_E_TL = 300 (E 의 x 하나당)   LB_E_FORM = reduced | full
+  LB_TOL = 5e-3 (Benders 상대 허용오차, zero-sum 과 같음)   LB_OGAP = 1e-3 (전역 oracle 목표 gap)
   LB_THETA = circuit | res | 숫자 (θᵁ)   LB_ORACLE_TIME = 600   LB_BOOST = 2400   LB_LOCAL_TIME = 60   LB_WORKERS = 12   NZ_SEED = 1
 실행: julia -t 14,1 nonzero_sum/run_loc_base_scaling.jl
 """
@@ -39,7 +40,9 @@ TL = parse(Float64, envf("LB_TL", "3600")); E_TL = parse(Float64, envf("LB_E_TL"
 kkt = envf("LB_E_FORM", "reduced") == "full" ? nz_kkt_value : nz_kkt_value_reduced
 nw = parse(Int, envf("LB_WORKERS", "12"))
 Threads.nthreads() >= nw + 2 || error("α-B&B: Julia 스레드 $(Threads.nthreads()) < LB_WORKERS+2 = $(nw + 2) (julia -t $(nw + 2),1)")
-common = (optimizer=GRB, tol=1e-4, nworkers=nw, time_limit=TL, verbose=true,
+# 허용오차: zero-sum 실험과 같은 0.5% (2026-10-10 결정). α-B&B 목표 gap 은 그보다 작게 (LB_OGAP).
+tol_b = parse(Float64, envf("LB_TOL", "5e-3")); ogap = parse(Float64, envf("LB_OGAP", "1e-3"))
+common = (optimizer=GRB, tol=tol_b, oracle_gap=ogap, nworkers=nw, time_limit=TL, verbose=true,
           oracle_time=min(parse(Float64, envf("LB_ORACLE_TIME", "600")), TL),
           boost_time=min(parse(Float64, envf("LB_BOOST", "2400")), TL))
 local_time = parse(Float64, envf("LB_LOCAL_TIME", "60"))
@@ -57,8 +60,8 @@ all_x(nd) = [Float64.(collect(bits)) for bits in Iterators.product(fill(0:1, nd.
 xstr(x) = "{" * join(findall(x .> 0.5), ",") * "}"
 
 println("="^100)
-@printf("기본 인스턴스 S 스케일링: SGB128 pair quota=%g ε̂=ε̃=%.2f β=%.2f δ=%s seed=%d | TL=%.0fs E_TL/x=%.0fs E=%s workers=%d θᵁ=%.4f (%s)\n",
-        quota, ε, β, string(δ), seed, TL, E_TL, string(kkt), nw, mk(3).thetaU, envf("LB_THETA", "circuit"))
+@printf("기본 인스턴스 S 스케일링: SGB128 pair quota=%g ε̂=ε̃=%.2f β=%.2f δ=%s seed=%d | TL=%.0fs E_TL/x=%.0fs E=%s workers=%d θᵁ=%.4f (%s) tol=%.0e ogap=%.0e\n",
+        quota, ε, β, string(δ), seed, TL, E_TL, string(kkt), nw, mk(3).thetaU, envf("LB_THETA", "circuit"), tol_b, ogap)
 println("="^100); flush(stdout)
 
 given_up = Set{String}()

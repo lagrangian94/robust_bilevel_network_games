@@ -372,7 +372,12 @@ target: LB ≥ target 이거나 UB ≤ target 이면 즉시 종료 (Benders "t�
 function nz_alpha_bnb(nd::NZData, x̄; nworkers=Threads.nthreads() - 2, time_limit=300.0, rel_gap=1e-4,
                       dive_max=3, maxrounds=30, min_width=1e-7, ipopt_time=60.0,
                       verbose=true, log_every=30.0, target=nothing, envs=nothing, heuristic::Bool=true,
-                      presolve::Bool=true, varpi_branch::Bool=false, varpi_alpha_width=3.0)   # ϖ 분기: 시험 결과 더 나빠 기본 끔 (experiments.md)
+                      presolve::Bool=true, varpi_branch::Bool=false, varpi_alpha_width=3.0,
+                      branch_score::Symbol=:viol, branch_point::Symbol=:alphahat)
+    # branch_score: :viol (곱 위반 합, 기존) | :weighted (위반 × 목적 민감도: ζL·ζF 는 해당 흐름 행의 쌍대값 × hcoef,
+    #               ζW 는 목적계수 θ hcoef). branch_point: :alphahat (완화 해 α̂, 끝 10% 면 중점, 기존) | :mid (항상 중점)
+    branch_score in (:viol, :weighted) || error("branch_score = :viol | :weighted")
+    branch_point in (:alphahat, :mid) || error("branch_point = :alphahat | :mid")   # ϖ 분기: 시험 결과 더 나빠 기본 끔 (experiments.md)
     # 프리솔브: x̄ 에서 최적 반응이 항상 0 인 예약 좌표를 고정 (nz_presolve_hU). 내부 모델은 줄인 상자로 만들고,
     # 반환 α 는 원래 정의역의 점이다 (호출자는 원래 nd 로 cut 을 만듦).
     nfix = 0
@@ -486,12 +491,25 @@ function nz_alpha_bnb(nd::NZData, x̄; nworkers=Threads.nthreads() - 2, time_lim
                     zE = nz_eval_alpha!(F, nd, α̂)
                     isnan(zE) && (zE = -Inf)
                     viol = zeros(nh)
+                    if branch_score == :weighted
+                        mL = P.O.model[:Lflow]; mF = P.O.model[:Fflow]
+                        θw = nd.thetaU
+                    end
                     for i in 1:nh
                         u[i] - l[i] > min_width || continue
-                        viol[i] = sum(abs(ζLv[i, s] - α̂[i] * rv[s]) + abs(ζFv[i, s] - α̂[i] * dv[s]) for s in 1:S)
+                        if branch_score == :viol
+                            viol[i] = sum(abs(ζLv[i, s] - α̂[i] * rv[s]) + abs(ζFv[i, s] - α̂[i] * dv[s]) for s in 1:S)
+                        end
                         for (jj, k) in enumerate(Hr)
                             nd.hrow[k] == i || continue
-                            viol[i] += sum(abs(ζWv[jj, s] - α̂[i] * ϖv[k, s]) for s in 1:S)
+                            if branch_score == :viol
+                                viol[i] += sum(abs(ζWv[jj, s] - α̂[i] * ϖv[k, s]) for s in 1:S)
+                            else                  # 목적 민감도 가중: 흐름 행 k 의 쌍대값 × hcoef × 위반 + θ hcoef × ζW 위반
+                                hc = abs(nd.hcoef[k])
+                                viol[i] += sum(abs(dual(mL[k, s])) * hc * abs(ζLv[i, s] - α̂[i] * rv[s]) +
+                                               abs(dual(mF[k, s])) * hc * abs(ζFv[i, s] - α̂[i] * dv[s]) +
+                                               θw * hc * abs(ζWv[jj, s] - α̂[i] * ϖv[k, s]) for s in 1:S)
+                            end
                         end
                     end
                     # ϖ 분기 후보: 위반이 가장 큰 ζW 곱에서 ϖ 의 정규화 폭이 α 의 정규화 폭보다 크면 ϖ 를 나눔
@@ -515,7 +533,7 @@ function nz_alpha_bnb(nd::NZData, x̄; nworkers=Threads.nthreads() - 2, time_lim
                         children = ((copy(l), copy(u), z, copy(Lw), U1), (copy(l), copy(u), z, L2, copy(Uw)))
                     elseif viol[i] > 1e-9
                         width = u[i] - l[i]; t = α̂[i]
-                        (t - l[i] < 0.1 * width || u[i] - t < 0.1 * width) && (t = 0.5 * (l[i] + u[i]))
+                        (branch_point == :mid || t - l[i] < 0.1 * width || u[i] - t < 0.1 * width) && (t = 0.5 * (l[i] + u[i]))
                         u1 = copy(u); u1[i] = t; l2 = copy(l); l2[i] = t
                         children = ((copy(l), u1, z, Lw, Uw), (l2, copy(u), z, Lw, Uw))
                     else
