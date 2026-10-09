@@ -15,7 +15,7 @@ run_loc_base_scaling.jl — 기본 인스턴스 (SGB128 Goyal 기본 사례 + �
 환경변수
   LB_S = "3,20,50,200"   LB_METHODS = "E,SBG,SBA,ALG"   LB_EPS = 0.3   LB_BETA = 0.4   LB_DELTA = 0.1   LB_QUOTA = 150
   LB_TL = 3600 (방법당 전체)   LB_E_TL = 300 (E 의 x 하나당)   LB_E_FORM = reduced | full
-  LB_TOL = 5e-3 (Benders 상대 허용오차, zero-sum 과 같음)   LB_OGAP = 1e-3 (전역 oracle 목표 gap)
+  LB_TOL = 5e-3 (Benders 상대 허용오차, zero-sum 과 같음)   LB_OGAP = 1e-3 (전역 oracle 목표 gap)   LB_IPOPT = 120 (α-B&B Ipopt 1 회 시간)
   LB_THETA = circuit | res | 숫자 (θᵁ)   LB_ORACLE_TIME = 600   LB_BOOST = 2400   LB_LOCAL_TIME = 60   LB_WORKERS = 12   NZ_SEED = 1
 실행: julia -t 14,1 nonzero_sum/run_loc_base_scaling.jl
 """
@@ -43,6 +43,7 @@ Threads.nthreads() >= nw + 2 || error("α-B&B: Julia 스레드 $(Threads.nthread
 # 허용오차: zero-sum 실험과 같은 0.5% (2026-10-10 결정). α-B&B 목표 gap 은 그보다 작게 (LB_OGAP).
 tol_b = parse(Float64, envf("LB_TOL", "5e-3")); ogap = parse(Float64, envf("LB_OGAP", "1e-3"))
 common = (optimizer=GRB, tol=tol_b, oracle_gap=ogap, nworkers=nw, time_limit=TL, verbose=true,
+          bnb_kw=(ipopt_time=parse(Float64, envf("LB_IPOPT", "120")),),     # Ipopt 1 회 시간: zero-sum 과 같은 120 s
           oracle_time=min(parse(Float64, envf("LB_ORACLE_TIME", "600")), TL),
           boost_time=min(parse(Float64, envf("LB_BOOST", "2400")), TL))
 local_time = parse(Float64, envf("LB_LOCAL_TIME", "60"))

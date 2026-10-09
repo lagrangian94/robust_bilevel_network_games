@@ -373,9 +373,11 @@ function nz_alpha_bnb(nd::NZData, x̄; nworkers=Threads.nthreads() - 2, time_lim
                       dive_max=3, maxrounds=30, min_width=1e-7, ipopt_time=60.0,
                       verbose=true, log_every=30.0, target=nothing, envs=nothing, heuristic::Bool=true,
                       presolve::Bool=true, varpi_branch::Bool=false, varpi_alpha_width=3.0,
-                      branch_score::Symbol=:viol, branch_point::Symbol=:alphahat)
-    # branch_score: :viol (곱 위반 합, 기존) | :weighted (위반 × 목적 민감도: ζL·ζF 는 해당 흐름 행의 쌍대값 × hcoef,
-    #               ζW 는 목적계수 θ hcoef). branch_point: :alphahat (완화 해 α̂, 끝 10% 면 중점, 기존) | :mid (항상 중점)
+                      branch_score::Symbol=:viol, branch_point::Symbol=:mid)
+    # branch_score: :viol (곱 위반 합, 기본) | :weighted (위반 × 목적 민감도: ζL·ζF 는 해당 흐름 행의 쌍대값 × hcoef,
+    #               ζW 는 목적계수 θ hcoef — 튜닝에서 차이 없음).
+    # branch_point: :mid (항상 중점, 기본: tune_abb.jl 에서 300 s gap S=20 ε=0.2 5.0% → 2.3%, ε=0.3 7.3% → 3.6%)
+    #             | :alphahat (완화 해 α̂, 끝 10% 면 중점 — 이전 기본. 한쪽 자식이 얇아지는 불균형 분할)
     branch_score in (:viol, :weighted) || error("branch_score = :viol | :weighted")
     branch_point in (:alphahat, :mid) || error("branch_point = :alphahat | :mid")   # ϖ 분기: 시험 결과 더 나빠 기본 끔 (experiments.md)
     # 프리솔브: x̄ 에서 최적 반응이 항상 0 인 예약 좌표를 고정 (nz_presolve_hU). 내부 모델은 줄인 상자로 만들고,

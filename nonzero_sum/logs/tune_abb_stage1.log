@@ -1,0 +1,967 @@
+Set parameter Username
+Set parameter LicenseID to value 2839433
+Academic license - for non-commercial use only - expires 2027-06-29
+tune_abb: x=[1, 2] TL=300s 목표 gap=1e-03 workers=12 변형=base,weighted,mid,dive0,dive10,rounds10
+Set parameter Username
+Set parameter LicenseID to value 2839433
+Academic license - for non-commercial use only - expires 2027-06-29
+Set parameter Username
+Set parameter LicenseID to value 2839433
+Academic license - for non-commercial use only - expires 2027-06-29
+Set parameter Username
+Set parameter LicenseID to value 2839433
+Academic license - for non-commercial use only - expires 2027-06-29
+Set parameter Username
+Set parameter LicenseID to value 2839433
+Academic license - for non-commercial use only - expires 2027-06-29
+Set parameter Username
+Set parameter LicenseID to value 2839433
+Academic license - for non-commercial use only - expires 2027-06-29
+Set parameter Username
+Set parameter LicenseID to value 2839433
+Academic license - for non-commercial use only - expires 2027-06-29
+Set parameter Username
+Set parameter LicenseID to value 2839433
+Academic license - for non-commercial use only - expires 2027-06-29
+Set parameter Username
+Set parameter LicenseID to value 2839433
+Academic license - for non-commercial use only - expires 2027-06-29
+Set parameter Username
+Set parameter LicenseID to value 2839433
+Academic license - for non-commercial use only - expires 2027-06-29
+Set parameter Username
+Set parameter LicenseID to value 2839433
+Academic license - for non-commercial use only - expires 2027-06-29
+Set parameter Username
+Set parameter LicenseID to value 2839433
+Academic license - for non-commercial use only - expires 2027-06-29
+Set parameter Username
+Set parameter LicenseID to value 2839433
+Academic license - for non-commercial use only - expires 2027-06-29
+Set parameter Username
+Set parameter LicenseID to value 2839433
+Academic license - for non-commercial use only - expires 2027-06-29
+
+******************************************************************************
+This program contains Ipopt, a library for large-scale nonlinear optimization.
+ Ipopt is released as open source code under the Eclipse Public License (EPL).
+         For more information visit https://github.com/coin-or/Ipopt
+******************************************************************************
+
+RESULT S=20 eps=0.20 delta=0.1 variant=base      TimeLim  LB=-1289.6020 UB=-1224.9715 gap=5.012e-02 nodes=1416 time=302.2
+RESULT S=20 eps=0.20 delta=0.1 variant=weighted  TimeLim  LB=-1289.6020 UB=-1225.1466 gap=4.998e-02 nodes=1426 time=300.5
+RESULT S=20 eps=0.20 delta=0.1 variant=mid       TimeLim  LB=-1289.5985 UB=-1260.2100 gap=2.279e-02 nodes=3658 time=300.3
+RESULT S=20 eps=0.20 delta=0.1 variant=dive0     TimeLim  LB=-1289.6020 UB=-1231.4927 gap=4.506e-02 nodes=1003 time=301.5
+RESULT S=20 eps=0.20 delta=0.1 variant=dive10    TimeLim  LB=-1289.6020 UB=-1222.3723 gap=5.213e-02 nodes=1598 time=302.1
+RESULT S=20 eps=0.20 delta=0.1 variant=rounds10  TimeLim  LB=-1289.6020 UB=-1228.0931 gap=4.770e-02 nodes=1477 time=301.2
+RESULT S=20 eps=0.30 delta=0.1 variant=base      TimeLim  LB=-1200.7586 UB=-1112.6610 gap=7.337e-02 nodes=1428 time=300.5
+RESULT S=20 eps=0.30 delta=0.1 variant=weighted  TimeLim  LB=-1200.7586 UB=-1115.7004 gap=7.084e-02 nodes=1478 time=300.5
+RESULT S=20 eps=0.30 delta=0.1 variant=mid       TimeLim  LB=-1200.7585 UB=-1157.3787 gap=3.613e-02 nodes=3356 time=300.2
+
+[608772] signal 15: Terminated
+in expression starting at /home/swkim/robust_bilevel_network_games/nonzero_sum/tune_abb.jl:41
+unknown function (ip: 0x70744ceac800) at /usr/lib/x86_64-linux-gnu/libc.so.6
+unknown function (ip: 0x70744cea030b) at /usr/lib/x86_64-linux-gnu/libc.so.6
+unknown function (ip: 0x70744cea06e6) at /usr/lib/x86_64-linux-gnu/libc.so.6
+pthread_cond_wait at /usr/lib/x86_64-linux-gnu/libc.so.6 (unknown line)
+uv_cond_wait at /workspace/srcdir/libuv/src/unix/thread.c:822
+jl_parallel_gc_threadfun at /cache/build/builder-amdci4-8/julialang/julia-ci/src/gc-stock.c:3729
+unknown function (ip: 0x70744cea3df9) at /usr/lib/x86_64-linux-gnu/libc.so.6
+unknown function (ip: 0x70744cf375cb) at /usr/lib/x86_64-linux-gnu/libc.so.6
+unknown function (ip: (nil)) at (unknown file)
+unknown function (ip: 0x70744ceac800) at /usr/lib/x86_64-linux-gnu/libc.so.6
+unknown function (ip: 0x70744cea030b) at /usr/lib/x86_64-linux-gnu/libc.so.6
+unknown function (ip: 0x70744cea06e6) at /usr/lib/x86_64-linux-gnu/libc.so.6
+pthread_cond_wait at /usr/lib/x86_64-linux-gnu/libc.so.6 (unknown line)
+uv_cond_wait at /workspace/srcdir/libuv/src/unix/thread.c:822
+jl_parallel_gc_threadfun at /cache/build/builder-amdci4-8/julialang/julia-ci/src/gc-stock.c:3729
+unknown function (ip: 0x70744cea3df9) at /usr/lib/x86_64-linux-gnu/libc.so.6
+unknown function (ip: 0x70744cf375cb) at /usr/lib/x86_64-linux-gnu/libc.so.6
+unknown function (ip: (nil)) at (unknown file)
+unknown function (ip: 0x70744ceac800) at /usr/lib/x86_64-linux-gnu/libc.so.6
+unknown function (ip: 0x70744cea030b) at /usr/lib/x86_64-linux-gnu/libc.so.6
+unknown function (ip: 0x70744cea06e6) at /usr/lib/x86_64-linux-gnu/libc.so.6
+pthread_cond_wait at /usr/lib/x86_64-linux-gnu/libc.so.6 (unknown line)
+uv_cond_wait at /workspace/srcdir/libuv/src/unix/thread.c:822
+jl_parallel_gc_threadfun at /cache/build/builder-amdci4-8/julialang/julia-ci/src/gc-stock.c:3729
+unknown function (ip: 0x70744cea3df9) at /usr/lib/x86_64-linux-gnu/libc.so.6
+unknown function (ip: 0x70744cf375cb) at /usr/lib/x86_64-linux-gnu/libc.so.6
+unknown function (ip: (nil)) at (unknown file)
+unknown function (ip: 0x70744ceac800) at /usr/lib/x86_64-linux-gnu/libc.so.6
+unknown function (ip: 0x70744cea030b) at /usr/lib/x86_64-linux-gnu/libc.so.6
+unknown function (ip: 0x70744cea06e6) at /usr/lib/x86_64-linux-gnu/libc.so.6
+pthread_cond_wait at /usr/lib/x86_64-linux-gnu/libc.so.6 (unknown line)
+uv_cond_wait at /workspace/srcdir/libuv/src/unix/thread.c:822
+jl_parallel_gc_threadfun at /cache/build/builder-amdci4-8/julialang/julia-ci/src/gc-stock.c:3729
+unknown function (ip: 0x70744cea3df9) at /usr/lib/x86_64-linux-gnu/libc.so.6
+unknown function (ip: 0x70744cf375cb) at /usr/lib/x86_64-linux-gnu/libc.so.6
+unknown function (ip: (nil)) at (unknown file)
+unknown function (ip: 0x70744ceac800) at /usr/lib/x86_64-linux-gnu/libc.so.6
+unknown function (ip: 0x70744cea030b) at /usr/lib/x86_64-linux-gnu/libc.so.6
+unknown function (ip: 0x70744cea06e6) at /usr/lib/x86_64-linux-gnu/libc.so.6
+pthread_cond_wait at /usr/lib/x86_64-linux-gnu/libc.so.6 (unknown line)
+uv_cond_wait at /workspace/srcdir/libuv/src/unix/thread.c:822
+jl_parallel_gc_threadfun at /cache/build/builder-amdci4-8/julialang/julia-ci/src/gc-stock.c:3729
+unknown function (ip: 0x70744cea3df9) at /usr/lib/x86_64-linux-gnu/libc.so.6
+unknown function (ip: 0x70744cf375cb) at /usr/lib/x86_64-linux-gnu/libc.so.6
+unknown function (ip: (nil)) at (unknown file)
+unknown function (ip: 0x70744ceac800) at /usr/lib/x86_64-linux-gnu/libc.so.6
+unknown function (ip: 0x70744cea030b) at /usr/lib/x86_64-linux-gnu/libc.so.6
+unknown function (ip: 0x70744cea06e6) at /usr/lib/x86_64-linux-gnu/libc.so.6
+pthread_cond_wait at /usr/lib/x86_64-linux-gnu/libc.so.6 (unknown line)
+uv_cond_wait at /workspace/srcdir/libuv/src/unix/thread.c:822
+jl_parallel_gc_threadfun at /cache/build/builder-amdci4-8/julialang/julia-ci/src/gc-stock.c:3729
+unknown function (ip: 0x70744cea3df9) at /usr/lib/x86_64-linux-gnu/libc.so.6
+unknown function (ip: 0x70744cf375cb) at /usr/lib/x86_64-linux-gnu/libc.so.6
+unknown function (ip: (nil)) at (unknown file)
+unknown function (ip: 0x70744ceac800) at /usr/lib/x86_64-linux-gnu/libc.so.6
+unknown function (ip: 0x70744cea030b) at /usr/lib/x86_64-linux-gnu/libc.so.6
+unknown function (ip: 0x70744cea06e6) at /usr/lib/x86_64-linux-gnu/libc.so.6
+pthread_cond_wait at /usr/lib/x86_64-linux-gnu/libc.so.6 (unknown line)
+uv_cond_wait at /workspace/srcdir/libuv/src/unix/thread.c:822
+jl_parallel_gc_threadfun at /cache/build/builder-amdci4-8/julialang/julia-ci/src/gc-stock.c:3729
+unknown function (ip: 0x70744cea3df9) at /usr/lib/x86_64-linux-gnu/libc.so.6
+unknown function (ip: 0x70744cf375cb) at /usr/lib/x86_64-linux-gnu/libc.so.6
+unknown function (ip: (nil)) at (unknown file)
+unknown function (ip: 0x70744ceac800) at /usr/lib/x86_64-linux-gnu/libc.so.6
+unknown function (ip: 0x70744cea030b) at /usr/lib/x86_64-linux-gnu/libc.so.6
+unknown function (ip: 0x70744cea06e6) at /usr/lib/x86_64-linux-gnu/libc.so.6
+pthread_cond_wait at /usr/lib/x86_64-linux-gnu/libc.so.6 (unknown line)
+uv_cond_wait at /workspace/srcdir/libuv/src/unix/thread.c:822
+jl_parallel_gc_threadfun at /cache/build/builder-amdci4-8/julialang/julia-ci/src/gc-stock.c:3729
+unknown function (ip: 0x70744cea3df9) at /usr/lib/x86_64-linux-gnu/libc.so.6
+unknown function (ip: 0x70744cf375cb) at /usr/lib/x86_64-linux-gnu/libc.so.6
+unknown function (ip: (nil)) at (unknown file)
+unknown function (ip: 0x70744ceac800) at /usr/lib/x86_64-linux-gnu/libc.so.6
+unknown function (ip: 0x70744cea030b) at /usr/lib/x86_64-linux-gnu/libc.so.6
+unknown function (ip: 0x70744cea06e6) at /usr/lib/x86_64-linux-gnu/libc.so.6
+pthread_cond_wait at /usr/lib/x86_64-linux-gnu/libc.so.6 (unknown line)
+uv_cond_wait at /workspace/srcdir/libuv/src/unix/thread.c:822
+jl_parallel_gc_threadfun at /cache/build/builder-amdci4-8/julialang/julia-ci/src/gc-stock.c:3729
+unknown function (ip: 0x70744cea3df9) at /usr/lib/x86_64-linux-gnu/libc.so.6
+unknown function (ip: 0x70744cf375cb) at /usr/lib/x86_64-linux-gnu/libc.so.6
+unknown function (ip: (nil)) at (unknown file)
+unknown function (ip: 0x70744ceac800) at /usr/lib/x86_64-linux-gnu/libc.so.6
+unknown function (ip: 0x70744cea030b) at /usr/lib/x86_64-linux-gnu/libc.so.6
+unknown function (ip: 0x70744cea06e6) at /usr/lib/x86_64-linux-gnu/libc.so.6
+pthread_cond_wait at /usr/lib/x86_64-linux-gnu/libc.so.6 (unknown line)
+uv_cond_wait at /workspace/srcdir/libuv/src/unix/thread.c:822
+jl_parallel_gc_threadfun at /cache/build/builder-amdci4-8/julialang/julia-ci/src/gc-stock.c:3729
+unknown function (ip: 0x70744cea3df9) at /usr/lib/x86_64-linux-gnu/libc.so.6
+unknown function (ip: 0x70744cf375cb) at /usr/lib/x86_64-linux-gnu/libc.so.6
+unknown function (ip: (nil)) at (unknown file)
+unknown function (ip: 0x70744ceac800) at /usr/lib/x86_64-linux-gnu/libc.so.6
+unknown function (ip: 0x70744cea030b) at /usr/lib/x86_64-linux-gnu/libc.so.6
+unknown function (ip: 0x70744cea06e6) at /usr/lib/x86_64-linux-gnu/libc.so.6
+pthread_cond_wait at /usr/lib/x86_64-linux-gnu/libc.so.6 (unknown line)
+uv_cond_wait at /workspace/srcdir/libuv/src/unix/thread.c:822
+jl_parallel_gc_threadfun at /cache/build/builder-amdci4-8/julialang/julia-ci/src/gc-stock.c:3729
+unknown function (ip: 0x70744cea3df9) at /usr/lib/x86_64-linux-gnu/libc.so.6
+unknown function (ip: 0x70744cf375cb) at /usr/lib/x86_64-linux-gnu/libc.so.6
+unknown function (ip: (nil)) at (unknown file)
+unknown function (ip: 0x70744ceac800) at /usr/lib/x86_64-linux-gnu/libc.so.6
+unknown function (ip: 0x70744cea030b) at /usr/lib/x86_64-linux-gnu/libc.so.6
+unknown function (ip: 0x70744cea06e6) at /usr/lib/x86_64-linux-gnu/libc.so.6
+pthread_cond_wait at /usr/lib/x86_64-linux-gnu/libc.so.6 (unknown line)
+uv_cond_wait at /workspace/srcdir/libuv/src/unix/thread.c:822
+jl_parallel_gc_threadfun at /cache/build/builder-amdci4-8/julialang/julia-ci/src/gc-stock.c:3729
+unknown function (ip: 0x70744cea3df9) at /usr/lib/x86_64-linux-gnu/libc.so.6
+unknown function (ip: 0x70744cf375cb) at /usr/lib/x86_64-linux-gnu/libc.so.6
+unknown function (ip: (nil)) at (unknown file)
+unknown function (ip: 0x70744ceac800) at /usr/lib/x86_64-linux-gnu/libc.so.6
+unknown function (ip: 0x70744cea030b) at /usr/lib/x86_64-linux-gnu/libc.so.6
+unknown function (ip: 0x70744cea06e6) at /usr/lib/x86_64-linux-gnu/libc.so.6
+pthread_cond_wait at /usr/lib/x86_64-linux-gnu/libc.so.6 (unknown line)
+uv_cond_wait at /workspace/srcdir/libuv/src/unix/thread.c:822
+jl_parallel_gc_threadfun at /cache/build/builder-amdci4-8/julialang/julia-ci/src/gc-stock.c:3729
+unknown function (ip: 0x70744cea3df9) at /usr/lib/x86_64-linux-gnu/libc.so.6
+unknown function (ip: 0x70744cf375cb) at /usr/lib/x86_64-linux-gnu/libc.so.6
+unknown function (ip: (nil)) at (unknown file)
+unknown function (ip: 0x70744ceac800) at /usr/lib/x86_64-linux-gnu/libc.so.6
+unknown function (ip: 0x70744cea030b) at /usr/lib/x86_64-linux-gnu/libc.so.6
+unknown function (ip: 0x70744cea06e6) at /usr/lib/x86_64-linux-gnu/libc.so.6
+pthread_cond_wait at /usr/lib/x86_64-linux-gnu/libc.so.6 (unknown line)
+uv_cond_wait at /workspace/srcdir/libuv/src/unix/thread.c:822
+ijl_task_get_next at /cache/build/builder-amdci4-8/julialang/julia-ci/src/scheduler.c:599
+wait at ./task.jl:1297
+wait_forever at ./task.jl:1196
+jfptr_wait_forever_70523.1 at /home/swkim/.julia/juliaup/julia-1.13.1+0.x64.linux.gnu/lib/julia/sys.so (unknown line)
+jl_apply at /cache/build/builder-amdci4-8/julialang/julia-ci/src/julia.h:2318 [inlined]
+start_task at /cache/build/builder-amdci4-8/julialang/julia-ci/src/task.c:1285
+unknown function (ip: (nil)) at (unknown file)
+unknown function (ip: 0x70744ceac800) at /usr/lib/x86_64-linux-gnu/libc.so.6
+unknown function (ip: 0x70744cea030b) at /usr/lib/x86_64-linux-gnu/libc.so.6
+unknown function (ip: 0x70744cea06e6) at /usr/lib/x86_64-linux-gnu/libc.so.6
+pthread_cond_wait at /usr/lib/x86_64-linux-gnu/libc.so.6 (unknown line)
+uv_cond_wait at /workspace/srcdir/libuv/src/unix/thread.c:822
+jl_safepoint_wait_gc at /cache/build/builder-amdci4-8/julialang/julia-ci/src/safepoint.c:268 [inlined]
+jl_set_gc_and_wait at /cache/build/builder-amdci4-8/julialang/julia-ci/src/safepoint.c:247
+segv_handler at /cache/build/builder-amdci4-8/julialang/julia-ci/src/signals-unix.c:528 [inlined]
+segv_handler at /cache/build/builder-amdci4-8/julialang/julia-ci/src/signals-unix.c:514
+unknown function (ip: 0x70744ce45caf) at /usr/lib/x86_64-linux-gnu/libc.so.6
+_gurobi_callback_wrapper at /home/swkim/.julia/packages/Gurobi/hs8RH/src/MOI_wrapper/MOI_callbacks.jl:29
+unknown function (ip: (nil)) at (unknown file)
+unknown function (ip: 0x70744ceac800) at /usr/lib/x86_64-linux-gnu/libc.so.6
+unknown function (ip: 0x70744cea030b) at /usr/lib/x86_64-linux-gnu/libc.so.6
+unknown function (ip: 0x70744cea06e6) at /usr/lib/x86_64-linux-gnu/libc.so.6
+pthread_cond_wait at /usr/lib/x86_64-linux-gnu/libc.so.6 (unknown line)
+uv_cond_wait at /workspace/srcdir/libuv/src/unix/thread.c:822
+jl_safepoint_wait_gc at /cache/build/builder-amdci4-8/julialang/julia-ci/src/safepoint.c:268 [inlined]
+jl_set_gc_and_wait at /cache/build/builder-amdci4-8/julialang/julia-ci/src/safepoint.c:247
+segv_handler at /cache/build/builder-amdci4-8/julialang/julia-ci/src/signals-unix.c:528 [inlined]
+segv_handler at /cache/build/builder-amdci4-8/julialang/julia-ci/src/signals-unix.c:514
+unknown function (ip: 0x70744ce45caf) at /usr/lib/x86_64-linux-gnu/libc.so.6
+_gurobi_callback_wrapper at /home/swkim/.julia/packages/Gurobi/hs8RH/src/MOI_wrapper/MOI_callbacks.jl:29
+unknown function (ip: (nil)) at (unknown file)
+unknown function (ip: 0x70744ceac800) at /usr/lib/x86_64-linux-gnu/libc.so.6
+unknown function (ip: 0x70744cea030b) at /usr/lib/x86_64-linux-gnu/libc.so.6
+unknown function (ip: 0x70744cea06e6) at /usr/lib/x86_64-linux-gnu/libc.so.6
+pthread_cond_wait at /usr/lib/x86_64-linux-gnu/libc.so.6 (unknown line)
+uv_cond_wait at /workspace/srcdir/libuv/src/unix/thread.c:822
+jl_safepoint_wait_gc at /cache/build/builder-amdci4-8/julialang/julia-ci/src/safepoint.c:268 [inlined]
+jl_set_gc_and_wait at /cache/build/builder-amdci4-8/julialang/julia-ci/src/safepoint.c:247
+segv_handler at /cache/build/builder-amdci4-8/julialang/julia-ci/src/signals-unix.c:528 [inlined]
+segv_handler at /cache/build/builder-amdci4-8/julialang/julia-ci/src/signals-unix.c:514
+unknown function (ip: 0x70744ce45caf) at /usr/lib/x86_64-linux-gnu/libc.so.6
+_gurobi_callback_wrapper at /home/swkim/.julia/packages/Gurobi/hs8RH/src/MOI_wrapper/MOI_callbacks.jl:29
+unknown function (ip: (nil)) at (unknown file)
+unknown function (ip: 0x70744ceac800) at /usr/lib/x86_64-linux-gnu/libc.so.6
+unknown function (ip: 0x70744cea030b) at /usr/lib/x86_64-linux-gnu/libc.so.6
+unknown function (ip: 0x70744cea06e6) at /usr/lib/x86_64-linux-gnu/libc.so.6
+pthread_cond_wait at /usr/lib/x86_64-linux-gnu/libc.so.6 (unknown line)
+uv_cond_wait at /workspace/srcdir/libuv/src/unix/thread.c:822
+jl_safepoint_wait_gc at /cache/build/builder-amdci4-8/julialang/julia-ci/src/safepoint.c:268 [inlined]
+jl_set_gc_and_wait at /cache/build/builder-amdci4-8/julialang/julia-ci/src/safepoint.c:247
+segv_handler at /cache/build/builder-amdci4-8/julialang/julia-ci/src/signals-unix.c:528 [inlined]
+segv_handler at /cache/build/builder-amdci4-8/julialang/julia-ci/src/signals-unix.c:514
+unknown function (ip: 0x70744ce45caf) at /usr/lib/x86_64-linux-gnu/libc.so.6
+_gurobi_callback_wrapper at /home/swkim/.julia/packages/Gurobi/hs8RH/src/MOI_wrapper/MOI_callbacks.jl:29
+unknown function (ip: (nil)) at (unknown file)
+unknown function (ip: 0x70744ceac800) at /usr/lib/x86_64-linux-gnu/libc.so.6
+unknown function (ip: 0x70744cea030b) at /usr/lib/x86_64-linux-gnu/libc.so.6
+unknown function (ip: 0x70744cea06e6) at /usr/lib/x86_64-linux-gnu/libc.so.6
+pthread_cond_wait at /usr/lib/x86_64-linux-gnu/libc.so.6 (unknown line)
+uv_cond_wait at /workspace/srcdir/libuv/src/unix/thread.c:822
+jl_safepoint_wait_gc at /cache/build/builder-amdci4-8/julialang/julia-ci/src/safepoint.c:268 [inlined]
+jl_set_gc_and_wait at /cache/build/builder-amdci4-8/julialang/julia-ci/src/safepoint.c:247
+segv_handler at /cache/build/builder-amdci4-8/julialang/julia-ci/src/signals-unix.c:528 [inlined]
+segv_handler at /cache/build/builder-amdci4-8/julialang/julia-ci/src/signals-unix.c:514
+unknown function (ip: 0x70744ce45caf) at /usr/lib/x86_64-linux-gnu/libc.so.6
+_gurobi_callback_wrapper at /home/swkim/.julia/packages/Gurobi/hs8RH/src/MOI_wrapper/MOI_callbacks.jl:29
+unknown function (ip: (nil)) at (unknown file)
+PRIVATE000000000021841f at /home/swkim/.julia/artifacts/1b5c4a597631092283e0c71596b2f708afc5054b/gurobi1303/linux64/lib/libgurobi130.so (unknown line)
+PRIVATE000000000009d112 at /home/swkim/.julia/artifacts/1b5c4a597631092283e0c71596b2f708afc5054b/gurobi1303/linux64/lib/libgurobi130.so (unknown line)
+PRIVATE000000000008b473 at /home/swkim/.julia/artifacts/1b5c4a597631092283e0c71596b2f708afc5054b/gurobi1303/linux64/lib/libgurobi130.so (unknown line)
+PRIVATE0000000000028c93 at /home/swkim/.julia/artifacts/1b5c4a597631092283e0c71596b2f708afc5054b/gurobi1303/linux64/lib/libgurobi130.so (unknown line)
+PRIVATE000000000006268b at /home/swkim/.julia/artifacts/1b5c4a597631092283e0c71596b2f708afc5054b/gurobi1303/linux64/lib/libgurobi130.so (unknown line)
+PRIVATE00000000000cda5b at /home/swkim/.julia/artifacts/1b5c4a597631092283e0c71596b2f708afc5054b/gurobi1303/linux64/lib/libgurobi130.so (unknown line)
+PRIVATE00000000000c3d0d at /home/swkim/.julia/artifacts/1b5c4a597631092283e0c71596b2f708afc5054b/gurobi1303/linux64/lib/libgurobi130.so (unknown line)
+PRIVATE0000000000c23877 at /home/swkim/.julia/artifacts/1b5c4a597631092283e0c71596b2f708afc5054b/gurobi1303/linux64/lib/libgurobi130.so (unknown line)
+PRIVATE00000000009828a1 at /home/swkim/.julia/artifacts/1b5c4a597631092283e0c71596b2f708afc5054b/gurobi1303/linux64/lib/libgurobi130.so (unknown line)
+GRBoptimize at /home/swkim/.julia/artifacts/1b5c4a597631092283e0c71596b2f708afc5054b/gurobi1303/linux64/lib/libgurobi130.so (unknown line)
+GRBoptimize at /home/swkim/.julia/packages/Gurobi/hs8RH/src/gen130/libgrb_api.jl:374 [inlined]
+#49 at /home/swkim/.julia/packages/Gurobi/hs8RH/src/MOI_wrapper/MOI_wrapper.jl:2820 [inlined]
+disable_sigint at ./c.jl:167 [inlined]
+optimize! at /home/swkim/.julia/packages/Gurobi/hs8RH/src/MOI_wrapper/MOI_wrapper.jl:2819
+optimize! at /home/swkim/.julia/packages/MathOptInterface/lY2WB/src/Bridges/bridge_optimizer.jl:367 [inlined]
+optimize! at /home/swkim/.julia/packages/MathOptInterface/lY2WB/src/Utilities/cachingoptimizer.jl:379
+unknown function (ip: 0x7073d65faeb2) at (unknown file)
+#optimize!#96 at /home/swkim/.julia/packages/JuMP/insRt/src/optimizer_interface.jl:633
+optimize! at /home/swkim/.julia/packages/JuMP/insRt/src/optimizer_interface.jl:569 [inlined]
+_nz_solve_lp! at /home/swkim/robust_bilevel_network_games/nonzero_sum/nz_alpha_bnb.jl:227
+#_nz_sep_solve!#346 at /home/swkim/robust_bilevel_network_games/nonzero_sum/nz_alpha_bnb.jl:265
+_nz_sep_solve! at /home/swkim/robust_bilevel_network_games/nonzero_sum/nz_alpha_bnb.jl:262 [inlined]
+worker at /home/swkim/robust_bilevel_network_games/nonzero_sum/nz_alpha_bnb.jl:470
+#400 at /home/swkim/robust_bilevel_network_games/nonzero_sum/nz_alpha_bnb.jl:603
+unknown function (ip: 0x7073d65dbb9e) at (unknown file)
+jl_apply at /cache/build/builder-amdci4-8/julialang/julia-ci/src/julia.h:2318 [inlined]
+start_task at /cache/build/builder-amdci4-8/julialang/julia-ci/src/task.c:1285
+unknown function (ip: (nil)) at (unknown file)
+unknown function (ip: 0x70744ceac800) at /usr/lib/x86_64-linux-gnu/libc.so.6
+unknown function (ip: 0x70744cea030b) at /usr/lib/x86_64-linux-gnu/libc.so.6
+unknown function (ip: 0x70744cea06e6) at /usr/lib/x86_64-linux-gnu/libc.so.6
+pthread_cond_wait at /usr/lib/x86_64-linux-gnu/libc.so.6 (unknown line)
+uv_cond_wait at /workspace/srcdir/libuv/src/unix/thread.c:822
+jl_safepoint_wait_gc at /cache/build/builder-amdci4-8/julialang/julia-ci/src/safepoint.c:268 [inlined]
+jl_set_gc_and_wait at /cache/build/builder-amdci4-8/julialang/julia-ci/src/safepoint.c:247
+segv_handler at /cache/build/builder-amdci4-8/julialang/julia-ci/src/signals-unix.c:528 [inlined]
+segv_handler at /cache/build/builder-amdci4-8/julialang/julia-ci/src/signals-unix.c:514
+unknown function (ip: 0x70744ce45caf) at /usr/lib/x86_64-linux-gnu/libc.so.6
+_gurobi_callback_wrapper at /home/swkim/.julia/packages/Gurobi/hs8RH/src/MOI_wrapper/MOI_callbacks.jl:29
+unknown function (ip: (nil)) at (unknown file)
+unknown function (ip: 0x70744ceac800) at /usr/lib/x86_64-linux-gnu/libc.so.6
+unknown function (ip: 0x70744cea030b) at /usr/lib/x86_64-linux-gnu/libc.so.6
+unknown function (ip: 0x70744cea06e6) at /usr/lib/x86_64-linux-gnu/libc.so.6
+pthread_cond_wait at /usr/lib/x86_64-linux-gnu/libc.so.6 (unknown line)
+uv_cond_wait at /workspace/srcdir/libuv/src/unix/thread.c:822
+jl_safepoint_wait_gc at /cache/build/builder-amdci4-8/julialang/julia-ci/src/safepoint.c:268 [inlined]
+jl_set_gc_and_wait at /cache/build/builder-amdci4-8/julialang/julia-ci/src/safepoint.c:247
+segv_handler at /cache/build/builder-amdci4-8/julialang/julia-ci/src/signals-unix.c:528 [inlined]
+segv_handler at /cache/build/builder-amdci4-8/julialang/julia-ci/src/signals-unix.c:514
+unknown function (ip: 0x70744ce45caf) at /usr/lib/x86_64-linux-gnu/libc.so.6
+_gurobi_callback_wrapper at /home/swkim/.julia/packages/Gurobi/hs8RH/src/MOI_wrapper/MOI_callbacks.jl:29
+unknown function (ip: (nil)) at (unknown file)
+unknown function (ip: 0x70744ceac800) at /usr/lib/x86_64-linux-gnu/libc.so.6
+unknown function (ip: 0x70744cea030b) at /usr/lib/x86_64-linux-gnu/libc.so.6
+unknown function (ip: 0x70744cea06e6) at /usr/lib/x86_64-linux-gnu/libc.so.6
+pthread_cond_wait at /usr/lib/x86_64-linux-gnu/libc.so.6 (unknown line)
+uv_cond_wait at /workspace/srcdir/libuv/src/unix/thread.c:822
+jl_gc_wait_for_the_world at /cache/build/builder-amdci4-8/julialang/julia-ci/src/safepoint.c:155
+ijl_gc_collect at /cache/build/builder-amdci4-8/julialang/julia-ci/src/gc-stock.c:3547
+maybe_collect at /cache/build/builder-amdci4-8/julialang/julia-ci/src/gc-stock.c:355 [inlined]
+jl_gc_small_alloc_inner at /cache/build/builder-amdci4-8/julialang/julia-ci/src/gc-stock.c:734 [inlined]
+ijl_gc_small_alloc at /cache/build/builder-amdci4-8/julialang/julia-ci/src/gc-stock.c:783
+jfptr_SUM._45654.1 at /home/swkim/.julia/juliaup/julia-1.13.1+0.x64.linux.gnu/lib/julia/sys.so (unknown line)
+#_nz_sep_violations#336 at /home/swkim/robust_bilevel_network_games/nonzero_sum/nz_alpha_bnb.jl:199
+_nz_sep_violations at /home/swkim/robust_bilevel_network_games/nonzero_sum/nz_alpha_bnb.jl:187 [inlined]
+#_nz_sep_solve!#346 at /home/swkim/robust_bilevel_network_games/nonzero_sum/nz_alpha_bnb.jl:267
+_nz_sep_solve! at /home/swkim/robust_bilevel_network_games/nonzero_sum/nz_alpha_bnb.jl:262 [inlined]
+worker at /home/swkim/robust_bilevel_network_games/nonzero_sum/nz_alpha_bnb.jl:470
+#400 at /home/swkim/robust_bilevel_network_games/nonzero_sum/nz_alpha_bnb.jl:603
+unknown function (ip: 0x7073d65dbb9e) at (unknown file)
+jl_apply at /cache/build/builder-amdci4-8/julialang/julia-ci/src/julia.h:2318 [inlined]
+start_task at /cache/build/builder-amdci4-8/julialang/julia-ci/src/task.c:1285
+unknown function (ip: (nil)) at (unknown file)
+unknown function (ip: 0x70744ceac800) at /usr/lib/x86_64-linux-gnu/libc.so.6
+unknown function (ip: 0x70744cea030b) at /usr/lib/x86_64-linux-gnu/libc.so.6
+unknown function (ip: 0x70744cea06e6) at /usr/lib/x86_64-linux-gnu/libc.so.6
+pthread_cond_wait at /usr/lib/x86_64-linux-gnu/libc.so.6 (unknown line)
+uv_cond_wait at /workspace/srcdir/libuv/src/unix/thread.c:822
+jl_safepoint_wait_gc at /cache/build/builder-amdci4-8/julialang/julia-ci/src/safepoint.c:268
+jl_safepoint_start_gc at /cache/build/builder-amdci4-8/julialang/julia-ci/src/safepoint.c:203
+ijl_gc_collect at /cache/build/builder-amdci4-8/julialang/julia-ci/src/gc-stock.c:3519
+maybe_collect at /cache/build/builder-amdci4-8/julialang/julia-ci/src/gc-stock.c:355 [inlined]
+jl_gc_small_alloc_inner at /cache/build/builder-amdci4-8/julialang/julia-ci/src/gc-stock.c:734 [inlined]
+ijl_gc_small_alloc at /cache/build/builder-amdci4-8/julialang/julia-ci/src/gc-stock.c:783
+unsafe_load at ./pointer.jl:151 [inlined]
+unsafe_load at ./pointer.jl:151 [inlined]
+_Eval_Grad_F_CB at /home/swkim/.julia/packages/Ipopt/JN6dO/src/C_wrapper.jl:53
+jlcapi__Eval_Grad_F_CB_7124 at /home/swkim/.julia/compiled/v1.13/IpoptMathOptInterfaceExt/wd7i8_HV6Lc.so (unknown line)
+_ZN5Ipopt11TNLPAdapter11Eval_grad_fERKNS_6VectorERS1_ at /home/swkim/.julia/artifacts/133d4ec5ffa9e5cce0ca257bb2dc00a7248cbffe/lib/libipopt.so (unknown line)
+_ZN5Ipopt12OrigIpoptNLP6grad_fERKNS_6VectorE at /home/swkim/.julia/artifacts/133d4ec5ffa9e5cce0ca257bb2dc00a7248cbffe/lib/libipopt.so (unknown line)
+_ZN5Ipopt25IpoptCalculatedQuantities11curr_grad_fEv at /home/swkim/.julia/artifacts/133d4ec5ffa9e5cce0ca257bb2dc00a7248cbffe/lib/libipopt.so (unknown line)
+_ZN5Ipopt25IpoptCalculatedQuantities15curr_grad_lag_xEv at /home/swkim/.julia/artifacts/133d4ec5ffa9e5cce0ca257bb2dc00a7248cbffe/lib/libipopt.so (unknown line)
+_ZN5Ipopt25IpoptCalculatedQuantities23curr_dual_infeasibilityENS_9ENormTypeE at /home/swkim/.julia/artifacts/133d4ec5ffa9e5cce0ca257bb2dc00a7248cbffe/lib/libipopt.so (unknown line)
+_ZN5Ipopt31OptimalityErrorConvergenceCheck16CheckConvergenceEb at /home/swkim/.julia/artifacts/133d4ec5ffa9e5cce0ca257bb2dc00a7248cbffe/lib/libipopt.so (unknown line)
+_ZN5Ipopt14IpoptAlgorithm8OptimizeEb at /home/swkim/.julia/artifacts/133d4ec5ffa9e5cce0ca257bb2dc00a7248cbffe/lib/libipopt.so (unknown line)
+_ZN5Ipopt16IpoptApplication13call_optimizeEv at /home/swkim/.julia/artifacts/133d4ec5ffa9e5cce0ca257bb2dc00a7248cbffe/lib/libipopt.so (unknown line)
+_ZN5Ipopt16IpoptApplication11OptimizeNLPERKNS_8SmartPtrINS_3NLPEEERNS1_INS_16AlgorithmBuilderEEE at /home/swkim/.julia/artifacts/133d4ec5ffa9e5cce0ca257bb2dc00a7248cbffe/lib/libipopt.so (unknown line)
+_ZN5Ipopt16IpoptApplication11OptimizeNLPERKNS_8SmartPtrINS_3NLPEEE at /home/swkim/.julia/artifacts/133d4ec5ffa9e5cce0ca257bb2dc00a7248cbffe/lib/libipopt.so (unknown line)
+_ZN5Ipopt16IpoptApplication12OptimizeTNLPERKNS_8SmartPtrINS_4TNLPEEE at /home/swkim/.julia/artifacts/133d4ec5ffa9e5cce0ca257bb2dc00a7248cbffe/lib/libipopt.so (unknown line)
+IpoptSolve at /home/swkim/.julia/artifacts/133d4ec5ffa9e5cce0ca257bb2dc00a7248cbffe/lib/libipopt.so (unknown line)
+#IpoptSolve##0 at /home/swkim/.julia/packages/Ipopt/JN6dO/src/C_wrapper.jl:408 [inlined]
+disable_sigint at ./c.jl:167
+IpoptSolve at /home/swkim/.julia/packages/Ipopt/JN6dO/src/C_wrapper.jl:407 [inlined]
+optimize! at /home/swkim/.julia/packages/Ipopt/JN6dO/ext/IpoptMathOptInterfaceExt/MOI_wrapper.jl:1491
+optimize! at /home/swkim/.julia/packages/MathOptInterface/lY2WB/src/Bridges/bridge_optimizer.jl:367 [inlined]
+optimize! at /home/swkim/.julia/packages/MathOptInterface/lY2WB/src/Utilities/cachingoptimizer.jl:379
+optimize! at /home/swkim/.julia/packages/MathOptInterface/lY2WB/src/Utilities/cachingoptimizer.jl:366
+unknown function (ip: 0x7073ac024222) at (unknown file)
+#optimize!#96 at /home/swkim/.julia/packages/JuMP/insRt/src/optimizer_interface.jl:633
+optimize! at /home/swkim/.julia/packages/JuMP/insRt/src/optimizer_interface.jl:569 [inlined]
+#nz_ipopt_local_alpha#348 at /home/swkim/robust_bilevel_network_games/nonzero_sum/nz_alpha_bnb.jl:341
+nz_ipopt_local_alpha at /home/swkim/robust_bilevel_network_games/nonzero_sum/nz_alpha_bnb.jl:319
+unknown function (ip: 0x7073d65eea70) at (unknown file)
+heuristic_task at /home/swkim/robust_bilevel_network_games/nonzero_sum/nz_alpha_bnb.jl:579
+#402 at /home/swkim/robust_bilevel_network_games/nonzero_sum/nz_alpha_bnb.jl:604
+unknown function (ip: 0x7073d65e9a01) at (unknown file)
+jl_apply at /cache/build/builder-amdci4-8/julialang/julia-ci/src/julia.h:2318 [inlined]
+start_task at /cache/build/builder-amdci4-8/julialang/julia-ci/src/task.c:1285
+unknown function (ip: (nil)) at (unknown file)
+unknown function (ip: 0x70744ceac800) at /usr/lib/x86_64-linux-gnu/libc.so.6
+unknown function (ip: 0x70744cea030b) at /usr/lib/x86_64-linux-gnu/libc.so.6
+unknown function (ip: 0x70744cea06e6) at /usr/lib/x86_64-linux-gnu/libc.so.6
+pthread_cond_wait at /usr/lib/x86_64-linux-gnu/libc.so.6 (unknown line)
+uv_cond_wait at /workspace/srcdir/libuv/src/unix/thread.c:822
+jl_safepoint_wait_gc at /cache/build/builder-amdci4-8/julialang/julia-ci/src/safepoint.c:268 [inlined]
+jl_set_gc_and_wait at /cache/build/builder-amdci4-8/julialang/julia-ci/src/safepoint.c:247
+segv_handler at /cache/build/builder-amdci4-8/julialang/julia-ci/src/signals-unix.c:528 [inlined]
+segv_handler at /cache/build/builder-amdci4-8/julialang/julia-ci/src/signals-unix.c:514
+unknown function (ip: 0x70744ce45caf) at /usr/lib/x86_64-linux-gnu/libc.so.6
+_gurobi_callback_wrapper at /home/swkim/.julia/packages/Gurobi/hs8RH/src/MOI_wrapper/MOI_callbacks.jl:29
+unknown function (ip: (nil)) at (unknown file)
+unknown function (ip: 0x70744ceac800) at /usr/lib/x86_64-linux-gnu/libc.so.6
+unknown function (ip: 0x70744cea030b) at /usr/lib/x86_64-linux-gnu/libc.so.6
+unknown function (ip: 0x70744cea06e6) at /usr/lib/x86_64-linux-gnu/libc.so.6
+pthread_cond_wait at /usr/lib/x86_64-linux-gnu/libc.so.6 (unknown line)
+uv_cond_wait at /workspace/srcdir/libuv/src/unix/thread.c:822
+jl_safepoint_wait_gc at /cache/build/builder-amdci4-8/julialang/julia-ci/src/safepoint.c:268 [inlined]
+jl_set_gc_and_wait at /cache/build/builder-amdci4-8/julialang/julia-ci/src/safepoint.c:247
+segv_handler at /cache/build/builder-amdci4-8/julialang/julia-ci/src/signals-unix.c:528 [inlined]
+segv_handler at /cache/build/builder-amdci4-8/julialang/julia-ci/src/signals-unix.c:514
+unknown function (ip: 0x70744ce45caf) at /usr/lib/x86_64-linux-gnu/libc.so.6
+_gurobi_callback_wrapper at /home/swkim/.julia/packages/Gurobi/hs8RH/src/MOI_wrapper/MOI_callbacks.jl:29
+unknown function (ip: (nil)) at (unknown file)
+unknown function (ip: 0x70744ceac800) at /usr/lib/x86_64-linux-gnu/libc.so.6
+unknown function (ip: 0x70744cea030b) at /usr/lib/x86_64-linux-gnu/libc.so.6
+unknown function (ip: 0x70744cea06e6) at /usr/lib/x86_64-linux-gnu/libc.so.6
+pthread_cond_wait at /usr/lib/x86_64-linux-gnu/libc.so.6 (unknown line)
+uv_cond_wait at /workspace/srcdir/libuv/src/unix/thread.c:822
+jl_safepoint_wait_gc at /cache/build/builder-amdci4-8/julialang/julia-ci/src/safepoint.c:268 [inlined]
+jl_set_gc_and_wait at /cache/build/builder-amdci4-8/julialang/julia-ci/src/safepoint.c:247
+segv_handler at /cache/build/builder-amdci4-8/julialang/julia-ci/src/signals-unix.c:528 [inlined]
+segv_handler at /cache/build/builder-amdci4-8/julialang/julia-ci/src/signals-unix.c:514
+unknown function (ip: 0x70744ce45caf) at /usr/lib/x86_64-linux-gnu/libc.so.6
+_gurobi_callback_wrapper at /home/swkim/.julia/packages/Gurobi/hs8RH/src/MOI_wrapper/MOI_callbacks.jl:29
+unknown function (ip: (nil)) at (unknown file)
+unknown function (ip: 0x70744ceac800) at /usr/lib/x86_64-linux-gnu/libc.so.6
+unknown function (ip: 0x70744cea030b) at /usr/lib/x86_64-linux-gnu/libc.so.6
+unknown function (ip: 0x70744cea06e6) at /usr/lib/x86_64-linux-gnu/libc.so.6
+pthread_cond_wait at /usr/lib/x86_64-linux-gnu/libc.so.6 (unknown line)
+uv_cond_wait at /workspace/srcdir/libuv/src/unix/thread.c:822
+jl_safepoint_wait_gc at /cache/build/builder-amdci4-8/julialang/julia-ci/src/safepoint.c:268 [inlined]
+jl_set_gc_and_wait at /cache/build/builder-amdci4-8/julialang/julia-ci/src/safepoint.c:247
+segv_handler at /cache/build/builder-amdci4-8/julialang/julia-ci/src/signals-unix.c:528 [inlined]
+segv_handler at /cache/build/builder-amdci4-8/julialang/julia-ci/src/signals-unix.c:514
+unknown function (ip: 0x70744ce45caf) at /usr/lib/x86_64-linux-gnu/libc.so.6
+ijl_gc_safepoint at /cache/build/builder-amdci4-8/julialang/julia-ci/src/jlapi.c:800
+ijl_task_get_next at /cache/build/builder-amdci4-8/julialang/julia-ci/src/scheduler.c:535
+wait at ./task.jl:1297
+#wait#392 at ./condition.jl:141
+wait at ./condition.jl:136 [inlined]
+_trywait at ./asyncevent.jl:186
+wait at ./asyncevent.jl:203 [inlined]
+sleep at ./asyncevent.jl:321 [inlined]
+#nz_alpha_bnb#353 at /home/swkim/robust_bilevel_network_games/nonzero_sum/nz_alpha_bnb.jl:607
+nz_alpha_bnb at /home/swkim/robust_bilevel_network_games/nonzero_sum/nz_alpha_bnb.jl:372
+unknown function (ip: 0x7073ac037dc4) at (unknown file)
+macro expansion at ./timing.jl:463 [inlined]
+top-level scope at /home/swkim/robust_bilevel_network_games/nonzero_sum/tune_abb.jl:47
+jl_toplevel_eval_flex at /cache/build/builder-amdci4-8/julialang/julia-ci/src/toplevel.c:731
+jl_eval_toplevel_stmts at /cache/build/builder-amdci4-8/julialang/julia-ci/src/toplevel.c:585
+jl_toplevel_eval_flex at /cache/build/builder-amdci4-8/julialang/julia-ci/src/toplevel.c:683
+ijl_toplevel_eval at /cache/build/builder-amdci4-8/julialang/julia-ci/src/toplevel.c:754
+ijl_toplevel_eval_in at /cache/build/builder-amdci4-8/julialang/julia-ci/src/toplevel.c:799
+eval at ./boot.jl:489
+include_string at ./loading.jl:3033
+_include at ./loading.jl:3093
+include at ./Base.jl:309
+exec_options at ./client.jl:344
+_start at ./client.jl:577
+jfptr__start_58396.1 at /home/swkim/.julia/juliaup/julia-1.13.1+0.x64.linux.gnu/lib/julia/sys.so (unknown line)
+jl_apply at /cache/build/builder-amdci4-8/julialang/julia-ci/src/julia.h:2318 [inlined]
+true_main at /cache/build/builder-amdci4-8/julialang/julia-ci/src/jlapi.c:985
+jl_repl_entrypoint at /cache/build/builder-amdci4-8/julialang/julia-ci/src/jlapi.c:1152
+main at /cache/build/builder-amdci4-8/julialang/julia-ci/cli/loader_exe.c:58
+unknown function (ip: 0x70744ce2a600) at /usr/lib/x86_64-linux-gnu/libc.so.6
+__libc_start_main at /usr/lib/x86_64-linux-gnu/libc.so.6 (unknown line)
+unknown function (ip: 0x4010b8) at /workspace/srcdir/glibc-2.17/csu/../sysdeps/x86_64/start.S
+unknown function (ip: (nil)) at (unknown file)
+Allocations: 14108956266 (Pool: 14108955793; Big: 473); GC: 2682
+error in running finalizer: ErrorException("Gurobi Error 10017: ")
+_check_ret at /home/swkim/.julia/packages/Gurobi/hs8RH/src/MOI_wrapper/MOI_wrapper.jl:417 [inlined]
+#13 at /home/swkim/.julia/packages/Gurobi/hs8RH/src/MOI_wrapper/MOI_wrapper.jl:393
+jfptr_YY.13_3659 at /home/swkim/.julia/compiled/v1.13/Gurobi/do9v6_EqQOZ.so (unknown line)
+run_finalizer at /cache/build/builder-amdci4-8/julialang/julia-ci/src/gc-common.c:180
+jl_gc_run_finalizers_in_list at /cache/build/builder-amdci4-8/julialang/julia-ci/src/gc-common.c:270
+run_finalizers at /cache/build/builder-amdci4-8/julialang/julia-ci/src/gc-common.c:316
+ijl_atexit_hook at /cache/build/builder-amdci4-8/julialang/julia-ci/src/init.c:295
+jl_exit_thread0_cb at /cache/build/builder-amdci4-8/julialang/julia-ci/src/signals-unix.c:678
+jl_fake_signal_return at /home/swkim/.julia/juliaup/julia-1.13.1+0.x64.linux.gnu/bin/../lib/julia/libjulia-internal.so.1.13 (unknown line)
+uv__io_poll at /workspace/srcdir/libuv/src/unix/linux.c:1345
+uv_run at /workspace/srcdir/libuv/src/unix/core.c:430
+ijl_task_get_next at /cache/build/builder-amdci4-8/julialang/julia-ci/src/scheduler.c:533
+wait at ./task.jl:1297
+#wait#392 at ./condition.jl:141
+wait at ./condition.jl:136 [inlined]
+_trywait at ./asyncevent.jl:186
+wait at ./asyncevent.jl:203 [inlined]
+sleep at ./asyncevent.jl:321 [inlined]
+#nz_alpha_bnb#353 at /home/swkim/robust_bilevel_network_games/nonzero_sum/nz_alpha_bnb.jl:607
+nz_alpha_bnb at /home/swkim/robust_bilevel_network_games/nonzero_sum/nz_alpha_bnb.jl:372
+unknown function (ip: 0x7073ac037dc4) at (unknown file)
+macro expansion at ./timing.jl:463 [inlined]
+top-level scope at /home/swkim/robust_bilevel_network_games/nonzero_sum/tune_abb.jl:47
+jl_toplevel_eval_flex at /cache/build/builder-amdci4-8/julialang/julia-ci/src/toplevel.c:731
+jl_eval_toplevel_stmts at /cache/build/builder-amdci4-8/julialang/julia-ci/src/toplevel.c:585
+jl_toplevel_eval_flex at /cache/build/builder-amdci4-8/julialang/julia-ci/src/toplevel.c:683
+ijl_toplevel_eval at /cache/build/builder-amdci4-8/julialang/julia-ci/src/toplevel.c:754
+ijl_toplevel_eval_in at /cache/build/builder-amdci4-8/julialang/julia-ci/src/toplevel.c:799
+eval at ./boot.jl:489
+include_string at ./loading.jl:3033
+_include at ./loading.jl:3093
+include at ./Base.jl:309
+exec_options at ./client.jl:344
+_start at ./client.jl:577
+jfptr__start_58396.1 at /home/swkim/.julia/juliaup/julia-1.13.1+0.x64.linux.gnu/lib/julia/sys.so (unknown line)
+jl_apply at /cache/build/builder-amdci4-8/julialang/julia-ci/src/julia.h:2318 [inlined]
+true_main at /cache/build/builder-amdci4-8/julialang/julia-ci/src/jlapi.c:985
+jl_repl_entrypoint at /cache/build/builder-amdci4-8/julialang/julia-ci/src/jlapi.c:1152
+main at /cache/build/builder-amdci4-8/julialang/julia-ci/cli/loader_exe.c:58
+unknown function (ip: 0x70744ce2a600) at /usr/lib/x86_64-linux-gnu/libc.so.6
+__libc_start_main at /usr/lib/x86_64-linux-gnu/libc.so.6 (unknown line)
+unknown function (ip: 0x4010b8) at /workspace/srcdir/glibc-2.17/csu/../sysdeps/x86_64/start.S
+error in running finalizer: ErrorException("Gurobi Error 10017: ")
+_check_ret at /home/swkim/.julia/packages/Gurobi/hs8RH/src/MOI_wrapper/MOI_wrapper.jl:417 [inlined]
+#13 at /home/swkim/.julia/packages/Gurobi/hs8RH/src/MOI_wrapper/MOI_wrapper.jl:393
+jfptr_YY.13_3659 at /home/swkim/.julia/compiled/v1.13/Gurobi/do9v6_EqQOZ.so (unknown line)
+run_finalizer at /cache/build/builder-amdci4-8/julialang/julia-ci/src/gc-common.c:180
+jl_gc_run_finalizers_in_list at /cache/build/builder-amdci4-8/julialang/julia-ci/src/gc-common.c:270
+run_finalizers at /cache/build/builder-amdci4-8/julialang/julia-ci/src/gc-common.c:316
+ijl_atexit_hook at /cache/build/builder-amdci4-8/julialang/julia-ci/src/init.c:295
+jl_exit_thread0_cb at /cache/build/builder-amdci4-8/julialang/julia-ci/src/signals-unix.c:678
+jl_fake_signal_return at /home/swkim/.julia/juliaup/julia-1.13.1+0.x64.linux.gnu/bin/../lib/julia/libjulia-internal.so.1.13 (unknown line)
+uv__io_poll at /workspace/srcdir/libuv/src/unix/linux.c:1345
+uv_run at /workspace/srcdir/libuv/src/unix/core.c:430
+ijl_task_get_next at /cache/build/builder-amdci4-8/julialang/julia-ci/src/scheduler.c:533
+wait at ./task.jl:1297
+#wait#392 at ./condition.jl:141
+wait at ./condition.jl:136 [inlined]
+_trywait at ./asyncevent.jl:186
+wait at ./asyncevent.jl:203 [inlined]
+sleep at ./asyncevent.jl:321 [inlined]
+#nz_alpha_bnb#353 at /home/swkim/robust_bilevel_network_games/nonzero_sum/nz_alpha_bnb.jl:607
+nz_alpha_bnb at /home/swkim/robust_bilevel_network_games/nonzero_sum/nz_alpha_bnb.jl:372
+unknown function (ip: 0x7073ac037dc4) at (unknown file)
+macro expansion at ./timing.jl:463 [inlined]
+top-level scope at /home/swkim/robust_bilevel_network_games/nonzero_sum/tune_abb.jl:47
+jl_toplevel_eval_flex at /cache/build/builder-amdci4-8/julialang/julia-ci/src/toplevel.c:731
+jl_eval_toplevel_stmts at /cache/build/builder-amdci4-8/julialang/julia-ci/src/toplevel.c:585
+jl_toplevel_eval_flex at /cache/build/builder-amdci4-8/julialang/julia-ci/src/toplevel.c:683
+ijl_toplevel_eval at /cache/build/builder-amdci4-8/julialang/julia-ci/src/toplevel.c:754
+ijl_toplevel_eval_in at /cache/build/builder-amdci4-8/julialang/julia-ci/src/toplevel.c:799
+eval at ./boot.jl:489
+include_string at ./loading.jl:3033
+_include at ./loading.jl:3093
+include at ./Base.jl:309
+exec_options at ./client.jl:344
+_start at ./client.jl:577
+jfptr__start_58396.1 at /home/swkim/.julia/juliaup/julia-1.13.1+0.x64.linux.gnu/lib/julia/sys.so (unknown line)
+jl_apply at /cache/build/builder-amdci4-8/julialang/julia-ci/src/julia.h:2318 [inlined]
+true_main at /cache/build/builder-amdci4-8/julialang/julia-ci/src/jlapi.c:985
+jl_repl_entrypoint at /cache/build/builder-amdci4-8/julialang/julia-ci/src/jlapi.c:1152
+main at /cache/build/builder-amdci4-8/julialang/julia-ci/cli/loader_exe.c:58
+unknown function (ip: 0x70744ce2a600) at /usr/lib/x86_64-linux-gnu/libc.so.6
+__libc_start_main at /usr/lib/x86_64-linux-gnu/libc.so.6 (unknown line)
+unknown function (ip: 0x4010b8) at /workspace/srcdir/glibc-2.17/csu/../sysdeps/x86_64/start.S
+error in running finalizer: ErrorException("Gurobi Error 10017: ")
+_check_ret at /home/swkim/.julia/packages/Gurobi/hs8RH/src/MOI_wrapper/MOI_wrapper.jl:417 [inlined]
+#13 at /home/swkim/.julia/packages/Gurobi/hs8RH/src/MOI_wrapper/MOI_wrapper.jl:393
+jfptr_YY.13_3659 at /home/swkim/.julia/compiled/v1.13/Gurobi/do9v6_EqQOZ.so (unknown line)
+run_finalizer at /cache/build/builder-amdci4-8/julialang/julia-ci/src/gc-common.c:180
+jl_gc_run_finalizers_in_list at /cache/build/builder-amdci4-8/julialang/julia-ci/src/gc-common.c:270
+run_finalizers at /cache/build/builder-amdci4-8/julialang/julia-ci/src/gc-common.c:316
+ijl_atexit_hook at /cache/build/builder-amdci4-8/julialang/julia-ci/src/init.c:295
+jl_exit_thread0_cb at /cache/build/builder-amdci4-8/julialang/julia-ci/src/signals-unix.c:678
+jl_fake_signal_return at /home/swkim/.julia/juliaup/julia-1.13.1+0.x64.linux.gnu/bin/../lib/julia/libjulia-internal.so.1.13 (unknown line)
+uv__io_poll at /workspace/srcdir/libuv/src/unix/linux.c:1345
+uv_run at /workspace/srcdir/libuv/src/unix/core.c:430
+ijl_task_get_next at /cache/build/builder-amdci4-8/julialang/julia-ci/src/scheduler.c:533
+wait at ./task.jl:1297
+#wait#392 at ./condition.jl:141
+wait at ./condition.jl:136 [inlined]
+_trywait at ./asyncevent.jl:186
+wait at ./asyncevent.jl:203 [inlined]
+sleep at ./asyncevent.jl:321 [inlined]
+#nz_alpha_bnb#353 at /home/swkim/robust_bilevel_network_games/nonzero_sum/nz_alpha_bnb.jl:607
+nz_alpha_bnb at /home/swkim/robust_bilevel_network_games/nonzero_sum/nz_alpha_bnb.jl:372
+unknown function (ip: 0x7073ac037dc4) at (unknown file)
+macro expansion at ./timing.jl:463 [inlined]
+top-level scope at /home/swkim/robust_bilevel_network_games/nonzero_sum/tune_abb.jl:47
+jl_toplevel_eval_flex at /cache/build/builder-amdci4-8/julialang/julia-ci/src/toplevel.c:731
+jl_eval_toplevel_stmts at /cache/build/builder-amdci4-8/julialang/julia-ci/src/toplevel.c:585
+jl_toplevel_eval_flex at /cache/build/builder-amdci4-8/julialang/julia-ci/src/toplevel.c:683
+ijl_toplevel_eval at /cache/build/builder-amdci4-8/julialang/julia-ci/src/toplevel.c:754
+ijl_toplevel_eval_in at /cache/build/builder-amdci4-8/julialang/julia-ci/src/toplevel.c:799
+eval at ./boot.jl:489
+include_string at ./loading.jl:3033
+_include at ./loading.jl:3093
+include at ./Base.jl:309
+exec_options at ./client.jl:344
+_start at ./client.jl:577
+jfptr__start_58396.1 at /home/swkim/.julia/juliaup/julia-1.13.1+0.x64.linux.gnu/lib/julia/sys.so (unknown line)
+jl_apply at /cache/build/builder-amdci4-8/julialang/julia-ci/src/julia.h:2318 [inlined]
+true_main at /cache/build/builder-amdci4-8/julialang/julia-ci/src/jlapi.c:985
+jl_repl_entrypoint at /cache/build/builder-amdci4-8/julialang/julia-ci/src/jlapi.c:1152
+main at /cache/build/builder-amdci4-8/julialang/julia-ci/cli/loader_exe.c:58
+unknown function (ip: 0x70744ce2a600) at /usr/lib/x86_64-linux-gnu/libc.so.6
+__libc_start_main at /usr/lib/x86_64-linux-gnu/libc.so.6 (unknown line)
+unknown function (ip: 0x4010b8) at /workspace/srcdir/glibc-2.17/csu/../sysdeps/x86_64/start.S
+error in running finalizer: ErrorException("Gurobi Error 10017: ")
+_check_ret at /home/swkim/.julia/packages/Gurobi/hs8RH/src/MOI_wrapper/MOI_wrapper.jl:417 [inlined]
+#13 at /home/swkim/.julia/packages/Gurobi/hs8RH/src/MOI_wrapper/MOI_wrapper.jl:393
+jfptr_YY.13_3659 at /home/swkim/.julia/compiled/v1.13/Gurobi/do9v6_EqQOZ.so (unknown line)
+run_finalizer at /cache/build/builder-amdci4-8/julialang/julia-ci/src/gc-common.c:180
+jl_gc_run_finalizers_in_list at /cache/build/builder-amdci4-8/julialang/julia-ci/src/gc-common.c:270
+run_finalizers at /cache/build/builder-amdci4-8/julialang/julia-ci/src/gc-common.c:316
+ijl_atexit_hook at /cache/build/builder-amdci4-8/julialang/julia-ci/src/init.c:295
+jl_exit_thread0_cb at /cache/build/builder-amdci4-8/julialang/julia-ci/src/signals-unix.c:678
+jl_fake_signal_return at /home/swkim/.julia/juliaup/julia-1.13.1+0.x64.linux.gnu/bin/../lib/julia/libjulia-internal.so.1.13 (unknown line)
+uv__io_poll at /workspace/srcdir/libuv/src/unix/linux.c:1345
+uv_run at /workspace/srcdir/libuv/src/unix/core.c:430
+ijl_task_get_next at /cache/build/builder-amdci4-8/julialang/julia-ci/src/scheduler.c:533
+wait at ./task.jl:1297
+#wait#392 at ./condition.jl:141
+wait at ./condition.jl:136 [inlined]
+_trywait at ./asyncevent.jl:186
+wait at ./asyncevent.jl:203 [inlined]
+sleep at ./asyncevent.jl:321 [inlined]
+#nz_alpha_bnb#353 at /home/swkim/robust_bilevel_network_games/nonzero_sum/nz_alpha_bnb.jl:607
+nz_alpha_bnb at /home/swkim/robust_bilevel_network_games/nonzero_sum/nz_alpha_bnb.jl:372
+unknown function (ip: 0x7073ac037dc4) at (unknown file)
+macro expansion at ./timing.jl:463 [inlined]
+top-level scope at /home/swkim/robust_bilevel_network_games/nonzero_sum/tune_abb.jl:47
+jl_toplevel_eval_flex at /cache/build/builder-amdci4-8/julialang/julia-ci/src/toplevel.c:731
+jl_eval_toplevel_stmts at /cache/build/builder-amdci4-8/julialang/julia-ci/src/toplevel.c:585
+jl_toplevel_eval_flex at /cache/build/builder-amdci4-8/julialang/julia-ci/src/toplevel.c:683
+ijl_toplevel_eval at /cache/build/builder-amdci4-8/julialang/julia-ci/src/toplevel.c:754
+ijl_toplevel_eval_in at /cache/build/builder-amdci4-8/julialang/julia-ci/src/toplevel.c:799
+eval at ./boot.jl:489
+include_string at ./loading.jl:3033
+_include at ./loading.jl:3093
+include at ./Base.jl:309
+exec_options at ./client.jl:344
+_start at ./client.jl:577
+jfptr__start_58396.1 at /home/swkim/.julia/juliaup/julia-1.13.1+0.x64.linux.gnu/lib/julia/sys.so (unknown line)
+jl_apply at /cache/build/builder-amdci4-8/julialang/julia-ci/src/julia.h:2318 [inlined]
+true_main at /cache/build/builder-amdci4-8/julialang/julia-ci/src/jlapi.c:985
+jl_repl_entrypoint at /cache/build/builder-amdci4-8/julialang/julia-ci/src/jlapi.c:1152
+main at /cache/build/builder-amdci4-8/julialang/julia-ci/cli/loader_exe.c:58
+unknown function (ip: 0x70744ce2a600) at /usr/lib/x86_64-linux-gnu/libc.so.6
+__libc_start_main at /usr/lib/x86_64-linux-gnu/libc.so.6 (unknown line)
+unknown function (ip: 0x4010b8) at /workspace/srcdir/glibc-2.17/csu/../sysdeps/x86_64/start.S
+error in running finalizer: ErrorException("Gurobi Error 10017: ")
+_check_ret at /home/swkim/.julia/packages/Gurobi/hs8RH/src/MOI_wrapper/MOI_wrapper.jl:417 [inlined]
+#13 at /home/swkim/.julia/packages/Gurobi/hs8RH/src/MOI_wrapper/MOI_wrapper.jl:393
+jfptr_YY.13_3659 at /home/swkim/.julia/compiled/v1.13/Gurobi/do9v6_EqQOZ.so (unknown line)
+run_finalizer at /cache/build/builder-amdci4-8/julialang/julia-ci/src/gc-common.c:180
+jl_gc_run_finalizers_in_list at /cache/build/builder-amdci4-8/julialang/julia-ci/src/gc-common.c:270
+run_finalizers at /cache/build/builder-amdci4-8/julialang/julia-ci/src/gc-common.c:316
+ijl_atexit_hook at /cache/build/builder-amdci4-8/julialang/julia-ci/src/init.c:295
+jl_exit_thread0_cb at /cache/build/builder-amdci4-8/julialang/julia-ci/src/signals-unix.c:678
+jl_fake_signal_return at /home/swkim/.julia/juliaup/julia-1.13.1+0.x64.linux.gnu/bin/../lib/julia/libjulia-internal.so.1.13 (unknown line)
+uv__io_poll at /workspace/srcdir/libuv/src/unix/linux.c:1345
+uv_run at /workspace/srcdir/libuv/src/unix/core.c:430
+ijl_task_get_next at /cache/build/builder-amdci4-8/julialang/julia-ci/src/scheduler.c:533
+wait at ./task.jl:1297
+#wait#392 at ./condition.jl:141
+wait at ./condition.jl:136 [inlined]
+_trywait at ./asyncevent.jl:186
+wait at ./asyncevent.jl:203 [inlined]
+sleep at ./asyncevent.jl:321 [inlined]
+#nz_alpha_bnb#353 at /home/swkim/robust_bilevel_network_games/nonzero_sum/nz_alpha_bnb.jl:607
+nz_alpha_bnb at /home/swkim/robust_bilevel_network_games/nonzero_sum/nz_alpha_bnb.jl:372
+unknown function (ip: 0x7073ac037dc4) at (unknown file)
+macro expansion at ./timing.jl:463 [inlined]
+top-level scope at /home/swkim/robust_bilevel_network_games/nonzero_sum/tune_abb.jl:47
+jl_toplevel_eval_flex at /cache/build/builder-amdci4-8/julialang/julia-ci/src/toplevel.c:731
+jl_eval_toplevel_stmts at /cache/build/builder-amdci4-8/julialang/julia-ci/src/toplevel.c:585
+jl_toplevel_eval_flex at /cache/build/builder-amdci4-8/julialang/julia-ci/src/toplevel.c:683
+ijl_toplevel_eval at /cache/build/builder-amdci4-8/julialang/julia-ci/src/toplevel.c:754
+ijl_toplevel_eval_in at /cache/build/builder-amdci4-8/julialang/julia-ci/src/toplevel.c:799
+eval at ./boot.jl:489
+include_string at ./loading.jl:3033
+_include at ./loading.jl:3093
+include at ./Base.jl:309
+exec_options at ./client.jl:344
+_start at ./client.jl:577
+jfptr__start_58396.1 at /home/swkim/.julia/juliaup/julia-1.13.1+0.x64.linux.gnu/lib/julia/sys.so (unknown line)
+jl_apply at /cache/build/builder-amdci4-8/julialang/julia-ci/src/julia.h:2318 [inlined]
+true_main at /cache/build/builder-amdci4-8/julialang/julia-ci/src/jlapi.c:985
+jl_repl_entrypoint at /cache/build/builder-amdci4-8/julialang/julia-ci/src/jlapi.c:1152
+main at /cache/build/builder-amdci4-8/julialang/julia-ci/cli/loader_exe.c:58
+unknown function (ip: 0x70744ce2a600) at /usr/lib/x86_64-linux-gnu/libc.so.6
+__libc_start_main at /usr/lib/x86_64-linux-gnu/libc.so.6 (unknown line)
+unknown function (ip: 0x4010b8) at /workspace/srcdir/glibc-2.17/csu/../sysdeps/x86_64/start.S
+error in running finalizer: ErrorException("Gurobi Error 10017: ")
+_check_ret at /home/swkim/.julia/packages/Gurobi/hs8RH/src/MOI_wrapper/MOI_wrapper.jl:417 [inlined]
+#13 at /home/swkim/.julia/packages/Gurobi/hs8RH/src/MOI_wrapper/MOI_wrapper.jl:393
+jfptr_YY.13_3659 at /home/swkim/.julia/compiled/v1.13/Gurobi/do9v6_EqQOZ.so (unknown line)
+run_finalizer at /cache/build/builder-amdci4-8/julialang/julia-ci/src/gc-common.c:180
+jl_gc_run_finalizers_in_list at /cache/build/builder-amdci4-8/julialang/julia-ci/src/gc-common.c:270
+run_finalizers at /cache/build/builder-amdci4-8/julialang/julia-ci/src/gc-common.c:316
+ijl_atexit_hook at /cache/build/builder-amdci4-8/julialang/julia-ci/src/init.c:295
+jl_exit_thread0_cb at /cache/build/builder-amdci4-8/julialang/julia-ci/src/signals-unix.c:678
+jl_fake_signal_return at /home/swkim/.julia/juliaup/julia-1.13.1+0.x64.linux.gnu/bin/../lib/julia/libjulia-internal.so.1.13 (unknown line)
+uv__io_poll at /workspace/srcdir/libuv/src/unix/linux.c:1345
+uv_run at /workspace/srcdir/libuv/src/unix/core.c:430
+ijl_task_get_next at /cache/build/builder-amdci4-8/julialang/julia-ci/src/scheduler.c:533
+wait at ./task.jl:1297
+#wait#392 at ./condition.jl:141
+wait at ./condition.jl:136 [inlined]
+_trywait at ./asyncevent.jl:186
+wait at ./asyncevent.jl:203 [inlined]
+sleep at ./asyncevent.jl:321 [inlined]
+#nz_alpha_bnb#353 at /home/swkim/robust_bilevel_network_games/nonzero_sum/nz_alpha_bnb.jl:607
+nz_alpha_bnb at /home/swkim/robust_bilevel_network_games/nonzero_sum/nz_alpha_bnb.jl:372
+unknown function (ip: 0x7073ac037dc4) at (unknown file)
+macro expansion at ./timing.jl:463 [inlined]
+top-level scope at /home/swkim/robust_bilevel_network_games/nonzero_sum/tune_abb.jl:47
+jl_toplevel_eval_flex at /cache/build/builder-amdci4-8/julialang/julia-ci/src/toplevel.c:731
+jl_eval_toplevel_stmts at /cache/build/builder-amdci4-8/julialang/julia-ci/src/toplevel.c:585
+jl_toplevel_eval_flex at /cache/build/builder-amdci4-8/julialang/julia-ci/src/toplevel.c:683
+ijl_toplevel_eval at /cache/build/builder-amdci4-8/julialang/julia-ci/src/toplevel.c:754
+ijl_toplevel_eval_in at /cache/build/builder-amdci4-8/julialang/julia-ci/src/toplevel.c:799
+eval at ./boot.jl:489
+include_string at ./loading.jl:3033
+_include at ./loading.jl:3093
+include at ./Base.jl:309
+exec_options at ./client.jl:344
+_start at ./client.jl:577
+jfptr__start_58396.1 at /home/swkim/.julia/juliaup/julia-1.13.1+0.x64.linux.gnu/lib/julia/sys.so (unknown line)
+jl_apply at /cache/build/builder-amdci4-8/julialang/julia-ci/src/julia.h:2318 [inlined]
+true_main at /cache/build/builder-amdci4-8/julialang/julia-ci/src/jlapi.c:985
+jl_repl_entrypoint at /cache/build/builder-amdci4-8/julialang/julia-ci/src/jlapi.c:1152
+main at /cache/build/builder-amdci4-8/julialang/julia-ci/cli/loader_exe.c:58
+unknown function (ip: 0x70744ce2a600) at /usr/lib/x86_64-linux-gnu/libc.so.6
+__libc_start_main at /usr/lib/x86_64-linux-gnu/libc.so.6 (unknown line)
+unknown function (ip: 0x4010b8) at /workspace/srcdir/glibc-2.17/csu/../sysdeps/x86_64/start.S
+error in running finalizer: ErrorException("Gurobi Error 10017: ")
+_check_ret at /home/swkim/.julia/packages/Gurobi/hs8RH/src/MOI_wrapper/MOI_wrapper.jl:417 [inlined]
+#13 at /home/swkim/.julia/packages/Gurobi/hs8RH/src/MOI_wrapper/MOI_wrapper.jl:393
+jfptr_YY.13_3659 at /home/swkim/.julia/compiled/v1.13/Gurobi/do9v6_EqQOZ.so (unknown line)
+run_finalizer at /cache/build/builder-amdci4-8/julialang/julia-ci/src/gc-common.c:180
+jl_gc_run_finalizers_in_list at /cache/build/builder-amdci4-8/julialang/julia-ci/src/gc-common.c:270
+run_finalizers at /cache/build/builder-amdci4-8/julialang/julia-ci/src/gc-common.c:316
+ijl_atexit_hook at /cache/build/builder-amdci4-8/julialang/julia-ci/src/init.c:295
+jl_exit_thread0_cb at /cache/build/builder-amdci4-8/julialang/julia-ci/src/signals-unix.c:678
+jl_fake_signal_return at /home/swkim/.julia/juliaup/julia-1.13.1+0.x64.linux.gnu/bin/../lib/julia/libjulia-internal.so.1.13 (unknown line)
+uv__io_poll at /workspace/srcdir/libuv/src/unix/linux.c:1345
+uv_run at /workspace/srcdir/libuv/src/unix/core.c:430
+ijl_task_get_next at /cache/build/builder-amdci4-8/julialang/julia-ci/src/scheduler.c:533
+wait at ./task.jl:1297
+#wait#392 at ./condition.jl:141
+wait at ./condition.jl:136 [inlined]
+_trywait at ./asyncevent.jl:186
+wait at ./asyncevent.jl:203 [inlined]
+sleep at ./asyncevent.jl:321 [inlined]
+#nz_alpha_bnb#353 at /home/swkim/robust_bilevel_network_games/nonzero_sum/nz_alpha_bnb.jl:607
+nz_alpha_bnb at /home/swkim/robust_bilevel_network_games/nonzero_sum/nz_alpha_bnb.jl:372
+unknown function (ip: 0x7073ac037dc4) at (unknown file)
+macro expansion at ./timing.jl:463 [inlined]
+top-level scope at /home/swkim/robust_bilevel_network_games/nonzero_sum/tune_abb.jl:47
+jl_toplevel_eval_flex at /cache/build/builder-amdci4-8/julialang/julia-ci/src/toplevel.c:731
+jl_eval_toplevel_stmts at /cache/build/builder-amdci4-8/julialang/julia-ci/src/toplevel.c:585
+jl_toplevel_eval_flex at /cache/build/builder-amdci4-8/julialang/julia-ci/src/toplevel.c:683
+ijl_toplevel_eval at /cache/build/builder-amdci4-8/julialang/julia-ci/src/toplevel.c:754
+ijl_toplevel_eval_in at /cache/build/builder-amdci4-8/julialang/julia-ci/src/toplevel.c:799
+eval at ./boot.jl:489
+include_string at ./loading.jl:3033
+_include at ./loading.jl:3093
+include at ./Base.jl:309
+exec_options at ./client.jl:344
+_start at ./client.jl:577
+jfptr__start_58396.1 at /home/swkim/.julia/juliaup/julia-1.13.1+0.x64.linux.gnu/lib/julia/sys.so (unknown line)
+jl_apply at /cache/build/builder-amdci4-8/julialang/julia-ci/src/julia.h:2318 [inlined]
+true_main at /cache/build/builder-amdci4-8/julialang/julia-ci/src/jlapi.c:985
+jl_repl_entrypoint at /cache/build/builder-amdci4-8/julialang/julia-ci/src/jlapi.c:1152
+main at /cache/build/builder-amdci4-8/julialang/julia-ci/cli/loader_exe.c:58
+unknown function (ip: 0x70744ce2a600) at /usr/lib/x86_64-linux-gnu/libc.so.6
+__libc_start_main at /usr/lib/x86_64-linux-gnu/libc.so.6 (unknown line)
+unknown function (ip: 0x4010b8) at /workspace/srcdir/glibc-2.17/csu/../sysdeps/x86_64/start.S
+error in running finalizer: ErrorException("Gurobi Error 10017: ")
+_check_ret at /home/swkim/.julia/packages/Gurobi/hs8RH/src/MOI_wrapper/MOI_wrapper.jl:417 [inlined]
+#13 at /home/swkim/.julia/packages/Gurobi/hs8RH/src/MOI_wrapper/MOI_wrapper.jl:393
+jfptr_YY.13_3659 at /home/swkim/.julia/compiled/v1.13/Gurobi/do9v6_EqQOZ.so (unknown line)
+run_finalizer at /cache/build/builder-amdci4-8/julialang/julia-ci/src/gc-common.c:180
+jl_gc_run_finalizers_in_list at /cache/build/builder-amdci4-8/julialang/julia-ci/src/gc-common.c:270
+run_finalizers at /cache/build/builder-amdci4-8/julialang/julia-ci/src/gc-common.c:316
+ijl_atexit_hook at /cache/build/builder-amdci4-8/julialang/julia-ci/src/init.c:295
+jl_exit_thread0_cb at /cache/build/builder-amdci4-8/julialang/julia-ci/src/signals-unix.c:678
+jl_fake_signal_return at /home/swkim/.julia/juliaup/julia-1.13.1+0.x64.linux.gnu/bin/../lib/julia/libjulia-internal.so.1.13 (unknown line)
+uv__io_poll at /workspace/srcdir/libuv/src/unix/linux.c:1345
+uv_run at /workspace/srcdir/libuv/src/unix/core.c:430
+ijl_task_get_next at /cache/build/builder-amdci4-8/julialang/julia-ci/src/scheduler.c:533
+wait at ./task.jl:1297
+#wait#392 at ./condition.jl:141
+wait at ./condition.jl:136 [inlined]
+_trywait at ./asyncevent.jl:186
+wait at ./asyncevent.jl:203 [inlined]
+sleep at ./asyncevent.jl:321 [inlined]
+#nz_alpha_bnb#353 at /home/swkim/robust_bilevel_network_games/nonzero_sum/nz_alpha_bnb.jl:607
+nz_alpha_bnb at /home/swkim/robust_bilevel_network_games/nonzero_sum/nz_alpha_bnb.jl:372
+unknown function (ip: 0x7073ac037dc4) at (unknown file)
+macro expansion at ./timing.jl:463 [inlined]
+top-level scope at /home/swkim/robust_bilevel_network_games/nonzero_sum/tune_abb.jl:47
+jl_toplevel_eval_flex at /cache/build/builder-amdci4-8/julialang/julia-ci/src/toplevel.c:731
+jl_eval_toplevel_stmts at /cache/build/builder-amdci4-8/julialang/julia-ci/src/toplevel.c:585
+jl_toplevel_eval_flex at /cache/build/builder-amdci4-8/julialang/julia-ci/src/toplevel.c:683
+ijl_toplevel_eval at /cache/build/builder-amdci4-8/julialang/julia-ci/src/toplevel.c:754
+ijl_toplevel_eval_in at /cache/build/builder-amdci4-8/julialang/julia-ci/src/toplevel.c:799
+eval at ./boot.jl:489
+include_string at ./loading.jl:3033
+_include at ./loading.jl:3093
+include at ./Base.jl:309
+exec_options at ./client.jl:344
+_start at ./client.jl:577
+jfptr__start_58396.1 at /home/swkim/.julia/juliaup/julia-1.13.1+0.x64.linux.gnu/lib/julia/sys.so (unknown line)
+jl_apply at /cache/build/builder-amdci4-8/julialang/julia-ci/src/julia.h:2318 [inlined]
+true_main at /cache/build/builder-amdci4-8/julialang/julia-ci/src/jlapi.c:985
+jl_repl_entrypoint at /cache/build/builder-amdci4-8/julialang/julia-ci/src/jlapi.c:1152
+main at /cache/build/builder-amdci4-8/julialang/julia-ci/cli/loader_exe.c:58
+unknown function (ip: 0x70744ce2a600) at /usr/lib/x86_64-linux-gnu/libc.so.6
+__libc_start_main at /usr/lib/x86_64-linux-gnu/libc.so.6 (unknown line)
+unknown function (ip: 0x4010b8) at /workspace/srcdir/glibc-2.17/csu/../sysdeps/x86_64/start.S
+error in running finalizer: ErrorException("Gurobi Error 10017: ")
+_check_ret at /home/swkim/.julia/packages/Gurobi/hs8RH/src/MOI_wrapper/MOI_wrapper.jl:417 [inlined]
+#13 at /home/swkim/.julia/packages/Gurobi/hs8RH/src/MOI_wrapper/MOI_wrapper.jl:393
+jfptr_YY.13_3659 at /home/swkim/.julia/compiled/v1.13/Gurobi/do9v6_EqQOZ.so (unknown line)
+run_finalizer at /cache/build/builder-amdci4-8/julialang/julia-ci/src/gc-common.c:180
+jl_gc_run_finalizers_in_list at /cache/build/builder-amdci4-8/julialang/julia-ci/src/gc-common.c:270
+run_finalizers at /cache/build/builder-amdci4-8/julialang/julia-ci/src/gc-common.c:316
+ijl_atexit_hook at /cache/build/builder-amdci4-8/julialang/julia-ci/src/init.c:295
+jl_exit_thread0_cb at /cache/build/builder-amdci4-8/julialang/julia-ci/src/signals-unix.c:678
+jl_fake_signal_return at /home/swkim/.julia/juliaup/julia-1.13.1+0.x64.linux.gnu/bin/../lib/julia/libjulia-internal.so.1.13 (unknown line)
+uv__io_poll at /workspace/srcdir/libuv/src/unix/linux.c:1345
+uv_run at /workspace/srcdir/libuv/src/unix/core.c:430
+ijl_task_get_next at /cache/build/builder-amdci4-8/julialang/julia-ci/src/scheduler.c:533
+wait at ./task.jl:1297
+#wait#392 at ./condition.jl:141
+wait at ./condition.jl:136 [inlined]
+_trywait at ./asyncevent.jl:186
+wait at ./asyncevent.jl:203 [inlined]
+sleep at ./asyncevent.jl:321 [inlined]
+#nz_alpha_bnb#353 at /home/swkim/robust_bilevel_network_games/nonzero_sum/nz_alpha_bnb.jl:607
+nz_alpha_bnb at /home/swkim/robust_bilevel_network_games/nonzero_sum/nz_alpha_bnb.jl:372
+unknown function (ip: 0x7073ac037dc4) at (unknown file)
+macro expansion at ./timing.jl:463 [inlined]
+top-level scope at /home/swkim/robust_bilevel_network_games/nonzero_sum/tune_abb.jl:47
+jl_toplevel_eval_flex at /cache/build/builder-amdci4-8/julialang/julia-ci/src/toplevel.c:731
+jl_eval_toplevel_stmts at /cache/build/builder-amdci4-8/julialang/julia-ci/src/toplevel.c:585
+jl_toplevel_eval_flex at /cache/build/builder-amdci4-8/julialang/julia-ci/src/toplevel.c:683
+ijl_toplevel_eval at /cache/build/builder-amdci4-8/julialang/julia-ci/src/toplevel.c:754
+ijl_toplevel_eval_in at /cache/build/builder-amdci4-8/julialang/julia-ci/src/toplevel.c:799
+eval at ./boot.jl:489
+include_string at ./loading.jl:3033
+_include at ./loading.jl:3093
+include at ./Base.jl:309
+exec_options at ./client.jl:344
+_start at ./client.jl:577
+jfptr__start_58396.1 at /home/swkim/.julia/juliaup/julia-1.13.1+0.x64.linux.gnu/lib/julia/sys.so (unknown line)
+jl_apply at /cache/build/builder-amdci4-8/julialang/julia-ci/src/julia.h:2318 [inlined]
+true_main at /cache/build/builder-amdci4-8/julialang/julia-ci/src/jlapi.c:985
+jl_repl_entrypoint at /cache/build/builder-amdci4-8/julialang/julia-ci/src/jlapi.c:1152
+main at /cache/build/builder-amdci4-8/julialang/julia-ci/cli/loader_exe.c:58
+unknown function (ip: 0x70744ce2a600) at /usr/lib/x86_64-linux-gnu/libc.so.6
+__libc_start_main at /usr/lib/x86_64-linux-gnu/libc.so.6 (unknown line)
+unknown function (ip: 0x4010b8) at /workspace/srcdir/glibc-2.17/csu/../sysdeps/x86_64/start.S
+error in running finalizer: ErrorException("Gurobi Error 10017: ")
+_check_ret at /home/swkim/.julia/packages/Gurobi/hs8RH/src/MOI_wrapper/MOI_wrapper.jl:417 [inlined]
+#13 at /home/swkim/.julia/packages/Gurobi/hs8RH/src/MOI_wrapper/MOI_wrapper.jl:393
+jfptr_YY.13_3659 at /home/swkim/.julia/compiled/v1.13/Gurobi/do9v6_EqQOZ.so (unknown line)
+run_finalizer at /cache/build/builder-amdci4-8/julialang/julia-ci/src/gc-common.c:180
+jl_gc_run_finalizers_in_list at /cache/build/builder-amdci4-8/julialang/julia-ci/src/gc-common.c:270
+run_finalizers at /cache/build/builder-amdci4-8/julialang/julia-ci/src/gc-common.c:316
+ijl_atexit_hook at /cache/build/builder-amdci4-8/julialang/julia-ci/src/init.c:295
+jl_exit_thread0_cb at /cache/build/builder-amdci4-8/julialang/julia-ci/src/signals-unix.c:678
+jl_fake_signal_return at /home/swkim/.julia/juliaup/julia-1.13.1+0.x64.linux.gnu/bin/../lib/julia/libjulia-internal.so.1.13 (unknown line)
+uv__io_poll at /workspace/srcdir/libuv/src/unix/linux.c:1345
+uv_run at /workspace/srcdir/libuv/src/unix/core.c:430
+ijl_task_get_next at /cache/build/builder-amdci4-8/julialang/julia-ci/src/scheduler.c:533
+wait at ./task.jl:1297
+#wait#392 at ./condition.jl:141
+wait at ./condition.jl:136 [inlined]
+_trywait at ./asyncevent.jl:186
+wait at ./asyncevent.jl:203 [inlined]
+sleep at ./asyncevent.jl:321 [inlined]
+#nz_alpha_bnb#353 at /home/swkim/robust_bilevel_network_games/nonzero_sum/nz_alpha_bnb.jl:607
+nz_alpha_bnb at /home/swkim/robust_bilevel_network_games/nonzero_sum/nz_alpha_bnb.jl:372
+unknown function (ip: 0x7073ac037dc4) at (unknown file)
+macro expansion at ./timing.jl:463 [inlined]
+top-level scope at /home/swkim/robust_bilevel_network_games/nonzero_sum/tune_abb.jl:47
+jl_toplevel_eval_flex at /cache/build/builder-amdci4-8/julialang/julia-ci/src/toplevel.c:731
+jl_eval_toplevel_stmts at /cache/build/builder-amdci4-8/julialang/julia-ci/src/toplevel.c:585
+jl_toplevel_eval_flex at /cache/build/builder-amdci4-8/julialang/julia-ci/src/toplevel.c:683
+ijl_toplevel_eval at /cache/build/builder-amdci4-8/julialang/julia-ci/src/toplevel.c:754
+ijl_toplevel_eval_in at /cache/build/builder-amdci4-8/julialang/julia-ci/src/toplevel.c:799
+eval at ./boot.jl:489
+include_string at ./loading.jl:3033
+_include at ./loading.jl:3093
+include at ./Base.jl:309
+exec_options at ./client.jl:344
+_start at ./client.jl:577
+jfptr__start_58396.1 at /home/swkim/.julia/juliaup/julia-1.13.1+0.x64.linux.gnu/lib/julia/sys.so (unknown line)
+jl_apply at /cache/build/builder-amdci4-8/julialang/julia-ci/src/julia.h:2318 [inlined]
+true_main at /cache/build/builder-amdci4-8/julialang/julia-ci/src/jlapi.c:985
+jl_repl_entrypoint at /cache/build/builder-amdci4-8/julialang/julia-ci/src/jlapi.c:1152
+main at /cache/build/builder-amdci4-8/julialang/julia-ci/cli/loader_exe.c:58
+unknown function (ip: 0x70744ce2a600) at /usr/lib/x86_64-linux-gnu/libc.so.6
+__libc_start_main at /usr/lib/x86_64-linux-gnu/libc.so.6 (unknown line)
+unknown function (ip: 0x4010b8) at /workspace/srcdir/glibc-2.17/csu/../sysdeps/x86_64/start.S
+error in running finalizer: ErrorException("Gurobi Error 10017: ")
+_check_ret at /home/swkim/.julia/packages/Gurobi/hs8RH/src/MOI_wrapper/MOI_wrapper.jl:417 [inlined]
+#13 at /home/swkim/.julia/packages/Gurobi/hs8RH/src/MOI_wrapper/MOI_wrapper.jl:393
+jfptr_YY.13_3659 at /home/swkim/.julia/compiled/v1.13/Gurobi/do9v6_EqQOZ.so (unknown line)
+run_finalizer at /cache/build/builder-amdci4-8/julialang/julia-ci/src/gc-common.c:180
+jl_gc_run_finalizers_in_list at /cache/build/builder-amdci4-8/julialang/julia-ci/src/gc-common.c:270
+run_finalizers at /cache/build/builder-amdci4-8/julialang/julia-ci/src/gc-common.c:316
+ijl_atexit_hook at /cache/build/builder-amdci4-8/julialang/julia-ci/src/init.c:295
+jl_exit_thread0_cb at /cache/build/builder-amdci4-8/julialang/julia-ci/src/signals-unix.c:678
+jl_fake_signal_return at /home/swkim/.julia/juliaup/julia-1.13.1+0.x64.linux.gnu/bin/../lib/julia/libjulia-internal.so.1.13 (unknown line)
+uv__io_poll at /workspace/srcdir/libuv/src/unix/linux.c:1345
+uv_run at /workspace/srcdir/libuv/src/unix/core.c:430
+ijl_task_get_next at /cache/build/builder-amdci4-8/julialang/julia-ci/src/scheduler.c:533
+wait at ./task.jl:1297
+#wait#392 at ./condition.jl:141
+wait at ./condition.jl:136 [inlined]
+_trywait at ./asyncevent.jl:186
+wait at ./asyncevent.jl:203 [inlined]
+sleep at ./asyncevent.jl:321 [inlined]
+#nz_alpha_bnb#353 at /home/swkim/robust_bilevel_network_games/nonzero_sum/nz_alpha_bnb.jl:607
+nz_alpha_bnb at /home/swkim/robust_bilevel_network_games/nonzero_sum/nz_alpha_bnb.jl:372
+unknown function (ip: 0x7073ac037dc4) at (unknown file)
+macro expansion at ./timing.jl:463 [inlined]
+top-level scope at /home/swkim/robust_bilevel_network_games/nonzero_sum/tune_abb.jl:47
+jl_toplevel_eval_flex at /cache/build/builder-amdci4-8/julialang/julia-ci/src/toplevel.c:731
+jl_eval_toplevel_stmts at /cache/build/builder-amdci4-8/julialang/julia-ci/src/toplevel.c:585
+jl_toplevel_eval_flex at /cache/build/builder-amdci4-8/julialang/julia-ci/src/toplevel.c:683
+ijl_toplevel_eval at /cache/build/builder-amdci4-8/julialang/julia-ci/src/toplevel.c:754
+ijl_toplevel_eval_in at /cache/build/builder-amdci4-8/julialang/julia-ci/src/toplevel.c:799
+eval at ./boot.jl:489
+include_string at ./loading.jl:3033
+_include at ./loading.jl:3093
+include at ./Base.jl:309
+exec_options at ./client.jl:344
+_start at ./client.jl:577
+jfptr__start_58396.1 at /home/swkim/.julia/juliaup/julia-1.13.1+0.x64.linux.gnu/lib/julia/sys.so (unknown line)
+jl_apply at /cache/build/builder-amdci4-8/julialang/julia-ci/src/julia.h:2318 [inlined]
+true_main at /cache/build/builder-amdci4-8/julialang/julia-ci/src/jlapi.c:985
+jl_repl_entrypoint at /cache/build/builder-amdci4-8/julialang/julia-ci/src/jlapi.c:1152
+main at /cache/build/builder-amdci4-8/julialang/julia-ci/cli/loader_exe.c:58
+unknown function (ip: 0x70744ce2a600) at /usr/lib/x86_64-linux-gnu/libc.so.6
+__libc_start_main at /usr/lib/x86_64-linux-gnu/libc.so.6 (unknown line)
+unknown function (ip: 0x4010b8) at /workspace/srcdir/glibc-2.17/csu/../sysdeps/x86_64/start.S
+error in running finalizer: ErrorException("Gurobi Error 10017: ")
+_check_ret at /home/swkim/.julia/packages/Gurobi/hs8RH/src/MOI_wrapper/MOI_wrapper.jl:417 [inlined]
+#13 at /home/swkim/.julia/packages/Gurobi/hs8RH/src/MOI_wrapper/MOI_wrapper.jl:393
+jfptr_YY.13_3659 at /home/swkim/.julia/compiled/v1.13/Gurobi/do9v6_EqQOZ.so (unknown line)
+run_finalizer at /cache/build/builder-amdci4-8/julialang/julia-ci/src/gc-common.c:180
+jl_gc_run_finalizers_in_list at /cache/build/builder-amdci4-8/julialang/julia-ci/src/gc-common.c:270
+run_finalizers at /cache/build/builder-amdci4-8/julialang/julia-ci/src/gc-common.c:316
+ijl_atexit_hook at /cache/build/builder-amdci4-8/julialang/julia-ci/src/init.c:295
+jl_exit_thread0_cb at /cache/build/builder-amdci4-8/julialang/julia-ci/src/signals-unix.c:678
+jl_fake_signal_return at /home/swkim/.julia/juliaup/julia-1.13.1+0.x64.linux.gnu/bin/../lib/julia/libjulia-internal.so.1.13 (unknown line)
+uv__io_poll at /workspace/srcdir/libuv/src/unix/linux.c:1345
+uv_run at /workspace/srcdir/libuv/src/unix/core.c:430
+ijl_task_get_next at /cache/build/builder-amdci4-8/julialang/julia-ci/src/scheduler.c:533
+wait at ./task.jl:1297
+#wait#392 at ./condition.jl:141
+wait at ./condition.jl:136 [inlined]
+_trywait at ./asyncevent.jl:186
+wait at ./asyncevent.jl:203 [inlined]
+sleep at ./asyncevent.jl:321 [inlined]
+#nz_alpha_bnb#353 at /home/swkim/robust_bilevel_network_games/nonzero_sum/nz_alpha_bnb.jl:607
+nz_alpha_bnb at /home/swkim/robust_bilevel_network_games/nonzero_sum/nz_alpha_bnb.jl:372
+unknown function (ip: 0x7073ac037dc4) at (unknown file)
+macro expansion at ./timing.jl:463 [inlined]
+top-level scope at /home/swkim/robust_bilevel_network_games/nonzero_sum/tune_abb.jl:47
+jl_toplevel_eval_flex at /cache/build/builder-amdci4-8/julialang/julia-ci/src/toplevel.c:731
+jl_eval_toplevel_stmts at /cache/build/builder-amdci4-8/julialang/julia-ci/src/toplevel.c:585
+jl_toplevel_eval_flex at /cache/build/builder-amdci4-8/julialang/julia-ci/src/toplevel.c:683
+ijl_toplevel_eval at /cache/build/builder-amdci4-8/julialang/julia-ci/src/toplevel.c:754
+ijl_toplevel_eval_in at /cache/build/builder-amdci4-8/julialang/julia-ci/src/toplevel.c:799
+eval at ./boot.jl:489
+include_string at ./loading.jl:3033
+_include at ./loading.jl:3093
+include at ./Base.jl:309
+exec_options at ./client.jl:344
+_start at ./client.jl:577
+jfptr__start_58396.1 at /home/swkim/.julia/juliaup/julia-1.13.1+0.x64.linux.gnu/lib/julia/sys.so (unknown line)
+jl_apply at /cache/build/builder-amdci4-8/julialang/julia-ci/src/julia.h:2318 [inlined]
+true_main at /cache/build/builder-amdci4-8/julialang/julia-ci/src/jlapi.c:985
+jl_repl_entrypoint at /cache/build/builder-amdci4-8/julialang/julia-ci/src/jlapi.c:1152
+main at /cache/build/builder-amdci4-8/julialang/julia-ci/cli/loader_exe.c:58
+unknown function (ip: 0x70744ce2a600) at /usr/lib/x86_64-linux-gnu/libc.so.6
+__libc_start_main at /usr/lib/x86_64-linux-gnu/libc.so.6 (unknown line)
+unknown function (ip: 0x4010b8) at /workspace/srcdir/glibc-2.17/csu/../sysdeps/x86_64/start.S
+--- (중단: 기본값을 mid 로 바꾸고 mid 기준 변형으로 재시작)

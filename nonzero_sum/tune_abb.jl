@@ -3,7 +3,8 @@ tune_abb.jl — 비제로섬 α-B&B 설정의 강건성 튜닝. 기본 인스턴
 고정 x̄ (기본 {1,2}, 가장 어려운 인증 후보) 에서 Ω 를 목표 gap 까지 풀고 시간·최종 gap 을 기록.
 
 변형 (TA_VARIANTS, 쉼표):
-  base      : branch_score=:viol, branch_point=:alphahat, dive_max=3, maxrounds=30 (현재 기본)
+  base      : 현재 기본 (branch_score=:viol, branch_point=:mid, dive_max=3, maxrounds=30). 1 단계 로그의 base 는 이전 기본 (:alphahat)
+  alphahat  : branch_point=:alphahat (이전 기본)   mdive0 / mrounds10 / mweighted : mid 위에 하나씩
   weighted  : branch_score=:weighted (위반 × 목적 민감도)
   mid       : branch_point=:mid
   dive0     : dive_max=0          dive10 : dive_max=10
@@ -26,7 +27,11 @@ TL = parse(Float64, envf("TA_TL", "300")); GAP = parse(Float64, envf("TA_GAP", "
 nw = parse(Int, envf("TA_WORKERS", "12"))
 xi = parse.(Int, split(envf("TA_X", "1,2"), ","))
 variants = Dict(
-    "base"     => NamedTuple(),
+    "base"     => NamedTuple(),                          # 현재 기본 (2026-10-10 부터 branch_point = :mid)
+    "alphahat" => (branch_point=:alphahat,),             # 이전 기본
+    "mdive0"   => (dive_max=0,),                         # mid + diving 없음
+    "mrounds10"=> (maxrounds=10,),                       # mid + 분리 10 라운드
+    "mweighted"=> (branch_score=:weighted,),             # mid + 가중 분기
     "weighted" => (branch_score=:weighted,),
     "mid"      => (branch_point=:mid,),
     "dive0"    => (dive_max=0,),
