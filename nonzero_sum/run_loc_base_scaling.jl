@@ -6,6 +6,7 @@ run_loc_base_scaling.jl — 기본 인스턴스 (SGB128 Goyal 기본 사례 + �
   SBG  : 표준 Benders, local (OptimalityTarget=1) cut 먼저, 위반 cut 이 없을 때만 Gurobi 전역 Ω (남은 시간 전체)
   SBA  : 같은 구조, 전역은 α-B&B (남은 시간 전체). MW 는 α-B&B 의 restricted cut 에만 (SB-G 전역 cut, local cut 은 MW 없음)
   ALG  : oracle 600 s, 재방문 시 2,400 s, 모두 남은 시간으로 자름
+  ALGG : Algorithm 2 와 같고 전역 oracle 만 Gurobi Ω (목표값 조기 종료 없음)
   ALG  : Algorithm 2 (belief-menu + α-B&B, MW)
 작은 S 부터. E 는 미해결이면 더 큰 S 를 건너뜀. Benders 계열은 LB_SKIP_BENDERS=1 일 때만 같은 규칙 (기본 0: 모든 S 를
 시간 제한까지 돌려 최종 gap 과 t_LB (LB 가 최종 LB 에 처음 도달한 경과 시간) 를 기록. 기본 인스턴스에서는 모든 방법이 최적해는
@@ -86,7 +87,8 @@ for S in Ss
             @printf("RESULT S=%d method=E status=%s x=%s value=%.6f time=%.1f\n", S, solved ? "Optimal" : "Unsolved",
                     solved ? xstr(best[2]) : "-", solved ? best[1] : NaN, time() - t0)
         else
-            r = meth == "ALG" ? nz_belief_menu_benders(nd; oracle=:alpha_bnb, common...) :
+            r = meth == "ALG"  ? nz_belief_menu_benders(nd; oracle=:alpha_bnb, common...) :
+                meth == "ALGG" ? nz_belief_menu_benders(nd; oracle=:gurobi, common...) :
                 nz_standard_benders(nd; oracle=(meth == "SBG" ? :gurobi : :alpha_bnb), local_first=true,
                                     local_time=local_time, oracle_remaining=true, common...)
             t = time() - t0
