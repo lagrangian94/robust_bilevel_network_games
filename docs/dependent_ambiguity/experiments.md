@@ -166,7 +166,12 @@ primal 용량 (ζL = α r) 과 쌍대목적 (ζW = α ϖ) 이 따로 완화돼 *
 | 200 | — | 첫 실행은 SB-G 의 local 풀이가 ITERATION_LIMIT 을 오류로 처리해 중단 → 수정 (한도 도달은 정상 종료) 후 재실행 | | | |
 | 200 | SB-G | TimeLimit (x={1,2} 인증 Gurobi 1 시간, bd −703.4, 해 −1033.5) | 351% | 3,615 s | — |
 | 200 | SB-A | TimeLimit (x={1,2} 인증 α-B&B 1 시간, bd −724.4, 해 −1036.0) | 271% | 3,657 s | — |
-| 200 | ALG, ALGG | 생략 (SB-A ≈ SB-G, 둘 다 인증 불가 → 허용오차 0.5% 통일·α-B&B 튜닝 후 재측정) | | | |
+| 200 | ALG, ALGG (1e-4) | 생략 (SB-A ≈ SB-G, 둘 다 인증 불가) | | | |
+| 200 | ALG (**0.5%**, mid, Ipopt 120 s) | Stalled, LB −416.7, UB −176.7 (x={1,2} 인증 실패, 보고 x={2}) | 136% | 3,518 s | — |
+| 200 | ALGG (**0.5%**) | TimeLimit, LB −423.6, UB −233.1 | 82% | 3,600 s | — |
+
+S = 200 (`logs/loc_base_scaling_tol5e3_S200.log`): 허용오차를 0.5% 로 바꿔도 어떤 방법도 x={1,2} 의 내부 문제를 1 시간 안에 인증하지 못함.
+belief cut 덕분에 Algorithm 2 의 gap (82~136%) 은 SB (271~351%) 보다 크게 작음.
 
 **결정 (2026-10-10)**: 허용오차를 zero-sum 실험과 같은 0.5% 로 통일 (Benders tol 5e-3, α-B&B 목표 gap 1e-3).
 이력 대조 결과 zero-sum α-B&B 는 rel_gap 5e-3 로 쓰였고, 비제로섬은 oracle_gap 1e-5 / Benders 1e-4 로 500 배 엄격했다.
