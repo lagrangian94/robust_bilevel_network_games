@@ -398,8 +398,9 @@ function nz_alpha_bnb(nd::NZData, x̄; nworkers=Threads.nthreads() - 2, time_lim
                       branch_score::Symbol=:viol, branch_point::Symbol=:mid,
                       sep_maxadd::Int=5000, sep_active_only::Bool=false,
                       node_select::Symbol=:best, local_k::Int=8,
-                      child_rounds::Int=maxrounds, lp_method::Int=1)
-    # child_rounds: 루트가 아닌 노드의 분리 라운드 상한 (부모 행이 유효하므로 새 위반이 적음, 라운드마다 큰 LP 재풀이)
+                      child_rounds::Int=1, lp_method::Int=1)
+    # child_rounds: 루트가 아닌 노드의 분리 라운드 상한 (부모 행이 유효하므로 새 위반이 적음, 라운드마다 큰 LP 재풀이).
+    #   기본 1 (tune_abb.jl: S=20 gap 2.34→1.73%, 3.76→2.93%, S=50 25.3→19.6%, S=200 은 루트 지배로 거의 같음)
     # lp_method: 노드 LP 의 Gurobi Method (1 = dual simplex, 기존 · 2 = barrier · -1 = 자동)
     # node_select: :best (상한 최대, 기존) | :local (상한 상위 local_k 개 중 worker 가 직전에 푼 상자와 가장 가까운 노드:
     #   연속 노드의 상자 변화가 작아 노드 LP 의 warm start 가 유지됨. 실측: 실제 탐색의 노드 LP 가 한 경로 하강보다 7~13 배 느림)
