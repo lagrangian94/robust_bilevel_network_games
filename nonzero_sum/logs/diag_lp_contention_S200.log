@@ -1,0 +1,129 @@
+S=200 분리 라운드 (barrier 1 스레드, Presolve 자동):
+  라운드  1: LP 0.9s (Gurobi 0.4s)  상한 -209.3600  위반 8229  행 33476
+  라운드  2: LP 1.9s (Gurobi 1.9s)  상한 -286.0754  위반 5323  행 38476
+  라운드  3: LP 2.4s (Gurobi 2.4s)  상한 -323.8548  위반 2363  행 43476
+  라운드  4: LP 3.2s (Gurobi 3.2s)  상한 -353.6547  위반 938  행 45839
+  라운드  5: LP 3.0s (Gurobi 3.0s)  상한 -369.6481  위반 526  행 46777
+  라운드  6: LP 3.3s (Gurobi 3.3s)  상한 -374.7015  위반 284  행 47303
+  라운드  7: LP 3.7s (Gurobi 3.7s)  상한 -376.8586  위반 204  행 47587
+  라운드  8: LP 3.8s (Gurobi 3.8s)  상한 -377.9408  위반 134  행 47791
+  라운드  9: LP 4.1s (Gurobi 4.1s)  상한 -379.1071  위반 106  행 47925
+  라운드 10: LP 4.2s (Gurobi 4.2s)  상한 -380.0228  위반 88  행 48031
+  라운드 11: LP 4.0s (Gurobi 4.0s)  상한 -380.4612  위반 71  행 48119
+  라운드 12: LP 3.9s (Gurobi 3.9s)  상한 -380.8235  위반 55  행 48190
+  라운드 13: LP 3.8s (Gurobi 3.8s)  상한 -381.0223  위반 47  행 48245
+  라운드 14: LP 3.7s (Gurobi 3.7s)  상한 -381.1297  위반 20  행 48292
+  라운드 15: LP 4.2s (Gurobi 4.2s)  상한 -381.1734  위반 8  행 48312
+  라운드 16: LP 3.7s (Gurobi 3.7s)  상한 -381.1787  위반 13  행 48320
+  라운드 17: LP 3.7s (Gurobi 3.7s)  상한 -381.1858  위반 7  행 48333
+  라운드 18: LP 4.1s (Gurobi 4.1s)  상한 -381.1872  위반 4  행 48340
+  라운드 19: LP 3.8s (Gurobi 3.8s)  상한 -381.1872  위반 7  행 48344
+  라운드 20: LP 4.1s (Gurobi 4.1s)  상한 -381.1872  위반 5  행 48351
+  라운드 21: LP 3.6s (Gurobi 3.6s)  상한 -381.1872  위반 4  행 48356
+  라운드 22: LP 3.6s (Gurobi 3.6s)  상한 -381.1872  위반 4  행 48360
+  라운드 23: LP 4.0s (Gurobi 4.0s)  상한 -381.1872  위반 4  행 48364
+  라운드 24: LP 3.8s (Gurobi 3.8s)  상한 -381.1872  위반 5  행 48368
+  라운드 25: LP 3.9s (Gurobi 3.9s)  상한 -381.1872  위반 3  행 48373
+  라운드 26: LP 4.5s (Gurobi 4.5s)  상한 -381.1874  위반 7  행 48376
+  라운드 27: LP 4.0s (Gurobi 4.0s)  상한 -381.1878  위반 3  행 48383
+  라운드 28: LP 4.0s (Gurobi 4.0s)  상한 -381.1878  위반 0  행 48386
+  합계 100.9s
+┌ Warning: Skipping the copy of extension data of type `Int64` because
+│ `JuMP.copy_extension_data` has not been implemented for this type.
+│ 
+│ If you are using a JuMP extension, open an issue on its GitHub repository
+│ and ask the maintainers to implement `JuMP.copy_extension_data`.
+│ 
+│ If you added data to `model.ext` directly, it has not been copied.
+└ @ JuMP ~/.julia/packages/JuMP/insRt/src/copy.jl:23
+┌ Warning: Skipping the copy of extension data of type `Int64` because
+│ `JuMP.copy_extension_data` has not been implemented for this type.
+│ 
+│ If you are using a JuMP extension, open an issue on its GitHub repository
+│ and ask the maintainers to implement `JuMP.copy_extension_data`.
+│ 
+│ If you added data to `model.ext` directly, it has not been copied.
+└ @ JuMP ~/.julia/packages/JuMP/insRt/src/copy.jl:23
+┌ Warning: Skipping the copy of extension data of type `Int64` because
+│ `JuMP.copy_extension_data` has not been implemented for this type.
+│ 
+│ If you are using a JuMP extension, open an issue on its GitHub repository
+│ and ask the maintainers to implement `JuMP.copy_extension_data`.
+│ 
+│ If you added data to `model.ext` directly, it has not been copied.
+└ @ JuMP ~/.julia/packages/JuMP/insRt/src/copy.jl:23
+┌ Warning: Skipping the copy of extension data of type `Int64` because
+│ `JuMP.copy_extension_data` has not been implemented for this type.
+│ 
+│ If you are using a JuMP extension, open an issue on its GitHub repository
+│ and ask the maintainers to implement `JuMP.copy_extension_data`.
+│ 
+│ If you added data to `model.ext` directly, it has not been copied.
+└ @ JuMP ~/.julia/packages/JuMP/insRt/src/copy.jl:23
+┌ Warning: Skipping the copy of extension data of type `Int64` because
+│ `JuMP.copy_extension_data` has not been implemented for this type.
+│ 
+│ If you are using a JuMP extension, open an issue on its GitHub repository
+│ and ask the maintainers to implement `JuMP.copy_extension_data`.
+│ 
+│ If you added data to `model.ext` directly, it has not been copied.
+└ @ JuMP ~/.julia/packages/JuMP/insRt/src/copy.jl:23
+┌ Warning: Skipping the copy of extension data of type `Int64` because
+│ `JuMP.copy_extension_data` has not been implemented for this type.
+│ 
+│ If you are using a JuMP extension, open an issue on its GitHub repository
+│ and ask the maintainers to implement `JuMP.copy_extension_data`.
+│ 
+│ If you added data to `model.ext` directly, it has not been copied.
+└ @ JuMP ~/.julia/packages/JuMP/insRt/src/copy.jl:23
+┌ Warning: Skipping the copy of extension data of type `Int64` because
+│ `JuMP.copy_extension_data` has not been implemented for this type.
+│ 
+│ If you are using a JuMP extension, open an issue on its GitHub repository
+│ and ask the maintainers to implement `JuMP.copy_extension_data`.
+│ 
+│ If you added data to `model.ext` directly, it has not been copied.
+└ @ JuMP ~/.julia/packages/JuMP/insRt/src/copy.jl:23
+┌ Warning: Skipping the copy of extension data of type `Int64` because
+│ `JuMP.copy_extension_data` has not been implemented for this type.
+│ 
+│ If you are using a JuMP extension, open an issue on its GitHub repository
+│ and ask the maintainers to implement `JuMP.copy_extension_data`.
+│ 
+│ If you added data to `model.ext` directly, it has not been copied.
+└ @ JuMP ~/.julia/packages/JuMP/insRt/src/copy.jl:23
+┌ Warning: Skipping the copy of extension data of type `Int64` because
+│ `JuMP.copy_extension_data` has not been implemented for this type.
+│ 
+│ If you are using a JuMP extension, open an issue on its GitHub repository
+│ and ask the maintainers to implement `JuMP.copy_extension_data`.
+│ 
+│ If you added data to `model.ext` directly, it has not been copied.
+└ @ JuMP ~/.julia/packages/JuMP/insRt/src/copy.jl:23
+┌ Warning: Skipping the copy of extension data of type `Int64` because
+│ `JuMP.copy_extension_data` has not been implemented for this type.
+│ 
+│ If you are using a JuMP extension, open an issue on its GitHub repository
+│ and ask the maintainers to implement `JuMP.copy_extension_data`.
+│ 
+│ If you added data to `model.ext` directly, it has not been copied.
+└ @ JuMP ~/.julia/packages/JuMP/insRt/src/copy.jl:23
+┌ Warning: Skipping the copy of extension data of type `Int64` because
+│ `JuMP.copy_extension_data` has not been implemented for this type.
+│ 
+│ If you are using a JuMP extension, open an issue on its GitHub repository
+│ and ask the maintainers to implement `JuMP.copy_extension_data`.
+│ 
+│ If you added data to `model.ext` directly, it has not been copied.
+└ @ JuMP ~/.julia/packages/JuMP/insRt/src/copy.jl:23
+┌ Warning: Skipping the copy of extension data of type `Int64` because
+│ `JuMP.copy_extension_data` has not been implemented for this type.
+│ 
+│ If you are using a JuMP extension, open an issue on its GitHub repository
+│ and ask the maintainers to implement `JuMP.copy_extension_data`.
+│ 
+│ If you added data to `model.ext` directly, it has not been copied.
+└ @ JuMP ~/.julia/packages/JuMP/insRt/src/copy.jl:23
+동시  1 개 barrier (각 1 스레드): 평균 2.2s, 최대 2.2s
+동시  6 개 barrier (각 1 스레드): 평균 2.7s, 최대 3.2s
+동시 12 개 barrier (각 1 스레드): 평균 1.7s, 최대 3.5s

@@ -1,0 +1,7 @@
+    [nz-α-B&B] t=  63.8s nodes=    0 open=    0 LB=-Inf UB=Inf gap=NaN
+    [nz-α-B&B] t= 124.4s nodes=    5 open=    0 LB=-1035.825487 UB=-425.326399 gap=5.894e-01
+    [nz-α-B&B] t= 184.5s nodes=   15 open=    4 LB=-1031.187879 UB=-495.875749 gap=5.191e-01
+    [nz-α-B&B] t= 244.6s nodes=   29 open=   18 LB=-1031.187879 UB=-495.875749 gap=5.191e-01
+RESULT bar S=200: nodes 44, relax(worker 합) 2180s | LP 호출 163, LP 벽시계 합 2206s, Gurobi solve_time 합 2192s, 수치오류 0 (실패 0)
+RESULT bard S=200: nodes 83, relax(worker 합) 2275s | LP 호출 202, LP 벽시계 합 2333s, Gurobi solve_time 합 2305s, 수치오류 0 (실패 0)
+ERROR: LoadError: TaskFailedException

@@ -53,6 +53,10 @@ variants = Dict(
     "dive10"   => (dive_max=10,),
     "rounds10" => (maxrounds=10,),
     "wmid"     => (branch_score=:weighted, branch_point=:mid),
+    "dyn"      => (dyn_threads=true,),                    # 노드 LP 스레드 동적 배분 (k>1 이면 concurrent: barrier + dual simplex)
+    "dynbar"   => (dyn_threads=true, dyn_method=2),       # k>1 이면 barrier
+    "bar"      => (lp_method=2, lp_presolve=-1),          # 노드 LP barrier + presolve (child_rounds=1 기본)
+    "dynbarc"  => (dyn_threads=true, lp_method=2, lp_presolve=-1),   # 1 스레드 barrier, 여러 스레드 concurrent
 )
 vnames = String.(strip.(split(envf("TA_VARIANTS", "base,weighted,mid,dive0,dive10,rounds10"), ",")))
 for v in vnames; haskey(variants, v) || error("알 수 없는 변형: $v"); end
@@ -69,6 +73,9 @@ for S in Int.(pl("TA_S", "20,50")), ε in pl("TA_EPS", "0.2,0.3"), δ in pl("TA_
         @printf("RESULT S=%d eps=%.2f delta=%s variant=%-9s %s LB=%.4f UB=%.4f gap=%.3e nodes=%d time=%.1f | worker 합 node=%.0fs relax=%.0fs eval=%.0fs cut=%d\n",
                 S, ε, string(δ), v, r[:is_exact] ? "Optimal " : "TimeLim ", r[:LB], r[:UB], gap, r[:nodes], t,
                 get(r, :t_node, NaN), get(r, :t_relax, NaN), get(r, :t_eval, NaN), get(r, :ls_cuts, 0))
+        if haskey(r, :thr_hist) && sum(r[:thr_hist]) > 0
+            h = r[:thr_hist]; println("    스레드 배분 (노드 수): ", join(["$(k)→$(h[k])" for k in eachindex(h) if h[k] > 0], ", "))
+        end
         flush(stdout)
     end
 end

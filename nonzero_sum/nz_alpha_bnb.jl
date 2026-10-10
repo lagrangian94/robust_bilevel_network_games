@@ -229,6 +229,9 @@ NUMERICAL_ERROR 는 결합 (δ) 행을 넣은 RLT 완화에서 처음 관찰됨 
 재시도: NumericFocus=3 → 그다음 barrier (Method=2). 끝나면 원래 설정 (dual simplex, NumericFocus 0) 으로 되돌림.
 """
 const _NZ_LPCOUNT = Threads.Atomic{Int}(0)
+const _NZ_LPN = Threads.Atomic{Int}(0)                  # 노드 LP optimize! 횟수·벽시계 합·Gurobi solve_time 합 (계측)
+const _NZ_LPWALL = Threads.Atomic{Float64}(0.0)
+const _NZ_LPGRB = Threads.Atomic{Float64}(0.0)
 const _NZ_RESTORE = IdDict{Any,Bool}()       # 재시도 설정을 다음 optimize 전에 되돌릴 모델
 const _NZ_RESTORE_LOCK = ReentrantLock()
 
@@ -237,7 +240,9 @@ function _nz_solve_lp!(model)
     # (OptimizeNotCalled) 이어지는 value 읽기 (RLT 위반 계산, α 읽기) 가 깨진다.
     restore = lock(() -> pop!(_NZ_RESTORE, model, false), _NZ_RESTORE_LOCK)
     restore && (set_optimizer_attribute(model, "NumericFocus", 0); set_optimizer_attribute(model, "Method", get(model.ext, :lp_method, 1)))
-    optimize!(model)
+    tw = @elapsed optimize!(model)
+    Threads.atomic_add!(_NZ_LPN, 1); Threads.atomic_add!(_NZ_LPWALL, tw)
+    Threads.atomic_add!(_NZ_LPGRB, try solve_time(model) catch; 0.0 end)
     st = termination_status(model)
     if st == MOI.NUMERICAL_ERROR || st == MOI.OTHER_ERROR
         k = Threads.atomic_add!(_NZ_NUMERR, 1) + 1
@@ -273,12 +278,15 @@ function _nz_solve_lp!(model)
 end
 
 function _nz_sep_solve!(P::_NZSepLP; maxrounds=30, maxadd=5000, tol=1e-6, stall_tol=1e-6, stall_rounds=2,
-                        active_only::Bool=false, active_tol=1e-7)
+                        active_only::Bool=false, active_tol=1e-7, defer_last::Bool=false)
+    # defer_last: 라운드 상한에 닿으면 마지막 위반 행을 추가·재풀이하지 않고 그 행을 P.O.model.ext[:pending] 에 남긴 채
+    #   마지막 LP 값을 반환 (유효한 상한). 호출자가 해를 다 읽은 뒤 _nz_sep_flush! 로 추가 → 자식 노드부터 사용.
+    #   노드당 LP 를 1 회로 (barrier 는 warm start 가 없어 재풀이가 처음부터: S=200 B&B 에서 노드당 LP ~3 회 × 13 s).
     # maxadd: 라운드마다 가장 많이 위반된 행 maxadd 개만 추가 (큰 S 에서 노드 LP 가 커지는 것을 억제)
     # active_only: 현재 해에서 a_s, r_s, d_s 가 모두 active_tol 이하인 시나리오의 (단일 시나리오) 행은 추가하지 않음
     #   (유효 부등식의 일부만 넣는 것이라 완화는 유효, 약해질 수만 있음)
     zprev = Inf; nstall = 0
-    for _ in 1:maxrounds
+    for rnd in 1:maxrounds
         z = _nz_solve_lp!(P.O.model)
         (isnan(z) || isinf(z)) && return z
         V = _nz_sep_violations(P; tol=tol)
@@ -292,11 +300,23 @@ function _nz_sep_solve!(P::_NZSepLP; maxrounds=30, maxadd=5000, tol=1e-6, stall_
         zprev = z
         nstall >= stall_rounds && return z
         sort!(V; by=first)
+        if defer_last && rnd == maxrounds
+            P.O.model.ext[:pending] = [(i, j, islo, islo ? P.l[i] : P.u[i]) for (_, i, j, islo) in V[1:min(maxadd, length(V))]]
+            return z
+        end
         for (_, i, j, islo) in V[1:min(maxadd, length(V))]
             _nz_sep_add!(P, i, j, islo, islo ? P.l[i] : P.u[i])
         end
     end
     return _nz_solve_lp!(P.O.model)
+end
+
+"defer_last 로 미룬 RLT 행 추가 (해를 다 읽은 뒤 호출)"
+function _nz_sep_flush!(P::_NZSepLP)
+    pend = pop!(P.O.model.ext, :pending, nothing)
+    pend === nothing && return 0
+    for (i, j, islo, b) in pend; _nz_sep_add!(P, i, j, islo, b); end
+    return length(pend)
 end
 
 
@@ -400,7 +420,17 @@ function nz_alpha_bnb(nd::NZData, x̄; nworkers=Threads.nthreads() - 2, time_lim
                       node_select::Symbol=:best, local_k::Int=8,
                       child_rounds::Int=1, lp_method::Int=1,
                       node_lp::Symbol=:full, ls_mw::Bool=false, ls_follower::Bool=false,
-                      ls_root_rounds::Int=50, ls_child_rounds::Int=3, ls_inout=0.5, ls_pen=1e4)
+                      ls_root_rounds::Int=50, ls_child_rounds::Int=3, ls_inout=0.5, ls_pen=1e4,
+                      dyn_threads::Bool=false, dyn_budget::Int=nworkers, dyn_method::Int=3, lp_presolve::Int=0,
+                      defer_rows::Bool=false, lp_crossover::Int=-1)
+    # defer_rows: 노드의 마지막 분리 라운드 행을 다시 풀지 않고 자식 노드로 미룸 (_nz_sep_solve! 의 defer_last). 노드당 LP 1 회.
+    # lp_crossover: barrier 의 Crossover (-1 자동, 0 끔: 기저 없이 내부점 해. S=200 자식 노드 LP 5~7 s → 3.4~5.5 s).
+    #   끄면 목적값이 최적값과 ~1e-8 상대오차 → 상한에 1e-7 상대 여유를 더해 유효성 유지.
+    # lp_presolve: 노드 LP 의 Gurobi Presolve (0 = 끔, 기존: dual simplex warm start 용 · -1 = 자동: barrier 는 S=200 루트 5.8 → 3.0 s)
+    # dyn_threads: 노드 LP 의 Gurobi 스레드를 동적으로 배분. 노드를 꺼낼 때 k = max(1, dyn_budget ÷ (풀고 있는 worker + 열린 노드)).
+    #   열린 노드가 부족한 구간 (루트·초반: S=200 에서 worker 시간의 72% 가 유휴) 에 남는 스레드를 그 LP 에 몰아줌.
+    #   k > 1 이면 Method = dyn_method (3 = concurrent: dual simplex 는 warm start, 나머지 스레드는 barrier), k = 1 이면 lp_method.
+    #   dual simplex 는 스레드를 늘려도 빨라지지 않음 (diag_lp_method.jl: S=200 루트 cold 34.4 s → 34.3 s).
     # node_lp = :lshaped: 노드 완화를 시나리오 분해 (nz_lshaped.jl) 로. worker 별 master·블록, cut pool 은 worker 공유.
     #   ls_mw: Magnanti–Wong, ls_follower: follower 블록도 분해. 설계 docs/dependent_ambiguity/lshaped_node_relaxation_design.md
     node_lp in (:full, :lshaped) || error("node_lp = :full | :lshaped")
@@ -441,6 +471,9 @@ function nz_alpha_bnb(nd::NZData, x̄; nworkers=Threads.nthreads() - 2, time_lim
     lp_method != 1 && for P in Ps
         set_optimizer_attribute(P.O.model, "Method", lp_method); P.O.model.ext[:lp_method] = lp_method   # 재시도 후 복원값
     end
+    lp_presolve != 0 && for P in Ps; set_optimizer_attribute(P.O.model, "Presolve", lp_presolve); end
+    lp_crossover != -1 && for P in Ps; set_optimizer_attribute(P.O.model, "Crossover", lp_crossover); end
+    zpad(z) = lp_crossover == 0 && isfinite(z) ? z + 1e-7 * max(1.0, abs(z)) : z
     Ms = node_lp == :lshaped ?
         [Main.nz_lshaped_master!(Ps[i], nd, x̄; block_optimizer=mk(envs[i]), pen=ls_pen, follower=ls_follower) for i in 1:nworkers] :
         nothing
@@ -452,6 +485,7 @@ function nz_alpha_bnb(nd::NZData, x̄; nworkers=Threads.nthreads() - 2, time_lim
     lk = ReentrantLock()
     # 노드 시간 계측 (worker 합계, 초): 완화 LP (분리 포함), α 고정 정확 LP, 노드 처리 전체
     t_relax = Threads.Atomic{Float64}(0.0); t_eval = Threads.Atomic{Float64}(0.0); t_node = Threads.Atomic{Float64}(0.0)
+    thr_hist = [Threads.Atomic{Int}(0) for _ in 1:max(1, dyn_budget)]          # 노드별 배분 스레드 수 분포 (dyn_threads)
     Lw0 = copy(Ps[1].Lw); Uw0 = copy(Ps[1].Uw)
     wmax = [isfinite(U) ? max(U, 1e-9) : 1.0 for U in Uw0]       # ϖ 정규화 폭
     open = Any[(zeros(nh), copy(nd.hU), Inf, Lw0, Uw0)]
@@ -470,7 +504,7 @@ function nz_alpha_bnb(nd::NZData, x̄; nworkers=Threads.nthreads() - 2, time_lim
 
     function worker(wid)
         P = Ps[wid]; F = Fs[wid]
-        localnode = nothing; dive_left = 0; synced = false
+        localnode = nothing; dive_left = 0; synced = false; nthr = 1; nthr_set = 1
         while true
             yield()
             node = nothing
@@ -506,6 +540,9 @@ function nz_alpha_bnb(nd::NZData, x̄; nworkers=Threads.nthreads() - 2, time_lim
                 end
                 localnode = nothing
                 node !== nothing && (inflight[wid] = node[3])
+                if node !== nothing && dyn_threads
+                    nthr = max(1, dyn_budget ÷ max(1, count(>(-Inf), inflight) + length(open)))
+                end
             finally
                 unlock(lk)
             end
@@ -525,12 +562,19 @@ function nz_alpha_bnb(nd::NZData, x̄; nworkers=Threads.nthreads() - 2, time_lim
                 _nz_sep_set_box!(P, l, u)
                 _nz_sep_set_wbox!(P, Lw, Uw)
                 set_time_limit_sec(P.O.model, max(t_end - time(), 0.1))
+                if dyn_threads && nthr != nthr_set
+                    mth = nthr > 1 ? dyn_method : lp_method
+                    set_optimizer_attribute(P.O.model, "Threads", nthr); set_optimizer_attribute(P.O.model, "Method", mth)
+                    mth == 3 && set_optimizer_attribute(P.O.model, "ConcurrentMethod", 1)    # barrier + dual simplex
+                    P.O.model.ext[:lp_method] = mth; nthr_set = nthr
+                end
+                dyn_threads && Threads.atomic_add!(thr_hist[min(nthr, length(thr_hist))], 1)
                 tr = @elapsed (z = node_lp == :lshaped ?
                     Main.nz_lshaped_solve!(P, Ms[wid]; maxrounds=(ubp == Inf ? ls_root_rounds : ls_child_rounds),
                                            inout=ls_inout, mw=ls_mw, sep_maxadd=sep_maxadd,
                                            pool=ls_pool, plock=ls_lock, wid=wid, imported=ls_imp[wid]) :
-                    _nz_sep_solve!(P; maxrounds=(ubp == Inf ? maxrounds : child_rounds),
-                                   maxadd=sep_maxadd, active_only=sep_active_only))
+                    zpad(_nz_sep_solve!(P; maxrounds=(ubp == Inf ? maxrounds : child_rounds),
+                                   maxadd=sep_maxadd, active_only=sep_active_only, defer_last=(defer_rows && ubp != Inf))))
                 Threads.atomic_add!(t_relax, tr)
                 unfinished = isnan(z)
                 numfail = z == Inf               # 수치 오류가 재시도로도 안 풀림: 부모 상한 유지, 가장 넓은 α_i 를 반으로
@@ -609,6 +653,7 @@ function nz_alpha_bnb(nd::NZData, x̄; nworkers=Threads.nthreads() - 2, time_lim
                     end
                 end
             end
+            _nz_sep_flush!(P)                      # defer_rows: 해를 다 읽은 뒤 미룬 행 추가
             Threads.atomic_add!(t_node, time() - tn0)
             lock(lk)
             try
@@ -696,6 +741,6 @@ function nz_alpha_bnb(nd::NZData, x̄; nworkers=Threads.nthreads() - 2, time_lim
     UB = max(LB[], isempty(open) ? -Inf : maximum(n[3] for n in open), pruned_ub[])
     return Dict(:LB => LB[], :UB => UB, :α => best_α[], :is_exact => (UB - LB[] <= tol(LB[])),
                 :nodes => nodes[], :time => time() - t0, :root_UB => root_UB[], :ipopt_calls => ipopt_calls[], :presolve_fixed => nfix, :ls_cuts => length(ls_pool),
-                :t_relax => t_relax[], :t_eval => t_eval[], :t_node => t_node[],
+                :t_relax => t_relax[], :thr_hist => [a[] for a in thr_hist], :t_eval => t_eval[], :t_node => t_node[],
                 :numerr => _NZ_NUMERR[], :numerr_fail => _NZ_NUMERR_FAIL[])
 end
