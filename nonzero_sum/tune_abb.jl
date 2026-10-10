@@ -40,6 +40,9 @@ variants = Dict(
     "local8"   => (node_select=:local, local_k=8),       # 상한 상위 8 개 중 직전 상자에 가장 가까운 노드
     "local32"  => (node_select=:local, local_k=32),
     "local8d10"=> (node_select=:local, local_k=8, dive_max=10),
+    "child3"   => (child_rounds=3,),                     # 루트가 아닌 노드의 분리 라운드 3 회까지
+    "child1"   => (child_rounds=1,),
+    "barrier"  => (lp_method=2,),                        # 노드 LP 를 barrier 로
     "weighted" => (branch_score=:weighted,),
     "mid"      => (branch_point=:mid,),
     "dive0"    => (dive_max=0,),

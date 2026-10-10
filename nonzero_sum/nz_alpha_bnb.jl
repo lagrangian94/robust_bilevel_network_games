@@ -236,7 +236,7 @@ function _nz_solve_lp!(model)
     # 직전 호출에서 재시도 설정을 바꿨으면 여기서 되돌림. 해를 읽은 뒤에 되돌리면 JuMP 가 해를 무효로 봐서
     # (OptimizeNotCalled) 이어지는 value 읽기 (RLT 위반 계산, α 읽기) 가 깨진다.
     restore = lock(() -> pop!(_NZ_RESTORE, model, false), _NZ_RESTORE_LOCK)
-    restore && (set_optimizer_attribute(model, "NumericFocus", 0); set_optimizer_attribute(model, "Method", 1))
+    restore && (set_optimizer_attribute(model, "NumericFocus", 0); set_optimizer_attribute(model, "Method", get(model.ext, :lp_method, 1)))
     optimize!(model)
     st = termination_status(model)
     if st == MOI.NUMERICAL_ERROR || st == MOI.OTHER_ERROR
@@ -397,7 +397,10 @@ function nz_alpha_bnb(nd::NZData, x̄; nworkers=Threads.nthreads() - 2, time_lim
                       presolve::Bool=true, varpi_branch::Bool=false, varpi_alpha_width=3.0,
                       branch_score::Symbol=:viol, branch_point::Symbol=:mid,
                       sep_maxadd::Int=5000, sep_active_only::Bool=false,
-                      node_select::Symbol=:best, local_k::Int=8)
+                      node_select::Symbol=:best, local_k::Int=8,
+                      child_rounds::Int=maxrounds, lp_method::Int=1)
+    # child_rounds: 루트가 아닌 노드의 분리 라운드 상한 (부모 행이 유효하므로 새 위반이 적음, 라운드마다 큰 LP 재풀이)
+    # lp_method: 노드 LP 의 Gurobi Method (1 = dual simplex, 기존 · 2 = barrier · -1 = 자동)
     # node_select: :best (상한 최대, 기존) | :local (상한 상위 local_k 개 중 worker 가 직전에 푼 상자와 가장 가까운 노드:
     #   연속 노드의 상자 변화가 작아 노드 LP 의 warm start 가 유지됨. 실측: 실제 탐색의 노드 LP 가 한 경로 하강보다 7~13 배 느림)
     node_select in (:best, :local) || error("node_select = :best | :local")
@@ -427,6 +430,9 @@ function nz_alpha_bnb(nd::NZData, x̄; nworkers=Threads.nthreads() - 2, time_lim
     envs = envs === nothing ? _nz_envs(nworkers + 1) : envs
     length(envs) >= nworkers + (heuristic ? 1 : 0) || error("nz_alpha_bnb: envs 가 부족함 (worker $nworkers + heuristic $(heuristic))")
     Ps = [_nz_build_sep(nd, x̄; optimizer=mk(envs[i]), varpi_mc=varpi_branch) for i in 1:nworkers]
+    lp_method != 1 && for P in Ps
+        set_optimizer_attribute(P.O.model, "Method", lp_method); P.O.model.ext[:lp_method] = lp_method   # 재시도 후 복원값
+    end
     Fs = [nz_build_fixed_alpha(nd, x̄; optimizer=mk(envs[i])) for i in 1:nworkers]
     tol(v) = rel_gap * (isfinite(v) ? max(1.0, abs(v)) : 1.0)
     boxok(l) = all(nd.W * l .<= nd.wvec .+ 1e-9)
@@ -507,7 +513,8 @@ function nz_alpha_bnb(nd::NZData, x̄; nworkers=Threads.nthreads() - 2, time_lim
                 _nz_sep_set_box!(P, l, u)
                 _nz_sep_set_wbox!(P, Lw, Uw)
                 set_time_limit_sec(P.O.model, max(t_end - time(), 0.1))
-                tr = @elapsed (z = _nz_sep_solve!(P; maxrounds=maxrounds, maxadd=sep_maxadd, active_only=sep_active_only))
+                tr = @elapsed (z = _nz_sep_solve!(P; maxrounds=(ubp == Inf ? maxrounds : child_rounds),
+                                                  maxadd=sep_maxadd, active_only=sep_active_only))
                 Threads.atomic_add!(t_relax, tr)
                 unfinished = isnan(z)
                 numfail = z == Inf               # 수치 오류가 재시도로도 안 풀림: 부모 상한 유지, 가장 넓은 α_i 를 반으로
