@@ -275,7 +275,10 @@ function _nz_solve_lp!(model)
     end
     # 최적이 아닌 비정상 상태 (barrier crossover 끔에서 SUBOPTIMAL = ALMOST_OPTIMAL 등) 도 수치 오류처럼 재시도.
     # 이전에는 error() 로 worker task 가 죽었다 (bardx 첫 실행의 TaskFailedException 추정 원인).
-    if st in (MOI.NUMERICAL_ERROR, MOI.OTHER_ERROR, MOI.ALMOST_OPTIMAL, MOI.INFEASIBLE_OR_UNBOUNDED, MOI.SLOW_PROGRESS, MOI.ITERATION_LIMIT)
+    # LOCALLY_SOLVED = Gurobi SUBOPTIMAL (최적성 허용오차를 못 맞춘 해, Gurobi.jl 의 매핑): crossover 끔 barrier 에서 간헐적으로 나옴
+    #   (bardx 의 TaskFailedException 원인). 덜 수렴한 primal 값은 상한으로 쓸 수 없으므로 정상 해로 받지 않고 재시도한다.
+    if st in (MOI.NUMERICAL_ERROR, MOI.OTHER_ERROR, MOI.ALMOST_OPTIMAL, MOI.LOCALLY_SOLVED, MOI.INFEASIBLE_OR_UNBOUNDED,
+              MOI.SLOW_PROGRESS, MOI.ITERATION_LIMIT)
         k = Threads.atomic_add!(_NZ_NUMERR, 1) + 1
         # 진단: NZ_NUMERR_DUMP=<폴더> 면 처음 3 개의 실패 LP 를 Gurobi 내부 모델 (.mps) 과 basis (.bas) 로 저장
         if haskey(ENV, "NZ_NUMERR_DUMP") && k <= 3
@@ -303,9 +306,12 @@ function _nz_solve_lp!(model)
             try Gurobi.GRBwrite(o, base * ".mps"); Gurobi.GRBwrite(o, base * ".bas") catch end
         end
     end
-    # LOCALLY_SOLVED: barrier crossover 끔 (bardx) 에서 Gurobi 가 가끔 돌려줌 (S=200 worker 6 실행에서 worker task 를 죽인 원인).
-    #   LP 라 국소 최적 = 전역 최적, 값은 호출 측 zpad 가 1e-7 상대 여유를 더함.
-    (st == MOI.OPTIMAL || st == MOI.LOCALLY_SOLVED) && return objective_value(model)
+    if st == MOI.OPTIMAL
+        # crossover 끔 (내부점 해): primal 값이 최적값보다 조금 작을 수 있으므로 dual 목적값과 큰 쪽을 상한으로 (zpad 가 여유를 더 더함)
+        get(model.ext, :lp_crossover, -1) == 0 || return objective_value(model)
+        zd = try dual_objective_value(model) catch; -Inf end
+        return max(objective_value(model), isfinite(zd) ? zd : -Inf)
+    end
     st == MOI.INFEASIBLE && return -Inf
     st == MOI.TIME_LIMIT && return NaN
     error("nz_alpha_bnb LP: $st")

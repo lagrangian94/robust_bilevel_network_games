@@ -195,18 +195,33 @@ RLT 강화용 곱 Z_a·Z_b·Z_e·Z_c 60 (변수의 25%, 덜어낼 수 있음 —
 - bardx: 첫 300 s 실행은 TaskFailedException 으로 중단 (스택 미기록), 120 s·300 s 재실행에서는 재현 안 됨 → 간헐적, 원인 미확인 (경쟁 조건 의심).
 - 다음: defer_rows 를 dual simplex (S=50) 에도 적용, bard 를 600 s 로 base 와 비교, S 에 따른 방법 자동 선택.
 
-## 9. Gurobi 전역 솔버와 정면 비교 (2026-10-10, `h2h_oracle.jl`, `logs/h2h_gurobi.log`)
+## 9. Gurobi 전역 솔버와 정면 비교 (2026-10-10)
 
 같은 oracle 문제 (기본 인스턴스, x = {1,2}, θᵁ = circuit, WD, ε=0.3, δ=0.1), 600 s, 12 스레드 (Gurobi Threads 12 / α-B&B worker 12).
 LB = 실현 가능해 값 (클수록 좋음), UB = 상한 (작을수록 좋음).
 
-| | S=50 LB / UB / gap | S=200 LB / UB / gap |
-|---|---|---|
-| Gurobi (Ω NonConvex, MIPGap 1e-3) | **−1049.3** / −860.7 / 18.0% | −1033.6 / −553.1 / 46.5% |
-| α-B&B base (dual simplex) | −1062.6 / **−907.2** / **14.6%** | −1034.8 / −556.2 / 46.3% |
-| α-B&B dynbarc (barrier + 스레드 동적 배분) | −1051.6 / −850.1 / 19.2% | −1031.3 / **−622.1** / **39.7%** |
+| | S=50 LB / UB / gap | S=200 LB / UB / gap | 출처 |
+|---|---|---|---|
+| Gurobi (Ω NonConvex, MIPGap 1e-3) | −1049.3 / −860.7 / 18.0% | −1033.6 / −553.1 / 46.5% | `h2h_oracle.jl`, `logs/h2h_gurobi.log` |
+| α-B&B base (dual simplex) | −1062.6 / −907.2 / 14.6% | −1034.8 / −556.2 / 46.3% | `tune_abb.jl`, `logs/tune_abb_lshaped.log` (이전 실행) |
+| α-B&B dynbarc (barrier + 스레드 동적 배분) | −1051.6 / −850.1 / 19.2% | −1031.3 / −622.1 / 39.7% | `tune_abb.jl`, `logs/tune_abb_barrier.log` (이전 실행) |
 
-- 상한은 두 S 모두 α-B&B 가 Gurobi 보다 강함 (S=50: −907 vs −861, S=200: −622 vs −553). 실현 가능해는 S=50 에서 Gurobi 가 조금 나음.
-- 단 S 별 최선 설정이 다름 (S=50 dual simplex, S=200 barrier), 어느 쪽도 600 s 에 0.5% 근처에 못 감.
-- bardx 의 간헐적 TaskFailedException 원인: crossover 끔 barrier 에서 Gurobi 가 LOCALLY_SOLVED 를 돌려줌 → 정상 해로 처리하도록 수정.
-- 비활성 행 정리 (`purge_k`): S=200 은 worker 당 노드가 ~9 개라 지운 행 0 → 효과 없음 (`logs/diag_bnb_lpcount_bardxp_w12.log`).
+**읽는 법 (과장 금지)**
+- **단일 설정으로 두 S 모두 Gurobi 를 이기는 α-B&B 는 없다.** base 는 S=50 에서 상한이 낫고 (−907 vs −861) S=200 은 사실상 동률 (−556 vs −553).
+  dynbarc 는 S=200 에서 낫고 (−622 vs −553) S=50 은 Gurobi 보다 나쁘다 (−850 vs −861). "우세" 는 S 마다 최선 설정을 골랐을 때만 성립.
+- 실현 가능해는 S=50 에서 Gurobi 가 낫다 (−1049 vs −1063). 어느 쪽도 600 s 에 0.5% 근처에 못 감.
+- α-B&B 행은 정면 비교 스크립트가 아니라 이전 튜닝 실행의 값. 같은 스크립트 재실행 (`HH_SOLVERS=abb HH_ABB=base,dynbarc`) → `logs/h2h_abb.log` (진행 중, 끝나면 표 갱신).
+- 커밋 ee804ef 의 제목 "α-B&B 우세" 는 위 단서 없이 읽으면 과장이다.
+
+**상태 처리 정정 (LOCALLY_SOLVED)**: Gurobi.jl 에서 LOCALLY_SOLVED 는 Gurobi 의 SUBOPTIMAL (최적성 허용오차를 못 맞춘 해) 이다.
+ee804ef 는 이를 "LP 라 국소 = 전역" 이라며 정상 해로 받았는데 근거가 틀렸다: 덜 수렴한 barrier 점의 primal 값은 최대화 완화의 상한을 과소평가할 수 있고
+zpad 의 1e-7 여유가 덮는다는 보장이 없다 (잘못된 가지치기 위험). 수정: LOCALLY_SOLVED 를 재시도 목록에 넣음 (crossover 켜고 dual simplex → barrier),
+crossover 끔의 OPTIMAL 해는 max(primal, dual 목적값) 을 상한으로. 확인: S=50 bardx 90 s 에서 LOCALLY_SOLVED 1 회 → 재시도 성공 (실패 0).
+표의 base·dynbarc 는 crossover 를 끄지 않으므로 이 문제의 영향을 받지 않는다. bardx 의 이전 결과 (노드 98~104) 는 LP 상태가 OPTIMAL·TIME_LIMIT 뿐이던 실행.
+
+**worker 수와 barrier 경쟁 (S=200 bardx, `logs/lplog_*.csv`)**
+- barrier 반복당 시간: 동시 LP 3 개 이하 0.06 s, 3~8 개 0.14 s, 8 개 이상 0.34 s (약 5.5 배). LP 1 회 3.4 s → 13.8 s.
+  (§8 의 "동시 1/6/12 개 → 2.2/3.2/3.5 s" 는 12 개 중 6 개가 이미 풀린 모델이어서 경쟁을 과소평가한 측정.)
+- worker 6 vs 12 (bardxp, 245 s 시점): 노드 74 vs 79, UB −462 vs −426 → worker 를 절반으로 줄여도 처리량이 거의 같고 상한은 오히려 나음.
+  단 worker 6 실행은 그 직후 LOCALLY_SOLVED 로 죽어 300 s 완주 비교는 없음 (재실행 필요).
+- `purge_k` (비활성 RLT 행 삭제): S=200 은 worker 당 노드가 ~9 개라 `purge_k=20` 이 한 번도 발동하지 않음 (지운 행 0) → **미검증** (효과 없음이 아님).

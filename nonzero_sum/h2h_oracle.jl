@@ -1,7 +1,7 @@
 """
 h2h_oracle.jl — 같은 oracle 문제 (기본 인스턴스, x = {1,2}, θᵁ = circuit, WD) 에서 α-B&B vs Gurobi 전역 (Ω NonConvex) 의 정면 비교.
 같은 시간·같은 스레드 수 (α-B&B worker 12 개 / Gurobi Threads 12).
-환경변수: HH_S = "50,200"  HH_TL = 600  HH_SOLVERS = "gurobi,abb"  HH_ABB = "base" (base | bardx)  HH_EPS = 0.3  HH_DELTA = 0.1
+환경변수: HH_S = "50,200"  HH_TL = 600  HH_SOLVERS = "gurobi,abb"  HH_ABB = "base" (base | bardx | dynbarc, 쉼표로 여러 개)  HH_EPS = 0.3  HH_DELTA = 0.1
 실행: julia -t 14,1 nonzero_sum/h2h_oracle.jl
 """
 root = dirname(@__DIR__)
@@ -12,7 +12,8 @@ include(joinpath(root, "nonzero_sum", "nz_kkt_eval.jl")); include(joinpath(root,
 envf(k, d) = get(ENV, k, d); pd(s) = strip(s) == "Inf" ? Inf : parse(Float64, s)
 TL = parse(Float64, envf("HH_TL", "600")); ε = parse(Float64, envf("HH_EPS", "0.3")); δ = pd(envf("HH_DELTA", "0.1"))
 solvers = split(envf("HH_SOLVERS", "gurobi,abb"), ",")
-abbkw = Dict("base" => NamedTuple(), "bardx" => (lp_method=2, lp_presolve=-1, defer_rows=true, lp_crossover=0))
+abbkw = Dict("base" => NamedTuple(), "bardx" => (lp_method=2, lp_presolve=-1, defer_rows=true, lp_crossover=0),
+             "dynbarc" => (dyn_threads=true, lp_method=2, lp_presolve=-1))
 abbvars = split(envf("HH_ABB", "base"), ",")
 for S in parse.(Int, split(envf("HH_S", "50,200"), ","))
     nd0 = nz_with_delta(make_location_instance(; coords=:sgb128, reservation=:pair, quota=150.0, wres=300.0, S=S, seed=1,
