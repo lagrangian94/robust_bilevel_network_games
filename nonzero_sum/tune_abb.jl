@@ -55,6 +55,7 @@ variants = Dict(
     "wmid"     => (branch_score=:weighted, branch_point=:mid),
     "dyn"      => (dyn_threads=true,),                    # 노드 LP 스레드 동적 배분 (k>1 이면 concurrent: barrier + dual simplex)
     "dynbar"   => (dyn_threads=true, dyn_method=2),       # k>1 이면 barrier
+    "defer"    => (defer_rows=true,),                     # dual simplex + 마지막 라운드 행을 재풀이 없이 자식으로 (노드당 LP 1 회)
     "bar"      => (lp_method=2, lp_presolve=-1),          # 노드 LP barrier + presolve (child_rounds=1 기본)
     "dynbarc"  => (dyn_threads=true, lp_method=2, lp_presolve=-1),   # 1 스레드 barrier, 여러 스레드 concurrent
 )

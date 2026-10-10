@@ -210,7 +210,7 @@ LB = 실현 가능해 값 (클수록 좋음), UB = 상한 (작을수록 좋음).
 - **단일 설정으로 두 S 모두 Gurobi 를 이기는 α-B&B 는 없다.** base 는 S=50 에서 상한이 낫고 (−907 vs −861) S=200 은 사실상 동률 (−556 vs −553).
   dynbarc 는 S=200 에서 낫고 (−622 vs −553) S=50 은 Gurobi 보다 나쁘다 (−850 vs −861). "우세" 는 S 마다 최선 설정을 골랐을 때만 성립.
 - 실현 가능해는 S=50 에서 Gurobi 가 낫다 (−1049 vs −1063). 어느 쪽도 600 s 에 0.5% 근처에 못 감.
-- α-B&B 행은 정면 비교 스크립트가 아니라 이전 튜닝 실행의 값. 같은 스크립트 재실행 (`HH_SOLVERS=abb HH_ABB=base,dynbarc`) → `logs/h2h_abb.log` (진행 중, 끝나면 표 갱신).
+- α-B&B 행은 정면 비교 스크립트가 아니라 이전 튜닝 실행의 값 (같은 조건: 600 s, worker 12, 목표 gap 1e-3). 같은 설정의 재실행은 하지 않음.
 - 커밋 ee804ef 의 제목 "α-B&B 우세" 는 위 단서 없이 읽으면 과장이다.
 
 **상태 처리 정정 (LOCALLY_SOLVED)**: Gurobi.jl 에서 LOCALLY_SOLVED 는 Gurobi 의 SUBOPTIMAL (최적성 허용오차를 못 맞춘 해) 이다.
@@ -225,3 +225,9 @@ crossover 끔의 OPTIMAL 해는 max(primal, dual 목적값) 을 상한으로. �
 - worker 6 vs 12 (bardxp, 245 s 시점): 노드 74 vs 79, UB −462 vs −426 → worker 를 절반으로 줄여도 처리량이 거의 같고 상한은 오히려 나음.
   단 worker 6 실행은 그 직후 LOCALLY_SOLVED 로 죽어 300 s 완주 비교는 없음 (재실행 필요).
 - `purge_k` (비활성 RLT 행 삭제): S=200 은 worker 당 노드가 ~9 개라 `purge_k=20` 이 한 번도 발동하지 않음 (지운 행 0) → **미검증** (효과 없음이 아님).
+
+**S=50 에서 defer_rows (dual simplex, `logs/tune_abb_defer_S50.log`, 600 s)**: 노드 1453 / UB −810.6 / gap 23.6% → base (1418 / −907.2 / 14.6%) 보다 나쁨.
+dual simplex 는 행 추가 후 재풀이가 warm start 라 싸서 노드 수가 늘지 않고 (1418 → 1453), 재풀이를 생략한 만큼 노드 상한만 약해짐.
+→ defer_rows 는 barrier (큰 S) 전용. **S=50 의 최선은 여전히 base.**
+
+**결정 (2026-10-10)**: 비제로섬 벤치마크는 S ≤ 50 (S = 3, 20, 50) 으로, S=200 은 제로섬에서만. S=50 oracle 설정은 base (dual simplex, 중점 분할, child_rounds=1).
