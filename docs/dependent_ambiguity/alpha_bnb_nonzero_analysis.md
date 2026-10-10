@@ -187,9 +187,10 @@ RLT 강화용 곱 Z_a·Z_b·Z_e·Z_c 60 (변수의 25%, 덜어낼 수 있음 —
 | | 노드 | LP 호출 | Gurobi 시간 합 | LP 1 회 |
 |---|---|---|---|---|
 | bar | 44 | 163 | 2,192 s | 13.4 s |
-| **bard** (`defer_rows`: 마지막 라운드 행을 재풀이 없이 자식으로) | **83** | 202 | 2,305 s | 11.4 s |
+| bard (`defer_rows`: 마지막 라운드 행을 재풀이 없이 자식으로) | 83 | 202 | 2,305 s | 11.4 s |
+| **bardx** (bard + `lp_crossover=0`, 상한에 1e-7 상대 여유) | **102** | 232 | 2,740 s | 11.8 s |
 
 - child_rounds=1 이어도 "풀기 → 행 추가 → 다시 풀기" 로 노드당 LP 2 회 이상 → barrier 는 매번 처음부터. defer_rows 로 노드당 1 회, 노드 1.9 배.
 - LP 1 회가 따로 풀 때 (4~7 s) 보다 2 배 → worker 12 개 동시 barrier 의 경쟁 + worker 모델에 쌓이는 행으로 추정 (미확정).
-- 진행 중: crossover 끔 (`lp_crossover=0`, 상한에 1e-7 상대 여유) 변형 `bardx` 는 300 s 실행에서 TaskFailedException → 원인 확인 중.
+- bardx: 첫 300 s 실행은 TaskFailedException 으로 중단 (스택 미기록), 120 s·300 s 재실행에서는 재현 안 됨 → 간헐적, 원인 미확인 (경쟁 조건 의심).
 - 다음: defer_rows 를 dual simplex (S=50) 에도 적용, bard 를 600 s 로 base 와 비교, S 에 따른 방법 자동 선택.
