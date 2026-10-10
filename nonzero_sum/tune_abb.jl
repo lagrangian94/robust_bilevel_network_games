@@ -21,7 +21,7 @@ root = dirname(@__DIR__)
 using JuMP, Gurobi, Printf, LinearAlgebra
 const GRB_ENV = Gurobi.Env(); GRB() = Gurobi.Optimizer(GRB_ENV)
 include(joinpath(root, "nonzero_sum", "nz_data.jl")); include(joinpath(root, "nonzero_sum", "nz_omega.jl"))
-include(joinpath(root, "nonzero_sum", "nz_alpha_bnb.jl"))
+include(joinpath(root, "nonzero_sum", "nz_alpha_bnb.jl")); include(joinpath(root, "nonzero_sum", "nz_lshaped.jl"))
 envf(k, d) = get(ENV, k, d); pd(s) = strip(s) == "Inf" ? Inf : parse(Float64, s)
 pl(k, d) = pd.(split(envf(k, d), ","))
 TL = parse(Float64, envf("TA_TL", "300")); GAP = parse(Float64, envf("TA_GAP", "1e-3"))
@@ -43,6 +43,10 @@ variants = Dict(
     "child3"   => (child_rounds=3,),                     # 루트가 아닌 노드의 분리 라운드 3 회까지
     "child1"   => (child_rounds=1,),
     "barrier"  => (lp_method=2,),                        # 노드 LP 를 barrier 로
+    "lsleader" => (node_lp=:lshaped,),                   # L-shaped: 리더 블록만 분해
+    "lsall"    => (node_lp=:lshaped, ls_mw=true, ls_follower=true),   # L-shaped: 리더·follower 분해 + MW
+    "lsleader1" => (node_lp=:lshaped, ls_child_rounds=1, ls_root_rounds=30),   # base 와 같은 라운드 상한 (루트 30, 자식 1)
+    "lsall1"   => (node_lp=:lshaped, ls_mw=true, ls_follower=true, ls_child_rounds=1, ls_root_rounds=30),
     "weighted" => (branch_score=:weighted,),
     "mid"      => (branch_point=:mid,),
     "dive0"    => (dive_max=0,),
@@ -62,9 +66,9 @@ for S in Int.(pl("TA_S", "20,50")), ε in pl("TA_EPS", "0.2,0.3"), δ in pl("TA_
     for v in vnames
         t = @elapsed r = nz_alpha_bnb(nd, x̄; nworkers=nw, time_limit=TL, rel_gap=GAP, verbose=false, variants[v]...)
         gap = (r[:UB] - r[:LB]) / max(1.0, abs(r[:LB]))
-        @printf("RESULT S=%d eps=%.2f delta=%s variant=%-9s %s LB=%.4f UB=%.4f gap=%.3e nodes=%d time=%.1f | worker 합 node=%.0fs relax=%.0fs eval=%.0fs\n",
+        @printf("RESULT S=%d eps=%.2f delta=%s variant=%-9s %s LB=%.4f UB=%.4f gap=%.3e nodes=%d time=%.1f | worker 합 node=%.0fs relax=%.0fs eval=%.0fs cut=%d\n",
                 S, ε, string(δ), v, r[:is_exact] ? "Optimal " : "TimeLim ", r[:LB], r[:UB], gap, r[:nodes], t,
-                get(r, :t_node, NaN), get(r, :t_relax, NaN), get(r, :t_eval, NaN))
+                get(r, :t_node, NaN), get(r, :t_relax, NaN), get(r, :t_eval, NaN), get(r, :ls_cuts, 0))
         flush(stdout)
     end
 end

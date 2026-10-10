@@ -11,7 +11,7 @@ include(joinpath(root, "nonzero_sum", "nz_kkt_eval.jl")); include(joinpath(root,
 include(joinpath(root, "nonzero_sum", "nz_lshaped.jl"))
 envf(k, d) = get(ENV, k, d); pd(s) = strip(s) == "Inf" ? Inf : parse(Float64, s)
 ε = parse(Float64, envf("TL_EPS", "0.3")); δ = pd(envf("TL_DELTA", "0.1")); W = parse(Float64, envf("TL_W", "10"))
-inout = parse(Float64, envf("TL_INOUT", "0.5")); pen = parse(Float64, envf("TL_PEN", "1e4"))
+inout = parse(Float64, envf("TL_INOUT", "0.5")); pen = parse(Float64, envf("TL_PEN", "1e4")); mwon = envf("TL_MW", "0") == "1"; folon = envf("TL_FOL", "0") == "1"
 xi = parse.(Int, split(envf("TL_X", "1,2"), ","))
 mk1() = (o = Gurobi.Optimizer(GRB_ENV); MOI.set(o, MOI.Silent(), true); MOI.set(o, MOI.RawOptimizerAttribute("Threads"), 1); o)
 for S in parse.(Int, split(envf("TL_S", "3,20"), ","))
@@ -26,9 +26,9 @@ for S in parse.(Int, split(envf("TL_S", "3,20"), ","))
         _nz_sep_set_box!(P1, l, u)
         t1 = @elapsed z1 = _nz_sep_solve!(P1; maxrounds=500, stall_rounds=500)
         P2 = _nz_build_sep(nd, x̄; optimizer=mk1)
-        tb = @elapsed M = nz_lshaped_master!(P2, nd, x̄; block_optimizer=mk1, pen=pen)
+        tb = @elapsed M = nz_lshaped_master!(P2, nd, x̄; block_optimizer=mk1, pen=pen, follower=folon)
         _nz_sep_set_box!(P2, l, u)
-        t2 = @elapsed z2 = nz_lshaped_solve!(P2, M; maxrounds=500, stall_rounds=500, inout=inout)
+        t2 = @elapsed z2 = nz_lshaped_solve!(P2, M; maxrounds=500, stall_rounds=500, inout=inout, mw=mwon)
         @printf("S=%3d %-10s full %12.4f (%.1fs) | L-shaped %12.4f (빌드 %.1fs + %.1fs, cut %d) | 차 %.2e\n",
                 S, name, z1, t1, z2, tb, t2, M.ncuts, (z2 - z1) / max(1.0, abs(z1)))
         flush(stdout)
@@ -45,7 +45,7 @@ for S in parse.(Int, split(envf("TL_S2", envf("TL_S", "3,20")), ","))
     x̄ = zeros(nd.nx); x̄[xi] .= 1
     nd = nz_with_hU(nd, nz_presolve_hU(nd, x̄)[1])
     P1 = _nz_build_sep(nd, x̄; optimizer=mk1)
-    P2 = _nz_build_sep(nd, x̄; optimizer=mk1); M = nz_lshaped_master!(P2, nd, x̄; block_optimizer=mk1, pen=pen)
+    P2 = _nz_build_sep(nd, x̄; optimizer=mk1); M = nz_lshaped_master!(P2, nd, x̄; block_optimizer=mk1, pen=pen, follower=folon)
     rng = MersenneTwister(1); nh = nz_nh(nd)
     t1s = Float64[]; t2s = Float64[]; dmax = 0.0
     for t in 0:nnodes
@@ -61,10 +61,11 @@ for S in parse.(Int, split(envf("TL_S2", envf("TL_S", "3,20")), ","))
         end
         _nz_sep_set_box!(P1, l, u); a1 = @elapsed z1 = _nz_sep_solve!(P1; maxrounds=500, stall_rounds=500)
         c0 = M.ncuts
-        _nz_sep_set_box!(P2, l, u); a2 = @elapsed z2 = nz_lshaped_solve!(P2, M; maxrounds=500, stall_rounds=500, inout=inout)
+        _nz_sep_set_box!(P2, l, u); a2 = @elapsed z2 = nz_lshaped_solve!(P2, M; maxrounds=500, stall_rounds=500, inout=inout, mw=mwon)
         dmax = max(dmax, abs(z2 - z1) / max(1.0, abs(z1)))
         t > 0 && (push!(t1s, a1); push!(t2s, a2))
-        @printf("  S=%3d 노드 %2d: full %.2fs | L-shaped %.2fs (새 cut %d)\n", S, t, a1, a2, M.ncuts - c0)
+        @printf("  S=%3d 노드 %2d: full %.2fs | L-shaped %.2fs (새 cut %d) | 누적 master %.1fs 블록 %.1fs RLT위반 %.1fs 라운드 %d\n",
+                S, t, a1, a2, M.ncuts - c0, M.t_master, M.t_blocks, M.t_rlt, M.rounds)
         flush(stdout)
     end
     @printf("S=%3d 노드 연속 %d 개: 평균 full %.2fs, L-shaped %.2fs, 최대 상대차 %.1e, 총 cut %d\n",

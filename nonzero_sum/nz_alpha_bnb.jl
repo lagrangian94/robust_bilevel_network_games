@@ -398,7 +398,14 @@ function nz_alpha_bnb(nd::NZData, x̄; nworkers=Threads.nthreads() - 2, time_lim
                       branch_score::Symbol=:viol, branch_point::Symbol=:mid,
                       sep_maxadd::Int=5000, sep_active_only::Bool=false,
                       node_select::Symbol=:best, local_k::Int=8,
-                      child_rounds::Int=1, lp_method::Int=1)
+                      child_rounds::Int=1, lp_method::Int=1,
+                      node_lp::Symbol=:full, ls_mw::Bool=false, ls_follower::Bool=false,
+                      ls_root_rounds::Int=50, ls_child_rounds::Int=3, ls_inout=0.5, ls_pen=1e4)
+    # node_lp = :lshaped: 노드 완화를 시나리오 분해 (nz_lshaped.jl) 로. worker 별 master·블록, cut pool 은 worker 공유.
+    #   ls_mw: Magnanti–Wong, ls_follower: follower 블록도 분해. 설계 docs/dependent_ambiguity/lshaped_node_relaxation_design.md
+    node_lp in (:full, :lshaped) || error("node_lp = :full | :lshaped")
+    node_lp == :lshaped && !isdefined(Main, :nz_lshaped_master!) && error("node_lp=:lshaped: nz_lshaped.jl 을 먼저 include")
+    node_lp == :lshaped && branch_score == :weighted && error("branch_score=:weighted 는 node_lp=:full 에서만 (흐름 행 쌍대가 블록에 있음)")
     # child_rounds: 루트가 아닌 노드의 분리 라운드 상한 (부모 행이 유효하므로 새 위반이 적음, 라운드마다 큰 LP 재풀이).
     #   기본 1 (tune_abb.jl: S=20 gap 2.34→1.73%, 3.76→2.93%, S=50 25.3→19.6%, S=200 은 루트 지배로 거의 같음)
     # lp_method: 노드 LP 의 Gurobi Method (1 = dual simplex, 기존 · 2 = barrier · -1 = 자동)
@@ -434,6 +441,10 @@ function nz_alpha_bnb(nd::NZData, x̄; nworkers=Threads.nthreads() - 2, time_lim
     lp_method != 1 && for P in Ps
         set_optimizer_attribute(P.O.model, "Method", lp_method); P.O.model.ext[:lp_method] = lp_method   # 재시도 후 복원값
     end
+    Ms = node_lp == :lshaped ?
+        [Main.nz_lshaped_master!(Ps[i], nd, x̄; block_optimizer=mk(envs[i]), pen=ls_pen, follower=ls_follower) for i in 1:nworkers] :
+        nothing
+    ls_pool = Tuple{Int,Int,Vector{Float64}}[]; ls_lock = ReentrantLock(); ls_imp = [Ref(0) for _ in 1:nworkers]
     Fs = [nz_build_fixed_alpha(nd, x̄; optimizer=mk(envs[i])) for i in 1:nworkers]
     tol(v) = rel_gap * (isfinite(v) ? max(1.0, abs(v)) : 1.0)
     boxok(l) = all(nd.W * l .<= nd.wvec .+ 1e-9)
@@ -514,8 +525,12 @@ function nz_alpha_bnb(nd::NZData, x̄; nworkers=Threads.nthreads() - 2, time_lim
                 _nz_sep_set_box!(P, l, u)
                 _nz_sep_set_wbox!(P, Lw, Uw)
                 set_time_limit_sec(P.O.model, max(t_end - time(), 0.1))
-                tr = @elapsed (z = _nz_sep_solve!(P; maxrounds=(ubp == Inf ? maxrounds : child_rounds),
-                                                  maxadd=sep_maxadd, active_only=sep_active_only))
+                tr = @elapsed (z = node_lp == :lshaped ?
+                    Main.nz_lshaped_solve!(P, Ms[wid]; maxrounds=(ubp == Inf ? ls_root_rounds : ls_child_rounds),
+                                           inout=ls_inout, mw=ls_mw, sep_maxadd=sep_maxadd,
+                                           pool=ls_pool, plock=ls_lock, wid=wid, imported=ls_imp[wid]) :
+                    _nz_sep_solve!(P; maxrounds=(ubp == Inf ? maxrounds : child_rounds),
+                                   maxadd=sep_maxadd, active_only=sep_active_only))
                 Threads.atomic_add!(t_relax, tr)
                 unfinished = isnan(z)
                 numfail = z == Inf               # 수치 오류가 재시도로도 안 풀림: 부모 상한 유지, 가장 넓은 α_i 를 반으로
@@ -534,7 +549,9 @@ function nz_alpha_bnb(nd::NZData, x̄; nworkers=Threads.nthreads() - 2, time_lim
                 if !unfinished && !numfail && z > LB[] + tol(LB[])
                     v = P.O.v
                     α̂ = clamp.(value.(v[:α]), l, u)
-                    rv = value.(v[:r]); dv = value.(v[:d]); ϖv = value.(v[:ϖ])
+                    rv = value.(v[:r]); dv = value.(v[:d])
+                    ϖv = zeros(size(v[:ϖ]))                       # 예약 행 (H) 성분만 읽음 (L-shaped master 에는 나머지가 없음)
+                    for k in Hr, s in 1:S; ϖv[k, s] = value(v[:ϖ][k, s]); end
                     ζLv = value.(v[:ζL]); ζFv = value.(v[:ζF]); ζWv = value.(v[:ζW])
                     set_time_limit_sec(F.model, max(t_end - time(), 0.1))
                     te = @elapsed (zE = nz_eval_alpha!(F, nd, α̂))
@@ -587,7 +604,8 @@ function nz_alpha_bnb(nd::NZData, x̄; nworkers=Threads.nthreads() - 2, time_lim
                         u1 = copy(u); u1[i] = t; l2 = copy(l); l2[i] = t
                         children = ((copy(l), u1, z, Lw, Uw), (l2, copy(u), z, Lw, Uw))
                     else
-                        zE = max(zE, z)      # 완화가 exact
+                        # 곱 위반이 없으면 완화가 exact (full 노드 LP). L-shaped master 는 블록 cut 이 덜 수렴했을 수 있어 exact 가 아님
+                        node_lp == :full && (zE = max(zE, z))
                     end
                 end
             end
@@ -677,7 +695,7 @@ function nz_alpha_bnb(nd::NZData, x̄; nworkers=Threads.nthreads() - 2, time_lim
     foreach(wait, tasks)
     UB = max(LB[], isempty(open) ? -Inf : maximum(n[3] for n in open), pruned_ub[])
     return Dict(:LB => LB[], :UB => UB, :α => best_α[], :is_exact => (UB - LB[] <= tol(LB[])),
-                :nodes => nodes[], :time => time() - t0, :root_UB => root_UB[], :ipopt_calls => ipopt_calls[], :presolve_fixed => nfix,
+                :nodes => nodes[], :time => time() - t0, :root_UB => root_UB[], :ipopt_calls => ipopt_calls[], :presolve_fixed => nfix, :ls_cuts => length(ls_pool),
                 :t_relax => t_relax[], :t_eval => t_eval[], :t_node => t_node[],
                 :numerr => _NZ_NUMERR[], :numerr_fail => _NZ_NUMERR_FAIL[])
 end
