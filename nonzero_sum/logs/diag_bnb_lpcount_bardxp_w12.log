@@ -1,0 +1,60 @@
+Set parameter Username
+Set parameter LicenseID to value 2839433
+Academic license - for non-commercial use only - expires 2027-06-29
+Set parameter Username
+Set parameter LicenseID to value 2839433
+Academic license - for non-commercial use only - expires 2027-06-29
+Set parameter Username
+Set parameter LicenseID to value 2839433
+Academic license - for non-commercial use only - expires 2027-06-29
+Set parameter Username
+Set parameter LicenseID to value 2839433
+Academic license - for non-commercial use only - expires 2027-06-29
+Set parameter Username
+Set parameter LicenseID to value 2839433
+Academic license - for non-commercial use only - expires 2027-06-29
+Set parameter Username
+Set parameter LicenseID to value 2839433
+Academic license - for non-commercial use only - expires 2027-06-29
+Set parameter Username
+Set parameter LicenseID to value 2839433
+Academic license - for non-commercial use only - expires 2027-06-29
+Set parameter Username
+Set parameter LicenseID to value 2839433
+Academic license - for non-commercial use only - expires 2027-06-29
+Set parameter Username
+Set parameter LicenseID to value 2839433
+Academic license - for non-commercial use only - expires 2027-06-29
+Set parameter Username
+Set parameter LicenseID to value 2839433
+Academic license - for non-commercial use only - expires 2027-06-29
+Set parameter Username
+Set parameter LicenseID to value 2839433
+Academic license - for non-commercial use only - expires 2027-06-29
+Set parameter Username
+Set parameter LicenseID to value 2839433
+Academic license - for non-commercial use only - expires 2027-06-29
+Set parameter Username
+Set parameter LicenseID to value 2839433
+Academic license - for non-commercial use only - expires 2027-06-29
+
+******************************************************************************
+This program contains Ipopt, a library for large-scale nonlinear optimization.
+ Ipopt is released as open source code under the Eclipse Public License (EPL).
+         For more information visit https://github.com/coin-or/Ipopt
+******************************************************************************
+
+    [nz-α-B&B] t=  64.1s nodes=    2 open=    0 LB=-427324.673211 UB=-381.187737 gap=9.991e-01
+    [nz-α-B&B] t= 125.8s nodes=   25 open=   14 LB=-1035.812067 UB=-382.979415 gap=6.303e-01
+    [nz-α-B&B] t= 185.8s nodes=   53 open=   38 LB=-1035.424235 UB=-425.850910 gap=5.887e-01
+    [nz-α-B&B] t= 246.0s nodes=   79 open=   60 LB=-1035.424235 UB=-425.850910 gap=5.887e-01
+RESULT bardxp S=200: nodes 104, relax(worker 합) 2679s | LP 호출 236, LP 벽시계 합 2740s, Gurobi solve_time 합 2728s, 수치오류 0 (실패 0)
+LP 종료 상태: Dict{Any, Int64}(TIME_LIMIT => 12, OPTIMAL => 224) | worker 12, 지운 행 0, 끝 RLT 행 수 [26238, 34213, 33893, 32000, 31880, 30614, 37846, 34112, 34437, 31242, 32104, 36434]
+LP 236 개: Gurobi 시간 평균 11.6s, 제약 수 33476~71322, barrier 반복 평균 40
+  제약 하위 25%  ( 33476~ 36231): LP 110 개, 평균 0.7s, 평균 동시 10.9, barrier 반복 0
+  25~50%         ( 38476~ 47583): LP   8 개, 평균 2.8s, 평균 동시 1.0, barrier 반복 70
+  50~75%         ( 47636~ 56097): LP  59 개, 평균 20.5s, 평균 동시 9.6, barrier 반복 76
+  상위 25%       ( 56335~ 71322): LP  59 개, 평균 24.1s, 평균 동시 11.8, barrier 반복 72
+  동시 0~3: LP  22 개, 평균 3.4s, 평균 제약 43744, barrier 반복 54, 반복당 0.063s
+  동시 3~8: LP  15 개, 평균 4.9s, 평균 제약 44360, barrier 반복 34, 반복당 0.145s
+  동시 8~100: LP 199 개, 평균 13.0s, 평균 제약 47382, barrier 반복 39, 반복당 0.336s

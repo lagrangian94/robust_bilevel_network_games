@@ -1,0 +1,68 @@
+Set parameter Username
+Set parameter LicenseID to value 2839433
+Academic license - for non-commercial use only - expires 2027-06-29
+Set parameter Username
+Set parameter LicenseID to value 2839433
+Academic license - for non-commercial use only - expires 2027-06-29
+Set parameter Username
+Set parameter LicenseID to value 2839433
+Academic license - for non-commercial use only - expires 2027-06-29
+Set parameter Username
+Set parameter LicenseID to value 2839433
+Academic license - for non-commercial use only - expires 2027-06-29
+Set parameter Username
+Set parameter LicenseID to value 2839433
+Academic license - for non-commercial use only - expires 2027-06-29
+Set parameter Username
+Set parameter LicenseID to value 2839433
+Academic license - for non-commercial use only - expires 2027-06-29
+Set parameter Username
+Set parameter LicenseID to value 2839433
+Academic license - for non-commercial use only - expires 2027-06-29
+
+******************************************************************************
+This program contains Ipopt, a library for large-scale nonlinear optimization.
+ Ipopt is released as open source code under the Eclipse Public License (EPL).
+         For more information visit https://github.com/coin-or/Ipopt
+******************************************************************************
+
+    [nz-α-B&B] t=  63.3s nodes=    2 open=    0 LB=-427324.673211 UB=-381.187737 gap=9.991e-01
+    [nz-α-B&B] t= 124.8s nodes=   26 open=   21 LB=-1035.837505 UB=-413.800374 gap=6.005e-01
+    [nz-α-B&B] t= 184.9s nodes=   53 open=   44 LB=-1035.145245 UB=-450.650870 gap=5.646e-01
+    [nz-α-B&B] t= 245.4s nodes=   74 open=   63 LB=-1035.145245 UB=-462.464680 gap=5.532e-01
+ERROR: LoadError: TaskFailedException
+Stacktrace:
+ [1] #wait#596
+   @ ./task.jl:363 [inlined]
+ [2] wait
+   @ ./task.jl:360 [inlined]
+ [3] foreach(f::typeof(wait), itr::Vector{Task})
+   @ Base ./abstractarray.jl:3212
+ [4] nz_alpha_bnb(nd::NZData, x̄::Vector{Float64}; nworkers::Int64, time_limit::Float64, rel_gap::Float64, dive_max::Int64, maxrounds::Int64, min_width::Float64, ipopt_time::Float64, verbose::Bool, log_every::Float64, target::Nothing, envs::Nothing, heuristic::Bool, presolve::Bool, varpi_branch::Bool, varpi_alpha_width::Float64, branch_score::Symbol, branch_point::Symbol, sep_maxadd::Int64, sep_active_only::Bool, node_select::Symbol, local_k::Int64, child_rounds::Int64, lp_method::Int64, node_lp::Symbol, ls_mw::Bool, ls_follower::Bool, ls_root_rounds::Int64, ls_child_rounds::Int64, ls_inout::Float64, ls_pen::Float64, dyn_threads::Bool, dyn_budget::Int64, dyn_method::Int64, lp_presolve::Int64, defer_rows::Bool, lp_crossover::Int64, purge_k::Int64)
+   @ Main ~/robust_bilevel_network_games/nonzero_sum/nz_alpha_bnb.jl:776
+ [5] top-level scope
+   @ ~/robust_bilevel_network_games/nonzero_sum/diag_bnb_lpcount.jl:19
+ [6] include(mod::Module, _path::String)
+   @ Base ./Base.jl:309
+ [7] exec_options(opts::Base.JLOptions)
+   @ Base ./client.jl:344
+ [8] _start()
+   @ Base ./client.jl:577
+
+    nested task error: nz_alpha_bnb LP: LOCALLY_SOLVED
+    Stacktrace:
+     [1] error(s::String)
+       @ Base ./error.jl:44
+     [2] _nz_solve_lp!(model::Model)
+       @ Main ~/robust_bilevel_network_games/nonzero_sum/nz_alpha_bnb.jl:309
+     [3] _nz_sep_solve!(P::_NZSepLP; maxrounds::Int64, maxadd::Int64, tol::Float64, stall_tol::Float64, stall_rounds::Int64, active_only::Bool, active_tol::Float64, defer_last::Bool)
+       @ Main ~/robust_bilevel_network_games/nonzero_sum/nz_alpha_bnb.jl:322
+     [4] _nz_sep_solve!
+       @ ~/robust_bilevel_network_games/nonzero_sum/nz_alpha_bnb.jl:312 [inlined]
+     [5] macro expansion
+       @ ./timing.jl:463 [inlined]
+     [6] (::var"#worker#661"{Int64, Int64, Float64, Nothing, Bool, Float64, Symbol, Symbol, Int64, Bool, Symbol, Int64, Int64, Int64, Symbol, Bool, Int64, Int64, Float64, Bool, Int64, Int64, Bool, var"#globalUB#655"{Base.RefValue{Float64}, Base.RefValue{Float64}, Vector{Float64}, Vector{Any}}, Base.RefValue{Float64}, Vector{Tuple{Float64, Vector{Float64}}}, Base.RefValue{Any}, Base.RefValue{Float64}, Base.RefValue{Bool}, Base.RefValue{Int64}, Base.RefValue{Vector{Float64}}, Base.RefValue{Float64}, Vector{Float64}, Vector{Any}, Vector{Float64}, Vector{Base.Threads.Atomic{Int64}}, Base.Threads.Atomic{Float64}, Base.Threads.Atomic{Float64}, Base.Threads.Atomic{Float64}, ReentrantLock, var"#boxok#650", var"#tol#649"{Float64}, Vector{NZOmega}, Vector{Base.RefValue{Int64}}, ReentrantLock, Vector{Tuple{Int64, Int64, Vector{Float64}}}, Nothing, var"#zpad#642"{Int64}, Vector{_NZSepLP}, Vector{Int64}, Int64, Int64, Float64})(wid::Int64)
+       @ Main ~/robust_bilevel_network_games/nonzero_sum/nz_alpha_bnb.jl:608
+     [7] (::var"#682#683"{Int64, var"#worker#661"{Int64, Int64, Float64, Nothing, Bool, Float64, Symbol, Symbol, Int64, Bool, Symbol, Int64, Int64, Int64, Symbol, Bool, Int64, Int64, Float64, Bool, Int64, Int64, Bool, var"#globalUB#655"{Base.RefValue{Float64}, Base.RefValue{Float64}, Vector{Float64}, Vector{Any}}, Base.RefValue{Float64}, Vector{Tuple{Float64, Vector{Float64}}}, Base.RefValue{Any}, Base.RefValue{Float64}, Base.RefValue{Bool}, Base.RefValue{Int64}, Base.RefValue{Vector{Float64}}, Base.RefValue{Float64}, Vector{Float64}, Vector{Any}, Vector{Float64}, Vector{Base.Threads.Atomic{Int64}}, Base.Threads.Atomic{Float64}, Base.Threads.Atomic{Float64}, Base.Threads.Atomic{Float64}, ReentrantLock, var"#boxok#650", var"#tol#649"{Float64}, Vector{NZOmega}, Vector{Base.RefValue{Int64}}, ReentrantLock, Vector{Tuple{Int64, Int64, Vector{Float64}}}, Nothing, var"#zpad#642"{Int64}, Vector{_NZSepLP}, Vector{Int64}, Int64, Int64, Float64}})()
+       @ Main ~/robust_bilevel_network_games/nonzero_sum/nz_alpha_bnb.jl:753
+in expression starting at /home/swkim/robust_bilevel_network_games/nonzero_sum/diag_bnb_lpcount.jl:19

@@ -179,10 +179,14 @@ function _nz_sep_add!(P::_NZSepLP, i, j, islo, b)
     any(t -> t[1] == :c, row.terms) && set_name(cref, "rltc_$(i)_$(j)_$(islo ? "lo" : "hi")_$(length(P.allrows) + 1)")
     push!(P.allrows, (i, islo, b, cref, normalized_rhs(cref), j))
     push!(P.active, true)
+    push!(get!(P.O.model.ext, :lastact, Int[]), get(P.O.model.ext, :boxcount, 0))
 end
 
 function _nz_sep_set_box!(P::_NZSepLP, l, u)
-    α = P.O.v[:α]
+    α = P.O.v[:α]; m = P.O.model
+    cnt = m.ext[:boxcount] = get(m.ext, :boxcount, 0) + 1
+    lastact = get(m.ext, :lastact, nothing)
+    lastact !== nothing && length(lastact) != length(P.allrows) && (lastact = nothing)   # 기록 없이 추가된 행이 있으면 정리 안 함
     for i in 1:P.nh
         set_lower_bound(α[i], l[i]); set_upper_bound(α[i], u[i])
     end
@@ -193,8 +197,21 @@ function _nz_sep_set_box!(P::_NZSepLP, l, u)
         elseif !valid && P.active[n]
             set_normalized_rhs(cref, -1e30); P.active[n] = false
         end
+        valid && lastact !== nothing && (lastact[n] = cnt)
     end
     P.l .= l; P.u .= u
+    # purge_k > 0: purge_k 개 노드 동안 비활성인 RLT 행을 모델에서 지움 (worker 모델이 비활성 행으로 커지는 것 방지:
+    #   S=200 bardx 에서 루트 48k → 최대 70k 행, 큰 모델의 LP 가 평균 26 s). 지운 행이 다시 필요하면 분리가 다시 추가.
+    K = get(m.ext, :purge_k, 0)
+    if K > 0 && lastact !== nothing && cnt % 10 == 0
+        old = findall(n -> !P.active[n] && cnt - lastact[n] > K, eachindex(P.allrows))
+        if !isempty(old)
+            delete(m, [P.allrows[n][4] for n in old])
+            keep = setdiff(eachindex(P.allrows), old)
+            P.allrows = P.allrows[keep]; P.active = P.active[keep]; m.ext[:lastact] = lastact[keep]
+            m.ext[:purged] = get(m.ext, :purged, 0) + length(old)
+        end
+    end
 end
 
 function _nz_sep_violations(P::_NZSepLP; tol=1e-6)
@@ -229,6 +246,9 @@ NUMERICAL_ERROR 는 결합 (δ) 행을 넣은 RLT 완화에서 처음 관찰됨 
 재시도: NumericFocus=3 → 그다음 barrier (Method=2). 끝나면 원래 설정 (dual simplex, NumericFocus 0) 으로 되돌림.
 """
 const _NZ_LPCOUNT = Threads.Atomic{Int}(0)
+const _NZ_LPSTAT = Dict{Any,Int}()                      # 노드 LP 종료 상태별 횟수 (_NZ_RESTORE_LOCK 로 보호)
+const _NZ_LPLOG_ON = Ref(false)                          # true 면 LP 마다 _NZ_LPLOG 에 기록 (진단)
+const _NZ_LPLOG = Tuple{Float64,Int,Int,Float64,Int,String}[]
 const _NZ_LPN = Threads.Atomic{Int}(0)                  # 노드 LP optimize! 횟수·벽시계 합·Gurobi solve_time 합 (계측)
 const _NZ_LPWALL = Threads.Atomic{Float64}(0.0)
 const _NZ_LPGRB = Threads.Atomic{Float64}(0.0)
@@ -239,12 +259,23 @@ function _nz_solve_lp!(model)
     # 직전 호출에서 재시도 설정을 바꿨으면 여기서 되돌림. 해를 읽은 뒤에 되돌리면 JuMP 가 해를 무효로 봐서
     # (OptimizeNotCalled) 이어지는 value 읽기 (RLT 위반 계산, α 읽기) 가 깨진다.
     restore = lock(() -> pop!(_NZ_RESTORE, model, false), _NZ_RESTORE_LOCK)
-    restore && (set_optimizer_attribute(model, "NumericFocus", 0); set_optimizer_attribute(model, "Method", get(model.ext, :lp_method, 1)))
+    restore && (set_optimizer_attribute(model, "NumericFocus", 0); set_optimizer_attribute(model, "Method", get(model.ext, :lp_method, 1));
+                set_optimizer_attribute(model, "Crossover", get(model.ext, :lp_crossover, -1)))
     tw = @elapsed optimize!(model)
-    Threads.atomic_add!(_NZ_LPN, 1); Threads.atomic_add!(_NZ_LPWALL, tw)
-    Threads.atomic_add!(_NZ_LPGRB, try solve_time(model) catch; 0.0 end)
+    tg = try solve_time(model) catch; 0.0 end
+    Threads.atomic_add!(_NZ_LPN, 1); Threads.atomic_add!(_NZ_LPWALL, tw); Threads.atomic_add!(_NZ_LPGRB, tg)
     st = termination_status(model)
-    if st == MOI.NUMERICAL_ERROR || st == MOI.OTHER_ERROR
+    lock(_NZ_RESTORE_LOCK) do
+        _NZ_LPSTAT[st] = get(_NZ_LPSTAT, st, 0) + 1
+        if _NZ_LPLOG_ON[]                                  # 진단: LP 마다 (시각, 스레드, 제약 수, Gurobi 시간, barrier 반복, 상태)
+            nc = num_constraints(model; count_variable_in_set_constraints=false)
+            bi = try MOI.get(model, MOI.BarrierIterations()) catch; -1 end
+            push!(_NZ_LPLOG, (time(), Threads.threadid(), nc, tg, bi, string(st)))
+        end
+    end
+    # 최적이 아닌 비정상 상태 (barrier crossover 끔에서 SUBOPTIMAL = ALMOST_OPTIMAL 등) 도 수치 오류처럼 재시도.
+    # 이전에는 error() 로 worker task 가 죽었다 (bardx 첫 실행의 TaskFailedException 추정 원인).
+    if st in (MOI.NUMERICAL_ERROR, MOI.OTHER_ERROR, MOI.ALMOST_OPTIMAL, MOI.INFEASIBLE_OR_UNBOUNDED, MOI.SLOW_PROGRESS, MOI.ITERATION_LIMIT)
         k = Threads.atomic_add!(_NZ_NUMERR, 1) + 1
         # 진단: NZ_NUMERR_DUMP=<폴더> 면 처음 3 개의 실패 LP 를 Gurobi 내부 모델 (.mps) 과 basis (.bas) 로 저장
         if haskey(ENV, "NZ_NUMERR_DUMP") && k <= 3
@@ -258,11 +289,12 @@ function _nz_solve_lp!(model)
         lock(() -> (_NZ_RESTORE[model] = true), _NZ_RESTORE_LOCK)
         for (nf, meth) in ((3, 1), (3, 2))
             set_optimizer_attribute(model, "NumericFocus", nf); set_optimizer_attribute(model, "Method", meth)
+            set_optimizer_attribute(model, "Crossover", -1)      # 재시도는 crossover 를 켜서 (기저해까지)
             optimize!(model)
             st = termination_status(model)
-            st in (MOI.NUMERICAL_ERROR, MOI.OTHER_ERROR) || break
+            st in (MOI.OPTIMAL, MOI.INFEASIBLE, MOI.TIME_LIMIT) && break
         end
-        st in (MOI.NUMERICAL_ERROR, MOI.OTHER_ERROR) && (Threads.atomic_add!(_NZ_NUMERR_FAIL, 1); return Inf)
+        st in (MOI.OPTIMAL, MOI.INFEASIBLE, MOI.TIME_LIMIT) || (Threads.atomic_add!(_NZ_NUMERR_FAIL, 1); return Inf)
     end
     if st == MOI.OPTIMAL && haskey(ENV, "NZ_LP_DUMP_EVERY")      # 진단: 정상 노드 LP 를 N 번째마다 저장 (조건수 비교용)
         n = Threads.atomic_add!(_NZ_LPCOUNT, 1) + 1
@@ -271,7 +303,9 @@ function _nz_solve_lp!(model)
             try Gurobi.GRBwrite(o, base * ".mps"); Gurobi.GRBwrite(o, base * ".bas") catch end
         end
     end
-    st == MOI.OPTIMAL && return objective_value(model)
+    # LOCALLY_SOLVED: barrier crossover 끔 (bardx) 에서 Gurobi 가 가끔 돌려줌 (S=200 worker 6 실행에서 worker task 를 죽인 원인).
+    #   LP 라 국소 최적 = 전역 최적, 값은 호출 측 zpad 가 1e-7 상대 여유를 더함.
+    (st == MOI.OPTIMAL || st == MOI.LOCALLY_SOLVED) && return objective_value(model)
     st == MOI.INFEASIBLE && return -Inf
     st == MOI.TIME_LIMIT && return NaN
     error("nz_alpha_bnb LP: $st")
@@ -422,7 +456,8 @@ function nz_alpha_bnb(nd::NZData, x̄; nworkers=Threads.nthreads() - 2, time_lim
                       node_lp::Symbol=:full, ls_mw::Bool=false, ls_follower::Bool=false,
                       ls_root_rounds::Int=50, ls_child_rounds::Int=3, ls_inout=0.5, ls_pen=1e4,
                       dyn_threads::Bool=false, dyn_budget::Int=nworkers, dyn_method::Int=3, lp_presolve::Int=0,
-                      defer_rows::Bool=false, lp_crossover::Int=-1)
+                      defer_rows::Bool=false, lp_crossover::Int=-1, purge_k::Int=0)
+    # purge_k: worker 모델에서 purge_k 개 노드 동안 비활성인 RLT 행을 지움 (0 = 안 지움, 기존)
     # defer_rows: 노드의 마지막 분리 라운드 행을 다시 풀지 않고 자식 노드로 미룸 (_nz_sep_solve! 의 defer_last). 노드당 LP 1 회.
     # lp_crossover: barrier 의 Crossover (-1 자동, 0 끔: 기저 없이 내부점 해. S=200 자식 노드 LP 5~7 s → 3.4~5.5 s).
     #   끄면 목적값이 최적값과 ~1e-8 상대오차 → 상한에 1e-7 상대 여유를 더해 유효성 유지.
@@ -472,7 +507,10 @@ function nz_alpha_bnb(nd::NZData, x̄; nworkers=Threads.nthreads() - 2, time_lim
         set_optimizer_attribute(P.O.model, "Method", lp_method); P.O.model.ext[:lp_method] = lp_method   # 재시도 후 복원값
     end
     lp_presolve != 0 && for P in Ps; set_optimizer_attribute(P.O.model, "Presolve", lp_presolve); end
-    lp_crossover != -1 && for P in Ps; set_optimizer_attribute(P.O.model, "Crossover", lp_crossover); end
+    purge_k > 0 && for P in Ps; P.O.model.ext[:purge_k] = purge_k; end
+    lp_crossover != -1 && for P in Ps
+        set_optimizer_attribute(P.O.model, "Crossover", lp_crossover); P.O.model.ext[:lp_crossover] = lp_crossover   # 재시도 후 복원값
+    end
     zpad(z) = lp_crossover == 0 && isfinite(z) ? z + 1e-7 * max(1.0, abs(z)) : z
     Ms = node_lp == :lshaped ?
         [Main.nz_lshaped_master!(Ps[i], nd, x̄; block_optimizer=mk(envs[i]), pen=ls_pen, follower=ls_follower) for i in 1:nworkers] :
@@ -742,5 +780,6 @@ function nz_alpha_bnb(nd::NZData, x̄; nworkers=Threads.nthreads() - 2, time_lim
     return Dict(:LB => LB[], :UB => UB, :α => best_α[], :is_exact => (UB - LB[] <= tol(LB[])),
                 :nodes => nodes[], :time => time() - t0, :root_UB => root_UB[], :ipopt_calls => ipopt_calls[], :presolve_fixed => nfix, :ls_cuts => length(ls_pool),
                 :t_relax => t_relax[], :thr_hist => [a[] for a in thr_hist], :t_eval => t_eval[], :t_node => t_node[],
-                :numerr => _NZ_NUMERR[], :numerr_fail => _NZ_NUMERR_FAIL[])
+                :numerr => _NZ_NUMERR[], :numerr_fail => _NZ_NUMERR_FAIL[], :lpstat => lock(() -> copy(_NZ_LPSTAT), _NZ_RESTORE_LOCK),
+                :purged => sum(get(P.O.model.ext, :purged, 0) for P in Ps), :rows_end => [length(P.allrows) for P in Ps])
 end

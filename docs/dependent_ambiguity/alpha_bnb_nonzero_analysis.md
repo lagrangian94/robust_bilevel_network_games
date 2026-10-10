@@ -194,3 +194,19 @@ RLT 강화용 곱 Z_a·Z_b·Z_e·Z_c 60 (변수의 25%, 덜어낼 수 있음 —
 - LP 1 회가 따로 풀 때 (4~7 s) 보다 2 배 → worker 12 개 동시 barrier 의 경쟁 + worker 모델에 쌓이는 행으로 추정 (미확정).
 - bardx: 첫 300 s 실행은 TaskFailedException 으로 중단 (스택 미기록), 120 s·300 s 재실행에서는 재현 안 됨 → 간헐적, 원인 미확인 (경쟁 조건 의심).
 - 다음: defer_rows 를 dual simplex (S=50) 에도 적용, bard 를 600 s 로 base 와 비교, S 에 따른 방법 자동 선택.
+
+## 9. Gurobi 전역 솔버와 정면 비교 (2026-10-10, `h2h_oracle.jl`, `logs/h2h_gurobi.log`)
+
+같은 oracle 문제 (기본 인스턴스, x = {1,2}, θᵁ = circuit, WD, ε=0.3, δ=0.1), 600 s, 12 스레드 (Gurobi Threads 12 / α-B&B worker 12).
+LB = 실현 가능해 값 (클수록 좋음), UB = 상한 (작을수록 좋음).
+
+| | S=50 LB / UB / gap | S=200 LB / UB / gap |
+|---|---|---|
+| Gurobi (Ω NonConvex, MIPGap 1e-3) | **−1049.3** / −860.7 / 18.0% | −1033.6 / −553.1 / 46.5% |
+| α-B&B base (dual simplex) | −1062.6 / **−907.2** / **14.6%** | −1034.8 / −556.2 / 46.3% |
+| α-B&B dynbarc (barrier + 스레드 동적 배분) | −1051.6 / −850.1 / 19.2% | −1031.3 / **−622.1** / **39.7%** |
+
+- 상한은 두 S 모두 α-B&B 가 Gurobi 보다 강함 (S=50: −907 vs −861, S=200: −622 vs −553). 실현 가능해는 S=50 에서 Gurobi 가 조금 나음.
+- 단 S 별 최선 설정이 다름 (S=50 dual simplex, S=200 barrier), 어느 쪽도 600 s 에 0.5% 근처에 못 감.
+- bardx 의 간헐적 TaskFailedException 원인: crossover 끔 barrier 에서 Gurobi 가 LOCALLY_SOLVED 를 돌려줌 → 정상 해로 처리하도록 수정.
+- 비활성 행 정리 (`purge_k`): S=200 은 worker 당 노드가 ~9 개라 지운 행 0 → 효과 없음 (`logs/diag_bnb_lpcount_bardxp_w12.log`).
