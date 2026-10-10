@@ -5,6 +5,7 @@ tune_abb.jl — 비제로섬 α-B&B 설정의 강건성 튜닝. 기본 인스턴
 변형 (TA_VARIANTS, 쉼표):
   base      : 현재 기본 (branch_score=:viol, branch_point=:mid, dive_max=3, maxrounds=30). 1 단계 로그의 base 는 이전 기본 (:alphahat)
   alphahat  : branch_point=:alphahat (이전 기본)   mdive0 / mrounds10 / mweighted : mid 위에 하나씩
+  cap500 / cap200 : 라운드당 추가 RLT 행 상한   active : 활성 시나리오만 분리   cap500act : 둘 다
   weighted  : branch_score=:weighted (위반 × 목적 민감도)
   mid       : branch_point=:mid
   dive0     : dive_max=0          dive10 : dive_max=10
@@ -32,6 +33,13 @@ variants = Dict(
     "mdive0"   => (dive_max=0,),                         # mid + diving 없음
     "mrounds10"=> (maxrounds=10,),                       # mid + 분리 10 라운드
     "mweighted"=> (branch_score=:weighted,),             # mid + 가중 분기
+    "cap500"   => (sep_maxadd=500,),                     # 라운드당 추가 RLT 행 500 개까지
+    "cap200"   => (sep_maxadd=200,),
+    "active"   => (sep_active_only=true,),               # 활성 시나리오 행만 분리
+    "cap500act"=> (sep_maxadd=500, sep_active_only=true),
+    "local8"   => (node_select=:local, local_k=8),       # 상한 상위 8 개 중 직전 상자에 가장 가까운 노드
+    "local32"  => (node_select=:local, local_k=32),
+    "local8d10"=> (node_select=:local, local_k=8, dive_max=10),
     "weighted" => (branch_score=:weighted,),
     "mid"      => (branch_point=:mid,),
     "dive0"    => (dive_max=0,),
@@ -51,8 +59,9 @@ for S in Int.(pl("TA_S", "20,50")), ε in pl("TA_EPS", "0.2,0.3"), δ in pl("TA_
     for v in vnames
         t = @elapsed r = nz_alpha_bnb(nd, x̄; nworkers=nw, time_limit=TL, rel_gap=GAP, verbose=false, variants[v]...)
         gap = (r[:UB] - r[:LB]) / max(1.0, abs(r[:LB]))
-        @printf("RESULT S=%d eps=%.2f delta=%s variant=%-9s %s LB=%.4f UB=%.4f gap=%.3e nodes=%d time=%.1f\n",
-                S, ε, string(δ), v, r[:is_exact] ? "Optimal " : "TimeLim ", r[:LB], r[:UB], gap, r[:nodes], t)
+        @printf("RESULT S=%d eps=%.2f delta=%s variant=%-9s %s LB=%.4f UB=%.4f gap=%.3e nodes=%d time=%.1f | worker 합 node=%.0fs relax=%.0fs eval=%.0fs\n",
+                S, ε, string(δ), v, r[:is_exact] ? "Optimal " : "TimeLim ", r[:LB], r[:UB], gap, r[:nodes], t,
+                get(r, :t_node, NaN), get(r, :t_relax, NaN), get(r, :t_eval, NaN))
         flush(stdout)
     end
 end

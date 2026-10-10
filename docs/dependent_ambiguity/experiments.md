@@ -1,5 +1,6 @@
 # 원고 6 장 실험 계획 — 종속 ambiguity set (belief 결합 δ) 반영 (2026-10-08 갱신)
 
+α-B&B 분석·개선 방향은 `alpha_bnb_nonzero_analysis.md` 에 따로 정리.
 원고: `paper/joc-non_zero_sum/INFORMS-IJOC-Template.tex` 6.1 (location, 커밋 eb78f45 "실험 설계 골격", 38f0ab0 "인스턴스 크기 방침").
 이 문서는 원고 설계를 코드·실행 단위로 옮긴 것과 지금까지의 결과.
 

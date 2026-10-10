@@ -52,6 +52,7 @@ mutable struct _NZSepLP
     mcW::Vector{NTuple{4,ConstraintRef}}         # ζW = α_i ϖ 의 노드별 McCormick 4 행 (wpos 순서), ϖ 분기용
     Lw::Vector{Float64}                          # 노드의 ϖ 상자 (wpos 순서)
     Uw::Vector{Float64}
+    rowscen::Vector{Int}                         # RLT 후보 행의 시나리오 (여러 시나리오에 걸친 행은 0), 활성 시나리오 분리용
 end
 
 function _nz_zvar(P::_NZSepLP, f, i, idx)
@@ -97,7 +98,7 @@ function _nz_rows(nd::NZData, Y, wpos)
     return rows
 end
 
-function _nz_build_sep(nd::NZData, x̄; optimizer)
+function _nz_build_sep(nd::NZData, x̄; optimizer, varpi_mc::Bool=false)
     O = build_nz_omega(nd; optimizer=optimizer, mode=:relax)
     m = O.model; v = O.v
     set_optimizer_attribute(m, "Method", 1)          # dual simplex (행 추가 후 warm start)
@@ -122,18 +123,26 @@ function _nz_build_sep(nd::NZData, x̄; optimizer)
     end
     # ζW = α_i ϖ 의 McCormick (α 상자 × 노드 ϖ 상자). 계수·rhs 는 _nz_sep_set_wbox! 가 노드마다 채움.
     # α 만 분기하면 α·ϖ 오차가 (α 폭) × (ϖ 범위 0 ~ p r) 에 비례해 θ·비용 스케일로 증폭됨 → ϖ 도 분기 (diag_box_width.jl)
+    # varpi_mc = false (ϖ 분기를 안 쓰는 기본) 이면 만들지 않음: 기본 상자에서는 Wcap RLT 와 거의 중복이고
+    # 행 60 × S 개 (S=200 에서 노드 LP 제약의 ~27%) 를 차지한다.
     mcW = NTuple{4,ConstraintRef}[]
     Lw = zeros(length(wpos)); Uw = zeros(length(wpos))
     for (idx, (jj, s, i)) in enumerate(wpos)
         z = v[:ζW][jj, s]; w = Y[:w][idx]; a = α[i]
+        Uw[idx] = has_upper_bound(w) ? upper_bound(w) : Inf
+        varpi_mc || continue
         c1 = @constraint(m, z - 0.0 * w - 0.0 * a >= 0.0); c2 = @constraint(m, z - 0.0 * w - 0.0 * a >= 0.0)
         c3 = @constraint(m, z - 0.0 * w - 0.0 * a <= 0.0); c4 = @constraint(m, z - 0.0 * w - 0.0 * a <= 0.0)
         push!(mcW, (c1, c2, c3, c4))
-        Uw[idx] = has_upper_bound(w) ? upper_bound(w) : Inf
     end
     nz_set_objective!(O, nd, x̄)
-    P = _NZSepLP(O, nh, S, Y, Z, wpos, _nz_rows(nd, Y, wpos),
-                 Tuple{Int,Bool,Float64,ConstraintRef,Float64,Int}[], Bool[], zeros(nh), copy(nd.hU), mcW, Lw, Uw)
+    rows = _nz_rows(nd, Y, wpos)
+    rowscen = map(rows) do row
+        ss = unique(f == :w ? wpos[idx][2] : idx for (f, idx, _) in row.terms)
+        length(ss) == 1 ? ss[1] : 0
+    end
+    P = _NZSepLP(O, nh, S, Y, Z, wpos, rows,
+                 Tuple{Int,Bool,Float64,ConstraintRef,Float64,Int}[], Bool[], zeros(nh), copy(nd.hU), mcW, Lw, Uw, rowscen)
     _nz_sep_set_box!(P, zeros(nh), copy(nd.hU))      # 자리표시 계수 (0) 를 기본 상자의 McCormick 으로 채움
     _nz_sep_set_wbox!(P, copy(Lw), copy(Uw))
     return P
@@ -141,6 +150,10 @@ end
 
 "노드의 ϖ 상자와 ζW McCormick 갱신 (α 상자 P.l, P.u 를 먼저 _nz_sep_set_box! 로 설정한 뒤 호출)"
 function _nz_sep_set_wbox!(P::_NZSepLP, Lw, Uw)
+    if isempty(P.mcW)                                # ϖ 분기를 안 쓰면 ϖ 상자는 바뀌지 않음 (기본 범위 그대로)
+        P.Lw .= Lw; P.Uw .= Uw
+        return
+    end
     for (idx, (_, _, i)) in enumerate(P.wpos)
         w = P.Y[:w][idx]; a = P.O.v[:α][i]
         L, U = Lw[idx], Uw[idx]; la, ua = P.l[i], P.u[i]
@@ -259,12 +272,21 @@ function _nz_solve_lp!(model)
     error("nz_alpha_bnb LP: $st")
 end
 
-function _nz_sep_solve!(P::_NZSepLP; maxrounds=30, maxadd=5000, tol=1e-6, stall_tol=1e-6, stall_rounds=2)
+function _nz_sep_solve!(P::_NZSepLP; maxrounds=30, maxadd=5000, tol=1e-6, stall_tol=1e-6, stall_rounds=2,
+                        active_only::Bool=false, active_tol=1e-7)
+    # maxadd: 라운드마다 가장 많이 위반된 행 maxadd 개만 추가 (큰 S 에서 노드 LP 가 커지는 것을 억제)
+    # active_only: 현재 해에서 a_s, r_s, d_s 가 모두 active_tol 이하인 시나리오의 (단일 시나리오) 행은 추가하지 않음
+    #   (유효 부등식의 일부만 넣는 것이라 완화는 유효, 약해질 수만 있음)
     zprev = Inf; nstall = 0
     for _ in 1:maxrounds
         z = _nz_solve_lp!(P.O.model)
         (isnan(z) || isinf(z)) && return z
         V = _nz_sep_violations(P; tol=tol)
+        if active_only && !isempty(V)
+            av, rv, dv = value.(P.Y[:a]), value.(P.Y[:r]), value.(P.Y[:d])
+            act = [max(av[s], rv[s], dv[s]) > active_tol for s in 1:P.S]
+            filter!(t -> (sj = P.rowscen[t[3]]; sj == 0 || act[sj]), V)
+        end
         isempty(V) && return z
         nstall = (zprev - z <= stall_tol * max(1.0, abs(z))) ? nstall + 1 : 0
         zprev = z
@@ -373,7 +395,12 @@ function nz_alpha_bnb(nd::NZData, x̄; nworkers=Threads.nthreads() - 2, time_lim
                       dive_max=3, maxrounds=30, min_width=1e-7, ipopt_time=60.0,
                       verbose=true, log_every=30.0, target=nothing, envs=nothing, heuristic::Bool=true,
                       presolve::Bool=true, varpi_branch::Bool=false, varpi_alpha_width=3.0,
-                      branch_score::Symbol=:viol, branch_point::Symbol=:mid)
+                      branch_score::Symbol=:viol, branch_point::Symbol=:mid,
+                      sep_maxadd::Int=5000, sep_active_only::Bool=false,
+                      node_select::Symbol=:best, local_k::Int=8)
+    # node_select: :best (상한 최대, 기존) | :local (상한 상위 local_k 개 중 worker 가 직전에 푼 상자와 가장 가까운 노드:
+    #   연속 노드의 상자 변화가 작아 노드 LP 의 warm start 가 유지됨. 실측: 실제 탐색의 노드 LP 가 한 경로 하강보다 7~13 배 느림)
+    node_select in (:best, :local) || error("node_select = :best | :local")
     # branch_score: :viol (곱 위반 합, 기본) | :weighted (위반 × 목적 민감도: ζL·ζF 는 해당 흐름 행의 쌍대값 × hcoef,
     #               ζW 는 목적계수 θ hcoef — 튜닝에서 차이 없음).
     # branch_point: :mid (항상 중점, 기본: tune_abb.jl 에서 300 s gap S=20 ε=0.2 5.0% → 2.3%, ε=0.3 7.3% → 3.6%)
@@ -399,12 +426,14 @@ function nz_alpha_bnb(nd::NZData, x̄; nworkers=Threads.nthreads() - 2, time_lim
     #   학술 WLS 라이선스 (동시 세션 2 개) 에서 로컬 검증할 때만 쓰는 용도. 기본은 풀에서 nworkers+1 개.
     envs = envs === nothing ? _nz_envs(nworkers + 1) : envs
     length(envs) >= nworkers + (heuristic ? 1 : 0) || error("nz_alpha_bnb: envs 가 부족함 (worker $nworkers + heuristic $(heuristic))")
-    Ps = [_nz_build_sep(nd, x̄; optimizer=mk(envs[i])) for i in 1:nworkers]
+    Ps = [_nz_build_sep(nd, x̄; optimizer=mk(envs[i]), varpi_mc=varpi_branch) for i in 1:nworkers]
     Fs = [nz_build_fixed_alpha(nd, x̄; optimizer=mk(envs[i])) for i in 1:nworkers]
     tol(v) = rel_gap * (isfinite(v) ? max(1.0, abs(v)) : 1.0)
     boxok(l) = all(nd.W * l .<= nd.wvec .+ 1e-9)
 
     lk = ReentrantLock()
+    # 노드 시간 계측 (worker 합계, 초): 완화 LP (분리 포함), α 고정 정확 LP, 노드 처리 전체
+    t_relax = Threads.Atomic{Float64}(0.0); t_eval = Threads.Atomic{Float64}(0.0); t_node = Threads.Atomic{Float64}(0.0)
     Lw0 = copy(Ps[1].Lw); Uw0 = copy(Ps[1].Uw)
     wmax = [isfinite(U) ? max(U, 1e-9) : 1.0 for U in Uw0]       # ϖ 정규화 폭
     open = Any[(zeros(nh), copy(nd.hU), Inf, Lw0, Uw0)]
@@ -446,7 +475,15 @@ function nz_alpha_bnb(nd::NZData, x̄; nworkers=Threads.nthreads() - 2, time_lim
                                                           (pruned_ub[] = max(pruned_ub[], localnode[3]))
                     end
                     if !isempty(open)
-                        node = popat!(open, argmax([n[3] for n in open])); dive_left = dive_max
+                        if node_select == :best || length(open) == 1
+                            node = popat!(open, argmax([n[3] for n in open]))
+                        else
+                            k = min(local_k, length(open))
+                            cand = partialsortperm([n[3] for n in open], 1:k; rev=true)
+                            dist(n) = sum(abs(n[1][i] - P.l[i]) + abs(n[2][i] - P.u[i]) for i in 1:nh)
+                            node = popat!(open, cand[argmin([dist(open[c]) for c in cand])])
+                        end
+                        dive_left = dive_max
                     end
                 end
                 localnode = nothing
@@ -462,6 +499,7 @@ function nz_alpha_bnb(nd::NZData, x̄; nworkers=Threads.nthreads() - 2, time_lim
                 for (i, j, islo, b) in root_rows[]; _nz_sep_add!(P, i, j, islo, b); end
                 synced = true
             end
+            tn0 = time()
             z = -Inf; α̂ = nothing; children = nothing; zE = -Inf; unfinished = false
             pruned_val = -Inf
             boxok(l) && ubp <= LB[] + tol(LB[]) && (pruned_val = ubp)
@@ -469,7 +507,8 @@ function nz_alpha_bnb(nd::NZData, x̄; nworkers=Threads.nthreads() - 2, time_lim
                 _nz_sep_set_box!(P, l, u)
                 _nz_sep_set_wbox!(P, Lw, Uw)
                 set_time_limit_sec(P.O.model, max(t_end - time(), 0.1))
-                z = _nz_sep_solve!(P; maxrounds=maxrounds)
+                tr = @elapsed (z = _nz_sep_solve!(P; maxrounds=maxrounds, maxadd=sep_maxadd, active_only=sep_active_only))
+                Threads.atomic_add!(t_relax, tr)
                 unfinished = isnan(z)
                 numfail = z == Inf               # 수치 오류가 재시도로도 안 풀림: 부모 상한 유지, 가장 넓은 α_i 를 반으로
                 if numfail
@@ -490,7 +529,8 @@ function nz_alpha_bnb(nd::NZData, x̄; nworkers=Threads.nthreads() - 2, time_lim
                     rv = value.(v[:r]); dv = value.(v[:d]); ϖv = value.(v[:ϖ])
                     ζLv = value.(v[:ζL]); ζFv = value.(v[:ζF]); ζWv = value.(v[:ζW])
                     set_time_limit_sec(F.model, max(t_end - time(), 0.1))
-                    zE = nz_eval_alpha!(F, nd, α̂)
+                    te = @elapsed (zE = nz_eval_alpha!(F, nd, α̂))
+                    Threads.atomic_add!(t_eval, te)
                     isnan(zE) && (zE = -Inf)
                     viol = zeros(nh)
                     if branch_score == :weighted
@@ -543,6 +583,7 @@ function nz_alpha_bnb(nd::NZData, x̄; nworkers=Threads.nthreads() - 2, time_lim
                     end
                 end
             end
+            Threads.atomic_add!(t_node, time() - tn0)
             lock(lk)
             try
                 if unfinished
@@ -629,5 +670,6 @@ function nz_alpha_bnb(nd::NZData, x̄; nworkers=Threads.nthreads() - 2, time_lim
     UB = max(LB[], isempty(open) ? -Inf : maximum(n[3] for n in open), pruned_ub[])
     return Dict(:LB => LB[], :UB => UB, :α => best_α[], :is_exact => (UB - LB[] <= tol(LB[])),
                 :nodes => nodes[], :time => time() - t0, :root_UB => root_UB[], :ipopt_calls => ipopt_calls[], :presolve_fixed => nfix,
+                :t_relax => t_relax[], :t_eval => t_eval[], :t_node => t_node[],
                 :numerr => _NZ_NUMERR[], :numerr_fail => _NZ_NUMERR_FAIL[])
 end
