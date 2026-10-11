@@ -38,14 +38,19 @@ for S in parse.(Int, split(envf("SO_S", "3,5,10,20,30"), ","))
     end
     for (sv, kwd) in (("abbdr", (dual_range=true,)), ("abbdr0", (dual_range=false,)), ("abbdrnc", (dual_range=true, comp=false)),
                       ("abbdr1", (dual_range=true, vcut=false, cslift=false)),      # 1 차 시제품: 범위 (W, F, C) 만
+                      ("abbdrc", (dual_range=true, sep_rows=:cert)), ("abbdrn", (dual_range=true, sep_rows=:none)),   # 분리 행 줄이기
+                      ("abbdrb", (dual_range=true, lp_method=2, lp_presolve=-1)),                                     # 노드 LP barrier
+                      ("abbdrnb", (dual_range=true, sep_rows=:none, lp_method=2, lp_presolve=-1)),
+                      ("abbdrcb", (dual_range=true, sep_rows=:cert, lp_method=2, lp_presolve=-1)),
+                      ("abbdr1b", (dual_range=true, vcut=false, cslift=false, lp_method=2, lp_presolve=-1)),
                       ("abbdrv", (dual_range=true, vcut=true, cslift=false)), ("abbdrx", (dual_range=true, vcut=false, cslift=true)),
                       ("abbdrk", (dual_range=true, branch_point=:kink)), ("abbdrk20", (dual_range=true, branch_point=:kink, kink_width=20.0)),
                       ("abbdrk5", (dual_range=true, branch_point=:kink, kink_width=5.0)))
         sv in solvers || continue            # 쌍대 범위 조임 시제품 (nz_alpha_bnb_dr.jl). abbdr0 = 같은 코드에서 범위 조임만 끔
         t = @elapsed r = nz_alpha_bnb_dr(nd, x̄; nworkers=nw, time_limit=TL, rel_gap=GAP, verbose=true, log_every=60.0, kwd...)
-        @printf("RESULT S=%d %-10s %s LB=%.4f UB=%.4f gap=%.3e time=%.1f nodes=%d rootUB=%.2f | relax %.0fs range %.0fs (MIP %d) 고정비율 %.2f 꺾임 분기 %d MIP 실패 %d\n",
+        @printf("RESULT S=%d %-10s %s LB=%.4f UB=%.4f gap=%.3e time=%.1f nodes=%d rootUB=%.2f | relax %.0fs range %.0fs (MIP %d) 고정비율 %.2f 꺾임 분기 %d MIP 실패 %d LP 수치오류 %d (실패 %d) 실행불가능 노드 %d (재확인에서 되살아남 %d)\n",
                 S, sv, r[:is_exact] ? "Optimal" : "TimeLim", r[:LB], r[:UB], (r[:UB] - r[:LB]) / max(1, abs(r[:LB])), t, r[:nodes], r[:root_UB],
-                r[:t_relax], r[:t_range], r[:range_mips], r[:fixfrac], r[:kink_branches], r[:range_fail])
+                r[:t_relax], r[:t_range], r[:range_mips], r[:fixfrac], r[:kink_branches], r[:range_fail], r[:numerr], r[:numerr_fail], r[:infeas], r[:infeas_recovered])
         flush(stdout)
     end
     if "abb" in solvers

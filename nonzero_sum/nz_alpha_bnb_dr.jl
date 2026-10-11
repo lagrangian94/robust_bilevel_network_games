@@ -71,6 +71,7 @@ mutable struct _NZDR
     vcut::Vector{ConstraintRef}                  # 시나리오별 값 상한 ℓᵀŷˢ ≤ φ̄_s(B) r_s (없으면 빈 벡터)
     zk::Vector{Tuple{Int,Int,ConstraintRef,ConstraintRef}}   # (i, l, Zκ ≥ l_i κ_l, Zκ ≤ u_i κ_l)  — 상보성 RLT (없으면 빈 벡터)
     prlt::Array{ConstraintRef,3}                 # 4 × |Hk| × S: ζΠ = α π̃ 의 범위 × 상자 RLT (없으면 크기 0)
+    zP::Matrix{VariableRef}                      # ζΠ (|Hk| × S, 없으면 크기 0)
     nmip::Int
     nfail::Int                                   # 범위·값 MIP 가 Gurobi 오류로 실패한 횟수 (그 성분은 부모 값 유지)
 end
@@ -113,6 +114,7 @@ function _nz_dr_attach!(P::_NZSepLP, nd::NZData, x̄; optimizer, vcut::Bool=true
     #    쌍대가 고정된 상자에서는 ζΠ = σ ζF 가 되어 follower 의 primal 값 (ζF 로 완화된 것) 이 정상성으로 묶인다.
     zk = Tuple{Int,Int,ConstraintRef,ConstraintRef}[]
     prlt = Array{ConstraintRef,3}(undef, 0, 0, 0)
+    zPm = Matrix{VariableRef}(undef, 0, 0)
     if cslift
         nW = size(nd.W, 1); κ = v[:κ]; α = v[:α]
         Zκ = Dict{Tuple{Int,Int},VariableRef}()
@@ -123,6 +125,7 @@ function _nz_dr_attach!(P::_NZSepLP, nd::NZData, x̄; optimizer, vcut::Bool=true
         end
         @constraint(mdl, [l in 1:nW], nd.wvec[l] * κ[l] - sum(nd.W[l, i] * Zκ[(i, l)] for i in 1:nh if haskey(Zκ, (i, l))) == 0.0)
         ζΠ = @variable(mdl, [1:n, 1:S], lower_bound = 0.0)
+        zPm = Matrix{VariableRef}(ζΠ)
         prlt = Array{ConstraintRef,3}(undef, 4, n, S)
         for (a, k) in enumerate(Hk), s in 1:S
             i = nd.hrow[k]; π = v[:π̃][k, s]; d = v[:d][s]; zF = v[:ζF][i, s]; z = ζΠ[a, s]
@@ -138,7 +141,7 @@ function _nz_dr_attach!(P::_NZSepLP, nd::NZData, x̄; optimizer, vcut::Bool=true
         end
     end
     mips = [_nz_dr_build_mip(nd, x̄, s; optimizer=optimizer) for s in 1:S]
-    return _NZDR(mips, Hk, jj, whi, wlo, phi, plo, rlt, stat, vc, zk, prlt, 0, 0)
+    return _NZDR(mips, Hk, jj, whi, wlo, phi, plo, rlt, stat, vc, zk, prlt, zPm, 0, 0)
 end
 
 "전역 범위 (루트 노드의 부모 값)"
@@ -255,6 +258,23 @@ function _nz_dr_kink(DR::_NZDR, nd::NZData, l, u, lo, hi, a, s)
     return t
 end
 
+"""
+노드 LP 의 INFEASIBLE 판정 재확인. 반환: −Inf (재확인에서도 실행 불가능), 유한값 (풀림: 그 목적값), NaN·Inf (시간·수치 문제).
+
+범위 행을 넣은 노드 LP 는 실행 가능한데도 INFEASIBLE 로 나오는 일이 있다 (test_dr_validity_boxes.jl: 최적 α* 를 품은 상자의
+0.5~1%, 범위 행이 없는 기존 완화에서는 0%). 같은 상자를 새 모델에서 풀면 OPTIMAL 이고, 제약이 더 많은 변형이 실행 가능한데
+더 적은 변형이 실행 불가능으로 나오기도 한다 → 수학적 무효가 아니라 **warm start 경로의 수치 문제**
+(노드마다 행렬 계수를 바꾼 뒤의 dual simplex + FeasibilityTol 1e-9). FeasibilityTol 만 1e-6 으로 풀어 이어서 풀면 그대로 실행 불가능.
+여기서는 기저·해 정보를 버리고 (GRBreset) primal simplex 로 FeasibilityTol 1e-6 에서 처음부터 다시 푼다.
+"""
+function _nz_dr_recheck_infeasible!(model)
+    set_optimizer_attribute(model, "FeasibilityTol", 1e-6); set_optimizer_attribute(model, "Method", 0)
+    Gurobi.GRBreset(JuMP.unsafe_backend(model), 0)
+    z = _nz_solve_lp!(model)
+    set_optimizer_attribute(model, "FeasibilityTol", 1e-9); set_optimizer_attribute(model, "Method", get(model.ext, :lp_method, 1))
+    return z
+end
+
 "노드 LP 의 범위 행 계수를 상자 [l, u] 와 범위 (lo, hi) 로 갱신"
 function _nz_dr_set!(P::_NZSepLP, DR::_NZDR, nd::NZData, l, u, lo, hi, phib; comp::Bool=true)
     v = P.O.v; S = nd.S
@@ -272,9 +292,10 @@ function _nz_dr_set!(P::_NZSepLP, DR::_NZDR, nd::NZData, l, u, lo, hi, phib; com
         for (a, k) in enumerate(DR.Hk), s in 1:S
             i = nd.hrow[k]; π = v[:π̃][k, s]; d = v[:d][s]; zF = v[:ζF][i, s]
             L, H, li, ui = lo[a, s], hi[a, s], l[i], u[i]
-            for (n, cw, cl, cr) in ((1, -li, -L, L * li), (2, ui, L, -L * ui), (3, li, H, -H * li), (4, -ui, -H, H * ui))
-                c = DR.prlt[n, a, s]
-                set_normalized_coefficient(c, π, cw); set_normalized_coefficient(c, zF, cl); set_normalized_coefficient(c, d, cr)
+            for (n, cz, cw, cl, cr) in ((1, 1.0, -li, -L, L * li), (2, -1.0, ui, L, -L * ui), (3, -1.0, li, H, -H * li), (4, 1.0, -ui, -H, H * ui))
+                c = DR.prlt[n, a, s]; sc = 1.0 / max(1.0, abs(cw), abs(cl), abs(cr))     # 행 스케일 (아래 rlt 주석 참고)
+                set_normalized_coefficient(c, DR.zP[a, s], cz * sc)
+                set_normalized_coefficient(c, π, cw * sc); set_normalized_coefficient(c, zF, cl * sc); set_normalized_coefficient(c, d, cr * sc)
             end
         end
     end
@@ -285,9 +306,13 @@ function _nz_dr_set!(P::_NZSepLP, DR::_NZDR, nd::NZData, l, u, lo, hi, phib; com
         set_normalized_coefficient(DR.phi[a, s], d, -H); set_normalized_coefficient(DR.plo[a, s], d, -L)
         # R1: ζW − l ϖ − lo ζL + lo l r ≥ 0      R2: −ζW + u ϖ + lo ζL − lo u r ≥ 0
         # R3: −ζW + l ϖ + hi ζL − hi l r ≥ 0     R4: ζW − u ϖ − hi ζL + hi u r ≥ 0
-        for (n, cw, cl, cr) in ((1, -li, -L, L * li), (2, ui, L, -L * ui), (3, li, H, -H * li), (4, -ui, -H, H * ui))
-            c = DR.rlt[n, a, s]
-            set_normalized_coefficient(c, ϖ, cw); set_normalized_coefficient(c, zL, cl); set_normalized_coefficient(c, r, cr)
+        # 행 스케일: 계수가 1 (곱 변수) ~ hi·u (최대 3e4) 로 벌어지면 FeasibilityTol = 1e-9 (build_nz_omega) 에서 실행 가능한 LP 가
+        #   INFEASIBLE 로 나오는 일이 있었다 (test_dr_validity_boxes.jl: α* 를 품은 상자, 1e-6 에서는 OPTIMAL). 가장 큰 계수로 나눈다.
+        zW = v[:ζW][DR.jj[a], s]
+        for (n, cz, cw, cl, cr) in ((1, 1.0, -li, -L, L * li), (2, -1.0, ui, L, -L * ui), (3, -1.0, li, H, -H * li), (4, 1.0, -ui, -H, H * ui))
+            c = DR.rlt[n, a, s]; sc = 1.0 / max(1.0, abs(cw), abs(cl), abs(cr))
+            set_normalized_coefficient(c, zW, cz * sc)
+            set_normalized_coefficient(c, ϖ, cw * sc); set_normalized_coefficient(c, zL, cl * sc); set_normalized_coefficient(c, r, cr * sc)
         end
     end
     for (i, c) in DR.stat                                 # α_i > 0 ⇒ Σ_s Bᵀπ̃ + c0 = Wᵀκ (≤ 는 Fh 로 이미 있음)
@@ -314,12 +339,19 @@ function nz_alpha_bnb_dr(nd::NZData, x̄; nworkers=Threads.nthreads() - 2, time_
                          dive_max=3, maxrounds=30, child_rounds::Int=1, min_width=1e-7, ipopt_time=60.0,
                          verbose=true, log_every=30.0, target=nothing, heuristic::Bool=true, presolve::Bool=true,
                          branch_point::Symbol=:mid, sep_maxadd::Int=5000, dual_range::Bool=true, comp::Bool=true,
-                         kink_eta::Float64=0.01, kink_width::Float64=Inf, vcut::Bool=true, cslift::Bool=true)
+                         kink_eta::Float64=0.01, kink_width::Float64=Inf, vcut::Bool=true, cslift::Bool=true,
+                         sep_rows::Symbol=:all, lp_method::Int=1, lp_presolve::Int=0)
+    # lp_method / lp_presolve: 노드 LP 의 Gurobi Method (1 = dual simplex, 2 = barrier) 와 Presolve (0 = 끔, -1 = 자동).
+    #   범위 행은 노드마다 행렬 계수가 바뀌어 dual simplex 의 warm start 가 잘 안 먹는다 (S=30 노드당 LP 2.9 s → 15 s) → 큰 S 는 barrier 후보.
+    # sep_rows: 분리할 RLT 후보 행. :all (기존: belief 다면체 + 인증서 행) | :cert (인증서 행 ϖ ≥ 0, Wcap 만) | :none (분리 없음).
+    #   진단 (docs §10.2): belief × α 행은 빼도 상한이 0~5% 만 나빠지고, 인증서 행은 범위 RLT (정적 4 행) 가 지배한다 → 노드 LP 를 줄이는 용도.
+    sep_rows in (:all, :cert, :none) || error("sep_rows = :all | :cert | :none")
     # vcut: 시나리오별 값 상한 (V), cslift: follower 1단계 상보성의 RLT (X). 둘 다 dual_range = true 에서만.
     # branch_point = :kink: 분기 좌표에서 쌍대 범위가 고정되지 않은 시나리오의 꺾임점 t 를 찾아 [l, t−η], [t−η, t+η], [t+η, u] 로
     #   3 분할 (η = kink_eta). 꺾임점이 없거나 못 찾거나 좌표 폭이 kink_width 보다 크면 중점 분할. dual_range = true 에서만.
     branch_point in (:alphahat, :mid, :kink) || error("branch_point = :alphahat | :mid | :kink")
     n_kink = Threads.Atomic{Int}(0)
+    n_infeas = Threads.Atomic{Int}(0); n_infrec = Threads.Atomic{Int}(0)     # 실행 불가능 노드 (1e-6 재확인 통과) / 재확인에서 되살아난 노드
     nfix = 0
     if presolve
         hUp, nfix = nz_presolve_hU(nd, x̄)
@@ -333,6 +365,21 @@ function nz_alpha_bnb_dr(nd::NZData, x̄; nworkers=Threads.nthreads() - 2, time_
                      MOI.set(o, MOI.RawOptimizerAttribute("Threads"), 1); o)
     envs = _nz_envs(nworkers + 1)
     Ps = [_nz_build_sep(nd, x̄; optimizer=mk(envs[i])) for i in 1:nworkers]
+    numerr0 = _NZ_NUMERR[]; numfail0 = _NZ_NUMERR_FAIL[]
+    for P in Ps
+        lp_method != 1 && (set_optimizer_attribute(P.O.model, "Method", lp_method); P.O.model.ext[:lp_method] = lp_method)
+        lp_presolve != 0 && set_optimizer_attribute(P.O.model, "Presolve", lp_presolve)
+        # Presolve 를 켜면 실행 불가능한 상자가 INFEASIBLE_OR_UNBOUNDED 로 나와 _nz_solve_lp! 가 수치 오류로 처리한다
+        # (범위·정상성 행 때문에 실행 불가능한 상자가 흔함: S=20 barrier 첫 실행에서 4 만 노드가 전부 "수치 오류" → 상한이 루트에 멈춤).
+        # DualReductions = 0 이면 INFEASIBLE / UNBOUNDED 가 구분되어 나온다.
+        lp_presolve != 0 && set_optimizer_attribute(P.O.model, "DualReductions", 0)
+    end
+    if sep_rows != :all
+        for P in Ps
+            keep = sep_rows == :none ? falses(length(P.rows)) : [any(t -> t[1] == :w, row.terms) for row in P.rows]
+            P.rows = P.rows[keep]; P.rowscen = P.rowscen[keep]
+        end
+    end
     DRs = dual_range ? [_nz_dr_attach!(Ps[i], nd, x̄; optimizer=mk(envs[i]), vcut=vcut, cslift=cslift) for i in 1:nworkers] : nothing
     Fs = [nz_build_fixed_alpha(nd, x̄; optimizer=mk(envs[i])) for i in 1:nworkers]
     tol(v) = rel_gap * (isfinite(v) ? max(1.0, abs(v)) : 1.0)
@@ -420,10 +467,23 @@ function nz_alpha_bnb_dr(nd::NZData, x̄; nworkers=Threads.nthreads() - 2, time_
                     set_time_limit_sec(P.O.model, max(t_end - time(), 0.1))
                     tr = @elapsed (z = _nz_sep_solve!(P; maxrounds=(ubp == Inf ? maxrounds : child_rounds), maxadd=sep_maxadd))
                     Threads.atomic_add!(t_relax, tr)
+                    # 실행 불가능 판정 재확인 (_nz_dr_recheck_infeasible!): 그래도 실행 불가능일 때만 가지치기한다. 재확인에서 풀리면
+                    #   그 값을 상한으로 쓰고 해는 읽지 않은 채 가장 넓은 좌표를 반으로 나눈다 (수치 오류 노드와 같은 처리).
+                    zrec = NaN
+                    if z == -Inf && dual_range
+                        zc = _nz_dr_recheck_infeasible!(P.O.model)
+                        if zc == -Inf
+                            Threads.atomic_add!(n_infeas, 1)
+                        else
+                            Threads.atomic_add!(n_infrec, 1)
+                            zrec = isfinite(zc) ? zc : ubp
+                            z = Inf
+                        end
+                    end
                     unfinished = isnan(z)
                     numfail = z == Inf
                     if numfail
-                        z = ubp
+                        z = isnan(zrec) ? ubp : min(zrec, ubp)
                         i = argmax(u .- l)
                         if u[i] - l[i] > min_width
                             t = 0.5 * (l[i] + u[i]); u1 = copy(u); u1[i] = t; l2 = copy(l); l2[i] = t
@@ -595,6 +655,6 @@ function nz_alpha_bnb_dr(nd::NZData, x̄; nworkers=Threads.nthreads() - 2, time_
                 :nodes => nodes[], :time => time() - t0, :root_UB => root_UB[], :ipopt_calls => ipopt_calls[],
                 :presolve_fixed => nfix, :t_relax => t_relax[], :t_eval => t_eval[], :t_range => t_range[],
                 :range_mips => dual_range ? sum(D.nmip for D in DRs) : 0, :range_fail => dual_range ? sum(D.nfail for D in DRs) : 0,
-                :fixfrac => nodes[] > 0 ? nfixed_sum[] / nodes[] : NaN, :kink_branches => n_kink[],
-                :numerr => _NZ_NUMERR[], :numerr_fail => _NZ_NUMERR_FAIL[])
+                :fixfrac => nodes[] > 0 ? nfixed_sum[] / nodes[] : NaN, :kink_branches => n_kink[], :infeas => n_infeas[], :infeas_recovered => n_infrec[],
+                :numerr => _NZ_NUMERR[] - numerr0, :numerr_fail => _NZ_NUMERR_FAIL[] - numfail0)
 end

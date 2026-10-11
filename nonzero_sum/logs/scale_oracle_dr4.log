@@ -1,0 +1,78 @@
+﻿Set parameter Username
+Set parameter LicenseID to value 2742039
+Academic license - for non-commercial use only - expires 2026-11-20
+scale_oracle: x=[1, 2] ε=0.30 δ=0.1 TL=600s 목표 gap=5.0e-03 workers=12
+Set parameter Username
+Set parameter LicenseID to value 2742039
+Academic license - for non-commercial use only - expires 2026-11-20
+Set parameter Username
+Set parameter LicenseID to value 2742039
+Academic license - for non-commercial use only - expires 2026-11-20
+Set parameter Username
+Set parameter LicenseID to value 2742039
+Academic license - for non-commercial use only - expires 2026-11-20
+Set parameter Username
+Set parameter LicenseID to value 2742039
+Academic license - for non-commercial use only - expires 2026-11-20
+Set parameter Username
+Set parameter LicenseID to value 2742039
+Academic license - for non-commercial use only - expires 2026-11-20
+Set parameter Username
+Set parameter LicenseID to value 2742039
+Academic license - for non-commercial use only - expires 2026-11-20
+Set parameter Username
+Set parameter LicenseID to value 2742039
+Academic license - for non-commercial use only - expires 2026-11-20
+Set parameter Username
+Set parameter LicenseID to value 2742039
+Academic license - for non-commercial use only - expires 2026-11-20
+Set parameter Username
+Set parameter LicenseID to value 2742039
+Academic license - for non-commercial use only - expires 2026-11-20
+Set parameter Username
+Set parameter LicenseID to value 2742039
+Academic license - for non-commercial use only - expires 2026-11-20
+Set parameter Username
+Set parameter LicenseID to value 2742039
+Academic license - for non-commercial use only - expires 2026-11-20
+Set parameter Username
+Set parameter LicenseID to value 2742039
+Academic license - for non-commercial use only - expires 2026-11-20
+Set parameter Username
+Set parameter LicenseID to value 2742039
+Academic license - for non-commercial use only - expires 2026-11-20
+
+******************************************************************************
+This program contains Ipopt, a library for large-scale nonlinear optimization.
+ Ipopt is released as open source code under the Eclipse Public License (EPL).
+         For more information visit https://github.com/coin-or/Ipopt
+******************************************************************************
+
+RESULT S=3 abbdr      Optimal LB=-1471.9286 UB=-1464.7350 gap=4.887e-03 time=62.8 nodes=3307 rootUB=-1141.00 | relax 210s range 124s (MIP 18008) 고정비율 0.67 꺾임 분기 0 MIP 실패 0 LP 수치오류 30 (실패 0) 실행불가능 노드 374 (재확인에서 되살아남 89)
+RESULT S=5 abbdr      Optimal LB=-1274.7791 UB=-1269.4208 gap=4.203e-03 time=25.6 nodes=731 rootUB=-1148.50 | relax 140s range 44s (MIP 7109) 고정비율 0.74 꺾임 분기 0 MIP 실패 0 LP 수치오류 17 (실패 0) 실행불가능 노드 83 (재확인에서 되살아남 34)
+RESULT S=10 abbdr      Optimal LB=-1121.7129 UB=-1116.1220 gap=4.984e-03 time=58.1 nodes=502 rootUB=-974.17 | relax 477s range 98s (MIP 10987) 고정비율 0.70 꺾임 분기 0 MIP 실패 0 LP 수치오류 12 (실패 1) 실행불가능 노드 21 (재확인에서 되살아남 5)
+    [nz-α-B&B-dr] t=  63.5s nodes=  124 open=   65 LB=-1260.589803 UB=-1056.585368 gap=1.618e-01
+    [nz-α-B&B-dr] t= 126.8s nodes=  302 open=  136 LB=-1218.840116 UB=-1119.386359 gap=8.160e-02
+    [nz-α-B&B-dr] t= 188.3s nodes=  501 open=  180 LB=-1201.063420 UB=-1175.052256 gap=2.166e-02
+    [nz-α-B&B-dr] t= 250.6s nodes=  713 open=  137 LB=-1200.758437 UB=-1190.914403 gap=8.198e-03
+RESULT S=20 abbdr      Optimal LB=-1200.7584 UB=-1194.8002 gap=4.962e-03 time=268.0 nodes=890 rootUB=-990.92 | relax 2425s range 223s (MIP 31134) 고정비율 0.69 꺾임 분기 0 MIP 실패 0 LP 수치오류 24 (실패 0) 실행불가능 노드 35 (재확인에서 되살아남 8)
+    [nz-α-B&B-dr] t=  60.9s nodes=   79 open=   36 LB=-1085.184032 UB=-804.100426 gap=2.590e-01
+    [nz-α-B&B-dr] t= 122.1s nodes=  161 open=   55 LB=-1050.048932 UB=-949.860161 gap=9.541e-02
+    [nz-α-B&B-dr] t= 182.3s nodes=  226 open=   62 LB=-1050.048932 UB=-974.138132 gap=7.229e-02
+    [nz-α-B&B-dr] t= 244.1s nodes=  283 open=   94 LB=-1050.048932 UB=-1001.546606 gap=4.619e-02
+    [nz-α-B&B-dr] t= 305.7s nodes=  363 open=  116 LB=-1050.048932 UB=-1001.546606 gap=4.619e-02
+    [nz-α-B&B-dr] t= 365.7s nodes=  436 open=  139 LB=-1050.048932 UB=-1001.546606 gap=4.619e-02
+    [nz-α-B&B-dr] t= 428.3s nodes=  499 open=  132 LB=-1045.902072 UB=-1001.546606 gap=4.241e-02
+    [nz-α-B&B-dr] t= 488.4s nodes=  564 open=  125 LB=-1045.902072 UB=-1001.546606 gap=4.241e-02
+    [nz-α-B&B-dr] t= 549.8s nodes=  611 open=  123 LB=-1045.902072 UB=-1001.546606 gap=4.241e-02
+RESULT S=30 abbdr      TimeLim LB=-1045.9021 UB=-1034.2631 gap=1.113e-02 time=628.8 nodes=676 rootUB=-801.47 | relax 6353s range 254s (MIP 48483) 고정비율 0.77 꺾임 분기 0 MIP 실패 0 LP 수치오류 20 (실패 1) 실행불가능 노드 15 (재확인에서 되살아남 7)
+    [nz-α-B&B-dr] t=  61.1s nodes=   32 open=   15 LB=-2123.362960 UB=-731.382602 gap=6.556e-01
+    [nz-α-B&B-dr] t= 122.5s nodes=   71 open=   38 LB=-1077.293373 UB=-731.552177 gap=3.209e-01
+    [nz-α-B&B-dr] t= 184.7s nodes=   93 open=   50 LB=-1056.271896 UB=-731.552177 gap=3.074e-01
+    [nz-α-B&B-dr] t= 244.8s nodes=  117 open=   54 LB=-1056.271896 UB=-731.552177 gap=3.074e-01
+    [nz-α-B&B-dr] t= 308.5s nodes=  151 open=   64 LB=-1056.271896 UB=-840.620206 gap=2.042e-01
+    [nz-α-B&B-dr] t= 368.5s nodes=  186 open=   66 LB=-1056.271896 UB=-919.958850 gap=1.291e-01
+    [nz-α-B&B-dr] t= 428.6s nodes=  207 open=   75 LB=-1056.271896 UB=-919.958850 gap=1.291e-01
+    [nz-α-B&B-dr] t= 488.8s nodes=  226 open=   76 LB=-1056.271896 UB=-919.958850 gap=1.291e-01
+    [nz-α-B&B-dr] t= 548.9s nodes=  248 open=   74 LB=-1056.271896 UB=-943.307857 gap=1.069e-01
+RESULT S=50 abbdr      TimeLim LB=-1056.2719 UB=-952.2122 gap=9.852e-02 time=615.3 nodes=273 rootUB=-731.38 | relax 5851s range 370s (MIP 41095) 고정비율 0.71 꺾임 분기 0 MIP 실패 0 LP 수치오류 6 (실패 1) 실행불가능 노드 14 (재확인에서 되살아남 9)
