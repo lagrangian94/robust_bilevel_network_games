@@ -1,0 +1,79 @@
+﻿Set parameter Username
+Set parameter LicenseID to value 2742039
+Academic license - for non-commercial use only - expires 2026-11-20
+scale_oracle: x=[1, 2] ε=0.30 δ=0.1 TL=600s 목표 gap=5.0e-03 workers=12
+RESULT S=3 gurobi     Optimal LB=-1471.9093 UB=-1471.9093 gap=0.000e+00 time=26.9
+Set parameter Username
+Set parameter LicenseID to value 2742039
+Academic license - for non-commercial use only - expires 2026-11-20
+Set parameter Username
+Set parameter LicenseID to value 2742039
+Academic license - for non-commercial use only - expires 2026-11-20
+Set parameter Username
+Set parameter LicenseID to value 2742039
+Academic license - for non-commercial use only - expires 2026-11-20
+Set parameter Username
+Set parameter LicenseID to value 2742039
+Academic license - for non-commercial use only - expires 2026-11-20
+Set parameter Username
+Set parameter LicenseID to value 2742039
+Academic license - for non-commercial use only - expires 2026-11-20
+Set parameter Username
+Set parameter LicenseID to value 2742039
+Academic license - for non-commercial use only - expires 2026-11-20
+Set parameter Username
+Set parameter LicenseID to value 2742039
+Academic license - for non-commercial use only - expires 2026-11-20
+Set parameter Username
+Set parameter LicenseID to value 2742039
+Academic license - for non-commercial use only - expires 2026-11-20
+Set parameter Username
+Set parameter LicenseID to value 2742039
+Academic license - for non-commercial use only - expires 2026-11-20
+Set parameter Username
+Set parameter LicenseID to value 2742039
+Academic license - for non-commercial use only - expires 2026-11-20
+Set parameter Username
+Set parameter LicenseID to value 2742039
+Academic license - for non-commercial use only - expires 2026-11-20
+Set parameter Username
+Set parameter LicenseID to value 2742039
+Academic license - for non-commercial use only - expires 2026-11-20
+Set parameter Username
+Set parameter LicenseID to value 2742039
+Academic license - for non-commercial use only - expires 2026-11-20
+
+******************************************************************************
+This program contains Ipopt, a library for large-scale nonlinear optimization.
+ Ipopt is released as open source code under the Eclipse Public License (EPL).
+         For more information visit https://github.com/coin-or/Ipopt
+******************************************************************************
+
+    [nz-α-B&B] t=  61.0s nodes=10195 open= 1748 LB=-1471.938903 UB=-1444.958276 gap=1.833e-02
+    [nz-α-B&B] t= 121.6s nodes=16403 open= 3180 LB=-1471.938903 UB=-1451.374729 gap=1.397e-02
+    [nz-α-B&B] t= 181.8s nodes=21065 open= 3852 LB=-1470.534743 UB=-1455.918707 gap=9.939e-03
+    [nz-α-B&B] t= 241.9s nodes=24590 open= 4139 LB=-1470.534743 UB=-1458.004902 gap=8.521e-03
+    [nz-α-B&B] t= 302.0s nodes=27633 open= 4046 LB=-1470.534743 UB=-1459.554085 gap=7.467e-03
+    [nz-α-B&B] t= 362.1s nodes=30207 open= 3762 LB=-1470.534743 UB=-1460.667206 gap=6.710e-03
+    [nz-α-B&B] t= 422.2s nodes=32338 open= 3567 LB=-1470.534743 UB=-1461.332220 gap=6.258e-03
+    [nz-α-B&B] t= 482.4s nodes=33984 open= 2889 LB=-1470.534743 UB=-1462.069463 gap=5.757e-03
+    [nz-α-B&B] t= 542.6s nodes=35670 open= 2549 LB=-1470.534743 UB=-1462.274970 gap=5.617e-03
+RESULT S=3 abb-base   TimeLim LB=-1470.5347 UB=-1462.5687 gap=5.417e-03 time=601.3 nodes=37008 rootUB=-722.94
+RESULT S=5 gurobi     Optimal LB=-1279.8218 UB=-1279.8218 gap=0.000e+00 time=590.7
+    [nz-α-B&B] t=  60.2s nodes= 7105 open= 1384 LB=-1274.778783 UB=-1255.264111 gap=1.531e-02
+RESULT S=5 abb-base   Optimal LB=-1274.7788 UB=-1268.4072 gap=4.998e-03 time=104.6 nodes=9813 rootUB=-678.38
+RESULT S=10 gurobi     TimeLim LB=-1131.1698 UB=-1110.4654 gap=1.830e-02 time=600.0
+    [nz-α-B&B] t=  60.2s nodes= 2397 open=  639 LB=-1121.712728 UB=-1100.497929 gap=1.891e-02
+    [nz-α-B&B] t= 120.4s nodes= 3724 open=  256 LB=-1121.712728 UB=-1114.656643 gap=6.290e-03
+RESULT S=10 abb-base   Optimal LB=-1121.7125 UB=-1116.1131 gap=4.992e-03 time=134.3 nodes=4030 rootUB=-574.70
+RESULT S=20 gurobi     TimeLim LB=-1202.2600 UB=-1116.9313 gap=7.097e-02 time=600.0
+    [nz-α-B&B] t=  60.4s nodes=  465 open=  280 LB=-1200.758443 UB=-1032.305359 gap=1.403e-01
+    [nz-α-B&B] t= 120.6s nodes=  994 open=  527 LB=-1200.758443 UB=-1084.970930 gap=9.643e-02
+    [nz-α-B&B] t= 180.8s nodes= 1441 open=  688 LB=-1200.758443 UB=-1107.569016 gap=7.761e-02
+    [nz-α-B&B] t= 240.9s nodes= 1917 open=  854 LB=-1200.758443 UB=-1127.018950 gap=6.141e-02
+    [nz-α-B&B] t= 301.1s nodes= 2366 open= 1009 LB=-1200.758443 UB=-1141.022800 gap=4.975e-02
+    [nz-α-B&B] t= 362.4s nodes= 2790 open= 1109 LB=-1200.758443 UB=-1148.270841 gap=4.371e-02
+    [nz-α-B&B] t= 422.5s nodes= 3155 open= 1174 LB=-1200.758443 UB=-1153.712262 gap=3.918e-02
+    [nz-α-B&B] t= 482.6s nodes= 3478 open= 1241 LB=-1200.758443 UB=-1157.790390 gap=3.578e-02
+    [nz-α-B&B] t= 543.4s nodes= 3831 open= 1298 LB=-1200.758443 UB=-1162.986428 gap=3.146e-02
+RESULT S=20 abb-base   TimeLim LB=-1200.7584 UB=-1166.2283 gap=2.876e-02 time=600.1 nodes=4136 rootUB=-595.62

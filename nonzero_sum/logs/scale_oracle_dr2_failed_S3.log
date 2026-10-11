@@ -1,0 +1,123 @@
+﻿Set parameter Username
+Set parameter LicenseID to value 2742039
+Academic license - for non-commercial use only - expires 2026-11-20
+scale_oracle: x=[1, 2] ε=0.30 δ=0.1 TL=600s 목표 gap=5.0e-03 workers=12
+Set parameter Username
+Set parameter LicenseID to value 2742039
+Academic license - for non-commercial use only - expires 2026-11-20
+Set parameter Username
+Set parameter LicenseID to value 2742039
+Academic license - for non-commercial use only - expires 2026-11-20
+Set parameter Username
+Set parameter LicenseID to value 2742039
+Academic license - for non-commercial use only - expires 2026-11-20
+Set parameter Username
+Set parameter LicenseID to value 2742039
+Academic license - for non-commercial use only - expires 2026-11-20
+Set parameter Username
+Set parameter LicenseID to value 2742039
+Academic license - for non-commercial use only - expires 2026-11-20
+Set parameter Username
+Set parameter LicenseID to value 2742039
+Academic license - for non-commercial use only - expires 2026-11-20
+Set parameter Username
+Set parameter LicenseID to value 2742039
+Academic license - for non-commercial use only - expires 2026-11-20
+Set parameter Username
+Set parameter LicenseID to value 2742039
+Academic license - for non-commercial use only - expires 2026-11-20
+Set parameter Username
+Set parameter LicenseID to value 2742039
+Academic license - for non-commercial use only - expires 2026-11-20
+Set parameter Username
+Set parameter LicenseID to value 2742039
+Academic license - for non-commercial use only - expires 2026-11-20
+Set parameter Username
+Set parameter LicenseID to value 2742039
+Academic license - for non-commercial use only - expires 2026-11-20
+Set parameter Username
+Set parameter LicenseID to value 2742039
+Academic license - for non-commercial use only - expires 2026-11-20
+Set parameter Username
+Set parameter LicenseID to value 2742039
+Academic license - for non-commercial use only - expires 2026-11-20
+
+******************************************************************************
+This program contains Ipopt, a library for large-scale nonlinear optimization.
+ Ipopt is released as open source code under the Eclipse Public License (EPL).
+         For more information visit https://github.com/coin-or/Ipopt
+******************************************************************************
+
+    [nz-α-B&B-dr] t=  63.1s nodes= 2338 open=    0 LB=-1471.941682 UB=-1397.261314 gap=5.074e-02
+    [nz-α-B&B-dr] t= 123.4s nodes= 2338 open=    0 LB=-1471.941682 UB=-1397.261314 gap=5.074e-02
+    [nz-α-B&B-dr] t= 183.6s nodes= 2338 open=    0 LB=-1471.941682 UB=-1397.261314 gap=5.074e-02
+    [nz-α-B&B-dr] t= 243.6s nodes= 2338 open=    0 LB=-1471.941682 UB=-1397.261314 gap=5.074e-02
+    [nz-α-B&B-dr] t= 303.6s nodes= 2338 open=    0 LB=-1471.941682 UB=-1397.261314 gap=5.074e-02
+    [nz-α-B&B-dr] t= 363.7s nodes= 2338 open=    0 LB=-1471.941682 UB=-1397.261314 gap=5.074e-02
+    [nz-α-B&B-dr] t= 423.8s nodes= 2338 open=    0 LB=-1471.941682 UB=-1397.261314 gap=5.074e-02
+    [nz-α-B&B-dr] t= 483.8s nodes= 2338 open=    0 LB=-1471.941682 UB=-1397.261314 gap=5.074e-02
+    [nz-α-B&B-dr] t= 543.8s nodes= 2338 open=    0 LB=-1471.941682 UB=-1397.261314 gap=5.074e-02
+julia : ERROR: LoadError: TaskFailedException
+At line:1 char:761
++ ...  = "abbdr"; julia -t 14,1 nonzero_sum/scale_oracle.jl > nonzero_sum/l ...
++                 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: (ERROR: LoadError: TaskFailedException:String) [], RemoteException
+    + FullyQualifiedErrorId : NativeCommandError
+ 
+Stacktrace:
+ [1] wait(t::Task)
+   @ Base .\task.jl:370
+ [2] foreach(f::typeof(wait), itr::Vector{Task})
+   @ Base .\abstractarray.jl:3187
+ [3] nz_alpha_bnb_dr(nd::NZData, x̄::Vector{Float64}; nworkers::Int64, time_limit::Float64, rel_gap::Float64, dive_max:
+:Int64, maxrounds::Int64, child_rounds::Int64, min_width::Float64, ipopt_time::Float64, verbose::Bool, log_every::Float
+64, target::Nothing, heuristic::Bool, presolve::Bool, branch_point::Symbol, sep_maxadd::Int64, dual_range::Bool, comp::
+Bool, kink_eta::Float64, kink_width::Float64, vcut::Bool, cslift::Bool)
+   @ Main C:\Users\user\robust_bilevel_network_games\nonzero_sum\nz_alpha_bnb_dr.jl:560
+ [4] macro expansion
+   @ .\timing.jl:421 [inlined]
+ [5] top-level scope
+   @ C:\Users\user\robust_bilevel_network_games\nonzero_sum\scale_oracle.jl:45
+
+    nested task error: Gurobi Error 10005: Unable to retrieve attribute 'ObjBound'
+    Stacktrace:
+      [1] _check_ret
+        @ C:\Users\user\.julia\packages\Gurobi\K2XSK\src\MOI_wrapper\MOI_wrapper.jl:417 [inlined]
+      [2] _check_ret_GRBoptimize(model::Gurobi.Optimizer)
+        @ Gurobi C:\Users\user\.julia\packages\Gurobi\K2XSK\src\MOI_wrapper\MOI_wrapper.jl:434
+      [3] optimize!(model::Gurobi.Optimizer)
+        @ Gurobi C:\Users\user\.julia\packages\Gurobi\K2XSK\src\MOI_wrapper\MOI_wrapper.jl:2823
+      [4] optimize!
+        @ C:\Users\user\.julia\packages\MathOptInterface\gLl4d\src\Bridges\bridge_optimizer.jl:367 [inlined]
+      [5] optimize!(m::MathOptInterface.Utilities.CachingOptimizer{MathOptInterface.Bridges.LazyBridgeOptimizer{Gurobi.
+Optimizer}, MathOptInterface.Utilities.UniversalFallback{MathOptInterface.Utilities.Model{Float64}}})
+        @ MathOptInterface.Utilities C:\Users\user\.julia\packages\MathOptInterface\gLl4d\src\Utilities\cachingoptimize
+r.jl:330
+      [6] optimize!(model::Model; ignore_optimize_hook::Bool, _differentiation_backend::MathOptInterface.Nonlinear.Spar
+seReverseMode, kwargs::@Kwargs{})
+        @ JuMP C:\Users\user\.julia\packages\JuMP\i68GU\src\optimizer_interface.jl:595
+      [7] optimize!
+        @ C:\Users\user\.julia\packages\JuMP\i68GU\src\optimizer_interface.jl:546 [inlined]
+      [8] _nz_dr_ranges(DR::_NZDR, nd::NZData, l::Vector{Float64}, u::Vector{Float64}, lo0::Matrix{Float64}, hi0::Matri
+x{Float64}, wit0::Dict{Tuple{Int64, Int64, Bool}, Vector{Float64}}, phib0::Vector{Float64}; fixtol::Float64, deadline::
+Float64)
+        @ Main C:\Users\user\robust_bilevel_network_games\nonzero_sum\nz_alpha_bnb_dr.jl:176
+      [9] macro expansion
+        @ .\timing.jl:421 [inlined]
+     [10] (::var"#worker#416"{Int64, Int64, Int64, Float64, Nothing, Symbol, Int64, Bool, Bool, Float64, Float64, var"#
+globalUB#412"{Base.RefValue{Float64}, Base.RefValue{Float64}, Vector{Float64}, Vector{Any}}, Base.RefValue{Float64}, Ba
+se.RefValue{Float64}, Vector{Tuple{Float64, Vector{Float64}}}, Base.RefValue{Any}, Base.RefValue{Float64}, Base.RefValu
+e{Bool}, Base.RefValue{Int64}, Base.RefValue{Vector{Float64}}, Base.RefValue{Float64}, Vector{Float64}, Vector{Any}, Ba
+se.Threads.Atomic{Float64}, Base.Threads.Atomic{Float64}, Base.Threads.Atomic{Float64}, ReentrantLock, var"#boxok#411",
+ var"#tol#410"{Float64}, Vector{NZOmega}, Vector{_NZDR}, Vector{_NZSepLP}, Vector{Int64}, Int64, Int64, Float64, Base.T
+hreads.Atomic{Int64}})(wid::Int64)
+        @ Main C:\Users\user\robust_bilevel_network_games\nonzero_sum\nz_alpha_bnb_dr.jl:378
+     [11] (::var"#401#424"{Int64, var"#worker#416"{Int64, Int64, Int64, Float64, Nothing, Symbol, Int64, Bool, Bool, Fl
+oat64, Float64, var"#globalUB#412"{Base.RefValue{Float64}, Base.RefValue{Float64}, Vector{Float64}, Vector{Any}}, Base.
+RefValue{Float64}, Base.RefValue{Float64}, Vector{Tuple{Float64, Vector{Float64}}}, Base.RefValue{Any}, Base.RefValue{F
+loat64}, Base.RefValue{Bool}, Base.RefValue{Int64}, Base.RefValue{Vector{Float64}}, Base.RefValue{Float64}, Vector{Floa
+t64}, Vector{Any}, Base.Threads.Atomic{Float64}, Base.Threads.Atomic{Float64}, Base.Threads.Atomic{Float64}, ReentrantL
+ock, var"#boxok#411", var"#tol#410"{Float64}, Vector{NZOmega}, Vector{_NZDR}, Vector{_NZSepLP}, Vector{Int64}, Int64, I
+nt64, Float64, Base.Threads.Atomic{Int64}}})()
+        @ Main C:\Users\user\robust_bilevel_network_games\nonzero_sum\nz_alpha_bnb_dr.jl:537
+in expression starting at C:\Users\user\robust_bilevel_network_games\nonzero_sum\scale_oracle.jl:25
