@@ -453,4 +453,5 @@ incumbent 의 cut 은 이미 들어 있어 LB 도 안 움직이므로 같은 x̄
 
 **읽는 법.** Algorithm 2 에서는 S = 20 에서 기존 α-B&B 와 새 α-B&B 의 차이가 없다 (195 s vs 186 s). belief cut 이 x = {1,2} 를 oracle 없이
 배제해서 oracle 이 인증해야 하는 것은 쉬운 x = {1} 뿐이기 때문이다 (기존 111 s, 새 54 s). 새 α-B&B 가 결정적인 곳은 어려운 x̄ 를 인증해야 하는
-SB-A (TimeLimit → 479 s) 와, Algorithm 2 라도 최적 x̄ 의 인증이 어려운 경우 (S = 30 의 x = {1,2}: 600 s 에 9.3% vs 1.1%) 다.
+SB-A (TimeLimit → 479 s) 다. Algorithm 2 도 최적 x̄ 자체의 인증이 어려우면 같은 차이가 날 것이다 (x = {1,2} 의 oracle 만 보면 S = 30 에서
+600 s 에 9.3% vs 1.1%). 다만 S = 30 에서 어느 x̄ 가 최적인지, Algorithm 2 가 그 인증을 요구하는지는 아직 재지 않았다.
