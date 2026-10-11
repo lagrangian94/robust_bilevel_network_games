@@ -338,7 +338,11 @@ function nz_belief_menu_benders(nd::NZData; optimizer, lp_optimizer=optimizer, c
         lim = _remaining(wall, time_limit, lim)
         oracle_calls += 1
         # 목표값: menu 가 x̄ 에서 수렴했으므로 oracle 은 "t₀ 보다 의미 있게 큰 값이 있는가" 만 판정하면 됨
-        target = target_stop ? t0v + 0.99 * tol * max(1.0, abs(t0v)) : nothing
+        # 여유는 수렴 판정 (_rel(LB, UB) = |UB − LB| / max(|UB|, 1) ≤ tol, 전체 목적값 기준) 과 같은 기준이어야 한다.
+        #   이전에는 |t₀| 기준 (t₀ + 0.99·tol·|t₀|) 이라 q_xᵀx̄ ≠ 0 이면 판정 기준과 어긋났다: SGB128 S=20 에서 |t₀| ≈ 991, |UB| ≈ 682
+        #   (출점비 305) → oracle 은 상한 ≤ target 으로 멈추는데 gap 은 0.53% > tol 이고 새 cut 도 없어 같은 x̄ 를 시간 제한까지 반복.
+        #   oracle 상한 zbd ≤ t₀ + δ 이면 UB = q_xᵀx̄ + zbd ≤ LB + δ, |UB| ≥ |LB| − δ 이므로 δ = 0.99·tol·|LB| / (1 + tol) 이면 δ ≤ tol·|UB|.
+        target = target_stop ? t0v + 0.99 * tol * max(1.0, abs(LB)) / (1 + tol) : nothing
         t_o = @elapsed ((zinc, zbd, src) = _nz_oracle!(O, Fx, nd, x̄; oracle=oracle, time_limit=lim, gap=oracle_gap,
                                                        nworkers=nworkers, target=target, bnb_kw=bnb_kw))
         # 시간 제한에 걸린 호출만 stall 판정에 셈. 목표값 조기 종료 (target_stop) 로 끝난 호출은 같은 x̄ 를 다시 불러도
