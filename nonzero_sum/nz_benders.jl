@@ -1,8 +1,12 @@
 """
 nz_benders.jl — 비제로섬 Ω 위의 Benders 두 가지.
 
-기본 구성 (zero-sum 과 동일 방침): oracle = α-B&B (nz_alpha_bnb), cut = Magnanti–Wong 강화 (mw = true).
-  α-B&B oracle 은 nz_alpha_bnb.jl include 와 julia -t (nworkers+2),1 이 필요. Gurobi NonConvex oracle 은 oracle = :gurobi.
+기본 구성 (zero-sum 과 동일 방침): oracle = α-B&B, cut = Magnanti–Wong 강화 (mw = true).
+  전역 oracle 은 두 인자로 정한다 (실행을 시작할 때 "[설정]" 줄로 출력, 결과 Dict 의 :oracle, :bnb 에도 기록):
+    oracle = :alpha_bnb (기본) | :gurobi (Ω NonConvex)
+    bnb    = :dr (기본: nz_alpha_bnb_dr, 상자별 쌍대 범위 조임) | :legacy (nz_alpha_bnb, 2026-10-10 까지의 구현)   — oracle = :alpha_bnb 일 때만 의미
+    bnb_kw = α-B&B 에 그대로 넘길 인자 (예: (ipopt_time = 120.0,)). 인자 목록은 각 함수의 docstring. 두 구현의 인자는 서로 다르다.
+  α-B&B oracle 은 julia -t (nworkers+2),1 이 필요.
   MW 는 LP (belief LP, α 고정 LP) 에서만 건다. 비볼록 Ω 에 걸면 문제가 어려워지므로 :gurobi oracle 의 cut 은 기본 cut.
 
   nz_standard_benders  : 매 반복 x̄ 에서 전역 Ω → cut, UB.
@@ -21,6 +25,14 @@ import MathOptInterface as MOI
 
 # 기본 oracle 이 α-B&B 이므로 미리 불러 둔다 (nz_omega.jl 이 먼저 include 되어 있어야 함). 실행은 julia -t (nworkers+2),1.
 isdefined(Main, :nz_alpha_bnb) || include(joinpath(@__DIR__, "nz_alpha_bnb.jl"))
+isdefined(Main, :nz_alpha_bnb_dr) || include(joinpath(@__DIR__, "nz_alpha_bnb_dr.jl"))
+
+"α-B&B 구현 선택: :dr = nz_alpha_bnb_dr (기본), :legacy = nz_alpha_bnb"
+_nz_bnb_solver(bnb::Symbol) = bnb == :dr ? Main.nz_alpha_bnb_dr : bnb == :legacy ? Main.nz_alpha_bnb : error("bnb = :dr | :legacy")
+"실행 시작 시 한 줄: 어떤 전역 oracle 로 도는지"
+_nz_oracle_banner(oracle, bnb, nworkers, gap, bnb_kw) = oracle == :gurobi ?
+    @sprintf("  [설정] 전역 oracle = Gurobi Ω (NonConvex), gap %.0e", gap) :
+    @sprintf("  [설정] 전역 oracle = α-B&B (%s), worker %d, gap %.0e, bnb_kw = %s", string(nameof(_nz_bnb_solver(bnb))), nworkers, gap, string(bnb_kw))
 
 function _nz_omp(nd::NZData; optimizer, t_lb=-1e7)
     omp = Model(optimizer); set_silent(omp)
@@ -116,18 +128,16 @@ end
 """
 전역 Ω 풀이 (oracle). 반환 (Fval = incumbent 값, bound = 상한, src = 해가 들어 있는 모델).
   :gurobi    — Ω NonConvex (O)
-  :alpha_bnb — nz_alpha_bnb (nz_alpha_bnb.jl include, julia -t (nworkers+2),1 필요), incumbent α 를 고정한 LP (Fx) 를
+  :alpha_bnb — α-B&B (bnb = :dr → nz_alpha_bnb_dr, :legacy → nz_alpha_bnb. julia -t (nworkers+2),1 필요), incumbent α 를 고정한 LP (Fx) 를
                다시 풀어 그 해로 cut·belief 를 만든다.  target: 목표값 조기 종료 (LB ≥ target 또는 UB ≤ target).
 """
-function _nz_oracle!(O, Fx, nd, x̄; oracle, time_limit, gap, nworkers, target=nothing, bnb_kw=NamedTuple())
+function _nz_oracle!(O, Fx, nd, x̄; oracle, time_limit, gap, nworkers, target=nothing, bnb::Symbol=:dr, bnb_kw=NamedTuple())
     if oracle == :gurobi
         res = nz_solve!(O, nd, x̄; time_limit=time_limit, gap=gap)
         return res[:Fval], res[:bound], O
     end
-    # bnb_kw 의 :solver 로 α-B&B 구현을 바꿀 수 있다 (기본 nz_alpha_bnb). 예: bnb_kw = (solver = nz_alpha_bnb_dr, ...) 는
-    # 상자별 쌍대 범위 조임 시제품 (nz_alpha_bnb_dr.jl). 반환 Dict 의 :α, :UB 만 쓰므로 인터페이스는 같다.
-    kw = Dict{Symbol,Any}(pairs(bnb_kw)); solver = pop!(kw, :solver, Main.nz_alpha_bnb)
-    r = solver(nd, x̄; nworkers=nworkers, time_limit=time_limit, rel_gap=gap, verbose=false, target=target, kw...)
+    # 구현은 bnb 로 고른다 (:dr 기본 | :legacy). 반환 Dict 의 :α, :UB 만 쓰므로 인터페이스는 같다.
+    r = _nz_bnb_solver(bnb)(nd, x̄; nworkers=nworkers, time_limit=time_limit, rel_gap=gap, verbose=false, target=target, bnb_kw...)
     nz_set_objective!(Fx, nd, x̄)
     z = Main.nz_eval_alpha!(Fx, nd, r[:α])
     return z, max(r[:UB], z), Fx
@@ -199,10 +209,12 @@ end
 
 
 function nz_standard_benders(nd::NZData; optimizer, max_iter=200, tol=1e-4, oracle_time=600.0, boost_time=3600.0,
-                             oracle::Symbol=:alpha_bnb, oracle_gap=1e-5, nworkers=12, bnb_kw=NamedTuple(),
+                             oracle::Symbol=:alpha_bnb, bnb::Symbol=:dr, oracle_gap=1e-5, nworkers=12, bnb_kw=NamedTuple(),
                              mw::Bool=true, vi::Bool=false, verbose=true, time_limit=Inf,
                              local_first::Bool=false, local_time=60.0, oracle_remaining::Bool=false)
     oracle in (:gurobi, :alpha_bnb) || error("oracle = :gurobi | :alpha_bnb")
+    oracle == :alpha_bnb && _nz_bnb_solver(bnb)
+    verbose && (println(_nz_oracle_banner(oracle, bnb, nworkers, oracle_gap, bnb_kw)); flush(stdout))
     # oracle_remaining: 전역 호출에 처음부터 남은 시간 전체를 줌 (SB-G / SB-A: 전역은 local cut 이 막힌 뒤에만 불리므로
     # 600 → 2,400 단계 증가 대신). time_limit 이 유한해야 함.
     oracle_remaining && !isfinite(time_limit) && error("oracle_remaining 은 유한한 time_limit 이 필요")
@@ -258,7 +270,7 @@ function nz_standard_benders(nd::NZData; optimizer, max_iter=200, tol=1e-4, orac
         end
         ncalls += 1
         t_o = @elapsed ((zinc, zbd, src) = _nz_oracle!(O, Fx, nd, x̄; oracle=oracle, time_limit=lim, gap=oracle_gap,
-                                                       nworkers=nworkers, bnb_kw=bnb_kw))
+                                                       nworkers=nworkers, bnb=bnb, bnb_kw=bnb_kw))
         t_o < 0.9 * lim && delete!(tl, x̄)           # 시간 제한에 걸린 호출만 stall 판정에 셈
         if oracle == :alpha_bnb                     # src = α 고정 LP → MW 가능
             cut, ok = _nz_lp_cut!(src, nd, x̄, zinc; mw=mw, x_core=x_core); n_mw += ok
@@ -277,17 +289,19 @@ function nz_standard_benders(nd::NZData; optimizer, max_iter=200, tol=1e-4, orac
     end
     return Dict(:status => status, :LB => LB, :UB => UB, :x => best_x, :iters => iter,
                 :oracle_calls => ncalls, :mw_cuts => n_mw, :local_cuts => n_local, :wall => time() - wall,
-                :hist => hist, :cuts => cuts)
+                :hist => hist, :cuts => cuts, :oracle => oracle, :bnb => (oracle == :alpha_bnb ? bnb : nothing))
 end
 
 
 function nz_belief_menu_benders(nd::NZData; optimizer, lp_optimizer=optimizer, cert::Symbol=:recompute,
                                 cert_rows::Symbol=:hrows, max_iter=500, tol=1e-4, oracle_time=600.0, boost_time=3600.0,
-                                oracle::Symbol=:alpha_bnb, oracle_gap=1e-5, nworkers=12, bnb_kw=NamedTuple(),
+                                oracle::Symbol=:alpha_bnb, bnb::Symbol=:dr, oracle_gap=1e-5, nworkers=12, bnb_kw=NamedTuple(),
                                 target_stop::Bool=(oracle == :alpha_bnb), mw::Bool=true, vi::Bool=false,
                                 verbose=true, time_limit=Inf)
     cert in (:recompute, :solution) || error("cert = :recompute | :solution")
     oracle in (:gurobi, :alpha_bnb) || error("oracle = :gurobi | :alpha_bnb")
+    oracle == :alpha_bnb && _nz_bnb_solver(bnb)
+    verbose && (println(_nz_oracle_banner(oracle, bnb, nworkers, oracle_gap, bnb_kw)); flush(stdout))
     x_core = nz_core_point(nd); n_mw = 0
     target_stop && oracle != :alpha_bnb && error("target_stop 은 oracle=:alpha_bnb 에서만")
     omp, x, t0 = _nz_omp(nd; optimizer=optimizer)
@@ -344,7 +358,7 @@ function nz_belief_menu_benders(nd::NZData; optimizer, lp_optimizer=optimizer, c
         #   oracle 상한 zbd ≤ t₀ + δ 이면 UB = q_xᵀx̄ + zbd ≤ LB + δ, |UB| ≥ |LB| − δ 이므로 δ = 0.99·tol·|LB| / (1 + tol) 이면 δ ≤ tol·|UB|.
         target = target_stop ? t0v + 0.99 * tol * max(1.0, abs(LB)) / (1 + tol) : nothing
         t_o = @elapsed ((zinc, zbd, src) = _nz_oracle!(O, Fx, nd, x̄; oracle=oracle, time_limit=lim, gap=oracle_gap,
-                                                       nworkers=nworkers, target=target, bnb_kw=bnb_kw))
+                                                       nworkers=nworkers, target=target, bnb=bnb, bnb_kw=bnb_kw))
         # 시간 제한에 걸린 호출만 stall 판정에 셈. 목표값 조기 종료 (target_stop) 로 끝난 호출은 같은 x̄ 를 다시 불러도
         # 정상이다 (t₀ 가 올라간 뒤 다시 확인하는 것). 이전에는 같은 x̄ 세 번째 호출에서 무조건 :Stalled.
         t_o < 0.9 * lim && delete!(tl, x̄)
@@ -382,5 +396,6 @@ function nz_belief_menu_benders(nd::NZData; optimizer, lp_optimizer=optimizer, c
     end
     return Dict(:status => status, :LB => LB, :UB => UB, :x => best_x, :iters => iter,
                 :oracle_calls => oracle_calls, :menu_cuts => menu_cuts, :mw_cuts => n_mw, :menu => menu, :menu_size => length(menu),
-                :exact_log => exact_log, :wall => time() - wall, :hist => hist, :cuts => cuts)
+                :exact_log => exact_log, :wall => time() - wall, :hist => hist, :cuts => cuts,
+                :oracle => oracle, :bnb => (oracle == :alpha_bnb ? bnb : nothing))
 end

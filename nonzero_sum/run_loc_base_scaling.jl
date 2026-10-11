@@ -8,13 +8,16 @@ run_loc_base_scaling.jl — 기본 인스턴스 (SGB128 Goyal 기본 사례 + �
   ALG  : oracle 600 s, 재방문 시 2,400 s, 모두 남은 시간으로 자름
   ALGG : Algorithm 2 와 같고 전역 oracle 만 Gurobi Ω (목표값 조기 종료 없음)
   ALG  : Algorithm 2 (belief-menu + α-B&B, MW)
-  SBAD / ALGD : SBA / ALG 와 같고 α-B&B 만 상자별 쌍대 범위 조임 시제품 (nz_alpha_bnb_dr.jl) 으로 (2026-10-11)
+  α-B&B 구현 (2026-10-11 부터): SBA, ALG 는 기본 구현 nz_alpha_bnb_dr (상자별 쌍대 범위 조임).
+    SBA0 / ALG0 : 같은 방법을 기존 구현 nz_alpha_bnb (bnb = :legacy) 로 — 비교용
+    SBAD / ALGD : SBA / ALG 의 옛 이름 (2026-10-11 의 로그에서 "새 α-B&B" 를 가리킴). 그대로 받아 SBA / ALG 로 처리
+    주의: 2026-10-11 이전 로그와 `logs/loc_base_scaling_dr_S20*.log` 의 method=SBA / ALG 는 기존 구현이다.
 작은 S 부터. E 는 미해결이면 더 큰 S 를 건너뜀. Benders 계열은 LB_SKIP_BENDERS=1 일 때만 같은 규칙 (기본 0: 모든 S 를
 시간 제한까지 돌려 최종 gap 과 t_LB (LB 가 최종 LB 에 처음 도달한 경과 시간) 를 기록. 기본 인스턴스에서는 모든 방법이 최적해는
 금방 찾고 x 인증 (상한) 에서 막히므로, 건너뛰면 큰 S 의 정보가 사라짐).
 
 환경변수
-  LB_S = "3,20,50,200"   LB_METHODS = "E,SBG,SBA,ALG"   LB_EPS = 0.3   LB_BETA = 0.4   LB_DELTA = 0.1   LB_QUOTA = 150
+  LB_S = "3,20,50,200"   LB_METHODS = "E,SBG,SBA,ALG"  (+ ALGG, SBA0, ALG0)   LB_EPS = 0.3   LB_BETA = 0.4   LB_DELTA = 0.1   LB_QUOTA = 150
   LB_TL = 3600 (방법당 전체)   LB_E_TL = 300 (E 의 x 하나당)   LB_E_FORM = reduced | full
   LB_TOL = 5e-3 (Benders 상대 허용오차, zero-sum 과 같음)   LB_OGAP = 1e-3 (전역 oracle 목표 gap)   LB_IPOPT = 120 (α-B&B Ipopt 1 회 시간)
   LB_THETA = circuit | res | 숫자 (θᵁ)   LB_ORACLE_TIME = 600   LB_BOOST = 2400   LB_LOCAL_TIME = 60   LB_WORKERS = 12   NZ_SEED = 1
@@ -29,7 +32,6 @@ include(joinpath(root, "nonzero_sum", "nz_omega.jl"))
 include(joinpath(root, "nonzero_sum", "nz_kkt_eval.jl"))
 include(joinpath(root, "nonzero_sum", "nz_benders.jl"))
 isdefined(Main, :nz_alpha_bnb) || include(joinpath(root, "nonzero_sum", "nz_alpha_bnb.jl"))
-include(joinpath(root, "nonzero_sum", "nz_alpha_bnb_dr.jl"))
 envf(k, d) = get(ENV, k, d)
 pd(s) = strip(s) == "Inf" ? Inf : parse(Float64, s)
 strs(k, d) = String.(strip.(split(envf(k, d), ",")))
@@ -93,22 +95,20 @@ for S in Ss
             @printf("RESULT S=%d method=E status=%s x=%s value=%.6f time=%.1f\n", S, solved ? "Optimal" : "Unsolved",
                     solved ? xstr(best[2]) : "-", solved ? best[1] : NaN, time() - t0)
         else
-            # SBAD / ALGD: α-B&B 구현만 nz_alpha_bnb_dr 로 (bnb_kw 의 :solver)
-            common_dr = merge(common, (bnb_kw=merge(common.bnb_kw, (solver=nz_alpha_bnb_dr,)),))
-            r = meth == "ALG"  ? nz_belief_menu_benders(nd; oracle=:alpha_bnb, common...) :
-                meth == "ALGD" ? nz_belief_menu_benders(nd; oracle=:alpha_bnb, common_dr...) :
+            meth in ("ALG", "ALGD", "ALG0", "ALGG", "SBA", "SBAD", "SBA0", "SBG") || error("알 수 없는 방법: $meth")
+            bnb = meth in ("ALG0", "SBA0") ? :legacy : :dr           # α-B&B 구현 (oracle = :alpha_bnb 일 때만 쓰임)
+            r = meth in ("ALG", "ALGD", "ALG0") ? nz_belief_menu_benders(nd; oracle=:alpha_bnb, bnb=bnb, common...) :
                 meth == "ALGG" ? nz_belief_menu_benders(nd; oracle=:gurobi, common...) :
-                meth == "SBAD" ? nz_standard_benders(nd; oracle=:alpha_bnb, local_first=true,
-                                                     local_time=local_time, oracle_remaining=true, common_dr...) :
-                nz_standard_benders(nd; oracle=(meth == "SBG" ? :gurobi : :alpha_bnb), local_first=true,
+                nz_standard_benders(nd; oracle=(meth == "SBG" ? :gurobi : :alpha_bnb), bnb=bnb, local_first=true,
                                     local_time=local_time, oracle_remaining=true, common...)
             t = time() - t0
             envf("LB_SKIP_BENDERS", "0") == "1" && r[:status] != :Optimal && push!(given_up, meth)
             gap = abs(r[:UB] - r[:LB]) / max(1.0, abs(r[:UB]))
             iLB = findfirst(h -> h.LB >= r[:LB] - 1e-4 * max(1.0, abs(r[:LB])), r[:hist])
             tLB = iLB === nothing ? t : r[:hist][iLB].w        # 마지막 반복에서 처음 도달 (기록 전 종료) 이면 종료 시각
-            @printf("RESULT S=%d method=%s status=%s x=%s LB=%.6f UB=%.6f gap=%.2e iters=%d global=%d local=%s menu=%s t_LB=%.1f time=%.1f\n",
-                    S, meth, r[:status], xstr(r[:x]), r[:LB], r[:UB], gap, r[:iters], r[:oracle_calls],
+            osolver = r[:oracle] == :gurobi ? "gurobi" : string(nameof(_nz_bnb_solver(r[:bnb])))
+            @printf("RESULT S=%d method=%s oracle=%s status=%s x=%s LB=%.6f UB=%.6f gap=%.2e iters=%d global=%d local=%s menu=%s t_LB=%.1f time=%.1f\n",
+                    S, meth, osolver, r[:status], xstr(r[:x]), r[:LB], r[:UB], gap, r[:iters], r[:oracle_calls],
                     string(get(r, :local_cuts, "-")), string(get(r, :menu_size, "-")), tLB, t)
         end
         flush(stdout)

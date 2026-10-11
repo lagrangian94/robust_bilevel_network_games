@@ -1,0 +1,74 @@
+Set parameter Username
+Set parameter LicenseID to value 2742039
+Academic license - for non-commercial use only - expires 2026-11-20
+====================================================================================================
+기본 인스턴스 S 스케일링: SGB128 pair quota=150 ε̂=ε̃=0.30 β=0.40 δ=0.1 seed=1 | TL=3600s E_TL/x=300s E=nz_kkt_value_reduced workers=12 θᵁ=1.0000 (circuit) tol=5e-03 ogap=1e-03
+====================================================================================================
+
+--- S=30 (n_h=15, |X|=16)
+Set parameter Username
+Set parameter LicenseID to value 2742039
+Academic license - for non-commercial use only - expires 2026-11-20
+Set parameter Username
+Set parameter LicenseID to value 2742039
+Academic license - for non-commercial use only - expires 2026-11-20
+Set parameter Username
+Set parameter LicenseID to value 2742039
+Academic license - for non-commercial use only - expires 2026-11-20
+Set parameter Username
+Set parameter LicenseID to value 2742039
+Academic license - for non-commercial use only - expires 2026-11-20
+Set parameter Username
+Set parameter LicenseID to value 2742039
+Academic license - for non-commercial use only - expires 2026-11-20
+Set parameter Username
+Set parameter LicenseID to value 2742039
+Academic license - for non-commercial use only - expires 2026-11-20
+Set parameter Username
+Set parameter LicenseID to value 2742039
+Academic license - for non-commercial use only - expires 2026-11-20
+Set parameter Username
+Set parameter LicenseID to value 2742039
+Academic license - for non-commercial use only - expires 2026-11-20
+Set parameter Username
+Set parameter LicenseID to value 2742039
+Academic license - for non-commercial use only - expires 2026-11-20
+Set parameter Username
+Set parameter LicenseID to value 2742039
+Academic license - for non-commercial use only - expires 2026-11-20
+Set parameter Username
+Set parameter LicenseID to value 2742039
+Academic license - for non-commercial use only - expires 2026-11-20
+Set parameter Username
+Set parameter LicenseID to value 2742039
+Academic license - for non-commercial use only - expires 2026-11-20
+Set parameter Username
+Set parameter LicenseID to value 2742039
+Academic license - for non-commercial use only - expires 2026-11-20
+
+******************************************************************************
+This program contains Ipopt, a library for large-scale nonlinear optimization.
+ Ipopt is released as open source code under the Eclipse Public License (EPL).
+         For more information visit https://github.com/coin-or/Ipopt
+******************************************************************************
+
+  [orcl] it   1 LB=-10000000.0000 UB=     0.0000 x=Int64[]    Ω=     0.0000 (9.0s) menu=1 (+belief, LP@x̄=0.0000, gap 3.1e-11)
+  [menu] it   2 LB=-9999695.0000 UB=     0.0000 x=[1]        menu cut 1/1 (V_menu=-26936.5000)
+  [menu] it   3 LB=-9999695.0000 UB=     0.0000 x=[2]        menu cut 1/1 (V_menu=-19743.5278)
+  [menu] it   4 LB=-1689393.5242 UB=     0.0000 x=[1, 2]     menu cut 1/1 (V_menu=-10132.1056)
+  [menu] it   5 LB=-278695.0000 UB=     0.0000 x=[3]        menu cut 1/1 (V_menu=-115.0222)
+  [orcl] it   6 LB=-26631.5000 UB=  -359.7701 x=[1]        Ω=  -792.4065 (38.8s) menu=2 (+belief, LP@x̄=-792.3333, gap -7.3e-02)
+  [menu] it   7 LB=-19438.5278 UB=  -359.7701 x=[2]        menu cut 1/2 (V_menu=-4924.9278)
+  [menu] it   8 LB= -9522.1056 UB=  -359.7701 x=[1, 2]     menu cut 1/2 (V_menu=-9388.5833)
+  [orcl] it   9 LB= -8778.5833 UB=  -359.7701 x=[1, 2]     Ω= -1053.2455 (40.8s) menu=3 (+belief, LP@x̄=-1053.1418, gap -1.0e-01)
+  [menu] it  10 LB= -4619.9278 UB=  -359.7701 x=[2]        menu cut 1/3 (V_menu=-1470.8319)
+  [orcl] it  11 LB= -1165.8319 UB=  -399.6976 x=[2]        Ω=  -765.5972 (13.8s) menu=4 (+belief, LP@x̄=-765.5972, gap 9.4e-12)
+  [menu] it  12 LB=  -487.4065 UB=  -399.6976 x=[1]        menu cut 1/4 (V_menu=-792.3333)
+  [orcl] it  13 LB=  -487.3333 UB=  -454.6161 x=[1]        Ω=  -789.2205 (104.6s) menu=5 (+belief, LP@x̄=-787.6667, gap -1.6e+00)
+  [menu] it  14 LB=  -484.2205 UB=  -454.6161 x=[1]        menu cut 1/5 (V_menu=-787.6667)
+  [orcl] it  15 LB=  -482.6667 UB=  -478.6141 x=[1]        Ω=  -786.7674 (600.2s) menu=6 (+belief, LP@x̄=-786.1944, gap -5.7e-01)
+  [menu] it  16 LB=  -481.7674 UB=  -478.6141 x=[1]        menu cut 1/6 (V_menu=-786.1944)
+  [orcl] it  17 LB=  -481.1944 UB=  -478.9271 x=[1]        Ω=  -786.7674 (650.7s) menu=6
+RESULT S=30 method=ALG status=Optimal x={1} LB=-481.194445 UB=-478.927106 gap=4.73e-03 iters=18 global=7 local=- menu=6 t_LB=811.7 time=1468.8
+
+[주] 방법 이름 정리 (2026-10-12) 전의 실행: 이 로그의 method=ALG 는 기존 alpha-B&B (nz_alpha_bnb) = 지금의 ALG0

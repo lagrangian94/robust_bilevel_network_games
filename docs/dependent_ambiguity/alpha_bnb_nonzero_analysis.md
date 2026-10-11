@@ -455,3 +455,59 @@ incumbent 의 cut 은 이미 들어 있어 LB 도 안 움직이므로 같은 x̄
 배제해서 oracle 이 인증해야 하는 것은 쉬운 x = {1} 뿐이기 때문이다 (기존 111 s, 새 54 s). 새 α-B&B 가 결정적인 곳은 어려운 x̄ 를 인증해야 하는
 SB-A (TimeLimit → 479 s) 다. Algorithm 2 도 최적 x̄ 자체의 인증이 어려우면 같은 차이가 날 것이다 (x = {1,2} 의 oracle 만 보면 S = 30 에서
 600 s 에 9.3% vs 1.1%). 다만 S = 30 에서 어느 x̄ 가 최적인지, Algorithm 2 가 그 인증을 요구하는지는 아직 재지 않았다.
+
+**S = 30 (진행 중, `logs/loc_base_S30_*.log`).** Algorithm 2 는 S = 30 에서 α-B&B 구현에 따라 차이가 난다 (S = 20 에서는 없었음).
+
+| 방법 (S = 30) | 상태 | x* | LB | UB | gap | 반복 (전역 호출) | 시간 |
+|---|---|---|---|---|---|---|---|
+| Algorithm 2, 기본 α-B&B (`nz_alpha_bnb_dr`) | Optimal | {1} | −481.810 | −480.930 | 0.18% | 16 (6) | 611 s |
+| Algorithm 2, 기존 α-B&B (`nz_alpha_bnb`) | Optimal | {1} | −481.194 | −478.927 | 0.47% | 18 (7) | 1,469 s |
+
+최적 x̄ = {1} 의 인증이 S = 30 에서는 쉽지 않다: 기존 구현은 oracle 한 번에 600~650 s 를 두 번, 기본 구현은 200~230 s 를 두 번 썼다.
+ALGG (Gurobi oracle), SB-G, SB-A, E 는 측정 중.
+
+### 10.8 α-B&B 구현과 인자 정리 (2026-10-12)
+
+**어떤 α-B&B 가 도는가.** 비제로섬 α-B&B 는 두 구현이 있고, Benders 에서는 인자 하나로 고른다.
+
+| | 함수 (파일) | Benders 인자 | 벤치마크 방법 이름 |
+|---|---|---|---|
+| **기본** | `nz_alpha_bnb_dr` (`nz_alpha_bnb_dr.jl`) — 상자별 쌍대 범위 조임 | `bnb = :dr` (기본값) | `SBA`, `ALG` |
+| 기존 | `nz_alpha_bnb` (`nz_alpha_bnb.jl`) — 2026-10-10 까지의 구현 | `bnb = :legacy` | `SBA0`, `ALG0` |
+| (Gurobi 전역) | `nz_solve!` (Ω NonConvex) | `oracle = :gurobi` | `SBG`, `ALGG` |
+
+- `nz_standard_benders`, `nz_belief_menu_benders` 는 시작할 때 `[설정] 전역 oracle = …` 한 줄을 찍고, 결과 Dict 에 `:oracle`, `:bnb` 를 남긴다.
+  `run_loc_base_scaling.jl` 의 RESULT 줄에도 `oracle=nz_alpha_bnb_dr` 처럼 실제로 돈 구현 이름이 들어간다.
+- `bnb_kw` 는 고른 구현에 그대로 넘어간다. 두 구현의 인자는 서로 다르므로 (기존 구현의 `node_lp`, `lp_method`, `defer_rows` 등은 기본 구현에 없음)
+  맞지 않는 인자를 넘기면 Julia 가 오류를 낸다 — 조용히 무시되지 않는다.
+- **로그 이름 주의**: 2026-10-11 의 `logs/loc_base_scaling_dr_S20*.log` 와 그 이전 로그에서 `method=SBA`, `method=ALG` 는 **기존** 구현이고
+  `SBAD`, `ALGD` 가 기본 구현이다. 2026-10-12 부터는 `SBA`, `ALG` 가 기본 구현, `SBA0`, `ALG0` 가 기존 구현이다 (`SBAD`, `ALGD` 는 옛 이름으로 계속 받음).
+
+**`nz_alpha_bnb_dr` 의 인자** (기본값 = 이 절의 측정에 쓴 구성. 기본값 밖의 조합은 측정·검증하지 않았다)
+
+| 묶음 | 인자 | 기본 | 뜻 |
+|---|---|---|---|
+| 호출마다 | `nworkers` | 스레드 − 2 | worker 수. Julia 는 `-t (nworkers+2),1` |
+| | `time_limit` | 300.0 | 초 |
+| | `rel_gap` | 1e-4 | 상대 gap (UB − LB) / max(1, abs(LB)) 가 이 값 이하면 종료 |
+| | `target` | nothing | LB ≥ target 또는 UB ≤ target 이면 즉시 종료 (Benders 의 목표값 조기 종료) |
+| | `verbose`, `log_every` | true, 30.0 | 진행 로그 |
+| 자원 | `ipopt_time` | 60.0 | Ipopt 휴리스틱 1 회 시간 (벤치마크는 120) |
+| | `heuristic` | true | Ipopt 휴리스틱 task 사용 |
+| | `envs` | nothing | Gurobi Env 를 직접 넘김. 세션 수가 제한된 라이선스에서만 |
+| 탐색 | `branch_point` | :mid | 분할점. :mid (중점) 또는 :alphahat (완화 해) |
+| | `child_rounds` | 1 | 루트가 아닌 노드의 RLT 분리 라운드 상한 |
+| | `maxrounds` | 30 | 루트의 분리 라운드 상한 |
+| | `dive_max` | 3 | 한 worker 가 자식으로 연속 내려가는 횟수 |
+| | `sep_maxadd` | 5000 | 라운드당 추가 RLT 행 상한 |
+| | `min_width` | 1e-7 | 이보다 좁은 좌표는 더 나누지 않음 |
+| | `presolve` | true | x̄ 에서 닫힌 점포의 예약 좌표를 0 으로 고정 |
+| 강화 (ablation 전용) | `dual_range` | true | 인증서의 상자별 쌍대 범위 (W, F) + RLT. false 면 아래 셋도 꺼지고 기존 완화와 같음 |
+| | `comp` | true | 상자가 함의하는 상보성 (C) |
+| | `vcut` | true | 시나리오별 값 상한 (V) |
+| | `cslift` | true | follower 1 단계 상보성의 RLT (X) |
+
+- 강화 스위치를 하나라도 끄거나 `branch_point` 를 바꾸면 stderr 에 "기본이 아닌 구성으로 실행" 한 줄이 나온다.
+- 벤치마크 (`run_loc_base_scaling.jl`) 가 기본값에서 바꾸는 것은 `ipopt_time = 120` 하나뿐이다 (zero-sum 실험과 맞춤).
+- **코드에서 지운 옵션** (10.5 에서 효과가 없거나 나빴던 것): 꺾임점 3 분할 분기 (`branch_point=:kink`, `kink_eta`, `kink_width`),
+  분리 행 줄이기 (`sep_rows`), 노드 LP barrier (`lp_method`, `lp_presolve`). 다시 볼 일이 있으면 커밋 3480bae 이전의 `nz_alpha_bnb_dr.jl`.

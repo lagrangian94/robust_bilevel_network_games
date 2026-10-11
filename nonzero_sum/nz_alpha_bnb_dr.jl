@@ -22,7 +22,8 @@ nz_alpha_bnb_dr.jl — α-B&B (nz_alpha_bnb.jl) + **상자별 쌍대 범위 조�
   - 범위 MIP 는 objective_bound (바깥쪽) 에 1e-6 여유를 더해 쓴다.
   **주의: 시제품. 유효성은 위 논증 + 작은 S 에서 KKT 값과의 대조 (diag_dual_range.jl, test) 로만 확인했다.**
 
-사용: r = nz_alpha_bnb_dr(nd, x̄; nworkers=12, time_limit=600.0, rel_gap=5e-3)        (dual_range=false 면 기존 완화, 비교용)
+사용: r = nz_alpha_bnb_dr(nd, x̄; nworkers=12, time_limit=600.0, rel_gap=1e-3)
+      인자 전체와 기본값은 nz_alpha_bnb_dr 의 docstring. Benders 에서는 nz_benders.jl 의 `bnb = :dr` (기본).
 """
 
 struct _NZRangeMIP
@@ -242,23 +243,6 @@ function _nz_dr_ranges(DR::_NZDR, nd::NZData, l, u, lo0, hi0, wit0, phib0; fixto
 end
 
 """
-좌표 i (H 행 Hk[a]) 에서 시나리오 s 의 꺾임점 위치: 상자 안에서 쌍대가 아직 최댓값 hi 인 가장 큰 α_i.
-(recourse 값은 α_i 에 오목이라 쌍대 σ_k 는 α_i 에 비증가 → 이 값을 넘으면 쌍대가 떨어진다.) 못 구하면 nothing.
-"""
-function _nz_dr_kink(DR::_NZDR, nd::NZData, l, u, lo, hi, a, s)
-    M = DR.mips[s]; k = DR.Hk[a]; i = nd.hrow[k]
-    gap = hi[a, s] - lo[a, s]
-    gap > 1e-4 || return nothing
-    for j in 1:nz_nh(nd); set_lower_bound(M.α[j], l[j]); set_upper_bound(M.α[j], u[j]); end
-    set_lower_bound(M.σ[k], hi[a, s] - min(1e-3, 0.01 * gap) - 2e-6)       # hi 에는 1e-6 여유가 들어 있음
-    @objective(M.model, Max, M.α[i])
-    ok = _nz_dr_opt!(DR, M, l, u, "s=$s 꺾임점")
-    t = ok && termination_status(M.model) == MOI.OPTIMAL ? objective_value(M.model) : nothing
-    set_lower_bound(M.σ[k], 0.0)
-    return t
-end
-
-"""
 노드 LP 의 INFEASIBLE 판정 재확인. 반환: −Inf (재확인에서도 실행 불가능), 유한값 (풀림: 그 목적값), NaN·Inf (시간·수치 문제).
 
 범위 행을 넣은 노드 LP 는 실행 가능한데도 INFEASIBLE 로 나오는 일이 있다 (test_dr_validity_boxes.jl: 최적 α* 를 품은 상자의
@@ -329,28 +313,78 @@ function _nz_dr_set!(P::_NZSepLP, DR::_NZDR, nd::NZData, l, u, lo, hi, phib; com
 end
 
 
-"""
-    nz_alpha_bnb_dr(nd, x̄; dual_range=true, comp=true, ...)
+const _NZ_DR_ANNOUNCED = Set{Any}()
+const _NZ_DR_ANNOUNCE_LOCK = ReentrantLock()
 
-nz_alpha_bnb 의 탐색 (worker 병렬, best-first + diving, 위반 RLT 행 분리, Ipopt 휴리스틱) 을 그대로 쓰고 노드마다 쌍대 범위를 조인다.
-노드 = (l, u, 부모 상한, lo, hi). L-shaped, ϖ 분기, barrier 계열 옵션은 뺐다 (dual simplex 전용).
+"강화 스위치가 기본 (모두 켬) 이 아니면 stderr 에 한 번 알린다 (같은 구성은 프로세스당 한 번)"
+function _nz_dr_announce(config)
+    off = [n for n in (:dual_range, :comp, :vcut, :cslift) if !getfield(config, n)]
+    isempty(off) && config.branch_point == :mid && return
+    lock(_NZ_DR_ANNOUNCE_LOCK) do
+        key = (Tuple(off), config.branch_point)
+        key in _NZ_DR_ANNOUNCED && return
+        push!(_NZ_DR_ANNOUNCED, key)
+        println(stderr, "nz_alpha_bnb_dr: 기본이 아닌 구성으로 실행 — 끈 강화: ", isempty(off) ? "없음" : join(off, ", "),
+                ", branch_point = ", config.branch_point)
+    end
+    return
+end
+
 """
-function nz_alpha_bnb_dr(nd::NZData, x̄; nworkers=Threads.nthreads() - 2, time_limit=300.0, rel_gap=1e-4,
-                         dive_max=3, maxrounds=30, child_rounds::Int=1, min_width=1e-7, ipopt_time=60.0,
-                         verbose=true, log_every=30.0, target=nothing, heuristic::Bool=true, presolve::Bool=true,
-                         branch_point::Symbol=:mid, sep_maxadd::Int=5000, dual_range::Bool=true, comp::Bool=true,
-                         kink_eta::Float64=0.01, kink_width::Float64=Inf, vcut::Bool=true, cslift::Bool=true,
-                         sep_rows::Symbol=:all, lp_method::Int=1, lp_presolve::Int=0)
-    # lp_method / lp_presolve: 노드 LP 의 Gurobi Method (1 = dual simplex, 2 = barrier) 와 Presolve (0 = 끔, -1 = 자동).
-    #   범위 행은 노드마다 행렬 계수가 바뀌어 dual simplex 의 warm start 가 잘 안 먹는다 (S=30 노드당 LP 2.9 s → 15 s) → 큰 S 는 barrier 후보.
-    # sep_rows: 분리할 RLT 후보 행. :all (기존: belief 다면체 + 인증서 행) | :cert (인증서 행 ϖ ≥ 0, Wcap 만) | :none (분리 없음).
-    #   진단 (docs §10.2): belief × α 행은 빼도 상한이 0~5% 만 나빠지고, 인증서 행은 범위 RLT (정적 4 행) 가 지배한다 → 노드 LP 를 줄이는 용도.
-    sep_rows in (:all, :cert, :none) || error("sep_rows = :all | :cert | :none")
-    # vcut: 시나리오별 값 상한 (V), cslift: follower 1단계 상보성의 RLT (X). 둘 다 dual_range = true 에서만.
-    # branch_point = :kink: 분기 좌표에서 쌍대 범위가 고정되지 않은 시나리오의 꺾임점 t 를 찾아 [l, t−η], [t−η, t+η], [t+η, u] 로
-    #   3 분할 (η = kink_eta). 꺾임점이 없거나 못 찾거나 좌표 폭이 kink_width 보다 크면 중점 분할. dual_range = true 에서만.
-    branch_point in (:alphahat, :mid, :kink) || error("branch_point = :alphahat | :mid | :kink")
-    n_kink = Threads.Atomic{Int}(0)
+    nz_alpha_bnb_dr(nd, x̄; ...) -> Dict
+
+비제로섬 Ω(x̄) 의 전역 해법. **비제로섬 α-B&B 의 기본 구현** (nz_benders.jl 의 `bnb = :dr`).
+nz_alpha_bnb (기존, `bnb = :legacy`) 의 탐색 — worker 병렬, best-first + diving, 위반 RLT 행 분리, Ipopt 휴리스틱 — 에
+노드마다 상자별 쌍대 범위 조임을 더한 것. 노드 LP 는 dual simplex 전용.
+
+인자 (기본값 = 2026-10-11 측정에 쓴 구성. 기본값 밖의 조합은 측정·검증하지 않았다)
+
+| 묶음 | 인자 | 기본 | 뜻 |
+|---|---|---|---|
+| 호출마다 | `nworkers` | 스레드 − 2 | worker 수. Julia 는 `-t (nworkers+2),1` |
+| | `time_limit` | 300.0 | 초 |
+| | `rel_gap` | 1e-4 | 상대 gap (UB − LB) / max(1, abs(LB)) 가 이 값 이하면 종료 |
+| | `target` | nothing | LB ≥ target 또는 UB ≤ target 이면 즉시 종료 (Benders 의 목표값 조기 종료) |
+| | `verbose`, `log_every` | true, 30.0 | 진행 로그 |
+| 자원 | `ipopt_time` | 60.0 | Ipopt 휴리스틱 1 회 시간 (벤치마크는 120) |
+| | `heuristic` | true | Ipopt 휴리스틱 task 사용 |
+| | `envs` | nothing | Gurobi Env 를 직접 넘김 (worker 당 하나 + 휴리스틱용). 세션 수가 제한된 라이선스에서만 |
+| 탐색 | `branch_point` | :mid | 분할점. :mid (중점) 또는 :alphahat (완화 해, 끝 10% 면 중점) |
+| | `child_rounds` | 1 | 루트가 아닌 노드의 RLT 분리 라운드 상한 |
+| | `maxrounds` | 30 | 루트의 분리 라운드 상한 |
+| | `dive_max` | 3 | 한 worker 가 자식으로 연속 내려가는 횟수 |
+| | `sep_maxadd` | 5000 | 라운드당 추가 RLT 행 상한 |
+| | `min_width` | 1e-7 | 이보다 좁은 좌표는 더 나누지 않음 |
+| | `presolve` | true | x̄ 에서 닫힌 점포의 예약 좌표를 0 으로 고정 |
+| 강화 (ablation 전용) | `dual_range` | true | 인증서의 상자별 쌍대 범위 (W, F) + RLT. false 면 아래 셋도 꺼지고 기존 완화와 같음 |
+| | `comp` | true | 상자가 함의하는 상보성 (C) |
+| | `vcut` | true | 시나리오별 값 상한 (V) |
+| | `cslift` | true | follower 1 단계 상보성의 RLT (X) |
+
+강화 스위치를 하나라도 끄면 stderr 에 한 줄 알린다 (의도하지 않은 구성으로 도는 것을 막기 위해).
+시험했다가 뺀 옵션 (꺾임점 3 분할 분기, 분리 행 줄이기, 노드 LP barrier) 은 코드에서 지웠다 — 결과는
+docs/dependent_ambiguity/alpha_bnb_nonzero_analysis.md §10.5, 코드는 커밋 3480bae 이전.
+
+반환 Dict: `:LB` (incumbent 값), `:UB` (상한), `:α` (incumbent, 원래 정의역), `:is_exact`, `:nodes`, `:time`, `:root_UB`,
+`:solver` (= :nz_alpha_bnb_dr), `:config` (강화·탐색 설정), 계측 (`:t_relax`, `:t_range`, `:range_mips`, `:fixfrac`),
+수치 문제 횟수 (`:range_fail`, `:infeas`, `:infeas_recovered`, `:numerr`, `:numerr_fail`).
+"""
+function nz_alpha_bnb_dr(nd::NZData, x̄;
+                         # 호출마다 정하는 것
+                         nworkers=Threads.nthreads() - 2, time_limit=300.0, rel_gap=1e-4, target=nothing,
+                         verbose=true, log_every=30.0,
+                         # 자원
+                         ipopt_time=60.0, heuristic::Bool=true, envs=nothing,
+                         # 탐색 (기본값 = 측정에 쓴 값)
+                         branch_point::Symbol=:mid, child_rounds::Int=1, maxrounds=30, dive_max=3, sep_maxadd::Int=5000,
+                         min_width=1e-7, presolve::Bool=true,
+                         # 강화 스위치 (ablation 전용, 기본 모두 켬)
+                         dual_range::Bool=true, comp::Bool=true, vcut::Bool=true, cslift::Bool=true)
+    branch_point in (:alphahat, :mid) || error("branch_point = :alphahat | :mid")
+    config = (dual_range=dual_range, comp=dual_range && comp, vcut=dual_range && vcut, cslift=dual_range && cslift,
+              branch_point=branch_point, child_rounds=child_rounds, maxrounds=maxrounds, dive_max=dive_max,
+              sep_maxadd=sep_maxadd, presolve=presolve, heuristic=heuristic)
+    _nz_dr_announce(config)
     n_infeas = Threads.Atomic{Int}(0); n_infrec = Threads.Atomic{Int}(0)     # 실행 불가능 노드 (1e-6 재확인 통과) / 재확인에서 되살아난 노드
     nfix = 0
     if presolve
@@ -363,23 +397,10 @@ function nz_alpha_bnb_dr(nd::NZData, x̄; nworkers=Threads.nthreads() - 2, time_
     Hr = findall(nd.hrow .> 0)
     mk(env) = () -> (o = Gurobi.Optimizer(env); MOI.set(o, MOI.Silent(), true);
                      MOI.set(o, MOI.RawOptimizerAttribute("Threads"), 1); o)
-    envs = _nz_envs(nworkers + 1)
+    envs = envs === nothing ? _nz_envs(nworkers + 1) : envs
+    length(envs) >= nworkers + (heuristic ? 1 : 0) || error("nz_alpha_bnb_dr: envs 가 부족함 (worker $nworkers + heuristic $(heuristic))")
     Ps = [_nz_build_sep(nd, x̄; optimizer=mk(envs[i])) for i in 1:nworkers]
     numerr0 = _NZ_NUMERR[]; numfail0 = _NZ_NUMERR_FAIL[]
-    for P in Ps
-        lp_method != 1 && (set_optimizer_attribute(P.O.model, "Method", lp_method); P.O.model.ext[:lp_method] = lp_method)
-        lp_presolve != 0 && set_optimizer_attribute(P.O.model, "Presolve", lp_presolve)
-        # Presolve 를 켜면 실행 불가능한 상자가 INFEASIBLE_OR_UNBOUNDED 로 나와 _nz_solve_lp! 가 수치 오류로 처리한다
-        # (범위·정상성 행 때문에 실행 불가능한 상자가 흔함: S=20 barrier 첫 실행에서 4 만 노드가 전부 "수치 오류" → 상한이 루트에 멈춤).
-        # DualReductions = 0 이면 INFEASIBLE / UNBOUNDED 가 구분되어 나온다.
-        lp_presolve != 0 && set_optimizer_attribute(P.O.model, "DualReductions", 0)
-    end
-    if sep_rows != :all
-        for P in Ps
-            keep = sep_rows == :none ? falses(length(P.rows)) : [any(t -> t[1] == :w, row.terms) for row in P.rows]
-            P.rows = P.rows[keep]; P.rowscen = P.rowscen[keep]
-        end
-    end
     DRs = dual_range ? [_nz_dr_attach!(Ps[i], nd, x̄; optimizer=mk(envs[i]), vcut=vcut, cslift=cslift) for i in 1:nworkers] : nothing
     Fs = [nz_build_fixed_alpha(nd, x̄; optimizer=mk(envs[i])) for i in 1:nworkers]
     tol(v) = rel_gap * (isfinite(v) ? max(1.0, abs(v)) : 1.0)
@@ -516,48 +537,10 @@ function nz_alpha_bnb_dr(nd::NZData, x̄; nworkers=Threads.nthreads() - 2, time_
                         end
                         i = argmax(viol)
                         if viol[i] > 1e-9
-                            # 꺾임점 분기: 좌표 i 에서 범위가 고정되지 않은 시나리오 중 곱 위반이 가장 큰 것의 꺾임점 t 를 찾아
-                            #   [l, t − η] / [t − η, t + η] (얇은 판) / [t + η, u] 로 나눈다. 양옆 자식에서는 그 시나리오의 쌍대가 한 점으로 고정됨.
-                            if branch_point == :kink && dual_range && u[i] - l[i] <= kink_width
-                                best = -1.0; ab = 0; sb = 0
-                                for (a, k) in enumerate(DR.Hk)
-                                    nd.hrow[k] == i || continue
-                                    for s in 1:S
-                                        hi[a, s] - lo[a, s] > 1e-4 || continue
-                                        sc = abs(ζWv[DR.jj[a], s] - α̂[i] * ϖv[k, s]) + abs(ζFv[i, s] - α̂[i] * dv[s]) +
-                                             abs(ζLv[i, s] - α̂[i] * rv[s]) + 1e-9 * (rv[s] + dv[s])
-                                        sc > best && (best = sc; ab = a; sb = s)
-                                    end
-                                end
-                                if ab > 0
-                                    tk = @elapsed (t = _nz_dr_kink(DR, nd, l, u, lo, hi, ab, sb))
-                                    Threads.atomic_add!(t_range, tk)
-                                    if t !== nothing
-                                        bp = [l[i]]
-                                        for b in (t - kink_eta, t + kink_eta); b > bp[end] + 1e-9 && b < u[i] - 1e-9 && push!(bp, b); end
-                                        push!(bp, u[i])
-                                        if length(bp) >= 3
-                                            kids = Any[]
-                                            for n in 1:length(bp)-1
-                                                l2 = copy(l); u2 = copy(u); l2[i] = bp[n]; u2[i] = bp[n+1]
-                                                push!(kids, (l2, u2, z, lo, hi, wit, phib))
-                                            end
-                                            # 꺾임점을 품은 자식 (얇은 판) 을 먼저 (diving)
-                                            mid = findfirst(c -> c[1][i] <= t <= c[2][i] && c[2][i] - c[1][i] <= 2 * kink_eta + 1e-9, kids)
-                                            if mid !== nothing
-                                                tmp = kids[1]; kids[1] = kids[mid]; kids[mid] = tmp
-                                            end
-                                            children = Tuple(kids); Threads.atomic_add!(n_kink, 1)
-                                        end
-                                    end
-                                end
-                            end
-                            if children === nothing
-                                width = u[i] - l[i]; t = α̂[i]
-                                (branch_point != :alphahat || t - l[i] < 0.1 * width || u[i] - t < 0.1 * width) && (t = 0.5 * (l[i] + u[i]))
-                                u1 = copy(u); u1[i] = t; l2 = copy(l); l2[i] = t
-                                children = ((copy(l), u1, z, lo, hi, wit, phib), (l2, copy(u), z, lo, hi, wit, phib))
-                            end
+                            width = u[i] - l[i]; t = α̂[i]
+                            (branch_point != :alphahat || t - l[i] < 0.1 * width || u[i] - t < 0.1 * width) && (t = 0.5 * (l[i] + u[i]))
+                            u1 = copy(u); u1[i] = t; l2 = copy(l); l2[i] = t
+                            children = ((copy(l), u1, z, lo, hi, wit, phib), (l2, copy(u), z, lo, hi, wit, phib))
                         else
                             zE = max(zE, z)                # 곱 위반이 없으면 완화가 정확
                         end
@@ -653,8 +636,8 @@ function nz_alpha_bnb_dr(nd::NZData, x̄; nworkers=Threads.nthreads() - 2, time_
     UB = max(LB[], isempty(open) ? -Inf : maximum(n[3] for n in open), pruned_ub[])
     return Dict(:LB => LB[], :UB => UB, :α => best_α[], :is_exact => (UB - LB[] <= tol(LB[])),
                 :nodes => nodes[], :time => time() - t0, :root_UB => root_UB[], :ipopt_calls => ipopt_calls[],
-                :presolve_fixed => nfix, :t_relax => t_relax[], :t_eval => t_eval[], :t_range => t_range[],
+                :solver => :nz_alpha_bnb_dr, :config => config, :presolve_fixed => nfix, :t_relax => t_relax[], :t_eval => t_eval[], :t_range => t_range[],
                 :range_mips => dual_range ? sum(D.nmip for D in DRs) : 0, :range_fail => dual_range ? sum(D.nfail for D in DRs) : 0,
-                :fixfrac => nodes[] > 0 ? nfixed_sum[] / nodes[] : NaN, :kink_branches => n_kink[], :infeas => n_infeas[], :infeas_recovered => n_infrec[],
+                :fixfrac => nodes[] > 0 ? nfixed_sum[] / nodes[] : NaN, :infeas => n_infeas[], :infeas_recovered => n_infrec[],
                 :numerr => _NZ_NUMERR[] - numerr0, :numerr_fail => _NZ_NUMERR_FAIL[] - numfail0)
 end

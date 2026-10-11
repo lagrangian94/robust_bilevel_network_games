@@ -19,10 +19,8 @@ TL = parse(Float64, envf("TD_TL", "300")); GAP = parse(Float64, envf("TD_GAP", "
 ε = parse(Float64, envf("TD_EPS", "0.3")); δ = pd(envf("TD_DELTA", "0.1")); kktTL = parse(Float64, envf("TD_KKT_TL", "600"))
 xs = [isempty(strip(t)) ? Int[] : parse.(Int, split(t, ",")) for t in split(envf("TD_X", "1,2;1;2;"), ";")]
 modes = String.(strip.(split(envf("TD_MODES", "off,on"), ",")))
-kw = Dict("off" => (dual_range=false,), "on" => (dual_range=true,), "nocomp" => (dual_range=true, comp=false),
-          "on1" => (dual_range=true, vcut=false, cslift=false), "onv" => (dual_range=true, cslift=false), "onx" => (dual_range=true, vcut=false),
-          "kink" => (dual_range=true, branch_point=:kink), "kink20" => (dual_range=true, branch_point=:kink, kink_width=20.0),
-          "kink5" => (dual_range=true, branch_point=:kink, kink_width=5.0))
+kw = Dict("off" => (dual_range=false,), "on" => NamedTuple(), "nocomp" => (comp=false,),
+          "on1" => (vcut=false, cslift=false), "onv" => (cslift=false,), "onx" => (vcut=false,))
 nbad = 0
 for S in parse.(Int, split(envf("TD_S", "3,5"), ","))
     nd0 = nz_with_delta(make_location_instance(; coords=:sgb128, reservation=:pair, quota=150.0, wres=300.0, S=S, seed=1,
