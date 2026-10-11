@@ -438,6 +438,7 @@ S = 3 에서 463 개 중 89, S = 20 에서 43 개 중 8.
 | Algorithm 2, 기존 α-B&B (ALG) — target 수정 전 | 20 분에 수동 중단: gap 0.53% 에서 진전 없이 반복 (아래) | {1} | −685.917 | −682.281 | 0.53% | 25+ (17+) | — |
 | **Algorithm 2, 기존 α-B&B (ALG) — target 수정 후** | **Optimal** | {1} | −685.917 | −682.824 | 0.45% | 15 (6) | **195 s** |
 | Algorithm 2, 새 α-B&B (ALGD) — target 수정 후 | Optimal | {1} | −685.917 | −685.240 | 0.10% | 14 (6) | 186 s |
+| Algorithm 2, Gurobi 전역 (ALGG) — target 무관 (`logs/loc_base_S20_ALGG.log`) | Optimal | {1} | −685.917 | −685.917 | 0.00% | 16 (6) | 3,200 s |
 
 - 값 −685.917 은 이전에 ALGG (Algorithm 2 + Gurobi oracle, 허용오차 1e-4) 로 얻은 최적값과 같다.
 - SBAD 의 시간은 거의 x = {1,2} 인증 한 번 (427 s, oracle gap 0.1% 까지) 이다. 같은 인증을 SB-G (Gurobi) 는 1 시간에 3.7%, 기존 α-B&B 는 1 시간에 0.67% 까지밖에 못 가서
@@ -462,9 +463,12 @@ SB-A (TimeLimit → 479 s) 다. Algorithm 2 도 최적 x̄ 자체의 인증이 �
 |---|---|---|---|---|---|---|---|
 | Algorithm 2, 기본 α-B&B (`nz_alpha_bnb_dr`) | Optimal | {1} | −481.810 | −480.930 | 0.18% | 16 (6) | 611 s |
 | Algorithm 2, 기존 α-B&B (`nz_alpha_bnb`) | Optimal | {1} | −481.194 | −478.927 | 0.47% | 18 (7) | 1,469 s |
+| Algorithm 2, Gurobi 전역 (ALGG) | TimeLimit | — | −488.390 | −439.460 | 11.1% | 14 (6) | 3,608 s |
 
 최적 x̄ = {1} 의 인증이 S = 30 에서는 쉽지 않다: 기존 구현은 oracle 한 번에 600~650 s 를 두 번, 기본 구현은 200~230 s 를 두 번 썼다.
-ALGG (Gurobi oracle), SB-G, SB-A, E 는 측정 중.
+Gurobi oracle 은 호출마다 600 s 제한을 채우고도 인증을 못 끝낸다 (5 번 연속 600 s, 재방문 1,190 s) → 6 번 호출하는 사이 1 시간.
+S = 20 에서는 ALGG 도 최적까지 가지만 3,200 s 가 걸린다 (α-B&B 는 ~190 s).
+SB-G, SB-A, E 는 측정 중.
 
 ### 10.8 α-B&B 구현과 인자 정리 (2026-10-12)
 

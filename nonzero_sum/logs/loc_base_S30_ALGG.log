@@ -1,0 +1,22 @@
+Set parameter Username
+Set parameter LicenseID to value 2742039
+Academic license - for non-commercial use only - expires 2026-11-20
+====================================================================================================
+기본 인스턴스 S 스케일링: SGB128 pair quota=150 ε̂=ε̃=0.30 β=0.40 δ=0.1 seed=1 | TL=3600s E_TL/x=300s E=nz_kkt_value_reduced workers=12 θᵁ=1.0000 (circuit) tol=5e-03 ogap=1e-03
+====================================================================================================
+
+--- S=30 (n_h=15, |X|=16)
+  [orcl] it   1 LB=-10000000.0000 UB=     0.0000 x=Int64[]    Ω=     0.0000 (2.9s) menu=1 (+belief, LP@x̄=0.0000, gap 3.0e-09)
+  [menu] it   2 LB=-9999695.0000 UB=     0.0000 x=[1]        menu cut 1/1 (V_menu=-14318.8889)
+  [menu] it   3 LB=-9999695.0000 UB=     0.0000 x=[2]        menu cut 1/1 (V_menu=-16254.0556)
+  [menu] it   4 LB=-6850664.0525 UB=     0.0000 x=[1, 2]     menu cut 1/1 (V_menu=-37051.0444)
+  [menu] it   5 LB=-3120175.0000 UB=     0.0000 x=[3]        menu cut 1/1 (V_menu=-2736.0222)
+  [orcl] it   6 LB=-36441.0445 UB=  -284.5200 x=[1, 2]     Ω= -1054.0852 (600.1s) menu=2 (+belief, LP@x̄=-1054.0848, gap -4.6e-04)
+  [menu] it   7 LB=-15949.0556 UB=  -284.5200 x=[2]        menu cut 1/2 (V_menu=-1693.6882)
+  [menu] it   8 LB=-14013.8889 UB=  -284.5200 x=[1]        menu cut 1/2 (V_menu=-6816.5544)
+  [orcl] it   9 LB= -6511.5544 UB=  -411.4037 x=[1]        Ω=  -793.3901 (601.9s) menu=3 (+belief, LP@x̄=-793.3901, gap -2.6e-05)
+  [menu] it  10 LB= -6206.5544 UB=  -411.4037 x=[1, 3]     menu cut 1/3 (V_menu=-793.3901)
+  [orcl] it  11 LB= -2431.0222 UB=  -411.4037 x=[3]        Ω=   -10.8692 (602.8s) menu=4 (+belief, LP@x̄=-10.8692, gap 1.6e-08)
+  [orcl] it  12 LB= -1388.6882 UB=  -439.4602 x=[2]        Ω=  -746.3889 (600.4s) menu=5 (+belief, LP@x̄=-746.3889, gap 8.7e-09)
+  [orcl] it  13 LB=  -488.3901 UB=  -439.4602 x=[1]        Ω=  -793.3901 (1189.9s) menu=5
+RESULT S=30 method=ALGG status=TimeLimit x={2} LB=-488.390115 UB=-439.460189 gap=1.11e-01 iters=14 global=6 local=- menu=5 t_LB=2411.8 time=3608.2
