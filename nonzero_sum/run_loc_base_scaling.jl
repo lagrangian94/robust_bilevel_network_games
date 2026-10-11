@@ -8,6 +8,7 @@ run_loc_base_scaling.jl — 기본 인스턴스 (SGB128 Goyal 기본 사례 + �
   ALG  : oracle 600 s, 재방문 시 2,400 s, 모두 남은 시간으로 자름
   ALGG : Algorithm 2 와 같고 전역 oracle 만 Gurobi Ω (목표값 조기 종료 없음)
   ALG  : Algorithm 2 (belief-menu + α-B&B, MW)
+  SBAD / ALGD : SBA / ALG 와 같고 α-B&B 만 상자별 쌍대 범위 조임 시제품 (nz_alpha_bnb_dr.jl) 으로 (2026-10-11)
 작은 S 부터. E 는 미해결이면 더 큰 S 를 건너뜀. Benders 계열은 LB_SKIP_BENDERS=1 일 때만 같은 규칙 (기본 0: 모든 S 를
 시간 제한까지 돌려 최종 gap 과 t_LB (LB 가 최종 LB 에 처음 도달한 경과 시간) 를 기록. 기본 인스턴스에서는 모든 방법이 최적해는
 금방 찾고 x 인증 (상한) 에서 막히므로, 건너뛰면 큰 S 의 정보가 사라짐).
@@ -28,6 +29,7 @@ include(joinpath(root, "nonzero_sum", "nz_omega.jl"))
 include(joinpath(root, "nonzero_sum", "nz_kkt_eval.jl"))
 include(joinpath(root, "nonzero_sum", "nz_benders.jl"))
 isdefined(Main, :nz_alpha_bnb) || include(joinpath(root, "nonzero_sum", "nz_alpha_bnb.jl"))
+include(joinpath(root, "nonzero_sum", "nz_alpha_bnb_dr.jl"))
 envf(k, d) = get(ENV, k, d)
 pd(s) = strip(s) == "Inf" ? Inf : parse(Float64, s)
 strs(k, d) = String.(strip.(split(envf(k, d), ",")))
@@ -91,8 +93,13 @@ for S in Ss
             @printf("RESULT S=%d method=E status=%s x=%s value=%.6f time=%.1f\n", S, solved ? "Optimal" : "Unsolved",
                     solved ? xstr(best[2]) : "-", solved ? best[1] : NaN, time() - t0)
         else
+            # SBAD / ALGD: α-B&B 구현만 nz_alpha_bnb_dr 로 (bnb_kw 의 :solver)
+            common_dr = merge(common, (bnb_kw=merge(common.bnb_kw, (solver=nz_alpha_bnb_dr,)),))
             r = meth == "ALG"  ? nz_belief_menu_benders(nd; oracle=:alpha_bnb, common...) :
+                meth == "ALGD" ? nz_belief_menu_benders(nd; oracle=:alpha_bnb, common_dr...) :
                 meth == "ALGG" ? nz_belief_menu_benders(nd; oracle=:gurobi, common...) :
+                meth == "SBAD" ? nz_standard_benders(nd; oracle=:alpha_bnb, local_first=true,
+                                                     local_time=local_time, oracle_remaining=true, common_dr...) :
                 nz_standard_benders(nd; oracle=(meth == "SBG" ? :gurobi : :alpha_bnb), local_first=true,
                                     local_time=local_time, oracle_remaining=true, common...)
             t = time() - t0

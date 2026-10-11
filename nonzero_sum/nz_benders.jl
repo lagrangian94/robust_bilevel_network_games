@@ -124,8 +124,10 @@ function _nz_oracle!(O, Fx, nd, x̄; oracle, time_limit, gap, nworkers, target=n
         res = nz_solve!(O, nd, x̄; time_limit=time_limit, gap=gap)
         return res[:Fval], res[:bound], O
     end
-    r = Main.nz_alpha_bnb(nd, x̄; nworkers=nworkers, time_limit=time_limit, rel_gap=gap, verbose=false, target=target,
-                          bnb_kw...)
+    # bnb_kw 의 :solver 로 α-B&B 구현을 바꿀 수 있다 (기본 nz_alpha_bnb). 예: bnb_kw = (solver = nz_alpha_bnb_dr, ...) 는
+    # 상자별 쌍대 범위 조임 시제품 (nz_alpha_bnb_dr.jl). 반환 Dict 의 :α, :UB 만 쓰므로 인터페이스는 같다.
+    kw = Dict{Symbol,Any}(pairs(bnb_kw)); solver = pop!(kw, :solver, Main.nz_alpha_bnb)
+    r = solver(nd, x̄; nworkers=nworkers, time_limit=time_limit, rel_gap=gap, verbose=false, target=target, kw...)
     nz_set_objective!(Fx, nd, x̄)
     z = Main.nz_eval_alpha!(Fx, nd, r[:α])
     return z, max(r[:UB], z), Fx
