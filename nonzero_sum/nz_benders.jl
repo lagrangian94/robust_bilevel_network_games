@@ -5,6 +5,7 @@ nz_benders.jl — 비제로섬 Ω 위의 Benders 두 가지.
   전역 oracle 은 두 인자로 정한다 (실행을 시작할 때 "[설정]" 줄로 출력, 결과 Dict 의 :oracle, :bnb 에도 기록):
     oracle = :alpha_bnb (기본) | :gurobi (Ω NonConvex)
     bnb    = :dr (기본: nz_alpha_bnb_dr, 상자별 쌍대 범위 조임) | :legacy (nz_alpha_bnb, 2026-10-10 까지의 구현)   — oracle = :alpha_bnb 일 때만 의미
+    oracle_resume = true (기본): bnb = :dr 일 때 같은 x̄ 의 재호출은 이전 호출이 멈춘 곳에서 이어 풂
     bnb_kw = α-B&B 에 그대로 넘길 인자 (예: (ipopt_time = 120.0,)). 인자 목록은 각 함수의 docstring. 두 구현의 인자는 서로 다르다.
   α-B&B oracle 은 julia -t (nworkers+2),1 이 필요.
   MW 는 LP (belief LP, α 고정 LP) 에서만 건다. 비볼록 Ω 에 걸면 문제가 어려워지므로 :gurobi oracle 의 cut 은 기본 cut.
@@ -30,10 +31,13 @@ isdefined(Main, :nz_alpha_bnb_dr) || include(joinpath(@__DIR__, "nz_alpha_bnb_dr
 
 "α-B&B 구현 선택: :dr = nz_alpha_bnb_dr (기본), :legacy = nz_alpha_bnb"
 _nz_bnb_solver(bnb::Symbol) = bnb == :dr ? Main.nz_alpha_bnb_dr : bnb == :legacy ? Main.nz_alpha_bnb : error("bnb = :dr | :legacy")
+"이어 풀기 상태를 보관할 x̄ 의 수 (메모리 상한용)"
+const _NZ_CACHE_MAX = 6
 "실행 시작 시 한 줄: 어떤 전역 oracle 로 도는지"
-_nz_oracle_banner(oracle, bnb, nworkers, gap, bnb_kw) = oracle == :gurobi ?
+_nz_oracle_banner(oracle, bnb, nworkers, gap, bnb_kw, resume=false) = oracle == :gurobi ?
     @sprintf("  [설정] 전역 oracle = Gurobi Ω (NonConvex), gap %.0e", gap) :
-    @sprintf("  [설정] 전역 oracle = α-B&B (%s), worker %d, gap %.0e, bnb_kw = %s", string(nameof(_nz_bnb_solver(bnb))), nworkers, gap, string(bnb_kw))
+    @sprintf("  [설정] 전역 oracle = α-B&B (%s), worker %d, gap %.0e, 이어 풀기 %s, bnb_kw = %s", string(nameof(_nz_bnb_solver(bnb))),
+             nworkers, gap, resume ? "켬" : "끔", string(bnb_kw))
 
 function _nz_omp(nd::NZData; optimizer, t_lb=-1e7)
     omp = Model(optimizer); set_silent(omp)
@@ -132,13 +136,27 @@ end
   :alpha_bnb — α-B&B (bnb = :dr → nz_alpha_bnb_dr, :legacy → nz_alpha_bnb. julia -t (nworkers+2),1 필요), incumbent α 를 고정한 LP (Fx) 를
                다시 풀어 그 해로 cut·belief 를 만든다.  target: 목표값 조기 종료 (LB ≥ target 또는 UB ≤ target).
 """
-function _nz_oracle!(O, Fx, nd, x̄; oracle, time_limit, gap, nworkers, target=nothing, bnb::Symbol=:dr, bnb_kw=NamedTuple())
+function _nz_oracle!(O, Fx, nd, x̄; oracle, time_limit, gap, nworkers, target=nothing, bnb::Symbol=:dr, bnb_kw=NamedTuple(),
+                     cache=nothing)
     if oracle == :gurobi
         res = nz_solve!(O, nd, x̄; time_limit=time_limit, gap=gap)
         return res[:Fval], res[:bound], O
     end
     # 구현은 bnb 로 고른다 (:dr 기본 | :legacy). 반환 Dict 의 :α, :UB 만 쓰므로 인터페이스는 같다.
-    r = _nz_bnb_solver(bnb)(nd, x̄; nworkers=nworkers, time_limit=time_limit, rel_gap=gap, verbose=false, target=target, bnb_kw...)
+    # cache (x̄ → (순번, α-B&B 상태)): 같은 x̄ 를 다시 부르면 이전 호출이 멈춘 곳에서 이어 푼다 (nz_alpha_bnb_dr 의 resume, :dr 전용).
+    #   Ω(x̄) 는 x̄ 만으로 정해지므로 이전 호출의 열린 노드·상한·incumbent 가 그대로 유효하다. 최근 _NZ_CACHE_MAX 개의 x̄ 만 보관.
+    if bnb == :dr && cache !== nothing
+        prev = get(cache, x̄, nothing)
+        r = Main.nz_alpha_bnb_dr(nd, x̄; nworkers=nworkers, time_limit=time_limit, rel_gap=gap, verbose=false, target=target,
+                                 resume=(prev === nothing ? nothing : prev[2]), bnb_kw...)
+        stamp = isempty(cache) ? 1 : maximum(v[1] for v in values(cache)) + 1
+        cache[copy(x̄)] = (stamp, r[:state])
+        while length(cache) > _NZ_CACHE_MAX
+            delete!(cache, argmin(k -> cache[k][1], collect(keys(cache))))
+        end
+    else
+        r = _nz_bnb_solver(bnb)(nd, x̄; nworkers=nworkers, time_limit=time_limit, rel_gap=gap, verbose=false, target=target, bnb_kw...)
+    end
     nz_set_objective!(Fx, nd, x̄)
     z = Main.nz_eval_alpha!(Fx, nd, r[:α])
     return z, max(r[:UB], z), Fx
@@ -212,10 +230,12 @@ end
 function nz_standard_benders(nd::NZData; optimizer, max_iter=200, tol=1e-4, oracle_time=600.0, boost_time=3600.0,
                              oracle::Symbol=:alpha_bnb, bnb::Symbol=:dr, oracle_gap=1e-5, nworkers=12, bnb_kw=NamedTuple(),
                              mw::Bool=true, vi::Bool=false, verbose=true, time_limit=Inf,
-                             local_first::Bool=false, local_time=60.0, oracle_remaining::Bool=false)
+                             local_first::Bool=false, local_time=60.0, oracle_remaining::Bool=false, oracle_resume::Bool=true)
+    # oracle_resume: 같은 x̄ 에서 α-B&B (bnb = :dr) 를 다시 부르면 이전 호출이 멈춘 곳에서 이어 풂 (_nz_oracle! 의 cache)
+    bnb_cache = (oracle == :alpha_bnb && bnb == :dr && oracle_resume) ? Dict{Vector{Float64},Any}() : nothing
     oracle in (:gurobi, :alpha_bnb) || error("oracle = :gurobi | :alpha_bnb")
     oracle == :alpha_bnb && _nz_bnb_solver(bnb)
-    verbose && (println(_nz_oracle_banner(oracle, bnb, nworkers, oracle_gap, bnb_kw)); flush(stdout))
+    verbose && (println(_nz_oracle_banner(oracle, bnb, nworkers, oracle_gap, bnb_kw, bnb_cache !== nothing)); flush(stdout))
     # oracle_remaining: 전역 호출에 처음부터 남은 시간 전체를 줌 (SB-G / SB-A: 전역은 local cut 이 막힌 뒤에만 불리므로
     # 600 → 2,400 단계 증가 대신). time_limit 이 유한해야 함.
     oracle_remaining && !isfinite(time_limit) && error("oracle_remaining 은 유한한 time_limit 이 필요")
@@ -271,7 +291,7 @@ function nz_standard_benders(nd::NZData; optimizer, max_iter=200, tol=1e-4, orac
         end
         ncalls += 1
         t_o = @elapsed ((zinc, zbd, src) = _nz_oracle!(O, Fx, nd, x̄; oracle=oracle, time_limit=lim, gap=oracle_gap,
-                                                       nworkers=nworkers, bnb=bnb, bnb_kw=bnb_kw))
+                                                       nworkers=nworkers, bnb=bnb, bnb_kw=bnb_kw, cache=bnb_cache))
         t_o < 0.9 * lim && delete!(tl, x̄)           # 시간 제한에 걸린 호출만 stall 판정에 셈
         if oracle == :alpha_bnb                     # src = α 고정 LP → MW 가능
             cut, ok = _nz_lp_cut!(src, nd, x̄, zinc; mw=mw, x_core=x_core); n_mw += ok
@@ -298,14 +318,19 @@ function nz_belief_menu_benders(nd::NZData; optimizer, lp_optimizer=optimizer, c
                                 cert_rows::Symbol=:hrows, max_iter=500, tol=1e-4, oracle_time=600.0, boost_time=3600.0,
                                 oracle::Symbol=:alpha_bnb, bnb::Symbol=:dr, oracle_gap=1e-5, nworkers=12, bnb_kw=NamedTuple(),
                                 target_stop::Bool=(oracle == :alpha_bnb), mw::Bool=true, vi::Bool=false,
-                                verbose=true, time_limit=Inf, local_first::Bool=false, local_time=60.0)
+                                verbose=true, time_limit=Inf, local_first::Bool=false, local_time=60.0,
+                                oracle_resume::Bool=true)
+    # oracle_resume: 같은 x̄ 에서 α-B&B (bnb = :dr) 를 다시 부르면 이전 호출이 멈춘 곳에서 이어 풂 (_nz_oracle! 의 cache).
+    #   목표값 조기 종료 (target_stop) 로 끝난 호출 뒤 같은 x̄ 가 다시 오는 것이 흔하므로 (cut 을 넣어도 x̄ 가 그대로 최적 후보)
+    #   이어 풀지 않으면 같은 B&B 를 처음부터 반복한다.
+    bnb_cache = (oracle == :alpha_bnb && bnb == :dr && oracle_resume) ? Dict{Vector{Float64},Any}() : nothing
     # local_first: menu 가 x̄ 에서 수렴한 뒤 전역 oracle 을 부르기 전에 Ω 의 local 해 (Gurobi OptimalityTarget = 1, SB-G / SB-A 와 같음) 를
     #   먼저 본다. 그 해의 cut (α 고정 LP, MW) 이 x̄ 에서 tol 이상 위반되면 cut 을 넣고, 그 해의 belief + 인증서도 menu 에 넣는다
     #   (local 해도 Ω 의 실행가능해라 cut 과 menu 원소 모두 유효. 값은 하한일 뿐이라 UB 에는 쓰지 않음). 위반이 없을 때만 전역 oracle.
     cert in (:recompute, :solution) || error("cert = :recompute | :solution")
     oracle in (:gurobi, :alpha_bnb) || error("oracle = :gurobi | :alpha_bnb")
     oracle == :alpha_bnb && _nz_bnb_solver(bnb)
-    verbose && (println(_nz_oracle_banner(oracle, bnb, nworkers, oracle_gap, bnb_kw)); flush(stdout))
+    verbose && (println(_nz_oracle_banner(oracle, bnb, nworkers, oracle_gap, bnb_kw, bnb_cache !== nothing)); flush(stdout))
     x_core = nz_core_point(nd); n_mw = 0
     target_stop && oracle != :alpha_bnb && error("target_stop 은 oracle=:alpha_bnb 에서만")
     omp, x, t0 = _nz_omp(nd; optimizer=optimizer)
@@ -390,7 +415,7 @@ function nz_belief_menu_benders(nd::NZData; optimizer, lp_optimizer=optimizer, c
         #   oracle 상한 zbd ≤ t₀ + δ 이면 UB = q_xᵀx̄ + zbd ≤ LB + δ, |UB| ≥ |LB| − δ 이므로 δ = 0.99·tol·|LB| / (1 + tol) 이면 δ ≤ tol·|UB|.
         target = target_stop ? t0v + 0.99 * tol * max(1.0, abs(LB)) / (1 + tol) : nothing
         t_o = @elapsed ((zinc, zbd, src) = _nz_oracle!(O, Fx, nd, x̄; oracle=oracle, time_limit=lim, gap=oracle_gap,
-                                                       nworkers=nworkers, target=target, bnb=bnb, bnb_kw=bnb_kw))
+                                                       nworkers=nworkers, target=target, bnb=bnb, bnb_kw=bnb_kw, cache=bnb_cache))
         # 시간 제한에 걸린 호출만 stall 판정에 셈. 목표값 조기 종료 (target_stop) 로 끝난 호출은 같은 x̄ 를 다시 불러도
         # 정상이다 (t₀ 가 올라간 뒤 다시 확인하는 것). 이전에는 같은 x̄ 세 번째 호출에서 무조건 :Stalled.
         t_o < 0.9 * lim && delete!(tl, x̄)

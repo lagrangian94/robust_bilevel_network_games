@@ -360,13 +360,18 @@ nz_alpha_bnb (기존, `bnb = :legacy`) 의 탐색 — worker 병렬, best-first 
 | | `comp` | true | 상자가 함의하는 상보성 (C) |
 | | `vcut` | true | 시나리오별 값 상한 (V) |
 | | `cslift` | true | follower 1 단계 상보성의 RLT (X) |
+| 이어 풀기 | `resume` | nothing | 같은 x̄ 의 이전 호출이 돌려준 `r[:state]`. 주면 그 호출이 멈춘 곳 (열린 노드, incumbent) 에서 이어 푼다 |
+
+이어 풀기 (`resume`): Ω(x̄) 는 x̄ 만으로 정해지므로 같은 x̄ 에서는 이전 호출의 B&B 전선 (열린 노드와 그 상한, 가지친 노드의 상한,
+incumbent) 이 그대로 유효하다. Benders 가 목표값 조기 종료로 끝난 호출을 같은 x̄ 에서 다시 부를 때 처음부터 다시 풀지 않게 한다
+(S = 30 에서 같은 x̄ = {1} 을 260 s + 300 s 로 두 번 풀던 것). 상태는 강화 구성이 같은 호출 사이에서만 넘길 것 (구성이 다르면 오류).
 
 강화 스위치를 하나라도 끄면 stderr 에 한 줄 알린다 (의도하지 않은 구성으로 도는 것을 막기 위해).
 시험했다가 뺀 옵션 (꺾임점 3 분할 분기, 분리 행 줄이기, 노드 LP barrier) 은 코드에서 지웠다 — 결과는
 docs/dependent_ambiguity/alpha_bnb_nonzero_analysis.md §10.5, 코드는 커밋 3480bae 이전.
 
 반환 Dict: `:LB` (incumbent 값), `:UB` (상한), `:α` (incumbent, 원래 정의역), `:is_exact`, `:nodes`, `:time`, `:root_UB`,
-`:solver` (= :nz_alpha_bnb_dr), `:config` (강화·탐색 설정), 계측 (`:t_relax`, `:t_range`, `:range_mips`, `:fixfrac`),
+`:solver` (= :nz_alpha_bnb_dr), `:config` (강화·탐색 설정), `:state` (이어 풀기용), `:resumed`, 계측 (`:t_relax`, `:t_range`, `:range_mips`, `:fixfrac`),
 수치 문제 횟수 (`:range_fail`, `:infeas`, `:infeas_recovered`, `:numerr`, `:numerr_fail`).
 """
 function nz_alpha_bnb_dr(nd::NZData, x̄;
@@ -379,7 +384,9 @@ function nz_alpha_bnb_dr(nd::NZData, x̄;
                          branch_point::Symbol=:mid, child_rounds::Int=1, maxrounds=30, dive_max=3, sep_maxadd::Int=5000,
                          min_width=1e-7, presolve::Bool=true,
                          # 강화 스위치 (ablation 전용, 기본 모두 켬)
-                         dual_range::Bool=true, comp::Bool=true, vcut::Bool=true, cslift::Bool=true)
+                         dual_range::Bool=true, comp::Bool=true, vcut::Bool=true, cslift::Bool=true,
+                         # 이어 풀기: 같은 x̄ 의 이전 호출이 돌려준 r[:state]
+                         resume=nothing)
     branch_point in (:alphahat, :mid) || error("branch_point = :alphahat | :mid")
     config = (dual_range=dual_range, comp=dual_range && comp, vcut=dual_range && vcut, cslift=dual_range && cslift,
               branch_point=branch_point, child_rounds=child_rounds, maxrounds=maxrounds, dive_max=dive_max,
@@ -410,13 +417,21 @@ function nz_alpha_bnb_dr(nd::NZData, x̄;
     t_relax = Threads.Atomic{Float64}(0.0); t_eval = Threads.Atomic{Float64}(0.0); t_range = Threads.Atomic{Float64}(0.0)
     lo0, hi0 = dual_range ? _nz_dr_global(nd, DRs[1]) : (zeros(0, 0), zeros(0, 0))
     open = Any[(zeros(nh), copy(nd.hU), Inf, lo0, hi0, Dict{Tuple{Int,Int,Bool},Vector{Float64}}(), fill(Inf, S))]
+    if resume !== nothing
+        resume.x == x̄ || error("nz_alpha_bnb_dr: resume 상태의 x̄ 가 다름 (Ω 는 x̄ 마다 다른 문제)")
+        resume.config == config || error("nz_alpha_bnb_dr: resume 상태의 구성이 다름 ($(resume.config) vs $config)")
+        open = Any[resume.open...]                 # 노드 튜플 안의 배열은 worker 가 제자리에서 고치지 않으므로 얕은 복사로 충분
+    end
     inflight = fill(-Inf, nworkers)
     LB = Ref(-Inf); best_α = Ref(zeros(nh))
     nodes = Ref(0); done = Ref(false); root_UB = Ref(Inf)
     root_rows = Ref{Any}(nothing)
+    if resume !== nothing
+        LB[] = resume.LB; best_α[] = copy(resume.α); root_UB[] = resume.root_UB; root_rows[] = resume.root_rows
+    end
     node_cands = Tuple{Float64,Vector{Float64}}[]
     ipopt_calls = Ref(0)
-    pruned_ub = Ref(-Inf)
+    pruned_ub = Ref(resume === nothing ? -Inf : resume.pruned_ub)
     nfixed_sum = Ref(0.0)                      # 노드별 "고정된 쌍대 성분 비율" 의 합 (평균 보고용)
 
     globalUB() = max(LB[], isempty(open) ? -Inf : maximum(n[3] for n in open), maximum(inflight), pruned_ub[])
@@ -618,7 +633,7 @@ function nz_alpha_bnb_dr(nd::NZData, x̄;
         try
             UBn = globalUB()
             idle = isempty(open) && all(inflight .== -Inf)
-            fin = (time() >= t_end) || (UBn - LB[] <= tol(LB[])) || (idle && nodes[] > 0) ||
+            fin = (time() >= t_end) || (UBn - LB[] <= tol(LB[])) || (idle && (nodes[] > 0 || resume !== nothing)) ||
                   (target !== nothing && (LB[] >= target || UBn <= target))
             any(istaskfailed, tasks) && (fin = true)        # worker 가 예외로 죽으면 바로 멈추고 아래 wait 에서 예외를 올림
             fin && (done[] = true)
@@ -636,7 +651,9 @@ function nz_alpha_bnb_dr(nd::NZData, x̄;
     UB = max(LB[], isempty(open) ? -Inf : maximum(n[3] for n in open), pruned_ub[])
     return Dict(:LB => LB[], :UB => UB, :α => best_α[], :is_exact => (UB - LB[] <= tol(LB[])),
                 :nodes => nodes[], :time => time() - t0, :root_UB => root_UB[], :ipopt_calls => ipopt_calls[],
-                :solver => :nz_alpha_bnb_dr, :config => config, :presolve_fixed => nfix, :t_relax => t_relax[], :t_eval => t_eval[], :t_range => t_range[],
+                :solver => :nz_alpha_bnb_dr, :config => config, :presolve_fixed => nfix, :resumed => resume !== nothing,
+                :state => (x=copy(x̄), config=config, open=open, LB=LB[], α=copy(best_α[]), pruned_ub=pruned_ub[],
+                           root_UB=root_UB[], root_rows=root_rows[]), :t_relax => t_relax[], :t_eval => t_eval[], :t_range => t_range[],
                 :range_mips => dual_range ? sum(D.nmip for D in DRs) : 0, :range_fail => dual_range ? sum(D.nfail for D in DRs) : 0,
                 :fixfrac => nodes[] > 0 ? nfixed_sum[] / nodes[] : NaN, :infeas => n_infeas[], :infeas_recovered => n_infrec[],
                 :numerr => _NZ_NUMERR[] - numerr0, :numerr_fail => _NZ_NUMERR_FAIL[] - numfail0)
