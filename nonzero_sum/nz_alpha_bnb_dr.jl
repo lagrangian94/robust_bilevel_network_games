@@ -319,13 +319,13 @@ const _NZ_DR_ANNOUNCE_LOCK = ReentrantLock()
 "강화 스위치가 기본 (모두 켬) 이 아니면 stderr 에 한 번 알린다 (같은 구성은 프로세스당 한 번)"
 function _nz_dr_announce(config)
     off = [n for n in (:dual_range, :comp, :vcut, :cslift) if !getfield(config, n)]
-    isempty(off) && config.branch_point == :mid && return
+    isempty(off) && config.branch_point == :mid && config.purge_k == 0 && return
     lock(_NZ_DR_ANNOUNCE_LOCK) do
-        key = (Tuple(off), config.branch_point)
+        key = (Tuple(off), config.branch_point, config.purge_k)
         key in _NZ_DR_ANNOUNCED && return
         push!(_NZ_DR_ANNOUNCED, key)
         println(stderr, "nz_alpha_bnb_dr: 기본이 아닌 구성으로 실행 — 끈 강화: ", isempty(off) ? "없음" : join(off, ", "),
-                ", branch_point = ", config.branch_point)
+                ", branch_point = ", config.branch_point, ", purge_k = ", config.purge_k)
     end
     return
 end
@@ -350,6 +350,7 @@ nz_alpha_bnb (기존, `bnb = :legacy`) 의 탐색 — worker 병렬, best-first 
 | | `heuristic` | true | Ipopt 휴리스틱 task 사용 |
 | | `envs` | nothing | Gurobi Env 를 직접 넘김 (worker 당 하나 + 휴리스틱용). 세션 수가 제한된 라이선스에서만 |
 | 탐색 | `branch_point` | :mid | 분할점. :mid (중점) 또는 :alphahat (완화 해, 끝 10% 면 중점) |
+| | `purge_k` | 0 | 시험 중: worker 가 purge_k 개 노드 동안 비활성이던 분리 행을 LP 에서 지움 (0 = 안 지움) |
 | | `child_rounds` | 1 | 루트가 아닌 노드의 RLT 분리 라운드 상한 |
 | | `maxrounds` | 30 | 루트의 분리 라운드 상한 |
 | | `dive_max` | 3 | 한 worker 가 자식으로 연속 내려가는 횟수 |
@@ -382,7 +383,7 @@ function nz_alpha_bnb_dr(nd::NZData, x̄;
                          ipopt_time=60.0, heuristic::Bool=true, envs=nothing,
                          # 탐색 (기본값 = 측정에 쓴 값)
                          branch_point::Symbol=:mid, child_rounds::Int=1, maxrounds=30, dive_max=3, sep_maxadd::Int=5000,
-                         min_width=1e-7, presolve::Bool=true,
+                         min_width=1e-7, presolve::Bool=true, purge_k::Int=0,
                          # 강화 스위치 (ablation 전용, 기본 모두 켬)
                          dual_range::Bool=true, comp::Bool=true, vcut::Bool=true, cslift::Bool=true,
                          # 이어 풀기: 같은 x̄ 의 이전 호출이 돌려준 r[:state]
@@ -390,7 +391,7 @@ function nz_alpha_bnb_dr(nd::NZData, x̄;
     branch_point in (:alphahat, :mid) || error("branch_point = :alphahat | :mid")
     config = (dual_range=dual_range, comp=dual_range && comp, vcut=dual_range && vcut, cslift=dual_range && cslift,
               branch_point=branch_point, child_rounds=child_rounds, maxrounds=maxrounds, dive_max=dive_max,
-              sep_maxadd=sep_maxadd, presolve=presolve, heuristic=heuristic)
+              sep_maxadd=sep_maxadd, presolve=presolve, heuristic=heuristic, purge_k=purge_k)
     _nz_dr_announce(config)
     n_infeas = Threads.Atomic{Int}(0); n_infrec = Threads.Atomic{Int}(0)     # 실행 불가능 노드 (1e-6 재확인 통과) / 재확인에서 되살아난 노드
     nfix = 0
@@ -407,6 +408,7 @@ function nz_alpha_bnb_dr(nd::NZData, x̄;
     envs = envs === nothing ? _nz_envs(nworkers + 1) : envs
     length(envs) >= nworkers + (heuristic ? 1 : 0) || error("nz_alpha_bnb_dr: envs 가 부족함 (worker $nworkers + heuristic $(heuristic))")
     Ps = [_nz_build_sep(nd, x̄; optimizer=mk(envs[i])) for i in 1:nworkers]
+    purge_k > 0 && for P in Ps; P.O.model.ext[:purge_k] = purge_k; end      # 비활성 분리 행 정리 (_nz_sep_set_box!)
     numerr0 = _NZ_NUMERR[]; numfail0 = _NZ_NUMERR_FAIL[]
     DRs = dual_range ? [_nz_dr_attach!(Ps[i], nd, x̄; optimizer=mk(envs[i]), vcut=vcut, cslift=cslift) for i in 1:nworkers] : nothing
     Fs = [nz_build_fixed_alpha(nd, x̄; optimizer=mk(envs[i])) for i in 1:nworkers]
@@ -656,5 +658,6 @@ function nz_alpha_bnb_dr(nd::NZData, x̄;
                            root_UB=root_UB[], root_rows=root_rows[]), :t_relax => t_relax[], :t_eval => t_eval[], :t_range => t_range[],
                 :range_mips => dual_range ? sum(D.nmip for D in DRs) : 0, :range_fail => dual_range ? sum(D.nfail for D in DRs) : 0,
                 :fixfrac => nodes[] > 0 ? nfixed_sum[] / nodes[] : NaN, :infeas => n_infeas[], :infeas_recovered => n_infrec[],
+                :purged => sum(get(P.O.model.ext, :purged, 0) for P in Ps), :rows_end => [length(P.allrows) for P in Ps],
                 :numerr => _NZ_NUMERR[] - numerr0, :numerr_fail => _NZ_NUMERR_FAIL[] - numfail0)
 end

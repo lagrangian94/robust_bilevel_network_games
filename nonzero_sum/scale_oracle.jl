@@ -39,13 +39,14 @@ for S in parse.(Int, split(envf("SO_S", "3,5,10,20,30"), ","))
     end
     for (sv, kwd) in (("abbdr", NamedTuple()),                                   # 기본 구성 (W·F + C + V + X)
                       ("abbdr0", (dual_range=false,)),                           # 같은 코드에서 강화를 모두 끔 (= 기존 완화)
+                      ("abbdrp", (purge_k=parse(Int, envf("SO_PURGE", "20")),)),   # 시험: 비활성 분리 행 정리
                       ("abbdr1", (vcut=false, cslift=false)),                    # ablation: 범위 (W, F, C) 만
                       ("abbdrv", (cslift=false,)), ("abbdrx", (vcut=false,)), ("abbdrnc", (comp=false,)))
         sv in solvers || continue            # 쌍대 범위 조임 시제품 (nz_alpha_bnb_dr.jl). abbdr0 = 같은 코드에서 범위 조임만 끔
         t = @elapsed r = nz_alpha_bnb_dr(nd, x̄; nworkers=nw, time_limit=TL, rel_gap=GAP, verbose=true, log_every=60.0, kwd...)
-        @printf("RESULT S=%d %-10s %s LB=%.4f UB=%.4f gap=%.3e time=%.1f nodes=%d rootUB=%.2f | relax %.0fs range %.0fs (MIP %d) 고정비율 %.2f MIP 실패 %d LP 수치오류 %d (실패 %d) 실행불가능 노드 %d (재확인에서 되살아남 %d)\n",
+        @printf("RESULT S=%d %-10s %s LB=%.4f UB=%.4f gap=%.3e time=%.1f nodes=%d rootUB=%.2f | relax %.0fs range %.0fs (MIP %d) 고정비율 %.2f 분리 행 (worker 평균) %.0f 지운 행 %d MIP 실패 %d LP 수치오류 %d (실패 %d) 실행불가능 노드 %d (재확인에서 되살아남 %d)\n",
                 S, sv, r[:is_exact] ? "Optimal" : "TimeLim", r[:LB], r[:UB], (r[:UB] - r[:LB]) / max(1, abs(r[:LB])), t, r[:nodes], r[:root_UB],
-                r[:t_relax], r[:t_range], r[:range_mips], r[:fixfrac], r[:range_fail], r[:numerr], r[:numerr_fail], r[:infeas], r[:infeas_recovered])
+                r[:t_relax], r[:t_range], r[:range_mips], r[:fixfrac], sum(r[:rows_end]) / length(r[:rows_end]), r[:purged], r[:range_fail], r[:numerr], r[:numerr_fail], r[:infeas], r[:infeas_recovered])
         flush(stdout)
     end
     if "abb" in solvers
