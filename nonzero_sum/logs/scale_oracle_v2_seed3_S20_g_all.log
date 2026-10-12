@@ -1,0 +1,69 @@
+Set parameter Username
+Set parameter LicenseID to value 2742039
+Academic license - for non-commercial use only - expires 2026-11-20
+scale_oracle: x=[1, 2] ε=0.30 δ=0.1 TL=600s 목표 gap=1.0e-03 workers=12
+Set parameter Username
+Set parameter LicenseID to value 2742039
+Academic license - for non-commercial use only - expires 2026-11-20
+Set parameter Username
+Set parameter LicenseID to value 2742039
+Academic license - for non-commercial use only - expires 2026-11-20
+Set parameter Username
+Set parameter LicenseID to value 2742039
+Academic license - for non-commercial use only - expires 2026-11-20
+Set parameter Username
+Set parameter LicenseID to value 2742039
+Academic license - for non-commercial use only - expires 2026-11-20
+Set parameter Username
+Set parameter LicenseID to value 2742039
+Academic license - for non-commercial use only - expires 2026-11-20
+Set parameter Username
+Set parameter LicenseID to value 2742039
+Academic license - for non-commercial use only - expires 2026-11-20
+Set parameter Username
+Set parameter LicenseID to value 2742039
+Academic license - for non-commercial use only - expires 2026-11-20
+Set parameter Username
+Set parameter LicenseID to value 2742039
+Academic license - for non-commercial use only - expires 2026-11-20
+Set parameter Username
+Set parameter LicenseID to value 2742039
+Academic license - for non-commercial use only - expires 2026-11-20
+Set parameter Username
+Set parameter LicenseID to value 2742039
+Academic license - for non-commercial use only - expires 2026-11-20
+Set parameter Username
+Set parameter LicenseID to value 2742039
+Academic license - for non-commercial use only - expires 2026-11-20
+Set parameter Username
+Set parameter LicenseID to value 2742039
+Academic license - for non-commercial use only - expires 2026-11-20
+Set parameter Username
+Set parameter LicenseID to value 2742039
+Academic license - for non-commercial use only - expires 2026-11-20
+
+******************************************************************************
+This program contains Ipopt, a library for large-scale nonlinear optimization.
+ Ipopt is released as open source code under the Eclipse Public License (EPL).
+         For more information visit https://github.com/coin-or/Ipopt
+******************************************************************************
+
+    [nz-α-B&B-dr] t=  63.8s nodes=  314 open=   57 LB=-865.985487 UB=-811.082090 gap=6.340e-02
+    [nz-α-B&B-dr] t= 124.3s nodes=  745 open=  150 LB=-865.958333 UB=-842.644148 gap=2.692e-02
+    [nz-α-B&B-dr] t= 184.4s nodes= 1091 open=  239 LB=-865.958333 UB=-858.248451 gap=8.903e-03
+    [nz-α-B&B-dr] t= 244.6s nodes= 1392 open=  357 LB=-865.958333 UB=-860.533792 gap=6.264e-03
+    [nz-α-B&B-dr] t= 304.6s nodes= 1601 open=  462 LB=-865.958333 UB=-860.641044 gap=6.140e-03
+    [nz-α-B&B-dr] t= 364.6s nodes= 1801 open=  458 LB=-865.958333 UB=-861.809120 gap=4.791e-03
+    [nz-α-B&B-dr] t= 424.8s nodes= 2021 open=  476 LB=-865.958333 UB=-862.719918 gap=3.740e-03
+    [nz-α-B&B-dr] t= 484.9s nodes= 2213 open=  545 LB=-865.958333 UB=-863.383888 gap=2.973e-03
+    [nz-α-B&B-dr] t= 545.0s nodes= 2381 open=  575 LB=-865.958333 UB=-863.401686 gap=2.952e-03
+nz_alpha_bnb_dr: 기본이 아닌 구성으로 실행 — 끈 강화: 없음, branch_point = mid, (fwd = true, lsd = true, cc = true, xx = true, lp_tol = 1.0e-7, child_rounds = 1, branch_pi = false, sticky = false)
+ERROR: LoadError: ArgumentError: Number of format specifiers and number of provided args differ: 18 != 20
+Stacktrace:
+ [1] argmismatch(a::Int64, b::Int64)
+   @ Printf C:\Users\user\AppData\Local\Programs\Julia-1.11.2\share\julia\stdlib\v1.11\Printf\src\Printf.jl:921
+ [2] format(::IOStream, ::Printf.Format{Base.CodeUnits{UInt8, String}, Tuple{Printf.Spec{Val{'d'}}, Printf.Spec{Val{'s'}}, Printf.Spec{Val{'s'}}, Printf.Spec{Val{'f'}}, Printf.Spec{Val{'f'}}, Printf.Spec{Val{'e'}}, Printf.Spec{Val{'f'}}, Printf.Spec{Val{'d'}}, Printf.Spec{Val{'f'}}, Printf.Spec{Val{'f'}}, Printf.Spec{Val{'f'}}, Printf.Spec{Val{'d'}}, Printf.Spec{Val{'f'}}, Vararg{Printf.Spec{Val{'d'}}, 5}}}, ::Int64, ::String, ::Vararg{Any})
+   @ Printf C:\Users\user\AppData\Local\Programs\Julia-1.11.2\share\julia\stdlib\v1.11\Printf\src\Printf.jl:935
+ [3] top-level scope
+   @ C:\Users\user\robust_bilevel_network_games\nonzero_sum\scale_oracle.jl:47
+in expression starting at C:\Users\user\robust_bilevel_network_games\nonzero_sum\scale_oracle.jl:26

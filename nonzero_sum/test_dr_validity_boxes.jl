@@ -7,7 +7,8 @@ UB ≥ LB 라 드러나지 않음). 여기서는 독립 KKT 평가기의 최적 
 를 본다. 상자는 좌표마다 무작위 폭 (로그 균등 1e-4 ~ 전체), α* 가 내부·경계·모서리에 오도록, 일부 좌표는 폭 0.
 
 환경변수: TV_S = "3,5"  TV_X = "1,2;1;2;1,2,3"  TV_N = 200 (x̄ 마다 상자 수)  TV_EPS = 0.3  TV_DELTA = 0.1  TV_KKT_TL = 600  TV_THREADS = 2
-          TV_MODES = "full,noX,noV,base" (full: 전부, noX: 상보성 RLT 없이, noV: 값 상한 없이, base: W·F·C 만)
+          TV_MODES = "full,noX,noV,base" (full: 전부, noX: 상보성 RLT 없이, noV: 값 상한 없이, base: W·F·C 만,
+                     fwd / xx / cc / lsd: full + 그 부등식 하나, new: full + 넷 모두)
 실행: julia -t 2,1 nonzero_sum/test_dr_validity_boxes.jl
 """
 root = dirname(@__DIR__)
@@ -23,6 +24,8 @@ envf(k, d) = get(ENV, k, d); pd(s) = strip(s) == "Inf" ? Inf : parse(Float64, s)
 xs = [isempty(strip(t)) ? Int[] : parse.(Int, split(t, ",")) for t in split(envf("TV_X", "1,2;1;2;1,2,3"), ";")]
 modes = String.(strip.(split(envf("TV_MODES", "full,noX,noV,base"), ",")))
 mkw = Dict("full" => (vcut=true, cslift=true), "noX" => (vcut=true, cslift=false), "noV" => (vcut=false, cslift=true), "base" => (vcut=false, cslift=false),
+          "fwd" => (vcut=true, cslift=true, fwd=true), "xx" => (vcut=true, cslift=true, xx=true), "cc" => (vcut=true, cslift=true, cc=true),
+          "lsd" => (vcut=true, cslift=true, lsd=true), "new" => (vcut=true, cslift=true, fwd=true, xx=true, cc=true, lsd=true),   # 2026-10-13 추가 부등식
           "off" => nothing)                       # off: 기존 완화 (범위 행 없음) — 같은 상자에서 기존 완화의 수치 거동을 보기 위한 기준
 WMIN = parse(Float64, envf("TV_WMIN", "1e-4"))    # 좌표 폭의 하한 (로그 균등의 아래 끝)
 ZERO = envf("TV_ZERO", "1") == "1"                # 폭 0 좌표·경계에 붙은 α* 를 허용할지

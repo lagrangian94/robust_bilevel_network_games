@@ -49,7 +49,8 @@ Threads.nthreads() >= nw + 2 || error("α-B&B: Julia 스레드 $(Threads.nthread
 # 허용오차: zero-sum 실험과 같은 0.5% (2026-10-10 결정). α-B&B 목표 gap 은 그보다 작게 (LB_OGAP).
 tol_b = parse(Float64, envf("LB_TOL", "5e-3")); ogap = parse(Float64, envf("LB_OGAP", "1e-3"))
 common = (optimizer=GRB, tol=tol_b, oracle_gap=ogap, nworkers=nw, time_limit=TL, verbose=true,
-          bnb_kw=(ipopt_time=parse(Float64, envf("LB_IPOPT", "120")),),     # Ipopt 1 회 시간: zero-sum 과 같은 120 s
+          # Ipopt 1 회 시간: zero-sum 과 같은 120 s. LB_BNB_KW = "(fwd=false,)" 처럼 주면 α-B&B 인자를 덮어씀 (ablation 용, 기본은 비움)
+          bnb_kw=merge((ipopt_time=parse(Float64, envf("LB_IPOPT", "120")),), eval(Meta.parse(envf("LB_BNB_KW", "NamedTuple()")))),
           oracle_time=min(parse(Float64, envf("LB_ORACLE_TIME", "600")), TL),
           boost_time=min(parse(Float64, envf("LB_BOOST", "2400")), TL))
 local_time = parse(Float64, envf("LB_LOCAL_TIME", "60"))

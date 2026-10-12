@@ -20,10 +20,11 @@ TL = parse(Float64, envf("TD_TL", "300")); GAP = parse(Float64, envf("TD_GAP", "
 xs = [isempty(strip(t)) ? Int[] : parse.(Int, split(t, ",")) for t in split(envf("TD_X", "1,2;1;2;"), ";")]
 modes = String.(strip.(split(envf("TD_MODES", "off,on"), ",")))
 kw = Dict("off" => (dual_range=false,), "on" => NamedTuple(), "nocomp" => (comp=false,),
-          "on1" => (vcut=false, cslift=false), "onv" => (cslift=false,), "onx" => (vcut=false,))
+          "on1" => (vcut=false, cslift=false), "onv" => (cslift=false,), "onx" => (vcut=false,),
+          "kw" => eval(Meta.parse(envf("TD_KW", "NamedTuple()"))))          # kw: TD_KW = "(fwd=true, cbranch=true)" 처럼 인자를 직접
 nbad = 0
 for S in parse.(Int, split(envf("TD_S", "3,5"), ","))
-    nd0 = nz_with_delta(make_location_instance(; coords=:sgb128, reservation=:pair, quota=150.0, wres=300.0, S=S, seed=1,
+    nd0 = nz_with_delta(make_location_instance(; coords=:sgb128, reservation=:pair, quota=150.0, wres=300.0, S=S, seed=parse(Int, envf("NZ_SEED", "1")),
                                                eps_hat=ε, eps_tilde=ε, beta=0.4), δ)
     nd = nz_with_bounds(nd0; thetaU=nz_theta_circuit_exact(nd0)[1])
     for xi in xs
