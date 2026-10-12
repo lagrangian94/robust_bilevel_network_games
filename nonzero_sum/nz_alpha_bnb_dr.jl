@@ -575,6 +575,7 @@ nz_alpha_bnb (기존, `bnb = :legacy`) 의 탐색 — worker 병렬, best-first 
 | 탐색·LP (2026-10-13) | `cbranch` | true | 상보성 분기. 끄면 중점 분할만 |
 | | `sticky` | true | 분리 행을 (좌표, 후보 행, 쪽) 마다 하나만 두고 상자 경계를 제자리 갱신. false 면 행을 쌓는 기존 방식 |
 | | `lp_tol` | 1e-7 | 노드 LP 의 Feasibility/OptimalityTol (+ NumericFocus 0). 상한에 상대 1e-6 여유를 더함. 1e-9 면 build_nz_omega 의 설정 그대로 |
+| | `resp` | false | primal 휴리스틱: 노드 완화의 belief 에서 follower 의 실제 최적 반응을 평가 (nz_resp_heuristic.jl). 이득을 확인하지 못해 기본 끔 |
 | 이어 풀기 | `resume` | nothing | 같은 x̄ 의 이전 호출이 돌려준 `r[:state]`. 주면 그 호출이 멈춘 곳 (열린 노드, incumbent) 에서 이어 푼다 |
 
 이어 풀기 (`resume`): Ω(x̄) 는 x̄ 만으로 정해지므로 같은 x̄ 에서는 이전 호출의 B&B 전선 (열린 노드와 그 상한, 가지친 노드의 상한,
