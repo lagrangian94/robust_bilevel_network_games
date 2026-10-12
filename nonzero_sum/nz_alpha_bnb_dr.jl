@@ -33,6 +33,7 @@ nz_alpha_bnb_dr.jl — α-B&B (nz_alpha_bnb.jl) + **상자별 쌍대 범위 조�
       인자 전체와 기본값은 nz_alpha_bnb_dr 의 docstring. Benders 에서는 nz_benders.jl 의 `bnb = :dr` (기본).
 """
 
+include(joinpath(@__DIR__, "nz_resp_heuristic.jl"))  # primal 휴리스틱: 완화 해의 belief 에서 follower 의 실제 최적 반응
 include(joinpath(@__DIR__, "gurobi_gcsafe.jl"))     # Gurobi 풀이 호출을 GC-safe 구간에서 (worker 병렬 실행의 GC 대기 제거, 끄기: NZ_GCSAFE=0)
 
 struct _NZRangeMIP
@@ -500,7 +501,7 @@ const _NZ_DR_ANNOUNCE_LOCK = ReentrantLock()
 
 "기본 구성 (2026-10-13). 이 값과 다른 항목이 있으면 _nz_dr_announce 가 stderr 에 알린다"
 const _NZ_DR_DEFAULT = (dual_range=true, comp=true, vcut=true, cslift=true, fwd=true, kmc=true, dd=true, cbranch=true, sticky=true,
-                        lp_tol=1e-7, branch_point=:mid, child_rounds=1)
+                        lp_tol=1e-7, branch_point=:mid, child_rounds=1, resp=false)
 
 "구성이 기본과 다르면 다른 항목을 stderr 에 한 번 알린다 (같은 구성은 프로세스당 한 번) — 의도하지 않은 구성으로 도는 것을 막기 위해"
 function _nz_dr_announce(config)
@@ -579,6 +580,8 @@ function nz_alpha_bnb_dr(nd::NZData, x̄;
                          fwd::Bool=true, kmc::Bool=true, dd::Bool=true,
                          # 탐색·LP 구성 (ablation 전용, 기본 켬)
                          cbranch::Bool=true, sticky::Bool=true, lp_tol::Float64=1e-7,
+                         # primal 휴리스틱: 노드 완화의 belief 에서 follower 의 최적 반응을 평가 (nz_resp_heuristic.jl)
+                         resp::Bool=false,
                          # 이어 풀기: 같은 x̄ 의 이전 호출이 돌려준 r[:state]
                          resume=nothing)
     branch_point in (:alphahat, :mid) || error("branch_point = :alphahat | :mid")
@@ -586,7 +589,7 @@ function nz_alpha_bnb_dr(nd::NZData, x̄;
               branch_point=branch_point, child_rounds=child_rounds, maxrounds=maxrounds, dive_max=dive_max,
               sep_maxadd=sep_maxadd, presolve=presolve, heuristic=heuristic,
               fwd=dual_range && cslift && fwd, kmc=dual_range && cslift && kmc, dd=dual_range && dd,
-              cbranch=dual_range && comp && cbranch, sticky=sticky, lp_tol=lp_tol)
+              cbranch=dual_range && comp && cbranch, sticky=sticky, lp_tol=lp_tol, resp=resp)
     _nz_dr_announce(config)
     n_cbranch = Threads.Atomic{Int}(0)                                       # 상보성 분기 횟수
     n_infeas = Threads.Atomic{Int}(0); n_infrec = Threads.Atomic{Int}(0)     # 실행 불가능 노드 (1e-6 재확인 통과) / 재확인에서 되살아난 노드
@@ -616,6 +619,8 @@ function nz_alpha_bnb_dr(nd::NZData, x̄;
     end
     zpad(z) = (lp_tol > 1e-9 && isfinite(z)) ? z + 1e-6 * max(1.0, abs(z)) : z
     Fs = [nz_build_fixed_alpha(nd, x̄; optimizer=mk(envs[i])) for i in 1:nworkers]
+    Rs = resp ? [_nz_build_resp(nd, x̄; optimizer=mk(envs[i])) for i in 1:nworkers] : nothing
+    n_resp = Threads.Atomic{Int}(0)                    # follower 반응 휴리스틱이 incumbent 를 갱신한 횟수
     tol(v) = rel_gap * (isfinite(v) ? max(1.0, abs(v)) : 1.0)
     boxok(l) = all(nd.W * l .<= nd.wvec .+ 1e-9)
 
@@ -690,7 +695,7 @@ function nz_alpha_bnb_dr(nd::NZData, x̄;
                 for (i, j, islo, b) in root_rows[]; sticky ? _nz_sticky_add!(P, i, j, islo, b) : _nz_sep_add!(P, i, j, islo, b); end
                 synced = true
             end
-            z = -Inf; α̂ = nothing; children = nothing; zE = -Inf; unfinished = false
+            z = -Inf; α̂ = nothing; children = nothing; zE = -Inf; unfinished = false; αE = nothing
             pruned_val = -Inf; lo = lop; hi = hip; wit = witp; phib = phibp; fixfrac = NaN
             boxok(l) && ubp <= LB[] + tol(LB[]) && (pruned_val = ubp)
             if ubp > LB[] + tol(LB[]) && boxok(l)
@@ -752,8 +757,19 @@ function nz_alpha_bnb_dr(nd::NZData, x̄;
                         ζLv = value.(v[:ζL]); ζFv = value.(v[:ζF]); ζWv = value.(v[:ζW])
                         set_time_limit_sec(F.model, max(t_end - time(), 0.1))
                         te = @elapsed (zE = nz_eval_alpha!(F, nd, α̂))
-                        Threads.atomic_add!(t_eval, te)
                         isnan(zE) && (zE = -Inf)
+                        αE = α̂                                  # zE 를 준 점 (incumbent 후보)
+                        if resp
+                            te += @elapsed begin
+                                αr = _nz_resp!(Rs[wid], nd, max.(dv, 0.0), α̂)
+                                if αr !== nothing
+                                    set_time_limit_sec(F.model, max(t_end - time(), 0.1))
+                                    zR = nz_eval_alpha!(F, nd, αr)
+                                    (!isnan(zR) && zR > zE) && (zE = zR; αE = αr)
+                                end
+                            end
+                        end
+                        Threads.atomic_add!(t_eval, te)
                         viol = zeros(nh)
                         for i in 1:nh
                             u[i] - l[i] > min_width || continue
@@ -790,7 +806,7 @@ function nz_alpha_bnb_dr(nd::NZData, x̄;
                             u1 = copy(u); u1[i] = t; l2 = copy(l); l2[i] = t
                             children = ((copy(l), u1, z, lo, hi, wit, phib, (eq=eqp, dlo=dlo, dhi=dhi)), (l2, copy(u), z, lo, hi, wit, phib, (eq=eqp, dlo=dlo, dhi=dhi)))
                         else
-                            zE = max(zE, z)                # 곱 위반이 없으면 완화가 정확
+                            z > zE && (zE = z; αE = α̂)     # 곱 위반이 없으면 완화가 정확
                         end
                     end
                 end
@@ -808,7 +824,10 @@ function nz_alpha_bnb_dr(nd::NZData, x̄;
                     root_UB[] = z
                     root_rows[] = [(r[1], r[6], r[2], r[3]) for r in P.allrows]
                 end
-                zE > LB[] && (LB[] = zE; best_α[] = copy(α̂))
+                if zE > LB[]
+                    αE === α̂ || Threads.atomic_add!(n_resp, 1)
+                    LB[] = zE; best_α[] = copy(αE)
+                end
                 if α̂ !== nothing
                     push!(node_cands, (z, copy(α̂)))
                     length(node_cands) > 200 && popfirst!(node_cands)
@@ -890,5 +909,5 @@ function nz_alpha_bnb_dr(nd::NZData, x̄;
                 :range_mips => dual_range ? sum(D.nmip for D in DRs) : 0, :range_fail => dual_range ? sum(D.nfail for D in DRs) : 0,
                 :fixfrac => nodes[] > 0 ? nfixed_sum[] / nodes[] : NaN, :infeas => n_infeas[], :infeas_recovered => n_infrec[],
                 :numerr => _NZ_NUMERR[] - numerr0, :numerr_fail => _NZ_NUMERR_FAIL[] - numfail0,
-                :cbranch => n_cbranch[], :gcsafe => _NZ_GCSAFE_STATE[], :gc_wait => (Base.gc_num().total_time_to_safepoint - gcw0) / 1e9)
+                :cbranch => n_cbranch[], :resp_hits => n_resp[], :gcsafe => _NZ_GCSAFE_STATE[], :gc_wait => (Base.gc_num().total_time_to_safepoint - gcw0) / 1e9)
 end
