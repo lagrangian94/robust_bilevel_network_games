@@ -1,0 +1,69 @@
+Set parameter Username
+Set parameter LicenseID to value 2742039
+Academic license - for non-commercial use only - expires 2026-11-20
+====================================================================================================
+기본 인스턴스 S 스케일링: SGB128 pair quota=150 ε̂=ε̃=0.30 β=0.40 δ=0.1 seed=2 | TL=3600s E_TL/x=300s E=nz_kkt_value_reduced workers=12 θᵁ=1.0000 (circuit) tol=5e-03 ogap=1e-03
+====================================================================================================
+
+--- S=30 (n_h=15, |X|=16)
+  [설정] 전역 oracle = α-B&B (nz_alpha_bnb_dr), worker 12, gap 1e-03, 이어 풀기 켬, bnb_kw = (ipopt_time = 120.0,)
+  [loc] it   1 LB=-10000000.0000 UB=        Inf x=Int64[]    Ω_loc=    -0.0007 (0.2s)
+  [loc] it   2 LB=-9999695.0000 UB=        Inf x=[1]        Ω_loc=  -810.6431 (0.8s)
+  [loc] it   3 LB=-9999695.0000 UB=        Inf x=[2]        Ω_loc=  -644.0597 (0.5s)
+  [loc] it   4 LB=-3768333.5656 UB=        Inf x=[1, 2]     Ω_loc= -1346.2546 (0.8s)
+  [loc] it   5 LB=-2429815.0011 UB=        Inf x=[3]        Ω_loc=  -160.9755 (0.6s)
+  [loc] it   6 LB=-221000.6395 UB=        Inf x=[1, 3]     Ω_loc=  -810.6434 (0.9s)
+Set parameter Username
+Set parameter LicenseID to value 2742039
+Academic license - for non-commercial use only - expires 2026-11-20
+Set parameter Username
+Set parameter LicenseID to value 2742039
+Academic license - for non-commercial use only - expires 2026-11-20
+Set parameter Username
+Set parameter LicenseID to value 2742039
+Academic license - for non-commercial use only - expires 2026-11-20
+Set parameter Username
+Set parameter LicenseID to value 2742039
+Academic license - for non-commercial use only - expires 2026-11-20
+Set parameter Username
+Set parameter LicenseID to value 2742039
+Academic license - for non-commercial use only - expires 2026-11-20
+Set parameter Username
+Set parameter LicenseID to value 2742039
+Academic license - for non-commercial use only - expires 2026-11-20
+Set parameter Username
+Set parameter LicenseID to value 2742039
+Academic license - for non-commercial use only - expires 2026-11-20
+Set parameter Username
+Set parameter LicenseID to value 2742039
+Academic license - for non-commercial use only - expires 2026-11-20
+Set parameter Username
+Set parameter LicenseID to value 2742039
+Academic license - for non-commercial use only - expires 2026-11-20
+Set parameter Username
+Set parameter LicenseID to value 2742039
+Academic license - for non-commercial use only - expires 2026-11-20
+Set parameter Username
+Set parameter LicenseID to value 2742039
+Academic license - for non-commercial use only - expires 2026-11-20
+Set parameter Username
+Set parameter LicenseID to value 2742039
+Academic license - for non-commercial use only - expires 2026-11-20
+Set parameter Username
+Set parameter LicenseID to value 2742039
+Academic license - for non-commercial use only - expires 2026-11-20
+
+******************************************************************************
+This program contains Ipopt, a library for large-scale nonlinear optimization.
+ Ipopt is released as open source code under the Eclipse Public License (EPL).
+         For more information visit https://github.com/coin-or/Ipopt
+******************************************************************************
+
+  [std] it   7 LB=  -736.2505 UB=  -652.9208 x=[1, 2]     Ω= -1267.7828 bd= -1262.9208 (3826.8s)
+RESULT S=30 method=SBA oracle=nz_alpha_bnb_dr status=TimeLimit x={1,2} LB=-657.782765 UB=-652.920767 gap=7.45e-03 iters=8 global=1 local=6 menu=- t_LB=3845.2 time=3845.2
+nz_alpha_bnb_dr: 범위 MIP 실패 (s=24 k=4 max): Gurobi Error 10005: Unable to retrieve attribute 'ObjBound'
+  l = [0.0, 0.0, 0.0, 75.0, 0.0, 75.0, 0.0, 75.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]
+  u = [150.0, 150.0, 75.0, 150.0, 150.0, 112.5, 37.5, 112.5, 150.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]
+nz_alpha_bnb_dr: 범위 MIP 실패 (s=21 k=4 max): Gurobi Error 10005: Unable to retrieve attribute 'ObjBound'
+  l = [0.0, 0.0, 37.5, 37.5, 0.0, 75.0, 0.0, 75.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]
+  u = [150.0, 150.0, 75.0, 75.0, 150.0, 112.5, 37.5, 112.5, 150.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]
