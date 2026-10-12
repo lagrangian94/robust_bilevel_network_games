@@ -243,6 +243,70 @@ function _nz_dr_ranges(DR::_NZDR, nd::NZData, l, u, lo0, hi0, wit0, phib0; fixto
 end
 
 """
+좌표 i 에서 상자 [l, u] 안의 꺾임 위치들 (쌍대가 고정되지 않은 시나리오마다 두 점).
+recourse 값은 우변에 오목이라 예약 행의 쌍대 σ_k 는 α_i 에 비증가다 (hcoef_k > 0 일 때; 음수면 방향이 반대). 시나리오 s 에서
+  p⁺ = max{α_i : 상자 안에서 σ_k 가 아직 최댓값 hi 일 수 있음},  p⁻ = min{α_i : σ_k 가 이미 최솟값 lo 일 수 있음}
+을 범위 MIP 로 구한다 (다른 좌표가 상자 안에서 움직이면 꺾임 위치도 움직이므로 [p⁻, p⁺] 근처에 퍼져 있다).
+상자 경계에서 tiny 이상 안쪽인 점만 돌려준다 (정렬).
+"""
+function _nz_dr_kinkpts(DR::_NZDR, nd::NZData, l, u, lo, hi, i)
+    pts = Float64[]
+    S = nd.S; nh = nz_nh(nd)
+    tiny = 1e-6 * max(1.0, nd.hU[i])
+    for (a, k) in enumerate(DR.Hk)
+        nd.hrow[k] == i || continue
+        for s in 1:S
+            gap = hi[a, s] - lo[a, s]
+            gap > 1e-4 || continue
+            M = DR.mips[s]
+            for j in 1:nh; set_lower_bound(M.α[j], l[j]); set_upper_bound(M.α[j], u[j]); end
+            τ = min(1e-3, 0.01 * gap) + 2e-6                      # lo, hi 에는 1e-6 여유가 들어 있음
+            set_lower_bound(M.σ[k], hi[a, s] - τ)
+            @objective(M.model, nd.hcoef[k] > 0 ? MAX_SENSE : MIN_SENSE, M.α[i])
+            if _nz_dr_opt!(DR, M, l, u, "s=$s k=$k 꺾임 위") && termination_status(M.model) == MOI.OPTIMAL
+                pt = objective_value(M.model)
+                l[i] + tiny < pt < u[i] - tiny && push!(pts, pt)
+            end
+            set_lower_bound(M.σ[k], 0.0)
+            set_upper_bound(M.σ[k], lo[a, s] + τ)
+            @objective(M.model, nd.hcoef[k] > 0 ? MIN_SENSE : MAX_SENSE, M.α[i])
+            if _nz_dr_opt!(DR, M, l, u, "s=$s k=$k 꺾임 아래") && termination_status(M.model) == MOI.OPTIMAL
+                pt = objective_value(M.model)
+                l[i] + tiny < pt < u[i] - tiny && push!(pts, pt)
+            end
+            isfinite(nd.varpiU[k]) ? set_upper_bound(M.σ[k], nd.varpiU[k]) : delete_upper_bound(M.σ[k])
+        end
+    end
+    return sort!(pts)
+end
+
+"""
+꺾임 사이 분할점 (branch_point = :kinkmid). pts = 상자 (li, ui) 안의 꺾임 위치 (정렬).
+  꺾임 0 개 : nothing (호출 측이 중점)
+  꺾임 1 개 : 더 넓은 쪽 틈의 가운데 → 한 자식은 꺾임이 없어 쌍대가 고정되고, 꺾임을 품은 자식은 좁아진다
+  꺾임 ≥ 2 : 꺾임 수가 절반씩 되도록, 가운데 두 꺾임의 중간 (두 점이 사실상 겹치면 가장 넓은 틈의 가운데)
+분할점이 꺾임 위에 놓이지 않으므로 (경계에서는 두 쌍대가 모두 최적이라 범위가 안 좁혀짐) 자식마다 꺾임이 실제로 줄어든다.
+한쪽 자식이 너무 얇아지지 않게 상자 폭의 5% 안쪽으로 자른다.
+"""
+function _nz_kink_split(li, ui, pts)
+    m = length(pts)
+    m == 0 && return nothing
+    w = ui - li
+    q = vcat(li, pts, ui)
+    if m == 1
+        t = (pts[1] - li >= ui - pts[1]) ? 0.5 * (li + pts[1]) : 0.5 * (pts[1] + ui)
+    else
+        h = m ÷ 2                                   # q[h+1], q[h+2] = 가운데 두 꺾임
+        if q[h + 2] - q[h + 1] > 1e-6 * max(1.0, w)
+            t = 0.5 * (q[h + 1] + q[h + 2])
+        else
+            g = argmax(diff(q)); t = 0.5 * (q[g] + q[g + 1])
+        end
+    end
+    return clamp(t, li + 0.05 * w, ui - 0.05 * w)
+end
+
+"""
 노드 LP 의 INFEASIBLE 판정 재확인. 반환: −Inf (재확인에서도 실행 불가능), 유한값 (풀림: 그 목적값), NaN·Inf (시간·수치 문제).
 
 범위 행을 넣은 노드 LP 는 실행 가능한데도 INFEASIBLE 로 나오는 일이 있다 (test_dr_validity_boxes.jl: 최적 α* 를 품은 상자의
@@ -349,7 +413,7 @@ nz_alpha_bnb (기존, `bnb = :legacy`) 의 탐색 — worker 병렬, best-first 
 | 자원 | `ipopt_time` | 60.0 | Ipopt 휴리스틱 1 회 시간 (벤치마크는 120) |
 | | `heuristic` | true | Ipopt 휴리스틱 task 사용 |
 | | `envs` | nothing | Gurobi Env 를 직접 넘김 (worker 당 하나 + 휴리스틱용). 세션 수가 제한된 라이선스에서만 |
-| 탐색 | `branch_point` | :mid | 분할점. :mid (중점) 또는 :alphahat (완화 해, 끝 10% 면 중점) |
+| 탐색 | `branch_point` | :mid | 분할점. :mid (중점), :alphahat (완화 해, 끝 10% 면 중점), :kinkmid (시험 중: 분기 좌표의 꺾임들 사이 — `_nz_kink_split`) |
 | | `child_rounds` | 1 | 루트가 아닌 노드의 RLT 분리 라운드 상한 |
 | | `maxrounds` | 30 | 루트의 분리 라운드 상한 |
 | | `dive_max` | 3 | 한 worker 가 자식으로 연속 내려가는 횟수 |
@@ -387,7 +451,9 @@ function nz_alpha_bnb_dr(nd::NZData, x̄;
                          dual_range::Bool=true, comp::Bool=true, vcut::Bool=true, cslift::Bool=true,
                          # 이어 풀기: 같은 x̄ 의 이전 호출이 돌려준 r[:state]
                          resume=nothing)
-    branch_point in (:alphahat, :mid) || error("branch_point = :alphahat | :mid")
+    branch_point in (:alphahat, :mid, :kinkmid) || error("branch_point = :alphahat | :mid | :kinkmid")
+    branch_point == :kinkmid && !dual_range && error("branch_point = :kinkmid 는 dual_range = true 에서만 (꺾임 위치를 범위 MIP 로 찾음)")
+    n_ksplit = Threads.Atomic{Int}(0)             # 꺾임 사이 분할을 한 횟수
     config = (dual_range=dual_range, comp=dual_range && comp, vcut=dual_range && vcut, cslift=dual_range && cslift,
               branch_point=branch_point, child_rounds=child_rounds, maxrounds=maxrounds, dive_max=dive_max,
               sep_maxadd=sep_maxadd, presolve=presolve, heuristic=heuristic)
@@ -554,6 +620,11 @@ function nz_alpha_bnb_dr(nd::NZData, x̄;
                         if viol[i] > 1e-9
                             width = u[i] - l[i]; t = α̂[i]
                             (branch_point != :alphahat || t - l[i] < 0.1 * width || u[i] - t < 0.1 * width) && (t = 0.5 * (l[i] + u[i]))
+                            if branch_point == :kinkmid
+                                tk = @elapsed (tks = _nz_kink_split(l[i], u[i], _nz_dr_kinkpts(DR, nd, l, u, lo, hi, i)))
+                                Threads.atomic_add!(t_range, tk)
+                                tks !== nothing && (t = tks; Threads.atomic_add!(n_ksplit, 1))
+                            end
                             u1 = copy(u); u1[i] = t; l2 = copy(l); l2[i] = t
                             children = ((copy(l), u1, z, lo, hi, wit, phib), (l2, copy(u), z, lo, hi, wit, phib))
                         else
@@ -655,6 +726,6 @@ function nz_alpha_bnb_dr(nd::NZData, x̄;
                 :state => (x=copy(x̄), config=config, open=open, LB=LB[], α=copy(best_α[]), pruned_ub=pruned_ub[],
                            root_UB=root_UB[], root_rows=root_rows[]), :t_relax => t_relax[], :t_eval => t_eval[], :t_range => t_range[],
                 :range_mips => dual_range ? sum(D.nmip for D in DRs) : 0, :range_fail => dual_range ? sum(D.nfail for D in DRs) : 0,
-                :fixfrac => nodes[] > 0 ? nfixed_sum[] / nodes[] : NaN, :infeas => n_infeas[], :infeas_recovered => n_infrec[],
+                :fixfrac => nodes[] > 0 ? nfixed_sum[] / nodes[] : NaN, :infeas => n_infeas[], :infeas_recovered => n_infrec[], :kink_splits => n_ksplit[],
                 :numerr => _NZ_NUMERR[] - numerr0, :numerr_fail => _NZ_NUMERR_FAIL[] - numfail0)
 end
