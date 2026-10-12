@@ -239,6 +239,7 @@ end
 "노드 LP 수치 오류 횟수 (재시도로 해결 / 끝내 실패)"
 const _NZ_NUMERR = Threads.Atomic{Int}(0)
 const _NZ_NUMERR_FAIL = Threads.Atomic{Int}(0)
+const _NZ_FRESH_OK = Threads.Atomic{Int}(0)             # 수치 오류가 "처음부터 다시" 한 번으로 풀린 횟수 (retry_fresh)
 
 """
 반환: 최적값, −Inf (infeasible), NaN (시간 제한), Inf (수치 오류가 재시도로도 안 풀림 → 호출 측이 부모 상한으로 분기).
@@ -261,6 +262,7 @@ function _nz_solve_lp!(model)
     restore = lock(() -> pop!(_NZ_RESTORE, model, false), _NZ_RESTORE_LOCK)
     restore && (set_optimizer_attribute(model, "NumericFocus", 0); set_optimizer_attribute(model, "Method", get(model.ext, :lp_method, 1));
                 set_optimizer_attribute(model, "Crossover", get(model.ext, :lp_crossover, -1)))
+    restore && get(model.ext, :retry_fresh, false) && (set_optimizer_attribute(model, "Presolve", 0); set_optimizer_attribute(model, "DualReductions", 1))
     tw = @elapsed optimize!(model)
     tg = try solve_time(model) catch; 0.0 end
     Threads.atomic_add!(_NZ_LPN, 1); Threads.atomic_add!(_NZ_LPWALL, tw); Threads.atomic_add!(_NZ_LPGRB, tg)
@@ -290,7 +292,16 @@ function _nz_solve_lp!(model)
             end
         end
         lock(() -> (_NZ_RESTORE[model] = true), _NZ_RESTORE_LOCK)
-        for (nf, meth) in ((3, 1), (3, 2))
+        # retry_fresh (nz_alpha_bnb_dr 가 켬): NumericFocus 3 (느림: S = 30 에서 노드 하나에 100 s 가까이 걸려 나머지 worker 가 기다림) 으로 가기 전에,
+        #   기저를 버리고 Presolve 를 켠 dual simplex 로 처음부터 한 번 풀어 본다. 계수를 바꾼 뒤 이어 푸는 경로에서 난 수치 문제는 대개 이것으로 풀린다.
+        if get(model.ext, :retry_fresh, false)
+            set_optimizer_attribute(model, "Presolve", -1); set_optimizer_attribute(model, "DualReductions", 0)
+            Gurobi.GRBreset(JuMP.unsafe_backend(model), 0)
+            optimize!(model)
+            st = termination_status(model)
+            st in (MOI.OPTIMAL, MOI.INFEASIBLE, MOI.TIME_LIMIT) && Threads.atomic_add!(_NZ_FRESH_OK, 1)
+        end
+        st in (MOI.OPTIMAL, MOI.INFEASIBLE, MOI.TIME_LIMIT) || for (nf, meth) in ((3, 1), (3, 2))
             set_optimizer_attribute(model, "NumericFocus", nf); set_optimizer_attribute(model, "Method", meth)
             set_optimizer_attribute(model, "Crossover", -1)      # 재시도는 crossover 를 켜서 (기저해까지)
             optimize!(model)

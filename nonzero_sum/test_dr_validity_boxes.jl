@@ -29,6 +29,7 @@ mkw = Dict("full" => (vcut=true, cslift=true), "noX" => (vcut=true, cslift=false
           "off" => nothing)                       # off: 기존 완화 (범위 행 없음) — 같은 상자에서 기존 완화의 수치 거동을 보기 위한 기준
 WMIN = parse(Float64, envf("TV_WMIN", "1e-4"))    # 좌표 폭의 하한 (로그 균등의 아래 끝)
 ZERO = envf("TV_ZERO", "1") == "1"                # 폭 0 좌표·경계에 붙은 α* 를 허용할지
+FORCE = envf("TV_FORCE_RECHECK", "0") == "1"      # 모든 상자에서 실행 불가능 재확인 함수를 불러 본다 (참으로 실행 가능한 상자이므로 −Inf 가 나오면 안 됨)
 nbad_total = 0
 for S in parse.(Int, split(envf("TV_S", "3,5"), ","))
     nd0 = nz_with_delta(make_location_instance(; coords=:sgb128, reservation=:pair, quota=150.0, wres=300.0, S=S, seed=parse(Int, envf("NZ_SEED", "1")),
@@ -52,7 +53,7 @@ for S in parse.(Int, split(envf("TV_S", "3,5"), ","))
             DR = md == "off" ? nothing : _nz_dr_attach!(P, nd, x̄; optimizer=GRB, mkw[md]...)
             lo0, hi0 = md == "off" ? (zeros(0, 0), zeros(0, 0)) : _nz_dr_global(nd, DR)
             rng = MersenneTwister(1234 + S)
-            ninf = 0; nlow = 0; worst = Inf; ntight = 0; nrec = 0
+            ninf = 0; nlow = 0; worst = Inf; ntight = 0; nrec = 0; nforce = 0
             for n in 1:N
                 l = zeros(nh); u = copy(nd.hU)
                 for i in 1:nh
@@ -80,6 +81,10 @@ for S in parse.(Int, split(envf("TV_S", "3,5"), ","))
                     _nz_dr_set!(P, DR, nd, l, u, lo, hi, phib; dlo=dl, dhi=dh)
                 end
                 z = _nz_sep_solve!(P)
+                if FORCE && isfinite(z)                  # 강제 재확인: 참으로 실행 가능한 상자를 재확인 함수가 실행 불가능으로 보는가
+                    zf = _nz_dr_recheck_infeasible!(P.O.model)
+                    zf == -Inf && (nforce += 1; nforce <= 2 && println("    강제 재확인이 실행 불가능이라고 함 (첫 판정은 최적 ", z, ")"))
+                end
                 if z == -Inf
                     # nz_alpha_bnb_dr 와 같은 처리: 기저를 버리고 FeasibilityTol 1e-6 에서 처음부터 재확인
                     z = _nz_dr_recheck_infeasible!(P.O.model)
@@ -94,7 +99,8 @@ for S in parse.(Int, split(envf("TV_S", "3,5"), ","))
                     z - V <= 1e-4 * max(1.0, abs(V)) && (ntight += 1)
                 end
             end
-            bad = ninf + nlow
+            bad = ninf + nlow + nforce
+            FORCE && @printf("  %-5s 강제 재확인 (모든 상자): 실행 불가능이라고 한 횟수 %d\n", md, nforce)
             global nbad_total += bad
             @printf("  %-5s 상자 %d 개: 실행 불가능 %d (첫 판정이 실행 불가능이어서 재확인한 횟수 %d), 상한 < V* %d, min(상한 − V*) = %.3e, 정확 (≤ 1e-4 상대) %d 개  %s\n",
                     md, N, ninf, nrec, nlow, worst, ntight, bad == 0 ? "유효" : "** 무효 **")

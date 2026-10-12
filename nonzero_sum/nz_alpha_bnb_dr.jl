@@ -358,14 +358,38 @@ end
 범위 행을 넣은 노드 LP 는 실행 가능한데도 INFEASIBLE 로 나오는 일이 있다 (test_dr_validity_boxes.jl: 최적 α* 를 품은 상자의
 0.5~1%, 범위 행이 없는 기존 완화에서는 0%). 같은 상자를 새 모델에서 풀면 OPTIMAL 이고, 제약이 더 많은 변형이 실행 가능한데
 더 적은 변형이 실행 불가능으로 나오기도 한다 → 수학적 무효가 아니라 **warm start 경로의 수치 문제**
-(노드마다 행렬 계수를 바꾼 뒤의 dual simplex + FeasibilityTol 1e-9). FeasibilityTol 만 1e-6 으로 풀어 이어서 풀면 그대로 실행 불가능.
-여기서는 기저·해 정보를 버리고 (GRBreset) primal simplex 로 FeasibilityTol 1e-6 에서 처음부터 다시 푼다.
+(노드마다 행렬 계수를 바꾼 뒤의 dual simplex). FeasibilityTol 만 1e-6 으로 풀어 이어서 풀면 그대로 실행 불가능.
+그래서 기저·해 정보를 버리고 (GRBreset) FeasibilityTol 1e-6 에서 처음부터 다시 푼다.
+
+방법 (2026-10-13 변경, lab_recheck.jl): 처음부터 푸는 방법을 primal simplex (Presolve 끔) 에서 **dual simplex + Presolve** 로 바꿨다.
+  S = 20 의 첫 판정이 INFEASIBLE 인 상자 40 개에서 primal 은 평균 8.4 s (최대 37 s, 노드 LP 자체는 0.23 s), dual + Presolve 는 0.06 s.
+  primal 이 "되살린" 5 개는 목적값이 LB + 10⁶~10⁷ 인 쓰레기 해였고 (dual + Presolve, primal + Presolve, dual 모두 실행 불가능),
+  그 노드들은 부모 상한을 그대로 물려받아 다시 나뉘기만 했다. 재확인 시간은 t_relax 에 잡히지 않아 worker 시간의 40~60% 가 보이지 않게 여기서 쓰였다.
+  dual + Presolve 가 실행 불가능이라고 하면 Presolve 를 끈 dual simplex 로 한 번 더 확인하고 (서로 다른 경로 두 번), 둘 다 실행 불가능일 때만 −Inf.
+  참으로 실행 가능한 상자를 실행 불가능으로 보지 않는지는 test_dr_validity_boxes.jl · test_dr_validity_incumbent.jl 의 강제 재확인 (TV_FORCE_RECHECK) 으로 본다.
+`method = :primal` 은 이전 방식 (비교용).
 """
-function _nz_dr_recheck_infeasible!(model)
-    set_optimizer_attribute(model, "FeasibilityTol", 1e-6); set_optimizer_attribute(model, "Method", 0)
+function _nz_dr_recheck_infeasible!(model; method::Symbol=:dual)
+    restore!() = (set_optimizer_attribute(model, "FeasibilityTol", get(model.ext, :lp_tol, 1e-9));
+                  set_optimizer_attribute(model, "Method", get(model.ext, :lp_method, 1));
+                  set_optimizer_attribute(model, "Presolve", 0); set_optimizer_attribute(model, "DualReductions", 1))
+    set_optimizer_attribute(model, "FeasibilityTol", 1e-6)
+    if method == :primal
+        set_optimizer_attribute(model, "Method", 0)
+        Gurobi.GRBreset(JuMP.unsafe_backend(model), 0)
+        z = _nz_solve_lp!(model); restore!()
+        return z
+    end
+    method == :dual || error("_nz_dr_recheck_infeasible!: method = :dual | :primal")
+    set_optimizer_attribute(model, "Method", 1); set_optimizer_attribute(model, "Presolve", -1); set_optimizer_attribute(model, "DualReductions", 0)
     Gurobi.GRBreset(JuMP.unsafe_backend(model), 0)
     z = _nz_solve_lp!(model)
-    set_optimizer_attribute(model, "FeasibilityTol", get(model.ext, :lp_tol, 1e-9)); set_optimizer_attribute(model, "Method", get(model.ext, :lp_method, 1))
+    if z == -Inf                                           # 두 번째 경로: Presolve 없이 처음부터
+        set_optimizer_attribute(model, "Presolve", 0); set_optimizer_attribute(model, "DualReductions", 1)
+        Gurobi.GRBreset(JuMP.unsafe_backend(model), 0)
+        z = _nz_solve_lp!(model)
+    end
+    restore!()
     return z
 end
 
@@ -563,7 +587,8 @@ incumbent) 이 그대로 유효하다. Benders 가 목표값 조기 종료로 �
 
 반환 Dict: `:LB` (incumbent 값), `:UB` (상한), `:α` (incumbent, 원래 정의역), `:is_exact`, `:nodes`, `:time`, `:root_UB`,
 `:solver` (= :nz_alpha_bnb_dr), `:config` (강화·탐색 설정), `:state` (이어 풀기용), `:resumed`, 계측 (`:t_relax`, `:t_range`, `:range_mips`, `:fixfrac`),
-수치 문제 횟수 (`:range_fail`, `:infeas`, `:infeas_recovered`, `:numerr`, `:numerr_fail`), `:cbranch` (상보성 분기 횟수),
+수치 문제 횟수 (`:range_fail`, `:infeas`, `:infeas_recovered`, `:numerr`, `:numerr_fresh`, `:numerr_fail`), `:cbranch` (상보성 분기 횟수),
+`:t_recheck` (실행 불가능 재확인 시간), `:slow_nodes` (20 s 넘게 걸린 노드의 (전체, 범위 MIP, 완화 LP, 재확인) 초),
 `:gc_wait` (GC safepoint 대기, 초), `:gcsafe` (Gurobi 호출을 GC-safe 구간에서 했는가).
 """
 function nz_alpha_bnb_dr(nd::NZData, x̄;
@@ -618,6 +643,9 @@ function nz_alpha_bnb_dr(nd::NZData, x̄;
         set_optimizer_attribute(P.O.model, "NumericFocus", 0); P.O.model.ext[:lp_tol] = lp_tol
     end
     zpad(z) = (lp_tol > 1e-9 && isfinite(z)) ? z + 1e-6 * max(1.0, abs(z)) : z
+    for P in Ps; P.O.model.ext[:retry_fresh] = true; end          # 노드 LP 수치 오류: NumericFocus 3 전에 처음부터 한 번 (_nz_solve_lp!)
+    fresh0 = _NZ_FRESH_OK[]
+    slow = Tuple{Float64,Float64,Float64,Float64}[]               # 20 s 넘게 걸린 노드: (전체, 범위 MIP, 완화 LP, 실행 불가능 재확인) 초
     Fs = [nz_build_fixed_alpha(nd, x̄; optimizer=mk(envs[i])) for i in 1:nworkers]
     Rs = resp ? [_nz_build_resp(nd, x̄; optimizer=mk(envs[i])) for i in 1:nworkers] : nothing
     n_resp = Threads.Atomic{Int}(0)                    # follower 반응 휴리스틱이 incumbent 를 갱신한 횟수
@@ -626,6 +654,7 @@ function nz_alpha_bnb_dr(nd::NZData, x̄;
 
     lk = ReentrantLock()
     t_relax = Threads.Atomic{Float64}(0.0); t_eval = Threads.Atomic{Float64}(0.0); t_range = Threads.Atomic{Float64}(0.0)
+    t_recheck = Threads.Atomic{Float64}(0.0)
     lo0, hi0 = dual_range ? _nz_dr_global(nd, DRs[1]) : (zeros(0, 0), zeros(0, 0))
     dlo0, dhi0 = dual_range ? _nz_dr_dglobal(nd, DRs[1]) : (zeros(0, 0), zeros(0, 0))
     # 노드 = (l, u, 상한, lo, hi, witness, φ̄, ext).  ext = (eq: 정상성을 등식으로 둔 좌표 (상보성 분기), dlo·dhi: 쌍대 차이 범위)
@@ -690,6 +719,7 @@ function nz_alpha_bnb_dr(nd::NZData, x̄;
                 sleep(0.05); continue
             end
             l, u, ubp, lop, hip, witp, phibp = node
+            tn0 = time(); tn_rg = 0.0; tn_lp = 0.0; tn_rc = 0.0
             ext = node[8]; eqp = ext.eq; dlo = ext.dlo; dhi = ext.dhi
             if !synced && root_rows[] !== nothing && isempty(P.allrows) && t_end - time() > 30.0
                 for (i, j, islo, b) in root_rows[]; sticky ? _nz_sticky_add!(P, i, j, islo, b) : _nz_sep_add!(P, i, j, islo, b); end
@@ -704,14 +734,14 @@ function nz_alpha_bnb_dr(nd::NZData, x̄;
                 empty_box = false
                 if dual_range
                     tg = @elapsed (rg = _nz_dr_ranges(DR, nd, l, u, lop, hip, witp, phibp; deadline=t_end))
-                    Threads.atomic_add!(t_range, tg)
+                    Threads.atomic_add!(t_range, tg); tn_rg += tg
                     if rg === nothing
                         empty_box = true                 # 상자 안에 실행가능한 α 가 없음
                     else
                         lo, hi, wit, phib = rg
                         if config.dd
                             tg2 = @elapsed ((dlo, dhi) = _nz_dr_dranges!(DR, nd, l, u, lo, hi, ext.dlo, ext.dhi, witp, wit; deadline=t_end))
-                            Threads.atomic_add!(t_range, tg2)
+                            Threads.atomic_add!(t_range, tg2); tn_rg += tg2
                         end
                         _nz_dr_set!(P, DR, nd, l, u, lo, hi, phib; comp=comp, eq=eqp, dlo=dlo, dhi=dhi)
                         fixfrac = count(hi .- lo .<= 1e-4) / max(1, length(lo))
@@ -720,12 +750,13 @@ function nz_alpha_bnb_dr(nd::NZData, x̄;
                 if !empty_box
                     set_time_limit_sec(P.O.model, max(t_end - time(), 0.1))
                     tr = @elapsed (z = zpad((sticky ? _nz_sticky_solve! : _nz_sep_solve!)(P; maxrounds=(ubp == Inf ? maxrounds : child_rounds), maxadd=sep_maxadd)))
-                    Threads.atomic_add!(t_relax, tr)
+                    Threads.atomic_add!(t_relax, tr); tn_lp += tr
                     # 실행 불가능 판정 재확인 (_nz_dr_recheck_infeasible!): 그래도 실행 불가능일 때만 가지치기한다. 재확인에서 풀리면
                     #   그 값을 상한으로 쓰고 해는 읽지 않은 채 가장 넓은 좌표를 반으로 나눈다 (수치 오류 노드와 같은 처리).
                     zrec = NaN
                     if z == -Inf && dual_range
-                        zc = _nz_dr_recheck_infeasible!(P.O.model)
+                        tn_rc += @elapsed (zc = _nz_dr_recheck_infeasible!(P.O.model))
+                        Threads.atomic_add!(t_recheck, tn_rc)
                         if zc == -Inf
                             Threads.atomic_add!(n_infeas, 1)
                         else
@@ -818,6 +849,7 @@ function nz_alpha_bnb_dr(nd::NZData, x̄;
                     continue
                 end
                 nodes[] += 1
+                time() - tn0 > 20.0 && push!(slow, (time() - tn0, tn_rg, tn_lp, tn_rc))
                 isnan(fixfrac) || (nfixed_sum[] += fixfrac)
                 pruned_ub[] = max(pruned_ub[], pruned_val)
                 if ubp == Inf
@@ -906,6 +938,7 @@ function nz_alpha_bnb_dr(nd::NZData, x̄;
                 :solver => :nz_alpha_bnb_dr, :config => config, :presolve_fixed => nfix, :resumed => resume !== nothing,
                 :state => (x=copy(x̄), config=config, open=open, LB=LB[], α=copy(best_α[]), pruned_ub=pruned_ub[],
                            root_UB=root_UB[], root_rows=root_rows[]), :t_relax => t_relax[], :t_eval => t_eval[], :t_range => t_range[],
+                :t_recheck => t_recheck[], :slow_nodes => sort(slow; rev=true), :numerr_fresh => _NZ_FRESH_OK[] - fresh0,
                 :range_mips => dual_range ? sum(D.nmip for D in DRs) : 0, :range_fail => dual_range ? sum(D.nfail for D in DRs) : 0,
                 :fixfrac => nodes[] > 0 ? nfixed_sum[] / nodes[] : NaN, :infeas => n_infeas[], :infeas_recovered => n_infrec[],
                 :numerr => _NZ_NUMERR[] - numerr0, :numerr_fail => _NZ_NUMERR_FAIL[] - numfail0,

@@ -1,0 +1,62 @@
+Set parameter Username
+Set parameter LicenseID to value 2742039
+Academic license - for non-commercial use only - expires 2026-11-20
+scale_oracle: x=[1, 2] ε=0.30 δ=0.1 TL=900s 목표 gap=1.0e-03 workers=12
+Set parameter Username
+Set parameter LicenseID to value 2742039
+Academic license - for non-commercial use only - expires 2026-11-20
+Set parameter Username
+Set parameter LicenseID to value 2742039
+Academic license - for non-commercial use only - expires 2026-11-20
+Set parameter Username
+Set parameter LicenseID to value 2742039
+Academic license - for non-commercial use only - expires 2026-11-20
+Set parameter Username
+Set parameter LicenseID to value 2742039
+Academic license - for non-commercial use only - expires 2026-11-20
+Set parameter Username
+Set parameter LicenseID to value 2742039
+Academic license - for non-commercial use only - expires 2026-11-20
+Set parameter Username
+Set parameter LicenseID to value 2742039
+Academic license - for non-commercial use only - expires 2026-11-20
+Set parameter Username
+Set parameter LicenseID to value 2742039
+Academic license - for non-commercial use only - expires 2026-11-20
+Set parameter Username
+Set parameter LicenseID to value 2742039
+Academic license - for non-commercial use only - expires 2026-11-20
+Set parameter Username
+Set parameter LicenseID to value 2742039
+Academic license - for non-commercial use only - expires 2026-11-20
+Set parameter Username
+Set parameter LicenseID to value 2742039
+Academic license - for non-commercial use only - expires 2026-11-20
+Set parameter Username
+Set parameter LicenseID to value 2742039
+Academic license - for non-commercial use only - expires 2026-11-20
+Set parameter Username
+Set parameter LicenseID to value 2742039
+Academic license - for non-commercial use only - expires 2026-11-20
+Set parameter Username
+Set parameter LicenseID to value 2742039
+Academic license - for non-commercial use only - expires 2026-11-20
+
+******************************************************************************
+This program contains Ipopt, a library for large-scale nonlinear optimization.
+ Ipopt is released as open source code under the Eclipse Public License (EPL).
+         For more information visit https://github.com/coin-or/Ipopt
+******************************************************************************
+
+    [nz-α-B&B-dr] t=  63.9s nodes=  227 open=  106 LB=-1330.922984 UB=-1096.757685 gap=1.759e-01
+    [nz-α-B&B-dr] t= 124.4s nodes=  532 open=  201 LB=-1317.626851 UB=-1180.607966 gap=1.040e-01
+    [nz-α-B&B-dr] t= 184.6s nodes=  777 open=  286 LB=-1295.419991 UB=-1191.127529 gap=8.051e-02
+    [nz-α-B&B-dr] t= 244.8s nodes= 1040 open=  317 LB=-1270.231709 UB=-1233.505053 gap=2.891e-02
+    [nz-α-B&B-dr] t= 304.9s nodes= 1387 open=  284 LB=-1270.231709 UB=-1251.300862 gap=1.490e-02
+    [nz-α-B&B-dr] t= 365.1s nodes= 1681 open=  174 LB=-1267.783005 UB=-1259.517584 gap=6.520e-03
+    [nz-α-B&B-dr] t= 425.2s nodes= 1914 open=    0 LB=-1267.783005 UB=-1262.895341 gap=3.855e-03
+    [nz-α-B&B-dr] t= 485.4s nodes= 1914 open=    0 LB=-1267.783004 UB=-1262.895341 gap=3.855e-03
+RESULT S=30 abbdr      Optimal LB=-1267.7830 UB=-1266.5209 gap=9.956e-04 time=521.8 nodes=1915 rootUB=-802.58 | relax 3651s range 382s (MIP 135494) 고정비율 0.77 MIP 실패 1 LP 수치오류 25 (실패 4) 실행불가능 노드 257 (재확인에서 되살아남 1) GC 대기 2s (gcsafe on) 상보성 분기 3 반응 휴리스틱 0
+nz_alpha_bnb_dr: 범위 MIP 실패 (s=21 k=4 max): Gurobi Error 10005: Unable to retrieve attribute 'ObjBound'
+  l = [0.0, 0.0, 37.5, 37.5, 0.0, 75.0, 0.0, 75.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]
+  u = [150.0, 150.0, 75.0, 75.0, 150.0, 112.5, 37.5, 112.5, 150.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]

@@ -19,6 +19,7 @@ envf(k, d) = get(ENV, k, d)
 fr = deserialize(envf("LB_IN", joinpath(tempdir(), "nz_frontier_seed3_S20.jls")))
 N = parse(Int, envf("TI_N", "150")); WMIN = parse(Float64, envf("TI_WMIN", "1e-3"))
 modes = String.(strip.(split(envf("TI_MODES", "full,old"), ",")))
+FORCE = envf("TV_FORCE_RECHECK", "0") == "1"      # 모든 상자에서 실행 불가능 재확인 함수를 불러 본다 (−Inf 가 나오면 안 됨)
 mkw = Dict("full" => NamedTuple(), "old" => (fwd=false, kmc=false, dd=false))
 nd0 = nz_with_delta(make_location_instance(; coords=:sgb128, reservation=:pair, quota=150.0, wres=300.0, S=fr.S, seed=fr.seed,
                                            eps_hat=0.3, eps_tilde=0.3, beta=0.4), 0.1)
@@ -40,7 +41,7 @@ for md in modes
     set_optimizer_attribute(P.O.model, "NumericFocus", 0); P.O.model.ext[:lp_tol] = 1e-7
     lo0, hi0 = _nz_dr_global(nd, DR)
     rng = MersenneTwister(4321)
-    ninf = 0; nlow = 0; worst = Inf; nrec = 0; ntight = 0
+    ninf = 0; nlow = 0; worst = Inf; nrec = 0; ntight = 0; nforce = 0
     for n in 1:N
         l = zeros(nh); u = copy(nd.hU)
         for i in 1:nh
@@ -60,6 +61,9 @@ for md in modes
         isempty(DR.pairs) || ((dl, dh) = _nz_dr_dranges!(DR, nd, l, u, lo, hi, dl, dh, Dict{Tuple{Int,Int,Bool},Vector{Float64}}(), wt))
         _nz_dr_set!(P, DR, nd, l, u, lo, hi, phib; dlo=dl, dhi=dh)
         z = _nz_sticky_solve!(P; maxrounds=30)
+        if FORCE && isfinite(z)
+            _nz_dr_recheck_infeasible!(P.O.model) == -Inf && (nforce += 1)
+        end
         if z == -Inf
             z = _nz_dr_recheck_infeasible!(P.O.model); nrec += 1
         end
@@ -72,7 +76,8 @@ for md in modes
             z - V <= 1e-4 * max(1.0, abs(V)) && (ntight += 1)
         end
     end
-    global nbad += ninf + nlow
+    global nbad += ninf + nlow + nforce
+    FORCE && @printf("  %-5s 강제 재확인 (모든 상자): 실행 불가능이라고 한 횟수 %d\n", md, nforce)
     @printf("  %-5s 상자 %d 개: 실행 불가능 %d (재확인 %d 회), 상한 < G(α°) %d, min(상한 − G(α°)) = %.3e, 정확 (≤ 1e-4 상대) %d 개  %s\n",
             md, N, ninf, nrec, nlow, worst, ntight, ninf + nlow == 0 ? "유효" : "** 무효 **")
     flush(stdout)
