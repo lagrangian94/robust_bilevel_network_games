@@ -1,0 +1,66 @@
+﻿Set parameter Username
+Set parameter LicenseID to value 2742039
+Academic license - for non-commercial use only - expires 2026-11-20
+oracle 정체 진단: seed=1 S=20 x=[1, 2] TL=600s 목표 gap=1.0e-03 workers=12
+Set parameter Username
+Set parameter LicenseID to value 2742039
+Academic license - for non-commercial use only - expires 2026-11-20
+Set parameter Username
+Set parameter LicenseID to value 2742039
+Academic license - for non-commercial use only - expires 2026-11-20
+Set parameter Username
+Set parameter LicenseID to value 2742039
+Academic license - for non-commercial use only - expires 2026-11-20
+Set parameter Username
+Set parameter LicenseID to value 2742039
+Academic license - for non-commercial use only - expires 2026-11-20
+Set parameter Username
+Set parameter LicenseID to value 2742039
+Academic license - for non-commercial use only - expires 2026-11-20
+Set parameter Username
+Set parameter LicenseID to value 2742039
+Academic license - for non-commercial use only - expires 2026-11-20
+Set parameter Username
+Set parameter LicenseID to value 2742039
+Academic license - for non-commercial use only - expires 2026-11-20
+Set parameter Username
+Set parameter LicenseID to value 2742039
+Academic license - for non-commercial use only - expires 2026-11-20
+Set parameter Username
+Set parameter LicenseID to value 2742039
+Academic license - for non-commercial use only - expires 2026-11-20
+Set parameter Username
+Set parameter LicenseID to value 2742039
+Academic license - for non-commercial use only - expires 2026-11-20
+Set parameter Username
+Set parameter LicenseID to value 2742039
+Academic license - for non-commercial use only - expires 2026-11-20
+Set parameter Username
+Set parameter LicenseID to value 2742039
+Academic license - for non-commercial use only - expires 2026-11-20
+Set parameter Username
+Set parameter LicenseID to value 2742039
+Academic license - for non-commercial use only - expires 2026-11-20
+
+******************************************************************************
+This program contains Ipopt, a library for large-scale nonlinear optimization.
+ Ipopt is released as open source code under the Eclipse Public License (EPL).
+         For more information visit https://github.com/coin-or/Ipopt
+******************************************************************************
+
+    [nz-α-B&B-dr] t=  65.8s nodes=  115 open=   56 LB=-1260.589803 UB=-1039.220245 gap=1.756e-01
+    [nz-α-B&B-dr] t= 126.2s nodes=  290 open=  142 LB=-1218.345472 UB=-1135.847364 gap=6.771e-02
+    [nz-α-B&B-dr] t= 188.0s nodes=  450 open=  190 LB=-1218.345472 UB=-1155.067426 gap=5.194e-02
+    [nz-α-B&B-dr] t= 248.8s nodes=  626 open=  210 LB=-1200.758455 UB=-1181.291585 gap=1.621e-02
+    [nz-α-B&B-dr] t= 309.0s nodes=  864 open=  219 LB=-1200.758455 UB=-1192.735375 gap=6.682e-03
+    [nz-α-B&B-dr] t= 369.6s nodes= 1066 open=  175 LB=-1200.758455 UB=-1197.095986 gap=3.050e-03
+    [nz-α-B&B-dr] t= 429.6s nodes= 1339 open=    0 LB=-1200.758455 UB=-1198.482660 gap=1.895e-03
+
+결과: LB=-1200.7585 UB=-1199.5668 gap=9.925e-04 (488s) | 루트 상한 -990.92 (루트 gap 17.5%)
+
+[1] 처리량: 노드 1340 개, 2.75 노드/s (전체), worker 시간 합 = 완화 LP 3834s + 범위 MIP 325s + α 고정 LP 34s (wall × worker = 5855s)
+    노드당: 완화 LP 2.86s, 범위 MIP 0.24s (30 개/노드), 고정 비율 평균 0.73 | 실행불가능 노드 42 (되살아남 12), LP 수치오류 17
+    worker 유휴 비율 ≈ 28% (열린 노드가 worker 수보다 적으면 큼)
+
+[2] 남은 전선: 열린 노드 0 개, 활성 좌표 9 개 ([1, 2, 3, 4, 5, 6, 7, 8, 9])
+    incumbent α* (활성 좌표) = [0.0, 0.0, 136.0, 77.9, 0.0, 72.1, 88.6, 61.4, 0.0]

@@ -1,0 +1,89 @@
+﻿Set parameter Username
+Set parameter LicenseID to value 2742039
+Academic license - for non-commercial use only - expires 2026-11-20
+oracle 정체 진단: seed=3 S=20 x=[1, 2] TL=300s 목표 gap=1.0e-03 workers=12
+Set parameter Username
+Set parameter LicenseID to value 2742039
+Academic license - for non-commercial use only - expires 2026-11-20
+Set parameter Username
+Set parameter LicenseID to value 2742039
+Academic license - for non-commercial use only - expires 2026-11-20
+Set parameter Username
+Set parameter LicenseID to value 2742039
+Academic license - for non-commercial use only - expires 2026-11-20
+Set parameter Username
+Set parameter LicenseID to value 2742039
+Academic license - for non-commercial use only - expires 2026-11-20
+Set parameter Username
+Set parameter LicenseID to value 2742039
+Academic license - for non-commercial use only - expires 2026-11-20
+Set parameter Username
+Set parameter LicenseID to value 2742039
+Academic license - for non-commercial use only - expires 2026-11-20
+Set parameter Username
+Set parameter LicenseID to value 2742039
+Academic license - for non-commercial use only - expires 2026-11-20
+Set parameter Username
+Set parameter LicenseID to value 2742039
+Academic license - for non-commercial use only - expires 2026-11-20
+Set parameter Username
+Set parameter LicenseID to value 2742039
+Academic license - for non-commercial use only - expires 2026-11-20
+Set parameter Username
+Set parameter LicenseID to value 2742039
+Academic license - for non-commercial use only - expires 2026-11-20
+Set parameter Username
+Set parameter LicenseID to value 2742039
+Academic license - for non-commercial use only - expires 2026-11-20
+Set parameter Username
+Set parameter LicenseID to value 2742039
+Academic license - for non-commercial use only - expires 2026-11-20
+Set parameter Username
+Set parameter LicenseID to value 2742039
+Academic license - for non-commercial use only - expires 2026-11-20
+
+******************************************************************************
+This program contains Ipopt, a library for large-scale nonlinear optimization.
+ Ipopt is released as open source code under the Eclipse Public License (EPL).
+         For more information visit https://github.com/coin-or/Ipopt
+******************************************************************************
+
+    [nz-α-B&B-dr] t=  66.6s nodes=  119 open=   52 LB=-866.084137 UB=-604.041063 gap=3.026e-01
+    [nz-α-B&B-dr] t= 130.9s nodes=  303 open=   85 LB=-866.066300 UB=-806.676949 gap=6.857e-02
+    [nz-α-B&B-dr] t= 193.5s nodes=  515 open=   82 LB=-866.066300 UB=-834.707878 gap=3.621e-02
+    [nz-α-B&B-dr] t= 256.0s nodes=  663 open=  108 LB=-866.039599 UB=-836.164169 gap=3.450e-02
+
+결과: LB=-865.9801 UB=-842.3331 gap=2.731e-02 (304s) | 루트 상한 -555.83 (루트 gap 35.8%)
+
+[1] 처리량: 노드 809 개, 2.67 노드/s (전체), worker 시간 합 = 완화 LP 2843s + 범위 MIP 247s + α 고정 LP 32s (wall × worker = 3643s)
+    노드당: 완화 LP 3.51s, 범위 MIP 0.31s (44 개/노드), 고정 비율 평균 0.79 | 실행불가능 노드 29 (되살아남 9), LP 수치오류 18
+    worker 유휴 비율 ≈ 14% (열린 노드가 worker 수보다 적으면 큼)
+
+[2] 남은 전선: 열린 노드 182 개, 활성 좌표 9 개 ([1, 2, 3, 4, 5, 6, 7, 8, 9])
+    incumbent α* (활성 좌표) = [0.0, 0.0, 0.0, 35.7, 0.0, 86.3, 74.6, 75.4, 0.0]
+    노드 상한의 상대 gap: 최대 2.731e-02, 중앙값 1.186e-02, 최소 -1.325e+02 | 목표 1.0e-03 초과 175 개, Benders 요구 1.5e-03 초과 174 개
+    α* 를 품은 노드 1 개, α* 에서 거리 (∞-노름) 중앙값 25.38, 최대 112.5
+    상자 폭 (활성 좌표): 최대 폭의 중앙값 150.00, 최소 폭의 중앙값 9.375
+    상한이 가장 큰 노드 10 개:  gap | α* 포함 | α* 거리 | 좌표별 폭 | 고정 안 된 쌍대 성분 (전체 180)
+      2.731e-02 | false |  75.00 | [75.0, 150.0, 18.8, 37.5, 150.0, 9.4, 75.0, 75.0, 150.0] | 14
+      2.731e-02 | false |  18.75 | [75.0, 150.0, 18.8, 37.5, 150.0, 9.4, 75.0, 75.0, 150.0] | 14
+      2.695e-02 | false |  18.35 | [150.0, 150.0, 9.4, 18.8, 150.0, 9.4, 9.4, 18.8, 150.0] | 32
+      2.695e-02 | false |  18.35 | [150.0, 150.0, 4.7, 18.8, 150.0, 9.4, 9.4, 18.8, 150.0] | 30
+      2.695e-02 | false |  18.35 | [150.0, 150.0, 4.7, 18.8, 150.0, 9.4, 9.4, 18.8, 150.0] | 30
+      2.695e-02 | false |   9.37 | [150.0, 150.0, 9.4, 150.0, 150.0, 9.4, 9.4, 75.0, 150.0] | 34
+      2.695e-02 | false |   9.37 | [150.0, 150.0, 9.4, 150.0, 150.0, 9.4, 9.4, 75.0, 150.0] | 34
+      2.695e-02 | false |   0.40 | [150.0, 150.0, 18.8, 150.0, 150.0, 9.4, 75.0, 75.0, 150.0] | 24
+      2.695e-02 | false |  19.15 | [150.0, 150.0, 9.4, 150.0, 150.0, 9.4, 18.8, 18.8, 150.0] | 31
+      2.695e-02 | false |   0.40 | [150.0, 150.0, 18.8, 150.0, 150.0, 9.4, 18.8, 37.5, 150.0] | 40
+
+[3] 상한이 큰 노드 8 개를 상자로 제한해 Gurobi 전역 40.0 s: 노드 상한 gap | 상자 안 최선값 − LB (상대) | Gurobi 상한 gap
+      2.731e-02 | -4.302e+02 | -3.983e+02  (TIME_LIMIT, α* 거리 75.0)
+      2.731e-02 | -2.219e+01 | 1.101e-02  (TIME_LIMIT, α* 거리 18.7)
+      2.695e-02 | -1.152e+01 | 4.001e-02  (TIME_LIMIT, α* 거리 18.3)
+      2.695e-02 | -1.708e+01 | 3.170e-02  (TIME_LIMIT, α* 거리 18.3)
+      2.695e-02 | -1.152e+01 | 4.222e-02  (TIME_LIMIT, α* 거리 18.3)
+      2.695e-02 | -1.150e+01 | 4.097e-02  (TIME_LIMIT, α* 거리 9.4)
+      2.695e-02 | -1.302e-01 | 4.408e-02  (TIME_LIMIT, α* 거리 9.4)
+      2.695e-02 | +2.513e-05 | 1.189e-02  (TIME_LIMIT, α* 거리 0.4)
+    요구 gap 초과 노드의 좌표별 평균 폭: [148.7, 150.0, 25.9, 70.9, 150.0, 17.5, 26.5, 35.9, 150.0]
+    요구 gap 초과 노드의 고정 안 된 쌍대 성분 수: 중앙값 30.0, 시나리오별 (고정 안 된 행 수의 평균): [2.0, 2.3, 2.3, 1.6, 2.0, 0.9, 1.0, 0.7, 2.7, 1.2, 2.6, 1.0, 1.9, 1.4, 1.0, 1.6, 0.3, 0.8, 1.1, 3.2]
