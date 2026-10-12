@@ -13,6 +13,13 @@ nz_alpha_bnb_dr.jl — α-B&B (nz_alpha_bnb.jl) + **상자별 쌍대 범위 조�
   RLT: (ϖ − σlo r)(α_i − l_i) ≥ 0, (ϖ − σlo r)(u_i − α_i) ≥ 0, (σhi r − ϖ)(α_i − l_i) ≥ 0, (σhi r − ϖ)(u_i − α_i) ≥ 0
        (ζW = α ϖ, ζL = α r 로 선형. 범위가 한 점이면 ζW = σ ζL 로 인증서 곱이 정확해진다)
   C  : 상자가 함의하는 상보성 — l_i > 0 이면 follower 1단계 정상성이 등식, Σ_i W_li u_i < w_l 이면 κ_l = 0
+  V  : 시나리오별 값 상한 ℓᵀŷˢ ≤ φ̄_s(B) r_s          X : follower 1단계 상보성의 RLT (곱 변수 Zκ = α κ, ζΠ = α π̃)
+2026-10-13 에 더한 것 (모두 기본 켬. 진단과 측정은 docs/dependent_ambiguity/alpha_bnb_nonzero_analysis.md §10.13)
+  FWD: follower 블록의 시나리오별 약쌍대  cᵀȳˢ ≤ (uˢ + gˢx̄)ᵀπ̃ˢ + Σ_H hcoef ζΠ_ks   (리더 블록의 WD 와 같은 종류)
+  KMC: κ_l ≤ κmax_l 과 Zκ = α κ 의 위쪽 McCormick
+  DD : 쌍대 **차이** 의 범위  dlo d_s ≤ π̃_ks − π̃_k′s ≤ dhi d_s (리더: ϖ, r_s) — 성분별 범위가 놓치는, 같은 시나리오의 두 쌍대가 함께 움직이는 관계
+  상보성 분기 (cbranch): l_i = 0 인 좌표에서 α̂_i > 0, 정상성 여유 ĝ_i > 0 이면 {α_i = 0} | {g_i = 0} 로 분기
+  분리 행 제자리 갱신 (sticky), 노드 LP 허용오차 1e-7 (lp_tol), Gurobi 호출의 GC-safe 구간 (gurobi_gcsafe.jl)
 
 유효성
   - 최적 쌍대: Ω 의 최적해에서 (벌점 항 0) ϖˢ = r_s σ, π̃ˢ = d_s σ' (σ, σ' 는 α 에서의 recourse 최적 쌍대). r_s = 0, d_s = 0 이면
@@ -76,8 +83,6 @@ mutable struct _NZDR
     prlt::Array{ConstraintRef,3}                 # 4 × |Hk| × S: ζΠ = α π̃ 의 범위 × 상자 RLT (없으면 크기 0)
     zP::Matrix{VariableRef}                      # ζΠ (|Hk| × S, 없으면 크기 0)
     fwd::Vector{ConstraintRef}                   # follower 블록의 시나리오별 약쌍대 (없으면 빈 벡터)
-    cc::Vector{Tuple{Int,Int,ConstraintRef,ConstraintRef,Vector{Tuple{VariableRef,Float64}}}}   # 성분별 상보성 (a, s, ≥ lo 행, ≤ hi 행, 행 활동의 (변수, 계수))
-    xx::Vector{Tuple{Int,Int,ConstraintRef,ConstraintRef,ConstraintRef}}   # 교차 정상성 RLT (i, i′, A 행, B 행, C 행)
     kmc::Vector{Tuple{Int,Int,ConstraintRef,ConstraintRef,Float64}}         # Zκ = α κ 의 κ 상한 쪽 McCormick (i, l, 위 행, 아래 행, κmax)
     pairs::Vector{Tuple{Int,Int}}                                           # 쌍대 차이 범위의 성분 쌍 (a, a′), a < a′
     ddF::Array{ConstraintRef,3}                                             # 2 × |pairs| × S: dlo d ≤ π̃_a − π̃_a′ ≤ dhi d
@@ -87,8 +92,8 @@ mutable struct _NZDR
 end
 
 "노드 LP (P) 에 범위 행의 자리를 만든다 (계수는 _nz_dr_set! 가 노드마다 채움)"
-function _nz_dr_attach!(P::_NZSepLP, nd::NZData, x̄; optimizer, vcut::Bool=true, cslift::Bool=true, fwd::Bool=false,
-                        lsd::Bool=false, cc::Bool=false, xx::Bool=false, kmc::Bool=false, dd::Bool=false)
+function _nz_dr_attach!(P::_NZSepLP, nd::NZData, x̄; optimizer, vcut::Bool=true, cslift::Bool=true, fwd::Bool=true,
+                        kmc::Bool=true, dd::Bool=true)
     v = P.O.v; mdl = P.O.model; S, nh = nd.S, nz_nh(nd)
     Hr = v[:Hr]
     Hk = [k for k in Hr if nd.hU[nd.hrow[k]] > 0 && isfinite(nd.varpiU[k])]
@@ -124,17 +129,15 @@ function _nz_dr_attach!(P::_NZSepLP, nd::NZData, x̄; optimizer, vcut::Bool=true
     #    Zκ_il = α_i κ_l (κ ≥ 0 × 상자 인수),  ζΠ_as = α_i π̃_ks (범위 행 × 상자 인수: W 쪽 RLT 와 같은 4 행)
     #    쌍대가 고정된 상자에서는 ζΠ = σ ζF 가 되어 follower 의 primal 값 (ζF 로 완화된 것) 이 정상성으로 묶인다.
     zk = Tuple{Int,Int,ConstraintRef,ConstraintRef}[]
-    xxv = Tuple{Int,Int,ConstraintRef,ConstraintRef,ConstraintRef}[]
     kmcv = Tuple{Int,Int,ConstraintRef,ConstraintRef,Float64}[]
-    xx && !cslift && error("_nz_dr_attach!: xx 는 cslift 가 필요")
-    kmc && !cslift && error("_nz_dr_attach!: kmc 는 cslift 가 필요")
+    fwd = fwd && cslift; kmc = kmc && cslift             # 둘 다 X 의 곱 변수 (ζΠ, Zκ) 를 쓴다
     prlt = Array{ConstraintRef,3}(undef, 0, 0, 0)
     zPm = Matrix{VariableRef}(undef, 0, 0)
     if cslift
         nW = size(nd.W, 1); κ = v[:κ]; α = v[:α]
         Zκ = Dict{Tuple{Int,Int},VariableRef}()
         for i in 1:nh, l in 1:nW
-            (nd.hU[i] > 0 && (nd.W[l, i] != 0 || xx)) || continue      # xx: 다른 묶음의 κ 와의 곱도 필요
+            (nd.hU[i] > 0 && nd.W[l, i] != 0) || continue
             z = @variable(mdl, lower_bound = 0.0); Zκ[(i, l)] = z
             push!(zk, (i, l, @constraint(mdl, z - 0.0 * κ[l] >= 0.0), @constraint(mdl, z - nd.hU[i] * κ[l] <= 0.0)))
         end
@@ -173,19 +176,6 @@ function _nz_dr_attach!(P::_NZSepLP, nd::NZData, x̄; optimizer, vcut::Bool=true
             @constraint(mdl, sum(nd.W[l, i] * Zκ[(i, l)] for l in 1:nW if haskey(Zκ, (i, l)) && nd.W[l, i] != 0) - nd.c0[i] * α[i]
                              - sum(nd.hcoef[Hk[a]] * ζΠ[a, s] for a in 1:n, s in 1:S if nd.hrow[Hk[a]] == i) == 0.0)
         end
-        if xx                                             # 교차 정상성 RLT (설명은 아래 XX 주석)
-            all(nd.hcoef[k] > 0 for k in Hk) || error("_nz_dr_attach!: xx — hcoef ≤ 0 인 H 행")
-            ζF = v[:ζF]; act = [i for i in 1:nh if nd.hU[i] > 0]
-            for i in act, ip in act
-                ip == i && continue
-                e0 = sum(0.0 * κ[l] for l in 1:nW) + sum(0.0 * v[:π̃][k, s] for k in Hk, s in 1:S if nd.hrow[k] == i) + sum(0.0 * ζF[ip, s] for s in 1:S)
-                WZ = sum(nd.W[l, i] * Zκ[(ip, l)] for l in 1:nW if nd.W[l, i] != 0; init=AffExpr(0.0))
-                cA = @constraint(mdl, WZ - nd.c0[i] * α[ip] + e0 >= 0.0)
-                cB = @constraint(mdl, -WZ + nd.c0[i] * α[ip] + e0 >= 0.0)
-                cC = @constraint(mdl, WZ - nd.c0[i] * α[ip] + sum(0.0 * ζF[ip, s] for s in 1:S) <= 1e30)
-                push!(xxv, (i, ip, cA, cB, cC))
-            end
-        end
     end
     # FWD: follower 블록의 시나리오별 약쌍대  cᵀȳˢ ≤ (uˢ + gˢ x̄)ᵀπ̃ˢ + Σ_{k∈H} hcoef_k ζΠ_ks   (ζΠ = α π̃, X 가 있어야 함)
     #   정확한 해에서 ȳˢ = d_s y, π̃ˢ = d_s σ (y: α 에서 실행가능, σ: 쌍대 실행가능) 이므로 약쌍대성 cᵀy ≤ (u + g x̄ + Bα)ᵀσ 에 d_s 를 곱한 것.
@@ -193,7 +183,6 @@ function _nz_dr_attach!(P::_NZSepLP, nd::NZData, x̄; optimizer, vcut::Bool=true
     #   꺾임을 품은 상자에서는 시나리오끼리 부호가 다른 gap 을 상쇄할 수 있다 — 이 행이 시나리오마다 gap ≥ 0 을 강제한다.
     fw = ConstraintRef[]
     if fwd
-        cslift || error("_nz_dr_attach!: fwd 는 cslift (ζΠ) 가 필요")
         all(nd.hU[nd.hrow[k]] <= 0 || k in Hk for k in Hr) || error("_nz_dr_attach!: fwd — ζΠ 가 없는 H 행이 있음 (ϖᵁ 무한)")
         m_, ny_ = nz_m(nd), nz_ny(nd); ȳ = v[:ȳ]; πt = v[:π̃]
         coefπ(k, s) = nd.u[k, s] + (nd.xrow[k] > 0 ? nd.g[k, s] * x̄[nd.xrow[k]] : 0.0)
@@ -201,43 +190,6 @@ function _nz_dr_attach!(P::_NZSepLP, nd::NZData, x̄; optimizer, vcut::Bool=true
                                - sum(coefπ(k, s) * πt[k, s] for k in 1:m_ if coefπ(k, s) != 0)
                                - sum(nd.hcoef[Hk[a]] * zPm[a, s] for a in 1:n) <= 0.0) for s in 1:S]
     end
-    # LSD: 리더 블록의 시나리오별 강쌍대 (WD 의 반대 방향)  cᵀŷˢ ≥ (uˢ + gˢ x̄)ᵀϖˢ + Σ_{k∈H} hcoef_k ζW_ks.
-    #   정확한 해에서 ŷˢ = r_s y (y: pessimistic recourse 최적해), ϖˢ = r_s σ (σ: 최적 쌍대) 이므로 등식 (벌점 항 0). WD 와 합쳐 등식이 된다.
-    if lsd
-        m_, ny_ = nz_m(nd), nz_ny(nd); ŷ = v[:ŷ]; ϖ = v[:ϖ]
-        coefϖ(k, s) = nd.u[k, s] + (nd.xrow[k] > 0 ? nd.g[k, s] * x̄[nd.xrow[k]] : 0.0)
-        jjof2 = Dict(k => j for (j, k) in enumerate(Hr))
-        @constraint(mdl, [s = 1:S], sum(nd.c[j] * ŷ[j, s] for j in 1:ny_ if nd.c[j] != 0)
-                                    - sum(coefϖ(k, s) * ϖ[k, s] for k in 1:m_ if coefϖ(k, s) != 0)
-                                    - sum(nd.hcoef[k] * v[:ζW][jjof2[k], s] for k in Hr) >= 0.0)
-    end
-    # CC: 성분별 상보성의 곱 형태. H 행 k (좌표 i) 의 상보성 σ_k (u_k + hcoef α_i − (Ay)_k) = 0 에 d_s (r_s) 를 곱하면
-    #   hcoef ζΠ_ks = σ_k · act^F_ks,  act^F_ks = (Aȳˢ)_k − u_ks d_s        (리더: hcoef ζW_ks = σ_k · act^L_ks, act^L = (Aŷˢ)_k − u_ks r_s)
-    #   이고 σ_k ∈ [lo, hi], act ≥ 0 이므로  lo·act ≤ hcoef ζ ≤ hi·act.  act ≥ 0 이 보장되는 행 (A_k ≥ 0, u_k ≤ 0, x 없음) 에만 넣는다.
-    ccv = Tuple{Int,Int,ConstraintRef,ConstraintRef,Vector{Tuple{VariableRef,Float64}}}[]
-    if cc
-        ny_ = nz_ny(nd)
-        for (a, k) in enumerate(Hk), s in 1:S
-            (all(nd.A[k, :] .>= 0) && nd.u[k, s] <= 0 && nd.xrow[k] == 0) || continue
-            cols = [j for j in 1:ny_ if nd.A[k, j] != 0]
-            if cslift
-                act = Tuple{VariableRef,Float64}[(v[:ȳ][j, s], nd.A[k, j]) for j in cols]
-                nd.u[k, s] != 0 && push!(act, (v[:d][s], -nd.u[k, s]))
-                e0 = sum(0.0 * x for (x, _) in act)
-                push!(ccv, (a, s, @constraint(mdl, nd.hcoef[k] * zPm[a, s] - e0 >= 0.0), @constraint(mdl, nd.hcoef[k] * zPm[a, s] - e0 <= 0.0), act))
-            end
-            act = Tuple{VariableRef,Float64}[(v[:ŷ][j, s], nd.A[k, j]) for j in cols]
-            nd.u[k, s] != 0 && push!(act, (v[:r][s], -nd.u[k, s]))
-            e0 = sum(0.0 * x for (x, _) in act)
-            zW = v[:ζW][jj[a], s]
-            push!(ccv, (a, s, @constraint(mdl, nd.hcoef[k] * zW - e0 >= 0.0), @constraint(mdl, nd.hcoef[k] * zW - e0 <= 0.0), act))
-        end
-    end
-    # XX: follower 1 단계 정상성 g_i = (Wᵀκ − c0 − Σ_s Bᵀπ̃ˢ)_i ≥ 0 과 **다른 좌표** i′ 의 상자 인수의 RLT (X 는 자기 좌표 i′ = i 만).
-    #   (α_i′ − l_i′) g_i ≥ 0,  (u_i′ − α_i′) g_i ≥ 0,  l_i > 0 이면 g_i = 0 이므로 α_i′ g_i = 0.
-    #   곱 α_i′ κ_l = Zκ_i′l (새 변수, l κ ≤ Z ≤ u κ),  α_i′ π̃_ks 는 변수를 만들지 않고 범위로:  lo_ks ζF_i′s ≤ α_i′ π̃_ks ≤ hi_ks ζF_i′s
-    #   (π̃_ks = d_s σ_ks, σ_ks ∈ [lo, hi], ζF_i′s = α_i′ d_s ≥ 0).  쌍대가 고정된 상자에서는 Σ_s σ_ks ζF_i′s = Σ_l W_li Zκ_i′l − c0_i α_i′ 로
-    #   "σ_k 로 가중한 α_i′ 의 시나리오 평균이 α_i′ 와 같다" 를 모든 (k, i′) 쌍에 대해 강제한다 (X 는 k 가 i′ 자신의 행일 때만).
     # DD: 쌍대 **차이** 의 범위. 성분별 범위 [lo, hi] 는 상자 (곱집합) 라, 같은 시나리오의 두 성분이 함께 움직이는 것을 놓친다
     #   (예: 같은 고객의 두 점포 예약이 모두 묶이면 두 쌍대의 차이는 수송비 차이로 고정). 쌍 (a, a′) 마다 같은 KKT-MIP 로
     #   dlo ≤ σ_a − σ_a′ ≤ dhi 를 구해  dlo d_s ≤ π̃_a − π̃_a′ ≤ dhi d_s (리더: ϖ, r_s) 를 넣는다. 유효성은 성분별 범위와 같은 논증.
@@ -254,7 +206,7 @@ function _nz_dr_attach!(P::_NZSepLP, nd::NZData, x̄; optimizer, vcut::Bool=true
         end
     end
     mips = [_nz_dr_build_mip(nd, x̄, s; optimizer=optimizer) for s in 1:S]
-    return _NZDR(mips, Hk, jj, whi, wlo, phi, plo, rlt, stat, vc, zk, prlt, zPm, fw, ccv, xxv, kmcv, prs, ddF, ddL, 0, 0)
+    return _NZDR(mips, Hk, jj, whi, wlo, phi, plo, rlt, stat, vc, zk, prlt, zPm, fw, kmcv, prs, ddF, ddL, 0, 0)
 end
 
 "전역 범위 (루트 노드의 부모 값)"
@@ -468,34 +420,6 @@ function _nz_dr_set!(P::_NZSepLP, DR::_NZDR, nd::NZData, l, u, lo, hi, phib; com
             set_normalized_coefficient(c, ϖ, cw * sc); set_normalized_coefficient(c, zL, cl * sc); set_normalized_coefficient(c, r, cr * sc)
         end
     end
-    if !isempty(DR.xx)
-        nW = size(nd.W, 1); κv = v[:κ]; ζF = v[:ζF]
-        rowsof = Dict{Int,Vector{Int}}()                  # 좌표 i → Hk 안 위치들
-        for (a, k) in enumerate(DR.Hk); push!(get!(rowsof, nd.hrow[k], Int[]), a); end
-        for (i, ip, cA, cB, cC) in DR.xx
-            li, ui = l[ip], u[ip]; as = get(rowsof, i, Int[])
-            for ll in 1:nW
-                nd.W[ll, i] != 0 || continue
-                set_normalized_coefficient(cA, κv[ll], -li * nd.W[ll, i]); set_normalized_coefficient(cB, κv[ll], ui * nd.W[ll, i])
-            end
-            for s in 1:S
-                slo = 0.0; shi = 0.0
-                for a in as
-                    k = DR.Hk[a]; slo += nd.hcoef[k] * lo[a, s]; shi += nd.hcoef[k] * hi[a, s]
-                    set_normalized_coefficient(cA, v[:π̃][k, s], li * nd.hcoef[k]); set_normalized_coefficient(cB, v[:π̃][k, s], -ui * nd.hcoef[k])
-                end
-                set_normalized_coefficient(cA, ζF[ip, s], -slo); set_normalized_coefficient(cB, ζF[ip, s], shi)
-                set_normalized_coefficient(cC, ζF[ip, s], -shi)
-            end
-            set_normalized_rhs(cA, -li * nd.c0[i]); set_normalized_rhs(cB, ui * nd.c0[i])
-            set_normalized_rhs(cC, iseq(i) ? 0.0 : 1e30)
-        end
-    end
-    for (a, s, clo, chi, act) in DR.cc                    # lo·act ≤ hcoef ζ ≤ hi·act
-        for (x, cf) in act
-            set_normalized_coefficient(clo, x, -lo[a, s] * cf); set_normalized_coefficient(chi, x, -hi[a, s] * cf)
-        end
-    end
     for (i, c) in DR.stat                                 # α_i > 0 ⇒ Σ_s Bᵀπ̃ + c0 = Wᵀκ (≤ 는 Fh 로 이미 있음)
         set_normalized_rhs(c, iseq(i) ? -nd.c0[i] : -1e30)
     end
@@ -574,18 +498,18 @@ end
 const _NZ_DR_ANNOUNCED = Set{Any}()
 const _NZ_DR_ANNOUNCE_LOCK = ReentrantLock()
 
-"강화 스위치가 기본 (모두 켬) 이 아니면 stderr 에 한 번 알린다 (같은 구성은 프로세스당 한 번)"
+"기본 구성 (2026-10-13). 이 값과 다른 항목이 있으면 _nz_dr_announce 가 stderr 에 알린다"
+const _NZ_DR_DEFAULT = (dual_range=true, comp=true, vcut=true, cslift=true, fwd=true, kmc=true, dd=true, cbranch=true, sticky=true,
+                        lp_tol=1e-7, branch_point=:mid, child_rounds=1)
+
+"구성이 기본과 다르면 다른 항목을 stderr 에 한 번 알린다 (같은 구성은 프로세스당 한 번) — 의도하지 않은 구성으로 도는 것을 막기 위해"
 function _nz_dr_announce(config)
-    off = [n for n in (:dual_range, :comp, :vcut, :cslift) if !getfield(config, n)]
-    extra = (fwd=config.fwd, lsd=config.lsd, cc=config.cc, xx=config.xx, lp_tol=config.lp_tol, child_rounds=config.child_rounds, branch_pi=config.branch_pi, sticky=config.sticky, kmc=config.kmc, dd=config.dd, cbranch=config.cbranch)
-    isempty(off) && config.branch_point == :mid && extra == (fwd=false, lsd=false, cc=false, xx=false, lp_tol=1e-9, child_rounds=1, branch_pi=false, sticky=false,
-                                                                 kmc=false, dd=false, cbranch=false) && return
+    diff = [(n, getfield(config, n)) for n in keys(_NZ_DR_DEFAULT) if getfield(config, n) != getfield(_NZ_DR_DEFAULT, n)]
+    isempty(diff) && return
     lock(_NZ_DR_ANNOUNCE_LOCK) do
-        key = (Tuple(off), config.branch_point, extra)
-        key in _NZ_DR_ANNOUNCED && return
-        push!(_NZ_DR_ANNOUNCED, key)
-        println(stderr, "nz_alpha_bnb_dr: 기본이 아닌 구성으로 실행 — 끈 강화: ", isempty(off) ? "없음" : join(off, ", "),
-                ", branch_point = ", config.branch_point, ", ", extra)
+        diff in _NZ_DR_ANNOUNCED && return
+        push!(_NZ_DR_ANNOUNCED, diff)
+        println(stderr, "nz_alpha_bnb_dr: 기본이 아닌 구성으로 실행 — ", join(["$n = $v" for (n, v) in diff], ", "))
     end
     return
 end
@@ -597,7 +521,7 @@ end
 nz_alpha_bnb (기존, `bnb = :legacy`) 의 탐색 — worker 병렬, best-first + diving, 위반 RLT 행 분리, Ipopt 휴리스틱 — 에
 노드마다 상자별 쌍대 범위 조임을 더한 것. 노드 LP 는 dual simplex 전용.
 
-인자 (기본값 = 2026-10-11 측정에 쓴 구성. 기본값 밖의 조합은 측정·검증하지 않았다)
+인자 (기본값 = 2026-10-13 측정에 쓴 구성 `_NZ_DR_DEFAULT`. 기본값 밖의 조합은 측정·검증하지 않았다)
 
 | 묶음 | 인자 | 기본 | 뜻 |
 |---|---|---|---|
@@ -620,19 +544,26 @@ nz_alpha_bnb (기존, `bnb = :legacy`) 의 탐색 — worker 병렬, best-first 
 | | `comp` | true | 상자가 함의하는 상보성 (C) |
 | | `vcut` | true | 시나리오별 값 상한 (V) |
 | | `cslift` | true | follower 1 단계 상보성의 RLT (X) |
+| | `fwd` | true | follower 블록의 시나리오별 약쌍대 (FWD). X 가 필요 |
+| | `kmc` | true | κ 상한과 Zκ 의 위쪽 McCormick (KMC). X 가 필요 |
+| | `dd` | true | 쌍대 차이 범위 (DD). 노드당 범위 MIP 가 늘지만 (S = 20 에서 37 → 69 개) 노드 수가 1/10 로 준다 |
+| 탐색·LP (2026-10-13) | `cbranch` | true | 상보성 분기. 끄면 중점 분할만 |
+| | `sticky` | true | 분리 행을 (좌표, 후보 행, 쪽) 마다 하나만 두고 상자 경계를 제자리 갱신. false 면 행을 쌓는 기존 방식 |
+| | `lp_tol` | 1e-7 | 노드 LP 의 Feasibility/OptimalityTol (+ NumericFocus 0). 상한에 상대 1e-6 여유를 더함. 1e-9 면 build_nz_omega 의 설정 그대로 |
 | 이어 풀기 | `resume` | nothing | 같은 x̄ 의 이전 호출이 돌려준 `r[:state]`. 주면 그 호출이 멈춘 곳 (열린 노드, incumbent) 에서 이어 푼다 |
 
 이어 풀기 (`resume`): Ω(x̄) 는 x̄ 만으로 정해지므로 같은 x̄ 에서는 이전 호출의 B&B 전선 (열린 노드와 그 상한, 가지친 노드의 상한,
 incumbent) 이 그대로 유효하다. Benders 가 목표값 조기 종료로 끝난 호출을 같은 x̄ 에서 다시 부를 때 처음부터 다시 풀지 않게 한다
 (S = 30 에서 같은 x̄ = {1} 을 260 s + 300 s 로 두 번 풀던 것). 상태는 강화 구성이 같은 호출 사이에서만 넘길 것 (구성이 다르면 오류).
 
-강화 스위치를 하나라도 끄면 stderr 에 한 줄 알린다 (의도하지 않은 구성으로 도는 것을 막기 위해).
-시험했다가 뺀 옵션 (꺾임점 3 분할 분기, 분리 행 줄이기, 노드 LP barrier) 은 코드에서 지웠다 — 결과는
-docs/dependent_ambiguity/alpha_bnb_nonzero_analysis.md §10.5, 코드는 커밋 3480bae 이전.
+기본 구성 (`_NZ_DR_DEFAULT`) 과 다른 항목이 있으면 stderr 에 한 줄 알린다 (의도하지 않은 구성으로 도는 것을 막기 위해).
+시험했다가 뺀 옵션은 코드에서 지웠다 — 꺾임점 3 분할 분기·분리 행 줄이기·노드 LP barrier (문서 §10.5, 코드는 커밋 3480bae 이전),
+교차 정상성 RLT·성분별 상보성·리더 강쌍대·분기 점수의 ζΠ 위반 (문서 §10.13, 코드는 커밋 32a64e4).
 
 반환 Dict: `:LB` (incumbent 값), `:UB` (상한), `:α` (incumbent, 원래 정의역), `:is_exact`, `:nodes`, `:time`, `:root_UB`,
 `:solver` (= :nz_alpha_bnb_dr), `:config` (강화·탐색 설정), `:state` (이어 풀기용), `:resumed`, 계측 (`:t_relax`, `:t_range`, `:range_mips`, `:fixfrac`),
-수치 문제 횟수 (`:range_fail`, `:infeas`, `:infeas_recovered`, `:numerr`, `:numerr_fail`).
+수치 문제 횟수 (`:range_fail`, `:infeas`, `:infeas_recovered`, `:numerr`, `:numerr_fail`), `:cbranch` (상보성 분기 횟수),
+`:gc_wait` (GC safepoint 대기, 초), `:gcsafe` (Gurobi 호출을 GC-safe 구간에서 했는가).
 """
 function nz_alpha_bnb_dr(nd::NZData, x̄;
                          # 호출마다 정하는 것
@@ -645,17 +576,17 @@ function nz_alpha_bnb_dr(nd::NZData, x̄;
                          min_width=1e-7, presolve::Bool=true,
                          # 강화 스위치 (ablation 전용, 기본 모두 켬)
                          dual_range::Bool=true, comp::Bool=true, vcut::Bool=true, cslift::Bool=true,
-                         # 시험 중 (기본 끔): follower 시나리오별 약쌍대, 리더 시나리오별 강쌍대, 성분별 상보성, 노드 LP 허용오차
-                         fwd::Bool=false, lsd::Bool=false, cc::Bool=false, xx::Bool=false, lp_tol::Float64=1e-9, branch_pi::Bool=false, sticky::Bool=false,
-                         kmc::Bool=false, dd::Bool=false, cbranch::Bool=false,
+                         fwd::Bool=true, kmc::Bool=true, dd::Bool=true,
+                         # 탐색·LP 구성 (ablation 전용, 기본 켬)
+                         cbranch::Bool=true, sticky::Bool=true, lp_tol::Float64=1e-7,
                          # 이어 풀기: 같은 x̄ 의 이전 호출이 돌려준 r[:state]
                          resume=nothing)
     branch_point in (:alphahat, :mid) || error("branch_point = :alphahat | :mid")
     config = (dual_range=dual_range, comp=dual_range && comp, vcut=dual_range && vcut, cslift=dual_range && cslift,
               branch_point=branch_point, child_rounds=child_rounds, maxrounds=maxrounds, dive_max=dive_max,
               sep_maxadd=sep_maxadd, presolve=presolve, heuristic=heuristic,
-              fwd=dual_range && cslift && fwd, lsd=dual_range && lsd, cc=dual_range && cc, xx=dual_range && cslift && xx, lp_tol=lp_tol, branch_pi=dual_range && cslift && branch_pi, sticky=sticky,
-              kmc=dual_range && cslift && kmc, dd=dual_range && dd, cbranch=dual_range && comp && cbranch)
+              fwd=dual_range && cslift && fwd, kmc=dual_range && cslift && kmc, dd=dual_range && dd,
+              cbranch=dual_range && comp && cbranch, sticky=sticky, lp_tol=lp_tol)
     _nz_dr_announce(config)
     n_cbranch = Threads.Atomic{Int}(0)                                       # 상보성 분기 횟수
     n_infeas = Threads.Atomic{Int}(0); n_infrec = Threads.Atomic{Int}(0)     # 실행 불가능 노드 (1e-6 재확인 통과) / 재확인에서 되살아난 노드
@@ -676,7 +607,7 @@ function nz_alpha_bnb_dr(nd::NZData, x̄;
     Ps = [_nz_build_sep(nd, x̄; optimizer=mk(envs[i])) for i in 1:nworkers]
     numerr0 = _NZ_NUMERR[]; numfail0 = _NZ_NUMERR_FAIL[]
     DRs = dual_range ? [_nz_dr_attach!(Ps[i], nd, x̄; optimizer=mk(envs[i]), vcut=vcut, cslift=cslift,
-                                       fwd=config.fwd, lsd=config.lsd, cc=config.cc, xx=config.xx, kmc=config.kmc, dd=config.dd) for i in 1:nworkers] : nothing
+                                       fwd=config.fwd, kmc=config.kmc, dd=config.dd) for i in 1:nworkers] : nothing
     # 노드 LP 허용오차. build_nz_omega 의 기본은 1e-9 + NumericFocus 2 (θ 항의 상쇄 때문에 조였던 것). lp_tol > 1e-9 이면 그 값 + NumericFocus 0 으로 풀고
     #   노드 상한에 상대 1e-6 의 여유를 더한다 (허용오차만큼 덜 수렴한 목적값을 상한으로 쓰는 것에 대한 여유).
     lp_tol > 1e-9 && for P in Ps
@@ -830,13 +761,6 @@ function nz_alpha_bnb_dr(nd::NZData, x̄;
                             for (jj, k) in enumerate(Hr)
                                 nd.hrow[k] == i || continue
                                 viol[i] += sum(abs(ζWv[jj, s] - α̂[i] * ϖv[k, s]) for s in 1:S)
-                            end
-                        end
-                        if branch_pi && dual_range && length(DR.zP) > 0     # follower 인증서 곱 ζΠ = α π̃ 의 위반도 분기 점수에
-                            for (a, k) in enumerate(DR.Hk)
-                                i = nd.hrow[k]
-                                u[i] - l[i] > min_width || continue
-                                viol[i] += sum(abs(value(DR.zP[a, s]) - α̂[i] * value(v[:π̃][k, s])) for s in 1:S)
                             end
                         end
                         i = argmax(viol)

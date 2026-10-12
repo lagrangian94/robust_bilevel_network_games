@@ -7,8 +7,8 @@ UB ≥ LB 라 드러나지 않음). 여기서는 독립 KKT 평가기의 최적 
 를 본다. 상자는 좌표마다 무작위 폭 (로그 균등 1e-4 ~ 전체), α* 가 내부·경계·모서리에 오도록, 일부 좌표는 폭 0.
 
 환경변수: TV_S = "3,5"  TV_X = "1,2;1;2;1,2,3"  TV_N = 200 (x̄ 마다 상자 수)  TV_EPS = 0.3  TV_DELTA = 0.1  TV_KKT_TL = 600  TV_THREADS = 2
-          TV_MODES = "full,noX,noV,base" (full: 전부, noX: 상보성 RLT 없이, noV: 값 상한 없이, base: W·F·C 만,
-                     fwd / xx / cc / lsd: full + 그 부등식 하나, new: full + 넷 모두)
+          TV_MODES = "full,noX,noV,base" (full: 기본 구성 전부, noX: 상보성 RLT 없이, noV: 값 상한 없이, base: W·F·C 만,
+                     old: 2026-10-12 까지의 구성 (FWD·KMC·DD 없음), fwd / kmc / dd: old + 그 부등식 하나)   NZ_SEED = 1
 실행: julia -t 2,1 nonzero_sum/test_dr_validity_boxes.jl
 """
 root = dirname(@__DIR__)
@@ -24,14 +24,14 @@ envf(k, d) = get(ENV, k, d); pd(s) = strip(s) == "Inf" ? Inf : parse(Float64, s)
 xs = [isempty(strip(t)) ? Int[] : parse.(Int, split(t, ",")) for t in split(envf("TV_X", "1,2;1;2;1,2,3"), ";")]
 modes = String.(strip.(split(envf("TV_MODES", "full,noX,noV,base"), ",")))
 mkw = Dict("full" => (vcut=true, cslift=true), "noX" => (vcut=true, cslift=false), "noV" => (vcut=false, cslift=true), "base" => (vcut=false, cslift=false),
-          "fwd" => (vcut=true, cslift=true, fwd=true), "xx" => (vcut=true, cslift=true, xx=true), "cc" => (vcut=true, cslift=true, cc=true),
-          "lsd" => (vcut=true, cslift=true, lsd=true), "new" => (vcut=true, cslift=true, fwd=true, xx=true, cc=true, lsd=true),   # 2026-10-13 추가 부등식
+          "old" => (fwd=false, kmc=false, dd=false), "fwd" => (fwd=true, kmc=false, dd=false), "kmc" => (fwd=false, kmc=true, dd=false),
+          "dd" => (fwd=false, kmc=false, dd=true),                                # 2026-10-13 추가 부등식을 하나씩
           "off" => nothing)                       # off: 기존 완화 (범위 행 없음) — 같은 상자에서 기존 완화의 수치 거동을 보기 위한 기준
 WMIN = parse(Float64, envf("TV_WMIN", "1e-4"))    # 좌표 폭의 하한 (로그 균등의 아래 끝)
 ZERO = envf("TV_ZERO", "1") == "1"                # 폭 0 좌표·경계에 붙은 α* 를 허용할지
 nbad_total = 0
 for S in parse.(Int, split(envf("TV_S", "3,5"), ","))
-    nd0 = nz_with_delta(make_location_instance(; coords=:sgb128, reservation=:pair, quota=150.0, wres=300.0, S=S, seed=1,
+    nd0 = nz_with_delta(make_location_instance(; coords=:sgb128, reservation=:pair, quota=150.0, wres=300.0, S=S, seed=parse(Int, envf("NZ_SEED", "1")),
                                                eps_hat=ε, eps_tilde=ε, beta=0.4), δ)
     ndf = nz_with_bounds(nd0; thetaU=nz_theta_circuit_exact(nd0)[1])
     for xi in xs
@@ -74,8 +74,10 @@ for S in parse.(Int, split(envf("TV_S", "3,5"), ","))
                         ninf <= 2 && println("    범위 MIP 가 실행 불가능하다고 함 (α* 를 품은 상자인데): l = ", l, " u = ", u)
                         continue
                     end
-                    lo, hi, _, phib = rg
-                    _nz_dr_set!(P, DR, nd, l, u, lo, hi, phib)
+                    lo, hi, wt, phib = rg
+                    dl, dh = _nz_dr_dglobal(nd, DR)                 # 쌍대 차이 범위 (DD 가 꺼진 변형에서는 빈 행렬)
+                    isempty(DR.pairs) || ((dl, dh) = _nz_dr_dranges!(DR, nd, l, u, lo, hi, dl, dh, Dict{Tuple{Int,Int,Bool},Vector{Float64}}(), wt))
+                    _nz_dr_set!(P, DR, nd, l, u, lo, hi, phib; dlo=dl, dhi=dh)
                 end
                 z = _nz_sep_solve!(P)
                 if z == -Inf

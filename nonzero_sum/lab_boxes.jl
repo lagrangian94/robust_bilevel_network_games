@@ -30,16 +30,13 @@ boxes = fr.boxes[sel]
         fr.seed, S, string(fr.x), LB, length(fr.boxes), length(live), length(boxes),
         minimum((b.ub - LB) / sc for b in boxes), maximum((b.ub - LB) / sc for b in boxes)); flush(stdout)
 
-# 변형 이름 = "+" 로 이은 토큰:  fwd (follower 약쌍대) | rN (분리 라운드 상한 N, 기본 1 = B&B 의 child_rounds) |
+# 변형 이름 = "+" 로 이은 토큰:  fwd (follower 약쌍대) | kmc | dd | sticky | rN (분리 라운드 상한 N, 기본 1 = B&B 의 child_rounds) |
 #   tol7·tol6 (NumericFocus 0 + Feasibility/OptimalityTol 1e-7·1e-6) | nf0 | primal | base (아무것도 안 바꿈)
 function parse_variant(name)
-    attach = Dict{Symbol,Any}(); lp = Dict{Symbol,Any}(); rounds = 1; sticky = false
+    attach = Dict{Symbol,Any}(:fwd => false, :kmc => false, :dd => false); lp = Dict{Symbol,Any}(); rounds = 1; sticky = false   # 토큰이 없으면 끔
     for t in split(name, "+")
         t == "base" && continue
         if t == "fwd"; attach[:fwd] = true
-        elseif t == "lsd"; attach[:lsd] = true
-        elseif t == "cc"; attach[:cc] = true
-        elseif t == "xx"; attach[:xx] = true
         elseif t == "sticky"; sticky = true
         elseif t == "kmc"; attach[:kmc] = true
         elseif t == "dd"; attach[:dd] = true

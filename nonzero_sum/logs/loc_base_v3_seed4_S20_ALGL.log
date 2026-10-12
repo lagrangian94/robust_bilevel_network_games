@@ -1,0 +1,77 @@
+Set parameter Username
+Set parameter LicenseID to value 2742039
+Academic license - for non-commercial use only - expires 2026-11-20
+====================================================================================================
+기본 인스턴스 S 스케일링: SGB128 pair quota=150 ε̂=ε̃=0.30 β=0.40 δ=0.1 seed=4 | TL=3600s E_TL/x=300s E=nz_kkt_value_reduced workers=12 θᵁ=1.0000 (circuit) tol=5e-03 ogap=1e-03
+====================================================================================================
+
+--- S=20 (n_h=15, |X|=16)
+  [설정] 전역 oracle = α-B&B (nz_alpha_bnb_dr), worker 12, gap 1e-03, 이어 풀기 켬, bnb_kw = (ipopt_time = 120.0,)
+  [설정] oracle 시간: 남은 시간 전체 (끊지 않음), 목표값 조기 종료 켬, local cut 켬
+  [loc]  it   1 LB=-10000000.0000 UB=        Inf x=Int64[]    Ω_loc=    -0.0005 (0.2s) menu=1 (+belief)
+  [menu] it   2 LB=-9999695.0000 UB=        Inf x=[1]        menu cut 1/1 (V_menu=-20345.9312)
+  [menu] it   3 LB=-9999695.0000 UB=        Inf x=[2]        menu cut 1/1 (V_menu=-19775.4593)
+  [menu] it   4 LB=-5312634.9987 UB=        Inf x=[1, 2]     menu cut 1/1 (V_menu=-30611.4705)
+  [menu] it   5 LB=-1690615.0008 UB=        Inf x=[3]        menu cut 1/1 (V_menu=-1701.1315)
+  [loc]  it   6 LB=-30001.4705 UB=        Inf x=[1, 2]     Ω_loc= -1427.3116 (0.6s) menu=2 (+belief)
+  [menu] it   7 LB=-20040.9312 UB=        Inf x=[1]        menu cut 1/2 (V_menu=-13099.7242)
+  [menu] it   8 LB=-19470.4593 UB=        Inf x=[2]        menu cut 1/2 (V_menu=-1939.7600)
+  [loc]  it   9 LB=-12794.7243 UB=        Inf x=[1]        Ω_loc=  -821.2409 (0.5s) menu=3 (+belief)
+  [loc]  it  10 LB= -1634.7600 UB=        Inf x=[2]        Ω_loc=  -836.1695 (2.4s) menu=4 (+belief)
+  [loc]  it  11 LB= -1396.1315 UB=        Inf x=[3]        Ω_loc=   -76.3355 (0.3s) menu=5 (+belief)
+Set parameter Username
+Set parameter LicenseID to value 2742039
+Academic license - for non-commercial use only - expires 2026-11-20
+Set parameter Username
+Set parameter LicenseID to value 2742039
+Academic license - for non-commercial use only - expires 2026-11-20
+Set parameter Username
+Set parameter LicenseID to value 2742039
+Academic license - for non-commercial use only - expires 2026-11-20
+Set parameter Username
+Set parameter LicenseID to value 2742039
+Academic license - for non-commercial use only - expires 2026-11-20
+Set parameter Username
+Set parameter LicenseID to value 2742039
+Academic license - for non-commercial use only - expires 2026-11-20
+Set parameter Username
+Set parameter LicenseID to value 2742039
+Academic license - for non-commercial use only - expires 2026-11-20
+Set parameter Username
+Set parameter LicenseID to value 2742039
+Academic license - for non-commercial use only - expires 2026-11-20
+Set parameter Username
+Set parameter LicenseID to value 2742039
+Academic license - for non-commercial use only - expires 2026-11-20
+Set parameter Username
+Set parameter LicenseID to value 2742039
+Academic license - for non-commercial use only - expires 2026-11-20
+Set parameter Username
+Set parameter LicenseID to value 2742039
+Academic license - for non-commercial use only - expires 2026-11-20
+Set parameter Username
+Set parameter LicenseID to value 2742039
+Academic license - for non-commercial use only - expires 2026-11-20
+Set parameter Username
+Set parameter LicenseID to value 2742039
+Academic license - for non-commercial use only - expires 2026-11-20
+Set parameter Username
+Set parameter LicenseID to value 2742039
+Academic license - for non-commercial use only - expires 2026-11-20
+
+******************************************************************************
+This program contains Ipopt, a library for large-scale nonlinear optimization.
+ Ipopt is released as open source code under the Eclipse Public License (EPL).
+         For more information visit https://github.com/coin-or/Ipopt
+******************************************************************************
+
+  [orcl] it  12 LB=  -817.3086 UB=  -237.0277 x=[1, 2]     Ω= -1303.6865 (25.8s) menu=6 (+belief, LP@x̄=-1303.6743, gap -1.2e-02)
+  [menu] it  13 LB=  -693.6865 UB=  -237.0277 x=[1, 2]     menu cut 1/6 (V_menu=-1303.6743)
+  [orcl] it  14 LB=  -693.6743 UB=  -404.0246 x=[1, 2]     Ω= -1264.1098 (21.9s) menu=7 (+belief, LP@x̄=-1264.0892, gap -2.1e-02)
+  [menu] it  15 LB=  -654.1098 UB=  -404.0246 x=[1, 2]     menu cut 1/7 (V_menu=-1264.0892)
+  [orcl] it  16 LB=  -654.0892 UB=  -478.4304 x=[1, 2]     Ω= -1260.5173 (37.9s) menu=8 (+belief, LP@x̄=-1260.4495, gap -6.8e-02)
+  [menu] it  17 LB=  -650.5174 UB=  -478.4304 x=[1, 2]     menu cut 1/8 (V_menu=-1260.4495)
+  [orcl] it  18 LB=  -650.4495 UB=  -505.7114 x=[1, 2]     Ω= -1223.8494 (19.2s) menu=9 (+belief, LP@x̄=-1223.7896, gap -6.0e-02)
+  [menu] it  19 LB=  -613.8494 UB=  -505.7114 x=[1, 2]     menu cut 1/9 (V_menu=-1223.7896)
+  [orcl] it  20 LB=  -613.7896 UB=  -611.6480 x=[1, 2]     Ω= -1223.8494 (109.2s) menu=9
+RESULT S=20 method=ALGL oracle=nz_alpha_bnb_dr status=Optimal x={1,2} LB=-613.789578 UB=-611.648026 gap=3.50e-03 iters=21 global=5 local=5 menu=9 t_LB=117.8 time=236.5

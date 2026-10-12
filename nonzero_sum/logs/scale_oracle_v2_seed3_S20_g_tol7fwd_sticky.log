@@ -56,3 +56,6 @@ This program contains Ipopt, a library for large-scale nonlinear optimization.
     [nz-α-B&B-dr] t= 365.0s nodes= 4885 open=  801 LB=-865.958333 UB=-864.665863 gap=1.493e-03
     [nz-α-B&B-dr] t= 425.2s nodes= 5623 open=  929 LB=-865.958333 UB=-864.677806 gap=1.479e-03
     [nz-α-B&B-dr] t= 485.2s nodes= 6189 open=  777 LB=-865.958333 UB=-864.767894 gap=1.375e-03
+    [nz-α-B&B-dr] t= 545.3s nodes= 6785 open=  680 LB=-865.958333 UB=-864.917558 gap=1.202e-03
+RESULT S=20 abbdrk     TimeLim LB=-865.9583 UB=-864.9877 gap=1.121e-03 time=603.5 nodes=7895 rootUB=-555.83 | relax 3671s range 343s (MIP 144370) 고정비율 0.91 MIP 실패 0 LP 수치오류 78 (실패 0) 실행불가능 노드 411 (재확인에서 되살아남 59) GC 대기 3s (gcsafe on) 상보성 분기 0
+nz_alpha_bnb_dr: 기본이 아닌 구성으로 실행 — 끈 강화: 없음, branch_point = mid, (fwd = true, lsd = false, cc = false, xx = false, lp_tol = 1.0e-7, child_rounds = 1, branch_pi = false, sticky = true, kmc = false, dd = false, cbranch = false)
