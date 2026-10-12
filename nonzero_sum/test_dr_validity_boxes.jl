@@ -23,10 +23,12 @@ envf(k, d) = get(ENV, k, d); pd(s) = strip(s) == "Inf" ? Inf : parse(Float64, s)
 xs = [isempty(strip(t)) ? Int[] : parse.(Int, split(t, ",")) for t in split(envf("TV_X", "1,2;1;2;1,2,3"), ";")]
 modes = String.(strip.(split(envf("TV_MODES", "full,noX,noV,base"), ",")))
 mkw = Dict("full" => (vcut=true, cslift=true), "noX" => (vcut=true, cslift=false), "noV" => (vcut=false, cslift=true), "base" => (vcut=false, cslift=false),
+          "step" => (vcut=true, cslift=true, stepcut=true),   # 시험: 계단 cut 까지
           "off" => nothing)                       # off: 기존 완화 (범위 행 없음) — 같은 상자에서 기존 완화의 수치 거동을 보기 위한 기준
 WMIN = parse(Float64, envf("TV_WMIN", "1e-4"))    # 좌표 폭의 하한 (로그 균등의 아래 끝)
 ZERO = envf("TV_ZERO", "1") == "1"                # 폭 0 좌표·경계에 붙은 α* 를 허용할지
 nbad_total = 0
+nstep_total = 0
 for S in parse.(Int, split(envf("TV_S", "3,5"), ","))
     nd0 = nz_with_delta(make_location_instance(; coords=:sgb128, reservation=:pair, quota=150.0, wres=300.0, S=S, seed=1,
                                                eps_hat=ε, eps_tilde=ε, beta=0.4), δ)
@@ -72,7 +74,9 @@ for S in parse.(Int, split(envf("TV_S", "3,5"), ","))
                         continue
                     end
                     lo, hi, _, phib = rg
-                    _nz_dr_set!(P, DR, nd, l, u, lo, hi, phib)
+                    steps = length(DR.scut) > 0 ? _nz_dr_steps(DR, nd, l, u, lo, hi) : nothing
+                    steps === nothing || (global nstep_total += count(!isnan, steps[1]) + count(!isnan, steps[3]))
+                    _nz_dr_set!(P, DR, nd, l, u, lo, hi, phib; steps=steps)
                 end
                 z = _nz_sep_solve!(P)
                 if z == -Inf
@@ -97,4 +101,5 @@ for S in parse.(Int, split(envf("TV_S", "3,5"), ","))
         end
     end
 end
+nstep_total > 0 && println("넣은 계단 cut 수 (전체): ", nstep_total)
 println(nbad_total == 0 ? "전체: α* 를 품은 모든 상자에서 실행 가능 + 상한 ≥ V*" : "전체: 무효 $nbad_total 건")

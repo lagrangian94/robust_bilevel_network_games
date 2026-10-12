@@ -73,12 +73,13 @@ mutable struct _NZDR
     zk::Vector{Tuple{Int,Int,ConstraintRef,ConstraintRef}}   # (i, l, Zκ ≥ l_i κ_l, Zκ ≤ u_i κ_l)  — 상보성 RLT (없으면 빈 벡터)
     prlt::Array{ConstraintRef,3}                 # 4 × |Hk| × S: ζΠ = α π̃ 의 범위 × 상자 RLT (없으면 크기 0)
     zP::Matrix{VariableRef}                      # ζΠ (|Hk| × S, 없으면 크기 0)
+    scut::Array{ConstraintRef,3}                 # 4 × |Hk| × S: 계단 cut (1 = ϖ 위, 2 = ϖ 아래, 3 = π̃ 위, 4 = π̃ 아래. 없으면 크기 0)
     nmip::Int
     nfail::Int                                   # 범위·값 MIP 가 Gurobi 오류로 실패한 횟수 (그 성분은 부모 값 유지)
 end
 
 "노드 LP (P) 에 범위 행의 자리를 만든다 (계수는 _nz_dr_set! 가 노드마다 채움)"
-function _nz_dr_attach!(P::_NZSepLP, nd::NZData, x̄; optimizer, vcut::Bool=true, cslift::Bool=true)
+function _nz_dr_attach!(P::_NZSepLP, nd::NZData, x̄; optimizer, vcut::Bool=true, cslift::Bool=true, stepcut::Bool=false)
     v = P.O.v; mdl = P.O.model; S, nh = nd.S, nz_nh(nd)
     Hr = v[:Hr]
     Hk = [k for k in Hr if nd.hU[nd.hrow[k]] > 0 && isfinite(nd.varpiU[k])]
@@ -141,8 +142,20 @@ function _nz_dr_attach!(P::_NZSepLP, nd::NZData, x̄; optimizer, vcut::Bool=true
                              - sum(nd.hcoef[Hk[a]] * ζΠ[a, s] for a in 1:n, s in 1:S if nd.hrow[Hk[a]] == i) == 0.0)
         end
     end
+    # 계단 cut (시험): 쌍대 비율과 좌표 α_i 를 잇는 행. 계수는 _nz_dr_set! 가 노드마다 채움 (자료가 없으면 범위 행과 같은 꼴)
+    scut = Array{ConstraintRef,3}(undef, 0, 0, 0)
+    if stepcut
+        scut = Array{ConstraintRef,3}(undef, 4, n, S)
+        for (a, k) in enumerate(Hk), s in 1:S
+            i = nd.hrow[k]; ϖ = v[:ϖ][k, s]; π = v[:π̃][k, s]; r = v[:r][s]; d = v[:d][s]; zL = v[:ζL][i, s]; zF = v[:ζF][i, s]
+            scut[1, a, s] = @constraint(mdl, ϖ - nd.varpiU[k] * r + 0.0 * zL <= 0.0)
+            scut[2, a, s] = @constraint(mdl, ϖ - 0.0 * r + 0.0 * zL >= 0.0)
+            scut[3, a, s] = @constraint(mdl, π - nd.varpiU[k] * d + 0.0 * zF <= 0.0)
+            scut[4, a, s] = @constraint(mdl, π - 0.0 * d + 0.0 * zF >= 0.0)
+        end
+    end
     mips = [_nz_dr_build_mip(nd, x̄, s; optimizer=optimizer) for s in 1:S]
-    return _NZDR(mips, Hk, jj, whi, wlo, phi, plo, rlt, stat, vc, zk, prlt, zPm, 0, 0)
+    return _NZDR(mips, Hk, jj, whi, wlo, phi, plo, rlt, stat, vc, zk, prlt, zPm, scut, 0, 0)
 end
 
 "전역 범위 (루트 노드의 부모 값)"
@@ -243,67 +256,59 @@ function _nz_dr_ranges(DR::_NZDR, nd::NZData, l, u, lo0, hi0, wit0, phib0; fixto
 end
 
 """
-좌표 i 에서 상자 [l, u] 안의 꺾임 위치들 (쌍대가 고정되지 않은 시나리오마다 두 점).
-recourse 값은 우변에 오목이라 예약 행의 쌍대 σ_k 는 α_i 에 비증가다 (hcoef_k > 0 일 때; 음수면 방향이 반대). 시나리오 s 에서
-  p⁺ = max{α_i : 상자 안에서 σ_k 가 아직 최댓값 hi 일 수 있음},  p⁻ = min{α_i : σ_k 가 이미 최솟값 lo 일 수 있음}
-을 범위 MIP 로 구한다 (다른 좌표가 상자 안에서 움직이면 꺾임 위치도 움직이므로 [p⁻, p⁺] 근처에 퍼져 있다).
-상자 경계에서 tiny 이상 안쪽인 점만 돌려준다 (정렬).
+계단 cut (stepcut, 시험) 의 자료. 고정되지 않은 성분 (a, s) 마다, 그 행의 좌표 i = hrow(k) 를 한 점에서 나눈 자식 상자의 쌍대 범위를 미리 본다.
+  위:   hiR = max{σ_k : α ∈ B, α_i ≥ P}  →  B 에서 σ_k ≤ hi (α_i < P), σ_k ≤ hiR (α_i ≥ P).
+        이 계단의 오목 포락선:  σ_k ≤ hi − (hi − hiR)(α_i − P)/(u_i − P)
+  아래: loL = min{σ_k : α ∈ B, α_i ≤ Q}  →  σ_k ≥ lo + (loL − lo)(Q − α_i)/(Q − l_i)
+P, Q 는 꺾임 바로 바깥에 둔다: P = (σ_k 가 hi 일 수 있는 가장 큰 α_i) + η, Q = (σ_k 가 lo 일 수 있는 가장 작은 α_i) − η.
+유효성은 hiR, loL 의 정의 (자식 상자의 범위, _nz_dr_ranges 와 같은 MIP) 에서만 나온다 — P, Q 를 어떻게 골랐는지와 무관하다.
+r_s (또는 d_s) 를 곱하면 ϖ, r, ζL (π̃, d, ζF) 의 선형 부등식이 된다 (_nz_dr_set!).
+반환: (P, hiR, Q, loL) 행렬 네 개 (|Hk| × S), 해당 없는 성분은 NaN. 성분당 MIP 최대 4 개.
 """
-function _nz_dr_kinkpts(DR::_NZDR, nd::NZData, l, u, lo, hi, i)
-    pts = Float64[]
-    S = nd.S; nh = nz_nh(nd)
-    tiny = 1e-6 * max(1.0, nd.hU[i])
-    for (a, k) in enumerate(DR.Hk)
-        nd.hrow[k] == i || continue
-        for s in 1:S
+function _nz_dr_steps(DR::_NZDR, nd::NZData, l, u, lo, hi; deadline=Inf)
+    n, S, nh = length(DR.Hk), nd.S, nz_nh(nd)
+    sP = fill(NaN, n, S); sH = fill(NaN, n, S); sQ = fill(NaN, n, S); sL = fill(NaN, n, S)
+    for s in 1:S
+        M = DR.mips[s]; boxset = false
+        for (a, k) in enumerate(DR.Hk)
             gap = hi[a, s] - lo[a, s]
-            gap > 1e-4 || continue
-            M = DR.mips[s]
-            for j in 1:nh; set_lower_bound(M.α[j], l[j]); set_upper_bound(M.α[j], u[j]); end
-            τ = min(1e-3, 0.01 * gap) + 2e-6                      # lo, hi 에는 1e-6 여유가 들어 있음
-            set_lower_bound(M.σ[k], hi[a, s] - τ)
-            @objective(M.model, nd.hcoef[k] > 0 ? MAX_SENSE : MIN_SENSE, M.α[i])
-            if _nz_dr_opt!(DR, M, l, u, "s=$s k=$k 꺾임 위") && termination_status(M.model) == MOI.OPTIMAL
-                pt = objective_value(M.model)
-                l[i] + tiny < pt < u[i] - tiny && push!(pts, pt)
+            gap > 1e-3 || continue
+            i = nd.hrow[k]; w = u[i] - l[i]
+            (nd.hcoef[k] > 0 && w > 0.1) || continue          # 폭이 좁으면 기울기가 커져 수치만 나빠짐
+            time() > deadline && return sP, sH, sQ, sL
+            if !boxset
+                for j in 1:nh; set_lower_bound(M.α[j], l[j]); set_upper_bound(M.α[j], u[j]); end
+                boxset = true
             end
+            τ = min(1e-3, 0.01 * gap) + 2e-6                   # lo, hi 에는 1e-6 여유가 들어 있음
+            η = max(1e-5, 1e-3 * w); wmin = max(0.02 * w, 1e-2)
+            # 위쪽 계단
+            set_lower_bound(M.σ[k], hi[a, s] - τ); @objective(M.model, Max, M.α[i])
+            P = (_nz_dr_opt!(DR, M, l, u, "s=$s k=$k 계단 P") && termination_status(M.model) == MOI.OPTIMAL) ? objective_bound(M.model) + η : NaN
             set_lower_bound(M.σ[k], 0.0)
-            set_upper_bound(M.σ[k], lo[a, s] + τ)
-            @objective(M.model, nd.hcoef[k] > 0 ? MIN_SENSE : MAX_SENSE, M.α[i])
-            if _nz_dr_opt!(DR, M, l, u, "s=$s k=$k 꺾임 아래") && termination_status(M.model) == MOI.OPTIMAL
-                pt = objective_value(M.model)
-                l[i] + tiny < pt < u[i] - tiny && push!(pts, pt)
+            if P < u[i] - wmin                                 # NaN 이면 false
+                set_lower_bound(M.α[i], max(P, l[i])); @objective(M.model, Max, M.σ[k])
+                if _nz_dr_opt!(DR, M, l, u, "s=$s k=$k 계단 hiR") && termination_status(M.model) == MOI.OPTIMAL
+                    h = objective_bound(M.model) + 1e-6
+                    h < hi[a, s] - 0.01 * gap && (sP[a, s] = max(P, l[i]); sH[a, s] = h)
+                end
+                set_lower_bound(M.α[i], l[i])
             end
-            isfinite(nd.varpiU[k]) ? set_upper_bound(M.σ[k], nd.varpiU[k]) : delete_upper_bound(M.σ[k])
+            # 아래쪽 계단
+            set_upper_bound(M.σ[k], lo[a, s] + τ); @objective(M.model, Min, M.α[i])
+            Q = (_nz_dr_opt!(DR, M, l, u, "s=$s k=$k 계단 Q") && termination_status(M.model) == MOI.OPTIMAL) ? objective_bound(M.model) - η : NaN
+            set_upper_bound(M.σ[k], nd.varpiU[k])
+            if Q > l[i] + wmin
+                set_upper_bound(M.α[i], min(Q, u[i])); @objective(M.model, Min, M.σ[k])
+                if _nz_dr_opt!(DR, M, l, u, "s=$s k=$k 계단 loL") && termination_status(M.model) == MOI.OPTIMAL
+                    g = objective_bound(M.model) - 1e-6
+                    g > lo[a, s] + 0.01 * gap && (sQ[a, s] = min(Q, u[i]); sL[a, s] = g)
+                end
+                set_upper_bound(M.α[i], u[i])
+            end
         end
     end
-    return sort!(pts)
-end
-
-"""
-꺾임 사이 분할점 (branch_point = :kinkmid). pts = 상자 (li, ui) 안의 꺾임 위치 (정렬).
-  꺾임 0 개 : nothing (호출 측이 중점)
-  꺾임 1 개 : 더 넓은 쪽 틈의 가운데 → 한 자식은 꺾임이 없어 쌍대가 고정되고, 꺾임을 품은 자식은 좁아진다
-  꺾임 ≥ 2 : 꺾임 수가 절반씩 되도록, 가운데 두 꺾임의 중간 (두 점이 사실상 겹치면 가장 넓은 틈의 가운데)
-분할점이 꺾임 위에 놓이지 않으므로 (경계에서는 두 쌍대가 모두 최적이라 범위가 안 좁혀짐) 자식마다 꺾임이 실제로 줄어든다.
-한쪽 자식이 너무 얇아지지 않게 상자 폭의 5% 안쪽으로 자른다.
-"""
-function _nz_kink_split(li, ui, pts)
-    m = length(pts)
-    m == 0 && return nothing
-    w = ui - li
-    q = vcat(li, pts, ui)
-    if m == 1
-        t = (pts[1] - li >= ui - pts[1]) ? 0.5 * (li + pts[1]) : 0.5 * (pts[1] + ui)
-    else
-        h = m ÷ 2                                   # q[h+1], q[h+2] = 가운데 두 꺾임
-        if q[h + 2] - q[h + 1] > 1e-6 * max(1.0, w)
-            t = 0.5 * (q[h + 1] + q[h + 2])
-        else
-            g = argmax(diff(q)); t = 0.5 * (q[g] + q[g + 1])
-        end
-    end
-    return clamp(t, li + 0.05 * w, ui - 0.05 * w)
+    return sP, sH, sQ, sL
 end
 
 """
@@ -324,8 +329,34 @@ function _nz_dr_recheck_infeasible!(model)
 end
 
 "노드 LP 의 범위 행 계수를 상자 [l, u] 와 범위 (lo, hi) 로 갱신"
-function _nz_dr_set!(P::_NZSepLP, DR::_NZDR, nd::NZData, l, u, lo, hi, phib; comp::Bool=true)
+function _nz_dr_set!(P::_NZSepLP, DR::_NZDR, nd::NZData, l, u, lo, hi, phib; comp::Bool=true, steps=nothing)
     v = P.O.v; S = nd.S
+    if length(DR.scut) > 0
+        # 계단 cut.  위: x − (H + mP) y + m z ≤ 0,  아래: x − (L + m'Q) y + m' z ≥ 0   ((x, y, z) = (ϖ, r, ζL), (π̃, d, ζF))
+        #   자료가 없는 성분은 m = 0 (범위 행과 같은 행)
+        for (a, k) in enumerate(DR.Hk), s in 1:S
+            i = nd.hrow[k]
+            xyz = ((v[:ϖ][k, s], v[:r][s], v[:ζL][i, s]), (v[:π̃][k, s], v[:d][s], v[:ζF][i, s]))
+            m = 0.0; c0 = hi[a, s]
+            if steps !== nothing && !isnan(steps[1][a, s])
+                m = (hi[a, s] - steps[2][a, s]) / (u[i] - steps[1][a, s]); c0 = hi[a, s] + m * steps[1][a, s]
+            end
+            sc = 1.0 / max(1.0, abs(c0), abs(m))
+            for (n, (x, y, z)) in zip((1, 3), xyz)
+                c = DR.scut[n, a, s]
+                set_normalized_coefficient(c, x, sc); set_normalized_coefficient(c, y, -c0 * sc); set_normalized_coefficient(c, z, m * sc)
+            end
+            m = 0.0; c0 = lo[a, s]
+            if steps !== nothing && !isnan(steps[3][a, s])
+                m = (steps[4][a, s] - lo[a, s]) / (steps[3][a, s] - l[i]); c0 = lo[a, s] + m * steps[3][a, s]
+            end
+            sc = 1.0 / max(1.0, abs(c0), abs(m))
+            for (n, (x, y, z)) in zip((2, 4), xyz)
+                c = DR.scut[n, a, s]
+                set_normalized_coefficient(c, x, sc); set_normalized_coefficient(c, y, -c0 * sc); set_normalized_coefficient(c, z, m * sc)
+            end
+        end
+    end
     for (s, c) in enumerate(DR.vcut)                      # ℓᵀŷˢ − φ̄_s r_s ≤ 0 (φ̄ 를 아직 모르면 비활성)
         if isfinite(phib[s])
             set_normalized_coefficient(c, v[:r][s], -phib[s]); set_normalized_rhs(c, 0.0)
@@ -383,13 +414,13 @@ const _NZ_DR_ANNOUNCE_LOCK = ReentrantLock()
 "강화 스위치가 기본 (모두 켬) 이 아니면 stderr 에 한 번 알린다 (같은 구성은 프로세스당 한 번)"
 function _nz_dr_announce(config)
     off = [n for n in (:dual_range, :comp, :vcut, :cslift) if !getfield(config, n)]
-    isempty(off) && config.branch_point == :mid && return
+    isempty(off) && config.branch_point == :mid && !config.stepcut && return
     lock(_NZ_DR_ANNOUNCE_LOCK) do
-        key = (Tuple(off), config.branch_point)
+        key = (Tuple(off), config.branch_point, config.stepcut)
         key in _NZ_DR_ANNOUNCED && return
         push!(_NZ_DR_ANNOUNCED, key)
         println(stderr, "nz_alpha_bnb_dr: 기본이 아닌 구성으로 실행 — 끈 강화: ", isempty(off) ? "없음" : join(off, ", "),
-                ", branch_point = ", config.branch_point)
+                ", branch_point = ", config.branch_point, config.stepcut ? ", stepcut (시험) 켬" : "")
     end
     return
 end
@@ -413,7 +444,7 @@ nz_alpha_bnb (기존, `bnb = :legacy`) 의 탐색 — worker 병렬, best-first 
 | 자원 | `ipopt_time` | 60.0 | Ipopt 휴리스틱 1 회 시간 (벤치마크는 120) |
 | | `heuristic` | true | Ipopt 휴리스틱 task 사용 |
 | | `envs` | nothing | Gurobi Env 를 직접 넘김 (worker 당 하나 + 휴리스틱용). 세션 수가 제한된 라이선스에서만 |
-| 탐색 | `branch_point` | :mid | 분할점. :mid (중점), :alphahat (완화 해, 끝 10% 면 중점), :kinkmid (시험 중: 분기 좌표의 꺾임들 사이 — `_nz_kink_split`) |
+| 탐색 | `branch_point` | :mid | 분할점. :mid (중점) 또는 :alphahat (완화 해, 끝 10% 면 중점) |
 | | `child_rounds` | 1 | 루트가 아닌 노드의 RLT 분리 라운드 상한 |
 | | `maxrounds` | 30 | 루트의 분리 라운드 상한 |
 | | `dive_max` | 3 | 한 worker 가 자식으로 연속 내려가는 횟수 |
@@ -449,15 +480,17 @@ function nz_alpha_bnb_dr(nd::NZData, x̄;
                          min_width=1e-7, presolve::Bool=true,
                          # 강화 스위치 (ablation 전용, 기본 모두 켬)
                          dual_range::Bool=true, comp::Bool=true, vcut::Bool=true, cslift::Bool=true,
+                         # 시험 중 (기본 끔): 계단 cut (_nz_dr_steps)
+                         stepcut::Bool=false,
                          # 이어 풀기: 같은 x̄ 의 이전 호출이 돌려준 r[:state]
                          resume=nothing)
-    branch_point in (:alphahat, :mid, :kinkmid) || error("branch_point = :alphahat | :mid | :kinkmid")
-    branch_point == :kinkmid && !dual_range && error("branch_point = :kinkmid 는 dual_range = true 에서만 (꺾임 위치를 범위 MIP 로 찾음)")
-    n_ksplit = Threads.Atomic{Int}(0)             # 꺾임 사이 분할을 한 횟수
+    branch_point in (:alphahat, :mid) || error("branch_point = :alphahat | :mid")
     config = (dual_range=dual_range, comp=dual_range && comp, vcut=dual_range && vcut, cslift=dual_range && cslift,
+              stepcut=dual_range && stepcut,
               branch_point=branch_point, child_rounds=child_rounds, maxrounds=maxrounds, dive_max=dive_max,
               sep_maxadd=sep_maxadd, presolve=presolve, heuristic=heuristic)
     _nz_dr_announce(config)
+    n_step = Threads.Atomic{Int}(0)               # 넣은 계단 cut 수 (성분 × 방향)
     n_infeas = Threads.Atomic{Int}(0); n_infrec = Threads.Atomic{Int}(0)     # 실행 불가능 노드 (1e-6 재확인 통과) / 재확인에서 되살아난 노드
     nfix = 0
     if presolve
@@ -474,7 +507,7 @@ function nz_alpha_bnb_dr(nd::NZData, x̄;
     length(envs) >= nworkers + (heuristic ? 1 : 0) || error("nz_alpha_bnb_dr: envs 가 부족함 (worker $nworkers + heuristic $(heuristic))")
     Ps = [_nz_build_sep(nd, x̄; optimizer=mk(envs[i])) for i in 1:nworkers]
     numerr0 = _NZ_NUMERR[]; numfail0 = _NZ_NUMERR_FAIL[]
-    DRs = dual_range ? [_nz_dr_attach!(Ps[i], nd, x̄; optimizer=mk(envs[i]), vcut=vcut, cslift=cslift) for i in 1:nworkers] : nothing
+    DRs = dual_range ? [_nz_dr_attach!(Ps[i], nd, x̄; optimizer=mk(envs[i]), vcut=vcut, cslift=cslift, stepcut=stepcut) for i in 1:nworkers] : nothing
     Fs = [nz_build_fixed_alpha(nd, x̄; optimizer=mk(envs[i])) for i in 1:nworkers]
     tol(v) = rel_gap * (isfinite(v) ? max(1.0, abs(v)) : 1.0)
     boxok(l) = all(nd.W * l .<= nd.wvec .+ 1e-9)
@@ -561,7 +594,13 @@ function nz_alpha_bnb_dr(nd::NZData, x̄;
                         empty_box = true                 # 상자 안에 실행가능한 α 가 없음
                     else
                         lo, hi, wit, phib = rg
-                        _nz_dr_set!(P, DR, nd, l, u, lo, hi, phib; comp=comp)
+                        steps = nothing
+                        if stepcut
+                            tst = @elapsed (steps = _nz_dr_steps(DR, nd, l, u, lo, hi; deadline=t_end))
+                            Threads.atomic_add!(t_range, tst)
+                            Threads.atomic_add!(n_step, count(!isnan, steps[1]) + count(!isnan, steps[3]))
+                        end
+                        _nz_dr_set!(P, DR, nd, l, u, lo, hi, phib; comp=comp, steps=steps)
                         fixfrac = count(hi .- lo .<= 1e-4) / max(1, length(lo))
                     end
                 end
@@ -620,11 +659,6 @@ function nz_alpha_bnb_dr(nd::NZData, x̄;
                         if viol[i] > 1e-9
                             width = u[i] - l[i]; t = α̂[i]
                             (branch_point != :alphahat || t - l[i] < 0.1 * width || u[i] - t < 0.1 * width) && (t = 0.5 * (l[i] + u[i]))
-                            if branch_point == :kinkmid
-                                tk = @elapsed (tks = _nz_kink_split(l[i], u[i], _nz_dr_kinkpts(DR, nd, l, u, lo, hi, i)))
-                                Threads.atomic_add!(t_range, tk)
-                                tks !== nothing && (t = tks; Threads.atomic_add!(n_ksplit, 1))
-                            end
                             u1 = copy(u); u1[i] = t; l2 = copy(l); l2[i] = t
                             children = ((copy(l), u1, z, lo, hi, wit, phib), (l2, copy(u), z, lo, hi, wit, phib))
                         else
@@ -726,6 +760,6 @@ function nz_alpha_bnb_dr(nd::NZData, x̄;
                 :state => (x=copy(x̄), config=config, open=open, LB=LB[], α=copy(best_α[]), pruned_ub=pruned_ub[],
                            root_UB=root_UB[], root_rows=root_rows[]), :t_relax => t_relax[], :t_eval => t_eval[], :t_range => t_range[],
                 :range_mips => dual_range ? sum(D.nmip for D in DRs) : 0, :range_fail => dual_range ? sum(D.nfail for D in DRs) : 0,
-                :fixfrac => nodes[] > 0 ? nfixed_sum[] / nodes[] : NaN, :infeas => n_infeas[], :infeas_recovered => n_infrec[], :kink_splits => n_ksplit[],
+                :fixfrac => nodes[] > 0 ? nfixed_sum[] / nodes[] : NaN, :infeas => n_infeas[], :infeas_recovered => n_infrec[], :step_cuts => n_step[],
                 :numerr => _NZ_NUMERR[] - numerr0, :numerr_fail => _NZ_NUMERR_FAIL[] - numfail0)
 end
