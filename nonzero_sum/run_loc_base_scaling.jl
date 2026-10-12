@@ -8,7 +8,8 @@ run_loc_base_scaling.jl — 기본 인스턴스 (SGB128 Goyal 기본 사례 + �
   ALG  : oracle 600 s, 재방문 시 2,400 s, 모두 남은 시간으로 자름
   ALGG : Algorithm 2 와 같고 전역 oracle 만 Gurobi Ω (목표값 조기 종료 없음)
   ALG  : Algorithm 2 (belief-menu + α-B&B, MW)
-  α-B&B 구현 (2026-10-11 부터): SBA, ALG 는 기본 구현 nz_alpha_bnb_dr (상자별 쌍대 범위 조임).
+  ALGL : Algorithm 2 + local cut (belief menu → local 해의 cut·belief → 전역 α-B&B 순서. nz_belief_menu_benders 의 local_first)
+  α-B&B 구현 (2026-10-11 부터): SBA, ALG, ALGL 은 기본 구현 nz_alpha_bnb_dr (상자별 쌍대 범위 조임).
     SBA0 / ALG0 : 같은 방법을 기존 구현 nz_alpha_bnb (bnb = :legacy) 로 — 비교용
     SBAD / ALGD : SBA / ALG 의 옛 이름 (2026-10-11 의 로그에서 "새 α-B&B" 를 가리킴). 그대로 받아 SBA / ALG 로 처리
     주의: 2026-10-11 이전 로그와 `logs/loc_base_scaling_dr_S20*.log` 의 method=SBA / ALG 는 기존 구현이다.
@@ -95,10 +96,11 @@ for S in Ss
             @printf("RESULT S=%d method=E status=%s x=%s value=%.6f time=%.1f\n", S, solved ? "Optimal" : "Unsolved",
                     solved ? xstr(best[2]) : "-", solved ? best[1] : NaN, time() - t0)
         else
-            meth in ("ALG", "ALGD", "ALG0", "ALGG", "SBA", "SBAD", "SBA0", "SBG") || error("알 수 없는 방법: $meth")
+            meth in ("ALG", "ALGD", "ALG0", "ALGG", "ALGL", "SBA", "SBAD", "SBA0", "SBG") || error("알 수 없는 방법: $meth")
             bnb = meth in ("ALG0", "SBA0") ? :legacy : :dr           # α-B&B 구현 (oracle = :alpha_bnb 일 때만 쓰임)
             r = meth in ("ALG", "ALGD", "ALG0") ? nz_belief_menu_benders(nd; oracle=:alpha_bnb, bnb=bnb, common...) :
                 meth == "ALGG" ? nz_belief_menu_benders(nd; oracle=:gurobi, common...) :
+                meth == "ALGL" ? nz_belief_menu_benders(nd; oracle=:alpha_bnb, bnb=:dr, local_first=true, local_time=local_time, common...) :
                 nz_standard_benders(nd; oracle=(meth == "SBG" ? :gurobi : :alpha_bnb), bnb=bnb, local_first=true,
                                     local_time=local_time, oracle_remaining=true, common...)
             t = time() - t0

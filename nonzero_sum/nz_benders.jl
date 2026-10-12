@@ -13,6 +13,7 @@ nz_benders.jl — 비제로섬 Ω 위의 Benders 두 가지.
   nz_belief_menu_benders: 설계 A (true_dro/belief_menu_benders.jl) 를 확장 belief 로.
       menu 원소 = (belief (a,b,r,d,e), follower 인증서 σ).  고정하면 Ω 가 LP (html "확장 belief").
       menu 단계: 모든 원소의 LP 값 v_b(x̄) 가 t₀ 보다 크면 그 LP 해로 cut.
+      local 단계 (local_first = true 일 때만): menu 가 수렴한 x̄ 에서 Ω 의 local 해를 보고, 위반 cut 이 있으면 cut + belief 를 menu 에.
       oracle 단계 (menu 가 x̄ 에서 수렴): 전역 Ω(x̄) → UB, cut, 새 belief + 인증서를 menu 에 추가.
       인증서: cert = :recompute (html (b): (x̄, α̂) 에서 follower LP simplex dual, 기본)
                    | :solution  (html (a): ϖ̂ˢ / r̂_s)
@@ -297,7 +298,10 @@ function nz_belief_menu_benders(nd::NZData; optimizer, lp_optimizer=optimizer, c
                                 cert_rows::Symbol=:hrows, max_iter=500, tol=1e-4, oracle_time=600.0, boost_time=3600.0,
                                 oracle::Symbol=:alpha_bnb, bnb::Symbol=:dr, oracle_gap=1e-5, nworkers=12, bnb_kw=NamedTuple(),
                                 target_stop::Bool=(oracle == :alpha_bnb), mw::Bool=true, vi::Bool=false,
-                                verbose=true, time_limit=Inf)
+                                verbose=true, time_limit=Inf, local_first::Bool=false, local_time=60.0)
+    # local_first: menu 가 x̄ 에서 수렴한 뒤 전역 oracle 을 부르기 전에 Ω 의 local 해 (Gurobi OptimalityTarget = 1, SB-G / SB-A 와 같음) 를
+    #   먼저 본다. 그 해의 cut (α 고정 LP, MW) 이 x̄ 에서 tol 이상 위반되면 cut 을 넣고, 그 해의 belief + 인증서도 menu 에 넣는다
+    #   (local 해도 Ω 의 실행가능해라 cut 과 menu 원소 모두 유효. 값은 하한일 뿐이라 UB 에는 쓰지 않음). 위반이 없을 때만 전역 oracle.
     cert in (:recompute, :solution) || error("cert = :recompute | :solution")
     oracle in (:gurobi, :alpha_bnb) || error("oracle = :gurobi | :alpha_bnb")
     oracle == :alpha_bnb && _nz_bnb_solver(bnb)
@@ -307,7 +311,12 @@ function nz_belief_menu_benders(nd::NZData; optimizer, lp_optimizer=optimizer, c
     omp, x, t0 = _nz_omp(nd; optimizer=optimizer)
     vi && nz_add_dual_vi!(omp, x, t0, nd)
     O = oracle == :gurobi ? build_nz_omega(nd; optimizer=optimizer) : nothing
-    Fx = oracle == :alpha_bnb ? Main.nz_build_fixed_alpha(nd, zeros(nd.nx); optimizer=optimizer) : nothing
+    Fx = (oracle == :alpha_bnb || (local_first && mw)) ? Main.nz_build_fixed_alpha(nd, zeros(nd.nx); optimizer=optimizer) : nothing
+    Oloc = nothing; n_local = 0
+    if local_first
+        Oloc = build_nz_omega(nd; optimizer=optimizer)
+        set_optimizer_attribute(Oloc.model, "OptimalityTarget", 1)
+    end
     B = build_nz_omega(nd; optimizer=lp_optimizer, belief_lp=true, cert_rows=cert_rows)
     menu = Tuple{Dict{Symbol,Any},Matrix{Float64}}[]
     LB, UB, best_x = -Inf, Inf, zeros(nd.nx)
@@ -344,6 +353,29 @@ function nz_belief_menu_benders(nd::NZData; optimizer, lp_optimizer=optimizer, c
                                iter, LB, UB, string(findall(x̄ .> 0.5)), nviol, length(menu), V_menu)
             verbose && flush(stdout)
             continue
+        end
+
+        # ---- local 단계 (local_first) ----
+        if local_first
+            t_l = @elapsed (rl = _nz_local_solve!(Oloc, nd, x̄; time_limit=_remaining(wall, time_limit, local_time)))
+            if rl !== nothing
+                bel_loc = nz_read_belief(Oloc, nd)          # cut 계산 (Fx 를 푼다) 과 무관하게 Oloc 의 해에서 읽음
+                cut, ok = _nz_alpha_cut(Oloc, Fx, nd, x̄; mw=mw, x_core=x_core)
+                cval = cut[:intercept] + dot(cut[:slope], x̄)
+                if cval > t0v + tol * max(1.0, abs(t0v))
+                    _add_cut!(omp, x, t0, cut); _log_cut!(cuts, :local, iter, x̄, cut, ok); n_local += 1; n_mw += ok
+                    bel = nz_clean_belief(bel_loc, nd)
+                    σ = cert == :recompute ? nz_follower_duals(nd, x̄, bel_loc[:α]; lp_optimizer=lp_optimizer)[1] :
+                        nz_repair_cert(nd, bel_loc[:ϖ] ./ reshape(max.(bel_loc[:r], 1e-12), 1, nd.S); lp_optimizer=lp_optimizer)
+                    push!(menu, (bel, σ))
+                    push!(hist, (iter=iter, LB=LB, UB=UB, x=findall(x̄ .> 0.5), kind=:local, n=length(menu), w=w_LB))
+                    verbose && @printf("  [loc]  it %3d LB=%11.4f UB=%11.4f x=%-10s Ω_loc=%11.4f (%.1fs) menu=%d (+belief)
+",
+                                       iter, LB, UB, string(findall(x̄ .> 0.5)), rl[:Fval], t_l, length(menu))
+                    verbose && flush(stdout)
+                    continue
+                end
+            end
         end
 
         # ---- oracle 단계 ----
@@ -396,6 +428,7 @@ function nz_belief_menu_benders(nd::NZData; optimizer, lp_optimizer=optimizer, c
     end
     return Dict(:status => status, :LB => LB, :UB => UB, :x => best_x, :iters => iter,
                 :oracle_calls => oracle_calls, :menu_cuts => menu_cuts, :mw_cuts => n_mw, :menu => menu, :menu_size => length(menu),
+                :local_cuts => n_local,
                 :exact_log => exact_log, :wall => time() - wall, :hist => hist, :cuts => cuts,
                 :oracle => oracle, :bnb => (oracle == :alpha_bnb ? bnb : nothing))
 end
