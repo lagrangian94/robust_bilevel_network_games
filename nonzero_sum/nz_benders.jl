@@ -319,7 +319,15 @@ function nz_belief_menu_benders(nd::NZData; optimizer, lp_optimizer=optimizer, c
                                 oracle::Symbol=:alpha_bnb, bnb::Symbol=:dr, oracle_gap=1e-5, nworkers=12, bnb_kw=NamedTuple(),
                                 target_stop::Bool=(oracle == :alpha_bnb), mw::Bool=true, vi::Bool=false,
                                 verbose=true, time_limit=Inf, local_first::Bool=false, local_time=60.0,
-                                oracle_resume::Bool=true)
+                                oracle_resume::Bool=true,
+                                oracle_remaining::Bool=(target_stop && isfinite(time_limit)))
+    # oracle_remaining (기본: 목표값 조기 종료를 쓰고 전체 시간 제한이 유한하면 켬): 전역 oracle 에 남은 시간 전체를 준다.
+    #   목표값 조기 종료가 있으면 oracle 이 오래 도는 것은 "위반 값이 없어 상한을 증명해야 하는" 경우뿐이고, 그때 호출을 끊어도
+    #   새 cut 이 없어 OMP 가 같은 x̄ 를 다시 내놓는다 → 600 s / 2,400 s 로 쪼개는 것은 재시작 비용만 든다
+    #   (seed 2, S=30: 4 번으로 쪼개진 Algorithm 2 가 gap 1.9%, 한 번에 돌린 SB-A 가 0.75%. seed 3, S=20: 530 s 를 남기고 :Stalled).
+    #   켜면 oracle_time / boost_time 단계와 :Stalled 종료를 쓰지 않고 전체 time_limit 으로만 끝난다.
+    #   Gurobi oracle (target_stop 없음) 은 x̄ 마다 끝까지 증명하려 하므로 기본 끔 (단계별 제한 유지).
+    oracle_remaining && !isfinite(time_limit) && error("oracle_remaining 은 유한한 time_limit 이 필요")
     # oracle_resume: 같은 x̄ 에서 α-B&B (bnb = :dr) 를 다시 부르면 이전 호출이 멈춘 곳에서 이어 풂 (_nz_oracle! 의 cache).
     #   목표값 조기 종료 (target_stop) 로 끝난 호출 뒤 같은 x̄ 가 다시 오는 것이 흔하므로 (cut 을 넣어도 x̄ 가 그대로 최적 후보)
     #   이어 풀지 않으면 같은 B&B 를 처음부터 반복한다.
@@ -330,7 +338,9 @@ function nz_belief_menu_benders(nd::NZData; optimizer, lp_optimizer=optimizer, c
     cert in (:recompute, :solution) || error("cert = :recompute | :solution")
     oracle in (:gurobi, :alpha_bnb) || error("oracle = :gurobi | :alpha_bnb")
     oracle == :alpha_bnb && _nz_bnb_solver(bnb)
-    verbose && (println(_nz_oracle_banner(oracle, bnb, nworkers, oracle_gap, bnb_kw, bnb_cache !== nothing)); flush(stdout))
+    verbose && (println(_nz_oracle_banner(oracle, bnb, nworkers, oracle_gap, bnb_kw, bnb_cache !== nothing));
+                println("  [설정] oracle 시간: ", oracle_remaining ? "남은 시간 전체 (끊지 않음)" : "$(oracle_time) s, 재방문 시 최대 $(boost_time) s",
+                        ", 목표값 조기 종료 ", target_stop ? "켬" : "끔", ", local cut ", local_first ? "켬" : "끔"); flush(stdout))
     x_core = nz_core_point(nd); n_mw = 0
     target_stop && oracle != :alpha_bnb && error("target_stop 은 oracle=:alpha_bnb 에서만")
     omp, x, t0 = _nz_omp(nd; optimizer=optimizer)
@@ -404,9 +414,13 @@ function nz_belief_menu_benders(nd::NZData; optimizer, lp_optimizer=optimizer, c
         end
 
         # ---- oracle 단계 ----
-        lim, stalled = _oracle_limit!(tl, x̄, oracle_time, boost_time)
-        stalled && (status = :Stalled; break)
-        lim = _remaining(wall, time_limit, lim)
+        if oracle_remaining
+            lim = _remaining(wall, time_limit, Inf)
+        else
+            lim, stalled = _oracle_limit!(tl, x̄, oracle_time, boost_time)
+            stalled && (status = :Stalled; break)
+            lim = _remaining(wall, time_limit, lim)
+        end
         oracle_calls += 1
         # 목표값: menu 가 x̄ 에서 수렴했으므로 oracle 은 "t₀ 보다 의미 있게 큰 값이 있는가" 만 판정하면 됨
         # 여유는 수렴 판정 (_rel(LB, UB) = |UB − LB| / max(|UB|, 1) ≤ tol, 전체 목적값 기준) 과 같은 기준이어야 한다.

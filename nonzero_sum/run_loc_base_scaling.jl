@@ -5,7 +5,8 @@ run_loc_base_scaling.jl — 기본 인스턴스 (SGB128 Goyal 기본 사례 + �
   E    : 모든 x 를 KKT 독립 평가 (big-M·재정식화 없음). x 하나라도 시간 제한이면 미해결.
   SBG  : 표준 Benders, local (OptimalityTarget=1) cut 먼저, 위반 cut 이 없을 때만 Gurobi 전역 Ω (남은 시간 전체)
   SBA  : 같은 구조, 전역은 α-B&B (남은 시간 전체). MW 는 α-B&B 의 restricted cut 에만 (SB-G 전역 cut, local cut 은 MW 없음)
-  ALG  : oracle 600 s, 재방문 시 2,400 s, 모두 남은 시간으로 자름
+  ALG, ALGL : 2026-10-12 부터 전역 α-B&B 에 남은 시간 전체 (oracle_remaining). 위반 값을 찾으면 목표값 조기 종료로 바로 돌아오므로
+         오래 도는 호출은 상한 증명뿐이고, 그것을 600 s / 2,400 s 로 끊지 않는다. ALGG (Gurobi) 는 600 s, 재방문 시 2,400 s 그대로
   ALGG : Algorithm 2 와 같고 전역 oracle 만 Gurobi Ω (목표값 조기 종료 없음)
   ALG  : Algorithm 2 (belief-menu + α-B&B, MW)
   ALGL : Algorithm 2 + local cut (belief menu → local 해의 cut·belief → 전역 α-B&B 순서. nz_belief_menu_benders 의 local_first)
