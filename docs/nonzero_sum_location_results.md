@@ -1,11 +1,13 @@
 # 비제로섬 확장: location 구현과 belief LP cut 검증 (2026-10-06 ~ 10-07)
 
+> **용어 (2026-10-13, 원고와 통일).** ϖˢ (리더 블록)·π̃ˢ (follower 블록) = **recourse 쌍대해** (원고: recourse dual solution, follower recourse 문제의 쌍대 실행가능해에 시나리오 가중치를 곱한 것). 그 예약 행 성분 t_s = Bᵀϖ_s = **subgradient** (원고: subgradient of the recourse function Q, −θᵁν_s 배). 이전 판의 "인증서" 와 원고 이전 판의 certificate·prices 가 이것이다. Lemma `certificate` (reaction set 의 certificate) 와 Farkas 인증서는 다른 대상이라 그대로 둔다.
+
 이 문서는 측정 결과만 다룬다. 수식과 유도는 `docs/nonzero_sum_extension.html`
 (게시본 https://claude.ai/artifact/B2bkdVY57TmeXDh2GRtH27) 에 있다.
 
 - 코드: `nonzero_sum/`
   - `nz_data.jl` — 일반 LP recourse 데이터 (`NZData`), location 인스턴스, 원고 max-flow 변환
-  - `nz_omega.jl` — 비제로섬 Ω (html Step 4′, θ = θᵁ 고정), 확장 belief 고정 LP, follower 인증서
+  - `nz_omega.jl` — 비제로섬 Ω (html Step 4′, θ = θᵁ 고정), 확장 belief 고정 LP, recourse 쌍대해
   - `nz_kkt_eval.jl` — big-M 없는 독립 평가기 (KKT 상보성 indicator + r·φ bilinear) 와 θ 진단
   - `nz_benders.jl` — 표준 Benders, belief-menu Benders (확장 belief), oracle = Gurobi | α-B&B
   - `nz_alpha_bnb.jl` — α 만 분기하는 전역 해법 (zero-sum α-B&B 를 비제로섬 Ω 로 확장, §9)
@@ -23,9 +25,9 @@ follower 1단계 목적 `c0ᵀh` 를 허용 (location 의 예약비 `−fᵀh`).
 - 리더 블록: `F^L = Σ(ℓ+θc)ᵀŷ − θΣ r_s(x,α)ᵀϖ − π̂ᵁ McCormick`, 제약에 N1 `Aᵀϖˢ ≥ r_s c` 만 추가.
   bilinear 은 α·r (기존), α·ϖ (신규, H 행만) 두 종류.
 - follower 블록: 원고 그대로이고, 1단계 목적 때문에 λ 의 dual 제약 우변에 `c0ᵀα` (α 에 선형) 가 붙는다.
-- 확장 belief 고정 LP: (a, b, r, d, e) 와 인증서 σ 를 고정하고 ϖˢ = r_s σˢ 로 둔다. 고정 범위 두 가지:
+- 확장 belief 고정 LP: (a, b, r, d, e) 와 recourse 쌍대해 σ 를 고정하고 ϖˢ = r_s σˢ 로 둔다. 고정 범위 두 가지:
   `:hrows` (bilinear 에 들어가는 H 행의 ϖ 만 고정, 나머지는 LP 변수) / `:all` (html 그대로 ϖ 전체).
-  인증서 두 가지: `:recompute` (html (b), (x̄, α̂) 에서 follower LP simplex dual) / `:solution` (html (a), ϖ̂/r̂).
+  recourse 쌍대해 두 가지: `:recompute` (html (b), (x̄, α̂) 에서 follower LP simplex dual) / `:solution` (html (a), ϖ̂/r̂).
 
 ## 2. zero-sum 교차검증
 
@@ -96,9 +98,9 @@ KKT 평가가 120s 안에 끝나지 않아 접었다.
 
 ## 7. 확장 belief LP cut 검증 (seed 4, S=3)
 
-### (A) exactness: x 에서 얻은 (belief, 인증서) 를 고정한 LP 의 x 값 = Ω(x) ?
+### (A) exactness: x 에서 얻은 (belief, recourse 쌍대해) 를 고정한 LP 의 x 값 = Ω(x) ?
 
-`logs/belief_menu_base_seed4_S3_tableA_run3.log`. 열: KKT 독립 평가, 전역 Ω (MIP gap 1e-5, 300s), 인증서 × 고정 범위 4 가지.
+`logs/belief_menu_base_seed4_S3_tableA_run3.log`. 열: KKT 독립 평가, 전역 Ω (MIP gap 1e-5, 300s), recourse 쌍대해 × 고정 범위 4 가지.
 
 | x | KKT V*(x) | Ω(x) | recompute/hrows | recompute/all | solution/hrows | solution/all | max(Ω − LP) |
 |---|---|---|---|---|---|---|---|
@@ -110,18 +112,18 @@ KKT 평가가 120s 안에 끝나지 않아 접었다.
 | [3,4], [1,3,4], [2,3,4], [1,2,3,4] | −2396.0000 | −2396.0000 | 동일 | 동일 | 동일 (−2396.0001) | 동일 | ≤ 2.2e-5 |
 
 - 16 개 x 모두, 네 가지 변형 모두 Ω(x) 를 Ω 자체의 MIP gap (1e-5 상대) 안에서 복원. html 의 "최적 ϖ/r 는 follower dual
-  꼭짓점이므로 인증서 하나로 제한해도 손실 없음" 이 수치로 확인됨.
+  꼭짓점이므로 recourse 쌍대해 하나로 제한해도 손실 없음" 이 수치로 확인됨.
 - Ω 와 KKT 도 모든 x 에서 일치 (seed 4 에서도 Ω 유도 검증).
-- 인증서 수치 문제: solver dual (simplex shadow price, ϖ̂/r̂) 은 1e-7~1e-8 만큼 Aᵀσ ≥ c 를 어길 수 있고, ϖ 를 고정하면
+- recourse 쌍대해의 수치 문제: solver dual (simplex shadow price, ϖ̂/r̂) 은 1e-7~1e-8 만큼 Aᵀσ ≥ c 를 어길 수 있고, ϖ 를 고정하면
   belief LP 가 INFEASIBLE 이 된다 (`:solution` + `:all` 에서 발생). `nz_repair_cert` (min‖σ′−σ‖₁ LP + 계수 ≥ 0 행 dual 을
   올리는 정확 보정) 로 해결. 보정은 restriction 을 바꿀 뿐이므로 cut 유효성에는 영향 없음.
 
 ### (B) validity, (C) 충분성 (`analyze_nz_menu_cache.jl`, `logs/analyze_cache_seed4_S3.log`)
 
-(A) 에서 x 마다 얻은 원소 (belief + 인증서 σ:recompute, `:hrows`) 16 개를 모든 x₂ 에서 풀었다 (LP 256 개).
+(A) 에서 x 마다 얻은 원소 (belief + recourse 쌍대해 σ:recompute, `:hrows`) 16 개를 모든 x₂ 에서 풀었다 (LP 256 개).
 
 - validity: 모든 쌍에서 LP ≤ Ω(x₂). 최대 초과 1.2e-4 (x₂=[3,4], Ω incumbent 자체가 −2396.0001 로 참값보다 1e-4 낮음, 상대 5e-8).
-  → 다른 x 에서 얻은 인증서는 weak duality 로 벌점만 커진다는 html 의 유효성 논증과 일치.
+  → 다른 x 에서 얻은 recourse 쌍대해는 weak duality 로 벌점만 커진다는 html 의 유효성 논증과 일치.
 - 충분성: 모든 x₂ 에서 max_원소 LP = Ω(x₂) (gap ≤ 8.5e-5). 16 개 x 를 모두 exact 로 덮는 greedy 최소 menu 는 **3 개**
   (x₁ = [1], [3], [4] 에서 얻은 원소).
 - 원소가 exact 인 범위는 x 에 따라 갈린다.
@@ -135,14 +137,14 @@ KKT 평가가 120s 안에 끝나지 않아 접었다.
 | [3,4] | [3,4], [1,3,4] |
 | [1,3,4] 등 | 3, 4 를 모두 포함하는 4 개 |
 
-- 인증서 패턴: 시나리오마다 고유 σˢ 9 개 / 원소 16, 고유 belief (r, d) 12 개 / 16. 같은 belief 라도 x 에 따라 min-cut 이 달라서
+- recourse 쌍대해 패턴: 시나리오마다 고유 σˢ 9 개 / 원소 16, 고유 belief (r, d) 12 개 / 16. 같은 belief 라도 x 에 따라 min-cut 이 달라서
   belief 만 저장하면 다른 x 에서 exact 가 아니다 → html "belief 하나에 시나리오당 min-cut 하나, 다른 x̄ 에서 다른 min-cut 이 필요하면
   oracle 이 새 쌍을 추가" 의 구조가 그대로 보인다. 다만 이 인스턴스에서는 3 개면 충분.
 
-### (D) 대조: 인증서 없이 belief 만 고정
+### (D) 대조: recourse 쌍대해 없이 belief 만 고정
 
 belief (a, b, r, d, e) 만 고정하면 α·ϖ 가 남아 QCP 다 (Gurobi NonConvex). x = ∅, [1], [2] 에서 값은 Ω 와 같다
-(0, −480.6667, −480.6667). 즉 belief 만으로도 값은 충분하지만 LP 가 아니고, 인증서를 붙여야 LP 가 된다 (html 명제 2).
+(0, −480.6667, −480.6667). 즉 belief 만으로도 값은 충분하지만 LP 가 아니고, recourse 쌍대해를 붙여야 LP 가 된다 (html 명제 2).
 
 ### (E) Benders 비교 (`logs/belief_menu_base_seed4_S3.log`, tol 1e-5, Ω 시간 제한 600s)
 
@@ -227,8 +229,8 @@ follower 2단계 LP (h, y) 에도 θᵁ 와 같은 circuit 논증이 통하는 �
 
 `true_dro/global_bilinear_solver.jl` 의 α-공간 B&B (병렬 best-first + diving, 위반 RLT 행 분리, Ipopt 휴리스틱) 를
 비제로섬 Ω 로 옮겼다. 바뀐 것:
-- bilinear 이 α·r, α·d 에 더해 **α_{h(j)}·ϖ_js** (H 행 j 의 인증서). 상자가 점이면 Ω 는 정확한 LP.
-- 노드 완화: belief 행 (a, b, r, d, e 상·하한, TV 볼, CVaR) × 모든 α_i, **인증서 행 (ϖ ≥ 0, ϖ ≤ ϖᵁ r) × 자기 α_{h(j)}**.
+- bilinear 이 α·r, α·d 에 더해 **α_{h(j)}·ϖ_js** (H 행 j 의 recourse 쌍대해, 원고의 subgradient). 상자가 점이면 Ω 는 정확한 LP.
+- 노드 완화: belief 행 (a, b, r, d, e 상·하한, TV 볼, CVaR) × 모든 α_i, **recourse 쌍대해의 행 (ϖ ≥ 0, ϖ ≤ ϖᵁ r) × 자기 α_{h(j)}**.
   α_i·ϖ_js (i ≠ h(j)) 는 Ω 에 없으므로 만들지 않는다.
 - Ω 빌더에 mode (`:global`, `:belief_lp`, `:fixed_alpha`, `:relax`) 추가. α-B&B 는 `:relax` (노드) 와 `:fixed_alpha` (평가) 를 쓴다.
 - Benders 에 `oracle = :gurobi | :alpha_bnb` (α-B&B 는 incumbent α 를 고정한 LP 의 해로 cut·belief), belief-menu 에
@@ -311,7 +313,7 @@ Worcester), 고객 = 5, 7, 8 (Wisconsin Dells, Winnipeg, Winchester). c_ij = XY 
   λᵁ(c^max+p) 3.2×10⁵) 이 커져 완화가 느슨. 해상도 50 마일·λᵁ=1 로 줄여도 x=∅ 는 120s 에 미종료라 (i) 이 주된 요인으로 봄.
 - λᵁ 는 비용 단위에 묶인 상수: 무작위 좌표의 1000 을 그대로 쓰면 SGB128 에서 x=∅ Ω 가 600s 제한 + 값 0.0026 (참값 0).
 - 같은 x 에서 KKT 평가기 (big-M 없는 MIQCP) 는 ~1s 인데 Ω 전역 풀이는 수천 초 → KKT 를 oracle 로 쓰는 방안
-  (KKT 최적 belief + 인증서로 belief LP cut, KKT 상한을 UB) 을 다음 후보로 둠.
+  (KKT 최적 belief + recourse 쌍대해로 belief LP cut, KKT 상한을 UB) 을 다음 후보로 둠.
 
 ## 9d. 점포별 McCormick 상한 + 기본 구성 α-B&B·MW (2026-10-07)
 
@@ -362,7 +364,7 @@ Worcester), 고객 = 5, 7, 8 (Wisconsin Dells, Winnipeg, Winchester). c_ij = XY 
 
 1. 비제로섬 Ω (html Step 4′) 는 zero-sum 에서 원고 Ω 와 일치하고, location 에서 big-M 없는 독립 평가와 모든 x 에서 일치한다.
 2. θᵁ 는 Lemma 2 대신 구조 상계 (location: v/거리해상도 = 50) 를 써야 한다. 1200 은 수치 상쇄로 Ω 를 과대평가했다.
-3. 확장 belief (belief + follower 인증서) 를 고정하면 Ω 가 LP 가 되고, (i) 얻은 x 에서 exact, (ii) 다른 x 에서 유효,
+3. 확장 belief (belief + recourse 쌍대해) 를 고정하면 Ω 가 LP 가 되고, (i) 얻은 x 에서 exact, (ii) 다른 x 에서 유효,
    (iii) 모은 원소의 max 가 모든 x 에서 Ω 를 복원한다. html "확장 belief" 절의 검증 항목이 이 인스턴스에서 성립.
 4. belief-menu Benders 는 전역 Ω 2 회, menu 2 개로 수렴해 표준 Benders 보다 54 배 빨랐다.
 5. λᵁ (follower exact penalty) 는 이 인스턴스에서 경계가 정확히 50 (= v/해상도, θᵁ 와 같음). 그 미만이면 Ω 가 V* 를 10·(50−λᵁ) 만큼 과대평가 (cut 무효), 이상이면 exact (λᵁ=50 에서 16 개 x 모두 확인, `logs/lambda50_allx_seed4_S3.log`). λᵁ 를 줄이면 cut 은 강해지지만 Gurobi 전역 Ω 가 크게 어려워져 이 인스턴스에서는 λᵁ=1000 이 가장 빨랐다 (belief-menu 69.5s, 100: 600s, 50: 3,010s).

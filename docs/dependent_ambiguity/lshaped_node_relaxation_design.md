@@ -1,5 +1,7 @@
 # α-B&B 노드 완화의 시나리오 분해 (L-shaped) 설계안 (2026-10-10, 구현 전 검토용)
 
+> **용어 (2026-10-13, 원고와 통일).** ϖˢ (리더 블록)·π̃ˢ (follower 블록) = **recourse 쌍대해** (원고: recourse dual solution, follower recourse 문제의 쌍대 실행가능해에 시나리오 가중치를 곱한 것). 그 예약 행 성분 t_s = Bᵀϖ_s = **subgradient** (원고: subgradient of the recourse function Q, −θᵁν_s 배). 이전 판의 "인증서" 와 원고 이전 판의 certificate·prices 가 이것이다. Lemma `certificate` (reaction set 의 certificate) 와 Farkas 인증서는 다른 대상이라 그대로 둔다.
+
 > **상태 (2026-10-10, 구현·측정 완료): 미채택.** 단일 노드 값은 정확히 일치하지만 600 s 누적 비교에서 S=50·200 모두 full 노드 LP 보다 나쁨
 > (master 에 확률·곱 변수 ~80·S 가 남아 master LP 가 시간의 98%). 결과와 다음 후보 (라그랑지안 완화) 는 `alpha_bnb_nonzero_analysis.md` §7 A 결과.
 
@@ -13,7 +15,7 @@
 
 | 묶음 | 변수 | 위치 |
 |---|---|---|
-| 연결 | h^r (α), belief a·b·r·d·e·cpl, ζL·ζF·ζW, RLT 곱 Z_a·Z_b·Z_e·Z_c, **예약 행 인증서 ϖ_H** (H 행의 ϖ, 15/시나리오) | master |
+| 연결 | h^r (α), belief a·b·r·d·e·cpl, ζL·ζF·ζW, RLT 곱 Z_a·Z_b·Z_e·Z_c, **예약 행의 recourse 쌍대해 ϖ_H** (H 행의 ϖ, 15/시나리오) | master |
 | 리더 블록 s | ŷ_s, ϖ_s 중 H 행이 아닌 성분 (ϖ_N), ρ̂1·ρ̂2·ρ̂3 (x 행) | 시나리오 블록 LP |
 | follower 블록 s | ȳ_s, π̃_s, ρ̃, (κ, ρ⁰ 는 시나리오 공통) | 1 단계: master 에 둠 / 2 단계: 분해 (§5) |
 
@@ -30,7 +32,7 @@
             cᵀŷ − Σ_{k∈N} (u_ks + [X] g_ks x̄) ϖ_ks ≤ Σ_{k∈H} u_ks ϖ_{H,s} + Σ hcoef ζW_s   (WD) ← 우변이 master
             ŷ, ϖ_N, ρ̂ ≥ 0
 
-목적의 −θ hcoef ζW, −θ u ϖ_H 항은 master 목적에 남긴다. Wcap (ϖ_H ≤ ϖᵁ r) 과 인증서 RLT 행은 master 행.
+목적의 −θ hcoef ζW, −θ u ϖ_H 항은 master 목적에 남긴다. Wcap (ϖ_H ≤ ϖᵁ r) 과 recourse 쌍대해의 RLT 행은 master 행.
 - 크기: 변수 ~65, 행 ~72. x̄ 는 노드 내내 고정 (α-B&B 는 고정 x̄ 에서 돌므로) → 블록 LP 의 계수는 노드·상자와 무관.
 - 값 함수는 m_s 에 대해 **concave, 1 차 동차** (모든 우변이 m_s 에 선형, 상수항 없음) → cut 은 절편 없는 선형:
   η_s ≤ λ_sᵀ B_s m_s  (λ_s = 블록 LP 의 쌍대해). master 목적에 Σ_s η_s 를 더한다 (multi-cut).

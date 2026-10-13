@@ -1,5 +1,7 @@
 # Ω (global bilinear program) 용 valid inequality 정리 (2026-10-07)
 
+> **용어 (2026-10-13, 원고와 통일).** ϖˢ (리더 블록)·π̃ˢ (follower 블록) = **recourse 쌍대해** (원고: recourse dual solution, follower recourse 문제의 쌍대 실행가능해에 시나리오 가중치를 곱한 것). 그 예약 행 성분 t_s = Bᵀϖ_s = **subgradient** (원고: subgradient of the recourse function Q, −θᵁν_s 배). 이전 판의 "인증서" 와 원고 이전 판의 certificate·prices 가 이것이다. Lemma `certificate` (reaction set 의 certificate) 와 Farkas 인증서는 다른 대상이라 그대로 둔다.
+
 Benders subproblem Ω (`V*(x̄) = sup_{(α,ζ)∈Ω} F(x̄, α, ζ)`) 를 전역으로 풀 때 쓰는 부등식을 한곳에 모은다.
 측정 근거는 `docs/alpha_bnb_notes.md` (zero-sum, Abilene) 와 `docs/nonzero_sum_location_results.md` §9 (비제로섬, location).
 
@@ -9,13 +11,13 @@ Benders subproblem Ω (`V*(x̄) = sup_{(α,ζ)∈Ω} F(x̄, α, ζ)`) 를 전역
 
 ## 0. 구조와 분류
 
-**bilinear 항.** 전부 α × (belief 또는 인증서) 다. α 를 고정하면 Ω 는 LP.
+**bilinear 항.** 전부 α × (belief 또는 subgradient) 다. α 를 고정하면 Ω 는 LP.
 
 | 항 | 의미 | zero-sum | 비제로섬 |
 |---|---|---|---|
 | ζL_ks = α_k r_s (CVaR, 아니면 α_k a_s) | 리더 측 용량 × 리더 가중치 | O | O |
 | ζF_ks = α_k d_s | follower 측 용량 × follower belief | O | O |
-| ζW_js = α_{h(j)} ϖ_js | H 행 j 의 follower 인증서 × 그 행의 α | − | O (html Step 4′ 의 α_k ϖ_k) |
+| ζW_js = α_{h(j)} ϖ_js | H 행 j 의 recourse 쌍대해 (subgradient) × 그 행의 α | − | O (html Step 4′ 의 α_k ϖ_k) |
 
 **유효성 분류.** Benders 에 쓸 때 요구 조건이 다르다.
 
@@ -77,7 +79,7 @@ TV 볼과 CVaR 에서 바로 나오는 시나리오별 범위. spatial B&B 와 M
 | Σ_k W_lk Z^f_ks ≤ w_l y_s | (w_l − W_l α) × y_s ≥ 0 | zero-sum: W = 1ᵀ, f ∈ {a, r, d}. 비제로섬: f ∈ {a, b, r, d, e} |
 | (w − Σα)·g_j(y) ≥ 0 ("단체 RLT") | 예산 × belief 행 | **시도, 효과 미미** (root 18.026 → 18.006) |
 
-## 5. 비제로섬: 인증서 스케일 상한 Wcap (B) ← 이번에 찾은 것
+## 5. 비제로섬: subgradient 상한 Wcap (B) ← 이번에 찾은 것
 
 ### 5.1 부등식
 
@@ -98,13 +100,13 @@ H 행 j (location: 예약 행) 와 시나리오 s 마다
 → 모든 가능해를 F 가 줄지 않는 Wcap 만족 해로 옮길 수 있다. x̄ 와 무관하므로 모든 x̄ 에서 최적값 보존 (B).
 수치 확인: λᵁ ∈ {50, 100, 1000}, 16 개 x 모두 Ω = KKT V* (최대 차이 1.3e-7).
 
-일반 원리: **"인증서 성분을 belief 가중치에 비례한 상한으로 자르는" 지배 논증.** 필요한 것은 (i) 상한으로 잘라도
+일반 원리: **"recourse 쌍대해의 성분을 belief 가중치에 비례한 상한으로 자르는" 지배 논증.** 필요한 것은 (i) 상한으로 잘라도
 dual 가능성이 유지되는 열 구조 (여기서는 현장구매 열이 예약 열을 덮음), (ii) 그 행의 목적 계수 부호 (≤ 0).
 "모든 최적 dual 이 ϖᵁ 이하" 일 필요는 없다.
 
 ### 5.3 Wcap 의 RLT (A, Wcap 이 있는 Ω 에서)
 
-인증서 행 ϖ_js ≥ 0, ϖᵁ_j r_s − ϖ_js ≥ 0 을 **자기 α_{h(j)} 하고만** 곱한다 (α_i ϖ_js, i ≠ h(j) 는 Ω 에 없는 곱이라 만들지 않음).
+recourse 쌍대해의 행 ϖ_js ≥ 0, ϖᵁ_j r_s − ϖ_js ≥ 0 을 **자기 α_{h(j)} 하고만** 곱한다 (α_i ϖ_js, i ≠ h(j) 는 Ω 에 없는 곱이라 만들지 않음).
 i = h(j), U = ϖᵁ_j 라 두면:
 
 | 곱 | 선형화 |
@@ -136,7 +138,7 @@ Gurobi NonConvex 는 RLT 를 쓰지 않고 원래 Ω 를 푼 것이다. 빨라�
 - 같은 지배 논증으로 다른 행에도 스케일 상한: location 의 용량 행 ϖ_cap ≤ (c^max + p) r_s, 수요 행 μ ≤ (c^max + p) r_s
   (A 점포에 항상 여유가 있다는 nz_data.jl 논증). 이 행들은 bilinear 에 안 들어가서 효과는 LP 완화 결합 쪽뿐일 것.
 - follower 블록의 π̃ (λ 로 스케일된 follower dual) 에도 π̃_ks ≤ λᵁ π_Fᵁ_k d_s 형태가 가능한지. 지금은 상수 상한 λᵁ π_Fᵁ_k.
-- zero-sum Ω 에는 ϖ 같은 인증서 bilinear 이 없어 Wcap 은 해당 없음. 다만 "dual 상한을 belief 가중치에 비례하게" 거는
+- zero-sum Ω 에는 ϖ 같은 subgradient bilinear 이 없어 Wcap 은 해당 없음. 다만 "dual 상한을 belief 가중치에 비례하게" 거는
   강화가 리더·follower 블록의 다른 변수에도 되는지는 볼 만하다.
 
 ## 6. big-M 상수 (Ω 의 McCormick 범위)
