@@ -1,0 +1,69 @@
+Set parameter Username
+Set parameter LicenseID to value 2742039
+Academic license - for non-commercial use only - expires 2026-11-20
+lab_rtight_bench: SGB128 seed=4 S=20 mode=bench 반응 프리솔브 켬, worker 12, 제한 3600s
+  [설정] 전역 oracle = α-B&B (nz_alpha_bnb_dr), worker 12, gap 1e-03, 이어 풀기 켬, bnb_kw = (ipopt_time = 120.0,)
+  [설정] oracle 시간: 남은 시간 전체 (끊지 않음), 목표값 조기 종료 켬, local cut 켬
+  [loc]  it   1 LB=-10000000.0000 UB=        Inf x=Int64[]    Ω_loc=    -0.0005 (0.1s) menu=1 (+belief)
+  [menu] it   2 LB=-9999695.0000 UB=        Inf x=[1]        menu cut 1/1 (V_menu=-20345.9312)
+  [menu] it   3 LB=-9999695.0000 UB=        Inf x=[2]        menu cut 1/1 (V_menu=-19775.4593)
+  [menu] it   4 LB=-5312634.9987 UB=        Inf x=[1, 2]     menu cut 1/1 (V_menu=-30611.4705)
+  [menu] it   5 LB=-1690615.0008 UB=        Inf x=[3]        menu cut 1/1 (V_menu=-1701.1315)
+  [loc]  it   6 LB=-30001.4705 UB=        Inf x=[1, 2]     Ω_loc= -1427.3116 (0.6s) menu=2 (+belief)
+  [menu] it   7 LB=-20040.9312 UB=        Inf x=[1]        menu cut 1/2 (V_menu=-13099.7242)
+  [menu] it   8 LB=-19470.4593 UB=        Inf x=[2]        menu cut 1/2 (V_menu=-1939.7600)
+  [loc]  it   9 LB=-12794.7243 UB=        Inf x=[1]        Ω_loc=  -821.2409 (0.5s) menu=3 (+belief)
+  [loc]  it  10 LB= -1634.7600 UB=        Inf x=[2]        Ω_loc=  -836.1695 (2.4s) menu=4 (+belief)
+  [loc]  it  11 LB= -1396.1315 UB=        Inf x=[3]        Ω_loc=   -76.3355 (0.3s) menu=5 (+belief)
+Set parameter Username
+Set parameter LicenseID to value 2742039
+Academic license - for non-commercial use only - expires 2026-11-20
+    [반응 프리솔브] x=[1, 2]: 활성 9 중 4 개를 0 으로 고정 (6.5s)
+Set parameter Username
+Set parameter LicenseID to value 2742039
+Academic license - for non-commercial use only - expires 2026-11-20
+Set parameter Username
+Set parameter LicenseID to value 2742039
+Academic license - for non-commercial use only - expires 2026-11-20
+Set parameter Username
+Set parameter LicenseID to value 2742039
+Academic license - for non-commercial use only - expires 2026-11-20
+Set parameter Username
+Set parameter LicenseID to value 2742039
+Academic license - for non-commercial use only - expires 2026-11-20
+Set parameter Username
+Set parameter LicenseID to value 2742039
+Academic license - for non-commercial use only - expires 2026-11-20
+Set parameter Username
+Set parameter LicenseID to value 2742039
+Academic license - for non-commercial use only - expires 2026-11-20
+Set parameter Username
+Set parameter LicenseID to value 2742039
+Academic license - for non-commercial use only - expires 2026-11-20
+Set parameter Username
+Set parameter LicenseID to value 2742039
+Academic license - for non-commercial use only - expires 2026-11-20
+Set parameter Username
+Set parameter LicenseID to value 2742039
+Academic license - for non-commercial use only - expires 2026-11-20
+Set parameter Username
+Set parameter LicenseID to value 2742039
+Academic license - for non-commercial use only - expires 2026-11-20
+Set parameter Username
+Set parameter LicenseID to value 2742039
+Academic license - for non-commercial use only - expires 2026-11-20
+Set parameter Username
+Set parameter LicenseID to value 2742039
+Academic license - for non-commercial use only - expires 2026-11-20
+
+******************************************************************************
+This program contains Ipopt, a library for large-scale nonlinear optimization.
+ Ipopt is released as open source code under the Eclipse Public License (EPL).
+         For more information visit https://github.com/coin-or/Ipopt
+******************************************************************************
+
+  [orcl] it  12 LB=  -817.3086 UB=  -234.5332 x=[1, 2]     Ω= -1226.8248 (20.1s) menu=6 (+belief, LP@x̄=-1226.8247, gap -1.5e-04)
+  [orcl] it  13 LB=  -616.8248 UB=  -613.0493 x=[1, 2]     Ω= -1224.1047 (62.0s) menu=7 (+belief, LP@x̄=-1223.7896, gap -3.2e-01)
+┌ Warning: Assignment to `r` in soft scope is ambiguous because a global variable by the same name exists: `r` will be treated as a new local. Disambiguate by using `local r` to suppress this warning or `global r` to assign to the existing global variable.
+└ @ C:\Users\user\robust_bilevel_network_games\nonzero_sum\lab_rtight_bench.jl:58
+RESULT S=20 seed=4 method=ALGL 프리솔브=켬 status=Optimal x={1,2} LB=-614.104683 UB=-613.049321 gap=1.72e-03 iters=14 global=2 local=5 menu=7 time=101.7 | 프리솔브 1 회, 0 고정 합 4, 6.5s
