@@ -1,7 +1,7 @@
 """
 lab_inspect.jl — 상자 하나의 노드 LP 해를 시나리오별로 풀어 본다 (완화가 무엇을 "속이는지" 눈으로 확인).
 
-시나리오마다: belief (d̂, r̂), 좌표별 시나리오 α (follower 블록 ζF/d̂, 리더 블록 ζL/r̂) 와 공통 α̂ 의 차이, 인증서 비율 (π̃/d̂, ϖ/r̂) 과 쌍대 범위,
+시나리오마다: belief (d̂, r̂), 좌표별 시나리오 α (follower 블록 ζF/d̂, 리더 블록 ζL/r̂) 와 공통 α̂ 의 차이, recourse 쌍대해의 비율 (π̃/d̂, ϖ/r̂) 과 쌍대 범위,
 follower 블록 primal 값 cȳ/d̂ − Q_s(α̂), 리더 블록 ℓŷ/r̂ − φ_s(α̂).
 환경변수: LB_IN  LI_BOX = 51 (상한 내림차순 번호)  LM_KW = "(fwd=true,)"  LM_TOL = 1e-7  LI_COORDS = "3,4,6,7,8"
 실행: julia -t 1 nonzero_sum/lab_inspect.jl

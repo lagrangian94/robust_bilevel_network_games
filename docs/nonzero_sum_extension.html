@@ -109,7 +109,7 @@ window.MathJax = {
     <tr><td>$d$</td><td>follower의 recourse 목적. 원고 그대로이며 max-flow에서는 $e_{ts}$</td><td>$v$</td></tr>
     <tr><td>$\ell$</td><td>리더의 recourse 평가 벡터(harm). $\ell=d$이면 zero-sum</td><td>$d$</td></tr>
     <tr><td>$r_s(x,\alpha)$</td><td>$r_{s,k}=u_k^s+\alpha_k-u_k^s v_k^s x_k$ (원고 3268행)</td><td>$b_x(\xi)+Bh$</td></tr>
-    <tr><td>$\varpi^s$</td><td>follower recourse dual(min-cut 인증서). $a_s$로 스케일됨</td><td>$\sigma^s$</td></tr>
+    <tr><td>$\varpi^s$</td><td>follower 의 recourse 쌍대해 (recourse dual solution; max-flow 에서는 min-cut). $a_s$로 스케일됨</td><td>$\sigma^s$</td></tr>
     <tr><td>$\theta_s,\ \delta_k^s$</td><td>recourse-optimality 제약의 multiplier, 그리고 $x_k\theta_s$ McCormick의 쌍대</td><td>없음</td></tr>
     <tr><td>$\kappa_H$</td><td>Hoffman 상수 (원고의 budget dual $\kappa$와 구분)</td><td>$\kappa$</td></tr>
   </table></div>
@@ -461,11 +461,11 @@ window.MathJax = {
 </section>
 
 <section>
-  <h2><span class="step">확장 belief</span>belief에 follower 인증서를 붙이면 belief cut이 살아난다</h2>
-  <p>Zero-sum에서는 belief $(a,d)$를 고정하면 Ω가 LP가 되었고, belief cut과 그 유한성(cover 정리)이 여기에 기대고 있었다. 비제로섬(Step 4′ 파라미터 버전)에서는 belief를 고정해도 목적함수의 $\alpha_k\varpi^s_k$가 남는다. 이 항을 처리하는 방법이 <b>belief에 follower recourse 인증서를 붙이는 것</b>이다.</p>
+  <h2><span class="step">확장 belief</span>belief에 recourse 쌍대해를 붙이면 belief cut이 살아난다</h2>
+  <p>Zero-sum에서는 belief $(a,d)$를 고정하면 Ω가 LP가 되었고, belief cut과 그 유한성(cover 정리)이 여기에 기대고 있었다. 비제로섬(Step 4′ 파라미터 버전)에서는 belief를 고정해도 목적함수의 $\alpha_k\varpi^s_k$가 남는다. 이 항을 처리하는 방법이 <b>belief에 follower 의 recourse 쌍대해를 붙이는 것</b>이다.</p>
 
   <div class="tbl"><table>
-    <tr><th>bilinear 항</th><th>위치</th><th>belief 고정</th><th>belief + 인증서 고정</th></tr>
+    <tr><th>bilinear 항</th><th>위치</th><th>belief 고정</th><th>belief + recourse 쌍대해 고정</th></tr>
     <tr><td>$\alpha_k a_s$</td><td>리더 flow 제약</td><td class="good">선형</td><td class="good">선형</td></tr>
     <tr><td>$\alpha_k d^\dagger_s$</td><td>follower 제약</td><td class="good">선형</td><td class="good">선형</td></tr>
     <tr><td>$\alpha_k\varpi^s_k$</td><td>목적 $\theta^U r_s(x,\alpha)^\top\varpi^s$</td><td class="bad">남음</td><td class="good">선형</td></tr>
@@ -496,7 +496,7 @@ window.MathJax = {
 
   <div class="box">
     <span class="tag">직관 · 1차원 S자 예시</span>
-    <p>α-오목성 절의 예에서 follower의 min-cut은 두 종류다. $\alpha\le1$에서는 $\{(a,t),(b,t)\}$이고 $\phi=0$, $\alpha\ge1$에서는 $\{(s,a),(s,b)\}$이고 $\phi=\min(\alpha-1,1)$이다. 첫 cut을 고정한 LP는 $\alpha\le1$ 구간을, 둘째 cut을 고정한 LP는 $\alpha\ge1$ 구간을 정확히 주고, <b>두 LP의 max가 S자 함수 전체</b>다. 비오목인 $\phi$가 인증서마다 유한 개의 LP 조각으로 나뉘는 것이 확장 belief가 하는 일이다.</p>
+    <p>α-오목성 절의 예에서 follower의 min-cut은 두 종류다. $\alpha\le1$에서는 $\{(a,t),(b,t)\}$이고 $\phi=0$, $\alpha\ge1$에서는 $\{(s,a),(s,b)\}$이고 $\phi=\min(\alpha-1,1)$이다. 첫 cut을 고정한 LP는 $\alpha\le1$ 구간을, 둘째 cut을 고정한 LP는 $\alpha\ge1$ 구간을 정확히 주고, <b>두 LP의 max가 S자 함수 전체</b>다. 비오목인 $\phi$가 recourse 쌍대해마다 유한 개의 LP 조각으로 나뉘는 것이 확장 belief가 하는 일이다.</p>
   </div>
 
   <h3>이론 문서 명제와의 대응</h3>
@@ -511,7 +511,7 @@ window.MathJax = {
   <h3>논문에서의 위치와 남은 확인</h3>
   <ul>
     <li><b>§3.1</b>: follower 쪽 cover 정리(유한 조각, $x$와 무관한 진입 문턱 $\gamma_I$, $\tilde\varepsilon$ 계단함수)를 reaction-set 정리 바로 뒤에 둔다. "menu"라는 말 대신 finite cover와 admission threshold를 쓴다.</li>
-    <li><b>알고리즘</b>: belief cut은 "(belief, certificate) pair"로 넣는다. zero-sum에서는 $\varpi$ 항이 없으므로 인증서를 붙일 필요가 없다.</li>
+    <li><b>알고리즘</b>: belief cut은 "belief–subgradient pair" (belief 와 recourse 쌍대해의 예약 행 성분)로 넣는다. zero-sum에서는 $\varpi$ 항이 없으므로 recourse 쌍대해를 붙일 필요가 없다.</li>
     <li><b>크기</b>: 이론상 $\lvert\mathcal V_F\rvert^S$배까지 커질 수 있다. 실제 크기는 min-cut 패턴이 얼마나 반복되는가에 달려 있으며, 실험 ①(패턴 반복성 측정)이 그 답이다.</li>
     <li><b>검증</b>: location 인스턴스에서 확인했다. 얻은 $x$에서 exact, 다른 $x$에서 유효, 모은 원소의 max가 모든 $x$에서 Ω를 복원한다(<code>docs/nonzero_sum_location_results.md</code> §7).</li>
   </ul>

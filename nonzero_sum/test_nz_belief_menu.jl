@@ -1,12 +1,12 @@
 """
 test_nz_belief_menu.jl — 비제로섬에서 확장 belief LP cut 검증 (html "확장 belief" 절의 "검증" 항목).
 
-  (A) exactness:  각 x 에서 전역 Ω 해의 (belief, 인증서 σ) 를 고정한 LP 값이 Ω(x) 와 같은가.
-                  인증서 :recompute (html (b), follower LP simplex dual) / :solution (html (a), ϖ̂/r̂),
+  (A) exactness:  각 x 에서 전역 Ω 해의 (belief, recourse 쌍대해 σ) 를 고정한 LP 값이 Ω(x) 와 같은가.
+                  recourse 쌍대해 :recompute (html (b), follower LP simplex dual) / :solution (html (a), ϖ̂/r̂),
                   고정 범위 :hrows (bilinear 행만) / :all (ϖ 전체, html 그대로).
   (B) validity:   x₁ 에서 얻은 원소를 다른 x₂ 에서 풀면 Ω(x₂) 이하인가 (restriction → 항상 유효해야 함).
   (C) 충분성:     모든 x 에서 모은 menu 의 max 가 각 x 에서 Ω(x) 를 복원하는가.
-  (D) 대조:       인증서 없이 belief 만 고정하면 α·ϖ 가 남아 LP 가 아님 → 그 문제를 Gurobi 로 풀어
+  (D) 대조:       recourse 쌍대해 없이 belief 만 고정하면 α·ϖ 가 남아 LP 가 아님 → 그 문제를 Gurobi 로 풀어
                   값만 비교 (belief 고정으로 충분하지만 LP 가 아니라는 점 확인).
   (E) Benders:    표준 Benders vs belief-menu Benders (확장 belief) — 같은 x*, 값, oracle 횟수, menu 크기.
 실행: julia nonzero_sum/test_nz_belief_menu.jl   (환경변수 NZ_S, NZ_SEED, NZ_LAMBDA)
@@ -87,7 +87,7 @@ best = argmin(x -> dot(nd.qx, x) + Ωval[x], X)
 @printf("  전수 열거 최적: x*=%s  q·x + V* = %.4f\n", xs_str(best), dot(nd.qx, best) + Ωval[best])
 
 # ---------------------------------------------------------------- (D)
-println("\n(D) 대조: 인증서 없이 belief 만 고정 (α·ϖ bilinear 남음, Gurobi NonConvex 로 풀이)")
+println("\n(D) 대조: recourse 쌍대해 없이 belief 만 고정 (α·ϖ bilinear 남음, Gurobi NonConvex 로 풀이)")
 Ob = build_nz_omega(nd; optimizer=GRB)       # 전역 Ω 에 belief 만 고정
 for (x1, bel, _) in elems[1:min(3, end)]
     for f in (:a, :b, :r, :d, :e), s in 1:nd.S

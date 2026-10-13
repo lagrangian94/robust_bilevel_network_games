@@ -12,11 +12,11 @@ nz_benders.jl — 비제로섬 Ω 위의 Benders 두 가지.
 
   nz_standard_benders  : 매 반복 x̄ 에서 전역 Ω → cut, UB.
   nz_belief_menu_benders: 설계 A (true_dro/belief_menu_benders.jl) 를 확장 belief 로.
-      menu 원소 = (belief (a,b,r,d,e), follower 인증서 σ).  고정하면 Ω 가 LP (html "확장 belief").
+      menu 원소 = (belief (a,b,r,d,e), follower 의 recourse 쌍대해 σ) — 원고의 belief–subgradient pair.  고정하면 Ω 가 LP (html "확장 belief").
       menu 단계: 모든 원소의 LP 값 v_b(x̄) 가 t₀ 보다 크면 그 LP 해로 cut.
       local 단계 (local_first = true 일 때만): menu 가 수렴한 x̄ 에서 Ω 의 local 해를 보고, 위반 cut 이 있으면 cut + belief 를 menu 에.
-      oracle 단계 (menu 가 x̄ 에서 수렴): 전역 Ω(x̄) → UB, cut, 새 belief + 인증서를 menu 에 추가.
-      인증서: cert = :recompute (html (b): (x̄, α̂) 에서 follower LP simplex dual, 기본)
+      oracle 단계 (menu 가 x̄ 에서 수렴): 전역 Ω(x̄) → UB, cut, 새 belief + recourse 쌍대해를 menu 에 추가.
+      recourse 쌍대해: cert = :recompute (html (b): (x̄, α̂) 에서 follower LP simplex dual, 기본)
                    | :solution  (html (a): ϖ̂ˢ / r̂_s)
       검증 기록: 새 원소를 넣을 때 그 LP 를 x̄ 에서 풀어 Ω(x̄) 와 같은지 (exactness) :exact_gap 에 남김.
 OMP: min q_xᵀx + t₀, 1ᵀx ≤ γ, t₀ ≥ intercept + slopeᵀx.
@@ -333,7 +333,7 @@ function nz_belief_menu_benders(nd::NZData; optimizer, lp_optimizer=optimizer, c
     #   이어 풀지 않으면 같은 B&B 를 처음부터 반복한다.
     bnb_cache = (oracle == :alpha_bnb && bnb == :dr && oracle_resume) ? Dict{Vector{Float64},Any}() : nothing
     # local_first: menu 가 x̄ 에서 수렴한 뒤 전역 oracle 을 부르기 전에 Ω 의 local 해 (Gurobi OptimalityTarget = 1, SB-G / SB-A 와 같음) 를
-    #   먼저 본다. 그 해의 cut (α 고정 LP, MW) 이 x̄ 에서 tol 이상 위반되면 cut 을 넣고, 그 해의 belief + 인증서도 menu 에 넣는다
+    #   먼저 본다. 그 해의 cut (α 고정 LP, MW) 이 x̄ 에서 tol 이상 위반되면 cut 을 넣고, 그 해의 belief + recourse 쌍대해도 menu 에 넣는다
     #   (local 해도 Ω 의 실행가능해라 cut 과 menu 원소 모두 유효. 값은 하한일 뿐이라 UB 에는 쓰지 않음). 위반이 없을 때만 전역 oracle.
     cert in (:recompute, :solution) || error("cert = :recompute | :solution")
     oracle in (:gurobi, :alpha_bnb) || error("oracle = :gurobi | :alpha_bnb")
@@ -454,7 +454,7 @@ function nz_belief_menu_benders(nd::NZData; optimizer, lp_optimizer=optimizer, c
                 nz_repair_cert(nd, bel_raw[:ϖ] ./ reshape(max.(bel_raw[:r], 1e-12), 1, nd.S); lp_optimizer=lp_optimizer)
             end
             push!(menu, (bel, σ))
-            # exactness: 새 (belief, 인증서) 고정 LP 의 x̄ 값 = Ω(x̄) ?
+            # exactness: 새 (belief, recourse 쌍대해) 고정 LP 의 x̄ 값 = Ω(x̄) ?
             nz_set_belief!(B, nd, bel, σ)
             vb = nz_solve!(B, nd, x̄)[:Fval]
             push!(exact_log, (iter=iter, x=findall(x̄ .> 0.5), omega=res[:Fval], lp=vb, gap=res[:Fval] - vb))

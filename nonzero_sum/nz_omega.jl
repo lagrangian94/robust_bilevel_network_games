@@ -20,7 +20,7 @@ follower 블록 (원고 그대로 + 1단계 목적 c0ᵀh)
 θ = 0, ℓ = c 이면 원고 coro:algorithmic-TV 의 Ω 와 같다.
 
 belief 고정 LP (html "확장 belief")
-  belief (a, b, r, d, e) 와 follower 인증서 σˢ (ϖˢ = r_s σˢ) 를 고정하면 ζL, ζF, ζW 가 α 에 선형 → LP.
+  belief (a, b, r, d, e) 와 follower 의 recourse 쌍대해 σˢ (ϖˢ = r_s σˢ) 를 고정하면 ζL, ζF, ζW 가 α 에 선형 → LP.
   cert_rows = :hrows (기본) 는 bilinear 에 들어가는 H 행의 ϖ 만 고정 (나머지는 LP 변수, 더 강한 restriction),
   :all 은 html 그대로 ϖˢ 전체를 고정.
 """
@@ -151,7 +151,7 @@ function build_nz_omega(nd::NZData; optimizer, belief_lp::Bool=false, cert_rows:
         :ρ01 => ρ01, :ρ03 => ρ03, :ζF => ζF, :Xr => Xr, :Hr => Hr, :cert_rows => cert_rows, :mode => mode,
         :cpl => cpl)
     if mode == :belief_lp
-        # belief (r, d) 와 인증서 ϖ 고정 → α 의 계수. 계수는 nz_set_belief! 에서 채움
+        # belief (r, d) 와 recourse 쌍대해 ϖ 고정 → α 의 계수. 계수는 nz_set_belief! 에서 채움
         v[:cL] = @constraint(model, [i=1:nh, s=1:S], ζL[i, s] - 0.0 * α[i] == 0)
         v[:cF] = @constraint(model, [i=1:nh, s=1:S], ζF[i, s] - 0.0 * α[i] == 0)
         v[:cW] = @constraint(model, [jj=1:nHr, s=1:S], ζW[jj, s] - 0.0 * α[nd.hrow[Hr[jj]]] == 0)
@@ -253,7 +253,7 @@ function nz_cut_from_solution(O::NZOmega, nd::NZData, x̄)
 end
 
 
-"belief + 인증서 읽기 (Ω 해에서)"
+"belief + recourse 쌍대해 읽기 (Ω 해에서)"
 function nz_read_belief(O::NZOmega, nd::NZData)
     v = O.v; S, m = nd.S, nz_m(nd)
     b = Dict{Symbol,Any}(f => [value(v[f][s]) for s in 1:S] for f in (:a, :b, :r, :d, :e))
@@ -264,7 +264,7 @@ end
 
 
 """
-follower 인증서 σˢ (html (b)): (x̄, α̂) 에서 시나리오별 follower recourse LP 를 simplex 로 풀어
+follower 의 recourse 쌍대해 σˢ (html (b)): (x̄, α̂) 에서 시나리오별 follower recourse LP 를 simplex 로 풀어
 최적 dual 꼭짓점을 얻는다. shadow price (rhs 1 증가 시 목적 증가) ≥ 0.
 """
 function nz_follower_duals(nd::NZData, x̄, α̂; lp_optimizer)
@@ -286,7 +286,7 @@ end
 
 
 """
-인증서를 정확히 dual feasible (Aᵀσ ≥ c, σ ≥ 0) 한 점으로 보정: min ‖σ′ − σ‖₁.
+recourse 쌍대해를 정확히 dual feasible (Aᵀσ ≥ c, σ ≥ 0) 한 점으로 보정: min ‖σ′ − σ‖₁.
 solver dual 허용오차 (~1e-7) 나 ϖ̂/r̂ 의 잔차가 남으면 ϖ 고정 시 N1 이 깨져 belief LP 가 infeasible 이 된다.
 보정 후 c 를 정확히 넘도록 1e-9 여유를 둔다 (cut 은 restriction 이므로 여유는 유효성에 영향 없음).
 """
@@ -323,7 +323,7 @@ end
 
 """
 TV 볼·CVaR 다면체 안으로 정리 (solver 허용오차 제거). belief_menu_benders.jl 의 _clean_belief 와 같은 규칙.
-ϖ 는 그대로 둔다 (인증서는 r 과 별도로 σ 로 저장).
+ϖ 는 그대로 둔다 (recourse 쌍대해는 r 과 별도로 σ 로 저장).
 결합 (δ 유한): (a, d) 를 함께 q̂ 쪽으로 같은 비율 t 만큼 줄인다. ‖a−q̂‖, ‖d−q̂‖, ‖a−d‖ 가 모두 (1−t) 배가
 되므로 세 제약 (ε̂, ε̃, δ) 을 동시에 만족시키는 가장 작은 축소다 ((q̂, q̂) 는 모든 δ ≥ 0 에서 허용).
 """

@@ -1,7 +1,7 @@
 """
 diag_full_rlt.jl — α-B&B 노드 완화에 full RLT 를 더하면 상자 폭에 대한 상한 수렴이 얼마나 빨라지는지 (프로토타입).
 
-현재 노드 완화: belief 행 × α, 인증서 (ϖ ≥ 0, ϖ ≤ ϖᵁ r) × 자기 α, WD. 여기에 곱 변수
+현재 노드 완화: belief 행 × α, recourse 쌍대해의 행 (ϖ ≥ 0, ϖ ≤ ϖᵁ r) × 자기 α, WD. 여기에 곱 변수
   Ξ_iks = α_i ϖ_ks (모든 행 k),  ψ_ijs = α_i ŷ_js
 와 (α_i − l_i), (u_i − α_i) 를 곱한 RLT 행을 추가:
   쌍대 실행가능성 Σ_k A_kj ϖ_ks ≥ c_j r_s,  ϖ_ks ≥ 0,  ŷ_js ≥ 0,  Wcap ϖ_ks ≤ ϖᵁ_k r_s (H 행),

@@ -1,17 +1,17 @@
 """
 nz_alpha_bnb_dr.jl — α-B&B (nz_alpha_bnb.jl) + **상자별 쌍대 범위 조임** 시제품. nz_alpha_bnb.jl 을 먼저 include.
 
-기존 α-B&B 의 노드 완화는 인증서 (리더 블록 ϖˢ, follower 블록 π̃ˢ) 의 예약 행 (H 행) 성분에 전역 범위 [0, ϖᵁ] 만 쓴다.
+기존 α-B&B 의 노드 완화는 recourse 쌍대해 (리더 블록 ϖˢ, follower 블록 π̃ˢ; 원고의 recourse dual solution) 의 예약 행 (H 행) 성분에 전역 범위 [0, ϖᵁ] 만 쓴다.
 정확한 해에서 ϖˢ/r_s, π̃ˢ/d_s 는 시나리오 s recourse LP 의 **α 에서의 최적 쌍대** 이고 α 는 노드 상자 B 안에 있으므로
     σ_ks ∈ [σlo_ks(B), σhi_ks(B)] = { σ_k : σ 는 어떤 α' ∈ B 에서 시나리오 s recourse LP 의 최적 쌍대 (H 성분 ≤ ϖᵁ, 더 낮출 수 없는 것) }
 로 조일 수 있다. 범위는 시나리오·행마다 작은 KKT-MIP 2 개로 정확히 계산 (상자가 줄면 범위도 줄어 대부분 한 점으로 고정됨,
 부모에서 고정된 성분은 자식에서 다시 풀지 않음).
 
 노드 LP 에 넣는 행 (모두 계수만 노드마다 갱신)
-  W  : σlo r_s ≤ ϖ_ks ≤ σhi r_s                                       (리더 인증서)
-  F  : σlo d_s ≤ π̃_ks ≤ σhi d_s                                       (follower 인증서)
+  W  : σlo r_s ≤ ϖ_ks ≤ σhi r_s                                       (리더 블록의 recourse 쌍대해)
+  F  : σlo d_s ≤ π̃_ks ≤ σhi d_s                                       (follower 블록의 recourse 쌍대해)
   RLT: (ϖ − σlo r)(α_i − l_i) ≥ 0, (ϖ − σlo r)(u_i − α_i) ≥ 0, (σhi r − ϖ)(α_i − l_i) ≥ 0, (σhi r − ϖ)(u_i − α_i) ≥ 0
-       (ζW = α ϖ, ζL = α r 로 선형. 범위가 한 점이면 ζW = σ ζL 로 인증서 곱이 정확해진다)
+       (ζW = α ϖ, ζL = α r 로 선형. 범위가 한 점이면 ζW = σ ζL 로 subgradient 곱이 정확해진다)
   C  : 상자가 함의하는 상보성 — l_i > 0 이면 follower 1단계 정상성이 등식, Σ_i W_li u_i < w_l 이면 κ_l = 0
   V  : 시나리오별 값 상한 ℓᵀŷˢ ≤ φ̄_s(B) r_s          X : follower 1단계 상보성의 RLT (곱 변수 Zκ = α κ, ζΠ = α π̃)
 2026-10-13 에 더한 것 (모두 기본 켬. 진단과 측정은 docs/dependent_ambiguity/alpha_bnb_nonzero_analysis.md §10.13)
@@ -565,7 +565,7 @@ nz_alpha_bnb (기존, `bnb = :legacy`) 의 탐색 — worker 병렬, best-first 
 | | `sep_maxadd` | 5000 | 라운드당 추가 RLT 행 상한 |
 | | `min_width` | 1e-7 | 이보다 좁은 좌표는 더 나누지 않음 |
 | | `presolve` | true | x̄ 에서 닫힌 점포의 예약 좌표를 0 으로 고정 |
-| 강화 (ablation 전용) | `dual_range` | true | 인증서의 상자별 쌍대 범위 (W, F) + RLT. false 면 아래 셋도 꺼지고 기존 완화와 같음 |
+| 강화 (ablation 전용) | `dual_range` | true | recourse 쌍대해의 상자별 범위 (W, F) + RLT. false 면 아래 셋도 꺼지고 기존 완화와 같음 |
 | | `comp` | true | 상자가 함의하는 상보성 (C) |
 | | `vcut` | true | 시나리오별 값 상한 (V) |
 | | `cslift` | true | follower 1 단계 상보성의 RLT (X) |

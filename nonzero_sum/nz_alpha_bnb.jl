@@ -2,14 +2,14 @@
 nz_alpha_bnb.jl — 비제로섬 Ω (nz_omega.jl) 의 전역 해법: α 만 분기하는 spatial B&B.
 true_dro/global_bilinear_solver.jl (zero-sum) 의 구조를 그대로 따른다.
 
-비제로섬 Ω 의 bilinear 항은 전부 α × (belief 또는 인증서):
+비제로섬 Ω 의 bilinear 항은 전부 α × (belief 또는 subgradient):
   ζL_is = α_i r_s,  ζF_is = α_i d_s  (기존과 같은 종류)
-  ζW_js = α_{h(j)} ϖ_js              (신규: H 행 j 의 follower 인증서, html Step 4′ 의 α_k ϖ_k)
+  ζW_js = α_{h(j)} ϖ_js              (신규: H 행 j 의 recourse 쌍대해 = subgradient, html Step 4′ 의 α_k ϖ_k)
 → α 고정이면 LP (정확한 값, valid LB), α 상자 위 RLT 완화도 LP (valid UB), 상자가 점이면 exact.
 
 노드 완화 (level-1 RLT): 선형 행 g(y) ≥ 0 × 상자 인수 (α_i − l_i), (u_i − α_i) 를 곱 변수로 선형화.
   belief 행: a, b, r, d, e 의 상·하한, TV 볼 (a−b≤q̂, a+b≥q̂, Σb≤2ε̂, d·e 동일), CVaR r ≤ a/(1−β)  → 모든 α_i 와 곱
-  인증서 행: ϖ_js ≥ 0, ϖ_js ≤ ϖᵁ_j r_s (Ω 의 Wcap)                                  → 자기 α_{h(j)} 와만 곱
+  recourse 쌍대해의 행: ϖ_js ≥ 0, ϖ_js ≤ ϖᵁ_j r_s (Ω 의 Wcap)                                  → 자기 α_{h(j)} 와만 곱
      (다른 α_i 와의 곱 α_i ϖ_js 는 Ω 에 없으므로 만들지 않음. Wcap RLT 가 ζW 와 ζL 을 묶어 McCormick 보다 강함)
   정적 RLT: Σ_s Z_is = α_i (Σa = Σr = Σd = 1), Σ_i W_li Z_is ≤ w_l y_s (Wα ≤ w).
 RLT 행은 위반된 것만 분리해 추가. 부모 상자 행은 자식에서도 유효 → 지우지 않고 무효 행은 rhs=−∞ 로 비활성.

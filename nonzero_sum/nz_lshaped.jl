@@ -2,9 +2,9 @@
 nz_lshaped.jl — α-B&B 노드 완화의 시나리오 분해 (L-shaped). 설계: docs/dependent_ambiguity/lshaped_node_relaxation_design.md
 
 노드 완화 LP (nz_alpha_bnb.jl 의 _NZSepLP) 를 master 로 바꾼다:
-  - 리더 블록 변수 ŷ_s, ϖ_{N,s} (예약 행이 아닌 인증서 성분), ρ̂1·ρ̂2·ρ̂3 와 행 Lflow, LMC, N1, WD 를 삭제하고
+  - 리더 블록 변수 ŷ_s, ϖ_{N,s} (recourse 쌍대해 중 예약 행이 아닌 성분), ρ̂1·ρ̂2·ρ̂3 와 행 Lflow, LMC, N1, WD 를 삭제하고
   - 시나리오마다 η_s (블록 값의 상한 근사) 를 추가, 목적의 리더 블록 부분을 Σ η_s 로 교체.
-예약 행 인증서 ϖ_H 는 master 에 남는다 → 상자 의존 RLT 행이 master 변수만 포함 → 블록 LP 가 상자 K 와 무관 → cut 이 트리 전체에서 유효.
+예약 행의 recourse 쌍대해 ϖ_H 는 master 에 남는다 → 상자 의존 RLT 행이 master 변수만 포함 → 블록 LP 가 상자 K 와 무관 → cut 이 트리 전체에서 유효.
 
 블록 s (master 값 m_s = (r_s, ζL_s, ζW_s, ϖ_{H,s}) 고정):
   Q_s(m_s) = max (ℓ+θc)ᵀŷ − θ Σ_{k∈N}(u_ks + [k∈X] g_ks x̄) ϖ_ks − Σ_{k∈X} π̂ᵁ_k [x̄ ρ̂1 + (1−x̄) ρ̂3] − M σ

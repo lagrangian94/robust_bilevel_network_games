@@ -2,7 +2,7 @@
 analyze_nz_menu_cache.jl — test_nz_belief_menu.jl 의 (A) 캐시 (Ω(x), 원소 (x, belief, σ)) 로
   (B) validity: 모든 (원소, x₂) 쌍에서 LP ≤ Ω(x₂)
   (C) 충분성: x₂ 마다 max_원소 LP = Ω(x₂), 그리고 그 max 를 달성하는 원소 수 (= x₂ 를 인증하는 데 필요한 원소)
-  인증서 패턴: 시나리오별 고유 σˢ 개수, 고유 belief 개수 (html "크기: 실험 ①")
+  recourse 쌍대해 패턴: 시나리오별 고유 σˢ 개수, 고유 belief 개수 (html "크기: 실험 ①")
 실행: julia nonzero_sum/analyze_nz_menu_cache.jl  (NZ_SEED, NZ_S, NZ_WRES)
 """
 root = dirname(@__DIR__)
@@ -50,11 +50,11 @@ function main()
     end
     @printf("  greedy 최소 menu (모든 x 를 exact 로 덮음): %d 개 (원소 x₁ = %s)\n", length(cover),
             join([xs(elems[i][1]) for i in sort(collect(cover))], ", "))
-    # 인증서 / belief 패턴
+    # recourse 쌍대해 / belief 패턴
     S = nd.S
     for s in 1:S
         pats = unique([round.(e[3][:, s]; digits=4) for e in elems])
-        @printf("  시나리오 %d: 고유 인증서 σˢ %d 개 / 원소 %d\n", s, length(pats), n)
+        @printf("  시나리오 %d: 고유 recourse 쌍대해 σˢ %d 개 / 원소 %d\n", s, length(pats), n)
     end
     bels = unique([Tuple(round.(vcat(e[2][:r], e[2][:d]); digits=4)) for e in elems])
     @printf("  고유 belief (r, d) %d 개 / 원소 %d\n", length(bels), n)

@@ -48,7 +48,7 @@ for w in pd.(split(envf("BW_WIDTHS", "150,50,10,3,1,0.3,0.1,0.03,0.01"), ","))
 end
 
 # ---- 2. ϖ 에도 상자를 주면? (가설: α·ϖ 오차 ∝ α 폭 × ϖ 폭 → ϖ 분기가 필요) ----
-# ϖ* = α* 고정 정확 LP 의 H 행 인증서. ϖ 상자 [ϖ* − wϖ/2, ϖ* + wϖ/2] ∩ [0, ϖᵁ rmax] 를 RLT 행 (ϖ − L ≥ 0, U − ϖ ≥ 0) × 자기 α 로.
+# ϖ* = α* 고정 정확 LP 의 H 행의 recourse 쌍대해. ϖ 상자 [ϖ* − wϖ/2, ϖ* + wϖ/2] ∩ [0, ϖᵁ rmax] 를 RLT 행 (ϖ − L ≥ 0, U − ϖ ≥ 0) × 자기 α 로.
 Hr = F.v[:Hr]
 ϖs = Dict((jj, s) => value(F.v[:ϖ][Hr[jj], s]) for jj in eachindex(Hr), s in 1:nd.S)
 println("\nα 폭 × ϖ 폭 (ϖ* 범위: ", round(minimum(values(ϖs)); digits=2), " ~ ", round(maximum(values(ϖs)); digits=2), ")")
