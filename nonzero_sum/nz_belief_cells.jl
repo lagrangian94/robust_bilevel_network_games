@@ -182,8 +182,13 @@ function nz_belief_cell_oracle(nd::NZData, x̄; nthreads::Int=max(1, Threads.nth
         @objective(M, Max, sum(r[s] * φ[s] for s in 1:S))
         optimize!(M)
         st_ = termination_status(M)
-        st_ == MOI.OPTIMAL || error("nz_belief_cell_oracle 층 문제: $st_")
-        return (val=objective_value(M), bd=objective_bound(M), α=value.(α))
+        if st_ != MOI.OPTIMAL                       # Gurobi SUBOPTIMAL (LOCALLY_SOLVED) 등: 수치 설정을 올려 한 번 더
+            set_optimizer_attribute(M, "NumericFocus", 3); optimize!(M); st_ = termination_status(M)
+        end
+        st_ == MOI.INFEASIBLE && return (val=-Inf, bd=-Inf, α=zeros(nh), ok=true)      # 대표점의 최적면이 허용오차 안에서 비는 경우는 없어야 하지만, 있으면 그 층은 기여 없음
+        # 최적이 아니어도 objective_bound 는 유효한 상한이다 (값은 해가 있을 때만 쓴다)
+        has_values(M) || error("nz_belief_cell_oracle 층 문제: $st_ (해 없음)")
+        return (val=objective_value(M), bd=objective_bound(M), α=value.(α), ok=(st_ == MOI.OPTIMAL))
     end
     res = Vector{Any}(undef, length(strata)); nxt = Threads.Atomic{Int}(1)
     tasks = map(1:nthreads) do w
@@ -194,6 +199,7 @@ function nz_belief_cell_oracle(nd::NZData, x̄; nthreads::Int=max(1, Threads.nth
     end
     foreach(wait, tasks)
     UB = maximum(r.bd for r in res); ib = argmax([r.val for r in res])
+    nnotopt = count(r -> !r.ok, res)
     F = nz_build_fixed_alpha(nd, x̄; optimizer=mk(envs[1]))
     LB = -Inf; αb = res[ib].α
     for n in sortperm([r.val for r in res]; rev=true)[1:min(5, end)]        # 좋은 층 몇 개의 α 를 α 고정 LP 로 다시 평가 (인증된 하한)
@@ -207,5 +213,5 @@ function nz_belief_cell_oracle(nd::NZData, x̄; nthreads::Int=max(1, Threads.nth
                         isempty(pts) ? NaN : maximum(res[length(cells) + length(segs) + n].bd for n in 1:length(pts)), time() - t0); flush(stdout))
     return Dict(:LB => LB, :UB => UB, :α => αb, :is_exact => (UB - LB <= 1e-3 * max(1.0, abs(LB))), :cells => length(cells), :edges => length(segs),
                 :points => length(pts), :fuzzy => nfuzzy[], :time => time() - t0, :t_split => tsplit, :follower_lps => nlp[], :solver => :nz_belief_cell_oracle,
-                :best_kind => kind(ib))
+                :best_kind => kind(ib), :not_optimal => nnotopt)
 end

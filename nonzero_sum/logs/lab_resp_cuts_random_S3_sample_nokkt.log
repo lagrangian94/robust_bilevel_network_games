@@ -1,0 +1,9 @@
+Set parameter Username
+Set parameter LicenseID to value 2742039
+Academic license - for non-commercial use only - expires 2026-11-20
+lab_resp_cuts: 무작위 d=15 seed=1 S=3 x=[1] n_h=50 (활성 30) | gap 1e-03, 제한 600s, 처음 cut sample
+처음 반응 48 개, LB = -1300.1667 (11.1s)
+마스터: recourse KKT 끔
+         d̂ = [0.5, 0.25, 0.25] r̂ = [0.417, 0.0, 0.583] | recourse 여유 Q_s(α̂) − q̂_s = [-0.0, 0.0, 0.0]
+  it   1: 마스터 값 -1300.1670 상한 -1179.9561 (TIME_LIMIT, 300.0s) | follower 최적성 여유 0.0000 | LB -1300.1667 gap 9.25e-02 | cut 48 (새 반응 없음)
+RESULT resp_cuts random S=3 n_h=50 status=Stalled(follower-optimal) LB=-1300.1667 UB=-1179.9561 gap=9.246e-02 iters=1 cuts=48 time=315.6 (마스터 300.0s)

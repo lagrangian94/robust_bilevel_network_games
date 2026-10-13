@@ -59,6 +59,7 @@ elseif mode == "all"            # 모든 x 를 정확한 oracle 로 평가해 �
     for (x, r) in rs
         @printf("  x=%-9s q·x + V* ∈ [%12.4f, %12.4f] | 셀 %3d 변 %3d 점 %3d 최댓값의 층 %-5s | %.1fs\n", xstr(x), dot(nd.qx, x) + r[:LB], dot(nd.qx, x) + r[:UB],
                 r[:cells], r[:edges], r[:points], string(r[:best_kind]), r[:time])
+        r[:not_optimal] > 0 && @printf("      (최적으로 끝나지 않은 층 %d 개: 그 층은 상한만 씀)\n", r[:not_optimal])
     end
     ub = [dot(nd.qx, x) + r[:UB] for (x, r) in rs]; ib = argmin(ub)
     @printf("RESULT all %s d=%d seed=%d n_h=%d: 최적 x=%s 값 %.4f (둘째 %.4f) | x %d 개, 전체 %.1fs\n", inst, nloc, seed, nz_nh(nd), xstr(rs[ib][1]), ub[ib],

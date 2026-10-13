@@ -1,0 +1,70 @@
+Set parameter Username
+Set parameter LicenseID to value 2742039
+Academic license - for non-commercial use only - expires 2026-11-20
+
+--- pair d=10 seed=1 S=3: n_h=25, θᵁ=50.0 λᵁ=1000.0, TL=900s, 프리솔브 켬
+  [설정] 전역 oracle = α-B&B (nz_alpha_bnb_dr), worker 12, gap 1e-03, 이어 풀기 켬, bnb_kw = (ipopt_time = 120.0,)
+  [설정] oracle 시간: 남은 시간 전체 (끊지 않음), 목표값 조기 종료 켬, local cut 켬
+  [loc]  it   1 LB=-10000000.0000 UB=        Inf x=Int64[]    Ω_loc=    -0.0001 (0.1s) menu=1 (+belief)
+  [menu] it   2 LB=-62125.0000 UB=        Inf x=[1]        menu cut 1/1 (V_menu=-179.6647)
+  [menu] it   3 LB=    -0.0000 UB=        Inf x=Int64[]    menu cut 1/1 (V_menu=0.0000)
+Set parameter Username
+Set parameter LicenseID to value 2742039
+Academic license - for non-commercial use only - expires 2026-11-20
+    [반응 프리솔브] x=Int64[]: 활성 10 중 2 개를 0 으로 고정 (3.4s)
+Set parameter Username
+Set parameter LicenseID to value 2742039
+Academic license - for non-commercial use only - expires 2026-11-20
+Set parameter Username
+Set parameter LicenseID to value 2742039
+Academic license - for non-commercial use only - expires 2026-11-20
+Set parameter Username
+Set parameter LicenseID to value 2742039
+Academic license - for non-commercial use only - expires 2026-11-20
+Set parameter Username
+Set parameter LicenseID to value 2742039
+Academic license - for non-commercial use only - expires 2026-11-20
+Set parameter Username
+Set parameter LicenseID to value 2742039
+Academic license - for non-commercial use only - expires 2026-11-20
+Set parameter Username
+Set parameter LicenseID to value 2742039
+Academic license - for non-commercial use only - expires 2026-11-20
+Set parameter Username
+Set parameter LicenseID to value 2742039
+Academic license - for non-commercial use only - expires 2026-11-20
+Set parameter Username
+Set parameter LicenseID to value 2742039
+Academic license - for non-commercial use only - expires 2026-11-20
+Set parameter Username
+Set parameter LicenseID to value 2742039
+Academic license - for non-commercial use only - expires 2026-11-20
+Set parameter Username
+Set parameter LicenseID to value 2742039
+Academic license - for non-commercial use only - expires 2026-11-20
+Set parameter Username
+Set parameter LicenseID to value 2742039
+Academic license - for non-commercial use only - expires 2026-11-20
+Set parameter Username
+Set parameter LicenseID to value 2742039
+Academic license - for non-commercial use only - expires 2026-11-20
+
+******************************************************************************
+This program contains Ipopt, a library for large-scale nonlinear optimization.
+ Ipopt is released as open source code under the Eclipse Public License (EPL).
+         For more information visit https://github.com/coin-or/Ipopt
+******************************************************************************
+
+  [orcl] it   4 LB=    -0.0000 UB=     0.0000 x=Int64[]    Ω=    -0.0038 (11.0s) menu=1
+RESULT res=pair d=10 seed=1 S=3 nh=25 status=Optimal x={} LB=-0.000000 UB=0.000001 gap=1.00e-06 iters=5 global=1 local=1 menu=1 time=23.6
+
+--- pair d=10 seed=1 S=10: n_h=25, θᵁ=50.0 λᵁ=1000.0, TL=900s, 프리솔브 켬
+  [설정] 전역 oracle = α-B&B (nz_alpha_bnb_dr), worker 12, gap 1e-03, 이어 풀기 켬, bnb_kw = (ipopt_time = 120.0,)
+  [설정] oracle 시간: 남은 시간 전체 (끊지 않음), 목표값 조기 종료 켬, local cut 켬
+  [loc]  it   1 LB=-10000000.0000 UB=        Inf x=Int64[]    Ω_loc=    -0.0003 (0.1s) menu=1 (+belief)
+  [menu] it   2 LB=-133979.1668 UB=        Inf x=[1, 2, 3]  menu cut 1/1 (V_menu=-522.3190)
+  [menu] it   3 LB=-31352.1577 UB=        Inf x=[2, 3]     menu cut 1/1 (V_menu=0.0000)
+  [loc]  it   4 LB=  -147.3190 UB=        Inf x=[1]        Ω_loc=    -0.0004 (0.4s) menu=2 (+belief)
+    [반응 프리솔브] x=Int64[]: 활성 10 중 2 개를 0 으로 고정 (2.6s)
+  [orcl] it   5 LB=    -0.0000 UB=     0.0000 x=Int64[]    Ω=    -0.0203 (5.5s) menu=2
+RESULT res=pair d=10 seed=1 S=10 nh=25 status=Optimal x={} LB=-0.000000 UB=0.000001 gap=1.00e-06 iters=6 global=1 local=2 menu=2 time=6.5
