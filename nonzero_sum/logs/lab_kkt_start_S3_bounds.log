@@ -1,0 +1,160 @@
+Set parameter Username
+Set parameter LicenseID to value 2742039
+Academic license - for non-commercial use only - expires 2026-11-20
+lab_kkt_start: 무작위 d=15 seed=1 S=3 x=[1] n_h=50 (활성 30) | 시작해 끔, 상계 켬, 제한 300s
+Set parameter NonConvex to value 2
+Set parameter MIPGap to value 0.001
+Set parameter TimeLimit to value 300
+Set parameter Threads to value 12
+Set parameter NonConvex to value 2
+Set parameter MIPGap to value 0.001
+Set parameter Threads to value 12
+Set parameter TimeLimit to value 300
+Gurobi Optimizer version 13.0.0 build v13.0.0rc1 (win64 - Windows 10.0 (19045.2))
+
+CPU model: AMD Ryzen 9 5900X 12-Core Processor, instruction set [SSE2|AVX|AVX2]
+Thread count: 12 physical cores, 24 logical processors, using up to 12 threads
+
+Non-default parameters:
+TimeLimit  300
+MIPGap  0.001
+NonConvex  2
+Threads  12
+
+Optimize a model with 758 rows, 1521 columns and 3593 nonzeros (Max)
+Model fingerprint: 0xc52514a4
+Model has 0 linear objective coefficients
+Model has 3 quadratic objective terms
+Model has 90 quadratic constraints
+Model has 1060 simple general constraints
+  1060 INDICATOR
+Variable types: 991 continuous, 530 integer (530 binary)
+Coefficient statistics:
+  Matrix range     [1e-01, 5e+00]
+  QMatrix range    [1e+00, 1e+00]
+  QLMatrix range   [1e+00, 1e+00]
+  Objective range  [0e+00, 0e+00]
+  QObjective range [2e+00, 2e+00]
+  Bounds range     [1e-06, 4e+03]
+  RHS range        [1e-01, 8e+02]
+  GenCon rhs range [1e-01, 8e+02]
+  GenCon coe range [1e+00, 1e+00]
+Presolve added 259 rows and 0 columns
+Presolve removed 0 rows and 381 columns
+Presolve time: 0.02s
+Presolved: 1384 rows, 1145 columns, 4033 nonzeros
+Presolved model has 93 bilinear constraint(s)
+
+Solving non-convex MIQCP to global optimality
+
+Variable types: 861 continuous, 284 integer (284 binary)
+
+Root relaxation: objective 3.000000e-06, 682 iterations, 0.02 seconds (0.01 work units)
+
+    Nodes    |    Current Node    |     Objective Bounds      |     Work
+ Expl Unexpl |  Obj  Depth IntInf | Incumbent    BestBd   Gap | It/Node Time
+
+     0     0    0.00000    0  121          -    0.00000      -     -    0s
+     0     0    0.00000    0   98          -    0.00000      -     -    0s
+     0     0    0.00000    0  101          -    0.00000      -     -    0s
+     0     0    0.00000    0  100          -    0.00000      -     -    0s
+     0     0    0.00000    0  100          -    0.00000      -     -    0s
+     0     0    0.00000    0  100          -    0.00000      -     -    0s
+     0     0    0.00000    0  111          -    0.00000      -     -    0s
+     0     0    0.00000    0  116          -    0.00000      -     -    0s
+     0     0    0.00000    0  116          -    0.00000      -     -    0s
+     0     0    0.00000    0  114          -    0.00000      -     -    0s
+     0     0    0.00000    0  114          -    0.00000      -     -    0s
+     0     2    0.00000    0  114          -    0.00000      -     -    0s
+ 11928  6976 -812.85580   48   25          -    0.00000      -  42.2    5s
+H32475 22681                    -1334.229289    0.00000   100%  33.1    9s
+H33447 23699                    -1334.229289    0.00000   100%  33.0    9s
+ 34232 24682 -177.33920   36   64 -1334.2293    0.00000   100%  32.9   10s
+H38096 26680                    -1300.166667    0.00000   100%  33.2   12s
+H40617 27612                    -1300.166667    0.00000   100%  33.2   14s
+ 42249 29379  -86.34015   43   56 -1300.1667    0.00000   100%  33.1   15s
+ 54624 35533 -147.85011   51   44 -1300.1667    0.00000   100%  33.0   20s
+H58281 37047                    -1300.165640    0.00000   100%  33.5   21s
+ 63699 39323 -258.63251   50   33 -1300.1656    0.00000   100%  35.0   25s
+ 73845 43834  -30.46875   38   41 -1300.1656    0.00000   100%  35.5   30s
+ 83992 48041  -17.15594   46   38 -1300.1656    0.00000   100%  37.5   35s
+ 94835 53199 -1221.6127   66   27 -1300.1656    0.00000   100%  38.3   40s
+ 104221 58186 infeasible   53      -1300.1656    0.00000   100%  38.1   45s
+ 115820 62603 -939.41503   47   19 -1300.1656    0.00000   100%  38.7   50s
+ 126358 67750 infeasible   48      -1300.1656    0.00000   100%  38.9   55s
+H126540 67750                    -1300.165622    0.00000   100%  38.9   55s
+ 137155 71800 infeasible   52      -1300.1656    0.00000   100%  39.5   60s
+ 146107 75372 infeasible   51      -1300.1656    0.00000   100%  40.7   65s
+ 155878 79025    0.00000   43   46 -1300.1656    0.00000   100%  42.0   70s
+ 164501 81687 infeasible   57      -1300.1656    0.00000   100%  42.6   75s
+ 173799 84908 infeasible   60      -1300.1656    0.00000   100%  43.4   80s
+ 180814 87343     cutoff   49      -1300.1656    0.00000   100%  44.1   85s
+ 190519 90537 infeasible   50      -1300.1656    0.00000   100%  45.3   90s
+ 200872 94021 -1064.9375   57   35 -1300.1656    0.00000   100%  46.2   95s
+ 210094 97477 -1167.7732   90   40 -1300.1656    0.00000   100%  46.9  100s
+ 220475 100718    0.00000   36   53 -1300.1656    0.00000   100%  47.4  105s
+ 230756 104400 -816.76309   50   19 -1300.1656    0.00000   100%  48.1  110s
+ 238061 107369    0.00000   51   39 -1300.1656    0.00000   100%  48.4  115s
+ 251387 111094 -687.47147   49   29 -1300.1656    0.00000   100%  48.7  120s
+ 262265 114910 infeasible   39      -1300.1656    0.00000   100%  48.6  125s
+ 273598 118530    0.00000   41   50 -1300.1656    0.00000   100%  49.1  130s
+ 284235 121461 -1148.8282   47    3 -1300.1656    0.00000   100%  49.5  135s
+ 295845 124945 infeasible   43      -1300.1656    0.00000   100%  50.0  140s
+H306042 127995                    -1300.165621    0.00000   100%  50.3  144s
+ 307590 128715 -942.35637   55   25 -1300.1656    0.00000   100%  50.3  145s
+ 318817 132488 -353.39160   53   28 -1300.1656    0.00000   100%  50.5  150s
+ 330129 135434 infeasible   43      -1300.1656    0.00000   100%  50.8  155s
+ 341917 138417    0.00000   47   43 -1300.1656    0.00000   100%  51.2  160s
+ 354317 142214  -24.09166   41   55 -1300.1656    0.00000   100%  51.3  165s
+ 368476 146736    0.00000   46   58 -1300.1656    0.00000   100%  51.4  170s
+ 382471 150902 infeasible   48      -1300.1656    0.00000   100%  51.6  175s
+ 393848 154706 -1293.1780   66   21 -1300.1656    0.00000   100%  51.6  180s
+ 407784 158986    0.00000   38   31 -1300.1656    0.00000   100%  51.5  185s
+ 421651 163364 infeasible   52      -1300.1656    0.00000   100%  51.4  190s
+ 434761 167115 infeasible   45      -1300.1656    0.00000   100%  51.5  195s
+ 447490 170680    0.00000   43   40 -1300.1656    0.00000   100%  51.6  200s
+H449986 171291                    -1300.165618    0.00000   100%  51.6  201s
+ 460000 175563 -206.62075   55   37 -1300.1656    0.00000   100%  51.5  205s
+ 472990 179939 infeasible   61      -1300.1656    0.00000   100%  51.6  210s
+ 481486 182836    0.00000   50   50 -1300.1656    0.00000   100%  51.8  215s
+ 492034 187067 infeasible   45      -1300.1656    0.00000   100%  51.6  220s
+ 504513 191404 -1171.1465   59   32 -1300.1656    0.00000   100%  51.6  225s
+ 515968 194997 -917.85234   53   18 -1300.1656    0.00000   100%  51.4  230s
+ 526754 198490    0.00000   28   61 -1300.1656    0.00000   100%  51.4  235s
+ 538331 202574 -1244.4586   51   14 -1300.1656    0.00000   100%  51.2  240s
+ 551342 208066 infeasible   51      -1300.1656    0.00000   100%  51.1  245s
+ 565995 213235 infeasible   40      -1300.1656    0.00000   100%  50.9  250s
+ 577433 217156    0.00000   51   41 -1300.1656    0.00000   100%  50.8  255s
+ 592102 222079  -33.74168   39   62 -1300.1656    0.00000   100%  50.9  260s
+ 606820 226851 -1106.3888   54   18 -1300.1656    0.00000   100%  51.0  265s
+ 621781 231187    0.00000   48   44 -1300.1656    0.00000   100%  51.2  270s
+ 633895 235559    0.00000   41   49 -1300.1656    0.00000   100%  51.3  275s
+ 643785 239220 infeasible   54      -1300.1656    0.00000   100%  51.4  280s
+ 651111 241647 -1295.4083   60   23 -1300.1656    0.00000   100%  51.4  285s
+ 665889 246554 infeasible   52      -1300.1656    0.00000   100%  51.5  290s
+ 677340 249870 -249.87977   53   26 -1300.1656    0.00000   100%  51.7  295s
+ 689524 252907    0.00000   48   20 -1300.1656    0.00000   100%  51.8  300s
+
+Cutting planes:
+  Learned: 13
+  Gomory: 13
+  Cover: 11
+  Implied bound: 25
+  Projected implied bound: 1
+  Clique: 1
+  MIR: 29
+  Flow cover: 90
+  Inf proof: 19
+  RLT: 30
+  Relax-and-lift: 10
+
+Explored 689723 nodes (35757239 simplex iterations) in 300.00 seconds (230.66 work units)
+Thread count was 12 (of 24 available processors)
+
+Solution count 8: -1300.17 -1300.17 -1300.17 ... -1334.23
+
+Time limit reached
+Best objective -1.300165618491e+03, best bound 3.000000000000e-06, gap 100.0000%
+
+User-callback calls 14982, time in user-callback 0.02 sec
+RESULT kkt_start S=3 시작해=끔 상계=켬 status=TIME_LIMIT value=-1300.1656 bound=0.0000 gap=1.000e+00 time=300.4 (시작해 계산 0.0s) nodes=689723

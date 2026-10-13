@@ -334,3 +334,189 @@ if "G" in parts
     end
     flush(stdout)
 end
+
+# ---------------- H. 리더 블록의 쌍대 조각을 고정하면 ----------------
+# 리더 블록은 φ_s(α) = max_y (ℓ + θc)ᵀy − θ Q_s(α) 이고 Q_s 는 α 에 오목한 조각별 선형 (조각 = recourse 쌍대 꼭짓점 σ). "cᵀŷ ≥ Q_s(α)" 는
+# "어떤 조각 v 에 대해 cᵀŷ ≥ L_v(α)" 의 합집합이므로, 조각을 고르는 분기를 하면 자식마다 α·ϖ 곱이 α 상자 폭과 무관하게 정확해진다 (ζW = σ ζL).
+# 여기서는 그 자식 하나 (incumbent α° 에서의 쌍대 σ° 를 고른 자식) 의 상한을 α 상자 폭별로 본다: 리더 쪽 범위 행만 σ° 로 고정, follower 쪽은 그대로.
+if "H" in parts
+    println("\nH. 리더 블록의 쌍대를 α° 의 recourse 쌍대해 σ° 에 고정한 자식의 상한 (follower 블록의 범위는 그대로, 세 시나리오 모두 고정)")
+    # σ°: 시나리오마다 α° 에서의 recourse 쌍대 LP 의 최적해 (H 성분 ≤ ϖᵁ, 최적면 안에서 H 성분의 합이 가장 작은 것 = 더 낮출 수 없는 쌍대)
+    σ° = zeros(m, S)
+    for s in 1:S
+        b = nz_rhs(nd, x̄, α°, s)
+        dm = Model(mk(envs[1])); @variable(dm, sg[1:m] >= 0)
+        for k in 1:m; nd.hrow[k] > 0 && isfinite(nd.varpiU[k]) && set_upper_bound(sg[k], nd.varpiU[k]); end
+        @constraint(dm, [j = 1:ny], sum(nd.A[k, j] * sg[k] for k in 1:m if nd.A[k, j] != 0) >= nd.c[j])
+        @objective(dm, Min, dot(b, sg)); optimize!(dm); q = objective_value(dm)
+        @constraint(dm, dot(b, sg) <= q + 1e-7 * max(1.0, abs(q)))
+        @objective(dm, Min, sum(sg[k] for k in 1:m if nd.hrow[k] > 0)); optimize!(dm)
+        σ°[:, s] = value.(sg)
+    end
+    function caseH(f, fixL, env; bw=-1.0, fams=(:d, :a, :r), uns::Symbol=:none, obbt::Int=0)
+        l, u = f >= 2 ? (zeros(nh), copy(nd.hU)) : abox(nd, f)
+        P = _nz_build_sep(nd, x̄; optimizer=mk(env)); mdl = P.O.model; v = P.O.v
+        for a in ("FeasibilityTol", "OptimalityTol"); set_optimizer_attribute(mdl, a, 1e-7); end
+        set_optimizer_attribute(mdl, "NumericFocus", 0); mdl.ext[:lp_tol] = 1e-7; mdl.ext[:retry_fresh] = true
+        if bw >= 0                                   # belief 상자: incumbent 의 (d°, a°, r°) 둘레 폭 bw (범위 × α 상자 RLT 행을 후보에 추가)
+            for (fam, c0) in ((:d, d°), (:a, a°), (:r, r°)), s in 1:S
+                fam in fams || continue
+                y = P.Y[fam][s]
+                set_lower_bound(y, max(lower_bound(y), c0[s] - bw / 2)); set_upper_bound(y, min(upper_bound(y), c0[s] + bw / 2))
+                push!(P.rows, _NZRow(-lower_bound(y), [(fam, s, 1.0)], 0)); push!(P.rowscen, s)
+                push!(P.rows, _NZRow(upper_bound(y), [(fam, s, -1.0)], 0)); push!(P.rowscen, s)
+            end
+        end
+        DR = _nz_dr_attach!(P, nd, x̄; optimizer=mk(env), dd=false); lo0, hi0 = _nz_dr_global(nd, DR); dl0, dh0 = _nz_dr_dglobal(nd, DR)
+        _nz_sep_set_box!(P, l, u); _nz_sep_set_wbox!(P, P.Lw, P.Uw)
+        rg = _nz_dr_ranges(DR, nd, l, u, lo0, hi0, Dict{Tuple{Int,Int,Bool},Vector{Float64}}(), fill(Inf, S))
+        rg === nothing && return (z=-Inf, tg=0.0, tl=0.0, fix=NaN)
+        lo, hi, _, phib = rg
+        _nz_dr_set!(P, DR, nd, l, u, lo, hi, phib; dlo=dl0, dhi=dh0)
+        nfix = 0; nout = 0
+        if fixL
+            for (a, k) in enumerate(DR.Hk), s in 1:S
+                σ = σ°[k, s]
+                (σ < lo[a, s] - 1e-5 || σ > hi[a, s] + 1e-5) && (nout += 1)
+                i = nd.hrow[k]; ϖ = v[:ϖ][k, s]; r = v[:r][s]; zL = v[:ζL][i, s]; zW = v[:ζW][DR.jj[a], s]; li, ui = l[i], u[i]
+                set_normalized_coefficient(DR.whi[a, s], r, -σ); set_normalized_coefficient(DR.wlo[a, s], r, -σ)
+                for (n, cz, cw, cl, cr) in ((1, 1.0, -li, -σ, σ * li), (2, -1.0, ui, σ, -σ * ui), (3, -1.0, li, σ, -σ * li), (4, 1.0, -ui, -σ, σ * ui))
+                    c = DR.rlt[n, a, s]; sc = 1.0 / max(1.0, abs(cw), abs(cl), abs(cr))
+                    set_normalized_coefficient(c, zW, cz * sc); set_normalized_coefficient(c, ϖ, cw * sc)
+                    set_normalized_coefficient(c, zL, cl * sc); set_normalized_coefficient(c, r, cr * sc)
+                end
+                nfix += 1
+            end
+        end
+        # 스케일하지 않은 복사본 (조각을 고정한 자식에서만 뜻이 있다): σ° 가 α 에서 최적 ⟺ ∃ y ∈ Y_s(α), cᵀy ≥ L_σ°(α) (= b_s(α)ᵀσ°, α 에 affine).
+        #   :region — follower 쪽 복사본 y^u 로 α 를 σ° 의 선형 구간 R 로 묶는다 (belief·곱 없음)
+        #   :leader — 리더 복사본 ŷ^u ∈ Y_s(α), cᵀŷ^u ≥ L_σ°(α), φ^u = ℓᵀŷ^u 와 스케일된 리더 값 Φ_s = ℓᵀŷ_s 를 McCormick (r_s × φ^u_s) 으로 잇는다
+        if uns != :none && fixL
+            αv = v[:α]
+            for s in 1:S
+                rhsk = [nd.u[k, s] + (nd.hrow[k] > 0 ? nd.hcoef[k] * αv[nd.hrow[k]] : 0.0) + (nd.xrow[k] > 0 ? nd.g[k, s] * x̄[nd.xrow[k]] : 0.0) for k in 1:m]
+                Lw = sum(σ°[k, s] * rhsk[k] for k in 1:m if σ°[k, s] != 0)
+                yu = @variable(mdl, [1:ny], lower_bound = 0.0)
+                @constraint(mdl, [k = 1:m], sum(nd.A[k, j] * yu[j] for j in 1:ny if nd.A[k, j] != 0) <= rhsk[k])
+                @constraint(mdl, sum(nd.c[j] * yu[j] for j in 1:ny if nd.c[j] != 0) >= Lw - 1e-5)      # σ° 는 허용오차 1e-7 로 구한 최적 쌍대라 α° 에서 등호가 아슬아슬하다
+                if uns == :leader
+                    ŷu = @variable(mdl, [1:ny], lower_bound = 0.0)
+                    @constraint(mdl, [k = 1:m], sum(nd.A[k, j] * ŷu[j] for j in 1:ny if nd.A[k, j] != 0) <= rhsk[k])
+                    @constraint(mdl, sum(nd.c[j] * ŷu[j] for j in 1:ny if nd.c[j] != 0) >= Lw)
+                    lm = Model(mk(env)); @variable(lm, l[i] <= al[i = 1:nh] <= u[i]); @variable(lm, yl[1:ny] >= 0); @constraint(lm, nd.W * al .<= nd.wvec)
+                    @constraint(lm, [k = 1:m], sum(nd.A[k, j] * yl[j] for j in 1:ny if nd.A[k, j] != 0) <=
+                                               nd.u[k, s] + (nd.hrow[k] > 0 ? nd.hcoef[k] * al[nd.hrow[k]] : 0.0) + (nd.xrow[k] > 0 ? nd.g[k, s] * x̄[nd.xrow[k]] : 0.0))
+                    @objective(lm, Min, dot(nd.ell, yl)); optimize!(lm); φlo = objective_value(lm) - 1e-6
+                    φu = sum(nd.ell[j] * ŷu[j] for j in 1:ny if nd.ell[j] != 0); Φ = sum(nd.ell[j] * v[:ŷ][j, s] for j in 1:ny if nd.ell[j] != 0)
+                    rs = v[:r][s]; rmx = upper_bound(rs)
+                    @constraint(mdl, Φ <= φlo * rs + rmx * (φu - φlo))          # (rmax − r)(φ^u − φlo) ≥ 0
+                end
+            end
+        end
+        # :fval — follower 블록의 스케일된 값 cᵀȳ_s 를, 공통 α 에서의 (스케일하지 않은) 값 q_s = cᵀy^u_s ≤ Q_s(α) 와 d_s 의 곱으로 위에서 묶는다 (조각과 무관, 스칼라 곱 S 개).
+        #   cᵀȳ_s = d_s Q_s(α) 이고 q_s 는 Q_s(α) 까지 올릴 수 있으므로  cᵀȳ_s ≤ McCormick 위쪽 (d_s ∈ [dlo, dhi], q_s ∈ [Q_s(l), Q_s(u)]).
+        if uns == :fval || get(ENV, "DG_FVAL", "0") == "1"
+            αv = v[:α]
+            Ql, _ = true_vals(nd, l; env=env); Qu, _ = true_vals(nd, min.(u, nd.hU); env=env)      # Q_s 는 α 에 단조증가 (예약이 많을수록 recourse 비용이 줄어든다)
+            for s in 1:S
+                rhsk = [nd.u[k, s] + (nd.hrow[k] > 0 ? nd.hcoef[k] * αv[nd.hrow[k]] : 0.0) + (nd.xrow[k] > 0 ? nd.g[k, s] * x̄[nd.xrow[k]] : 0.0) for k in 1:m]
+                yq = @variable(mdl, [1:ny], lower_bound = 0.0)
+                @constraint(mdl, [k = 1:m], sum(nd.A[k, j] * yq[j] for j in 1:ny if nd.A[k, j] != 0) <= rhsk[k])
+                qs = sum(nd.c[j] * yq[j] for j in 1:ny if nd.c[j] != 0); W = sum(nd.c[j] * v[:ȳ][j, s] for j in 1:ny if nd.c[j] != 0)
+                ds = v[:d][s]; dl_, dh_ = lower_bound(ds), upper_bound(ds); QL, QH = Ql[s] - 1e-6, Qu[s] + 1e-6
+                @constraint(mdl, W <= dl_ * qs + QH * ds - dl_ * QH)        # (d − dlo)(QH − q) ≥ 0
+                @constraint(mdl, W <= dh_ * qs + QL * ds - dh_ * QL)        # (dhi − d)(q − QL) ≥ 0
+            end
+        end
+        tl = @elapsed (z = _nz_sep_solve!(P; maxrounds=30))
+        z == -Inf && (z = _nz_dr_recheck_infeasible!(mdl))
+        # 조각을 고정한 자식에서의 LP 범위 조임 (목적 ≥ LB): α 상자를 줄이고 다시 푼다. 쌍대 범위는 처음 상자의 것을 그대로 둔다 (유효, 덜 조일 뿐)
+        hist = Float64[z]; wid = Float64[sum(u .- l) / sum(nd.hU)]
+        if obbt > 0 && isfinite(z)
+            fobj = objective_function(mdl); αv2 = v[:α]
+            for rnd in 1:obbt
+                z <= LB + 1e-3 * sc && break
+                cut = @constraint(mdl, fobj >= LB - 1e-6 * sc); nl = copy(l); nu = copy(u); bad = false
+                for i in act, ismax in (false, true)
+                    @objective(mdl, ismax ? MOI.MAX_SENSE : MOI.MIN_SENSE, αv2[i]); optimize!(mdl)
+                    st = termination_status(mdl)
+                    st == MOI.INFEASIBLE && (bad = true; break)
+                    st == MOI.OPTIMAL || continue
+                    ismax ? (nu[i] = min(u[i], objective_value(mdl) + 1e-6)) : (nl[i] = max(l[i], objective_value(mdl) - 1e-6))
+                end
+                delete(mdl, cut); @objective(mdl, Max, fobj)
+                bad && (z = -Inf; push!(hist, z); break)
+                l = nl; u = max.(nu, nl)
+                _nz_sep_set_box!(P, l, u); _nz_sep_set_wbox!(P, P.Lw, P.Uw)
+                _nz_dr_set!(P, DR, nd, l, u, lo, hi, phib; dlo=dl0, dhi=dh0)
+                if fixL
+                    for (a, k) in enumerate(DR.Hk), s in 1:S
+                        σ = σ°[k, s]; i = nd.hrow[k]; ϖ = v[:ϖ][k, s]; r = v[:r][s]; zL = v[:ζL][i, s]; zW = v[:ζW][DR.jj[a], s]; li, ui = l[i], u[i]
+                        set_normalized_coefficient(DR.whi[a, s], r, -σ); set_normalized_coefficient(DR.wlo[a, s], r, -σ)
+                        for (n, cz, cw, cl, cr) in ((1, 1.0, -li, -σ, σ * li), (2, -1.0, ui, σ, -σ * ui), (3, -1.0, li, σ, -σ * li), (4, 1.0, -ui, -σ, σ * ui))
+                            c = DR.rlt[n, a, s]; scl = 1.0 / max(1.0, abs(cw), abs(cl), abs(cr))
+                            set_normalized_coefficient(c, zW, cz * scl); set_normalized_coefficient(c, ϖ, cw * scl)
+                            set_normalized_coefficient(c, zL, cl * scl); set_normalized_coefficient(c, r, cr * scl)
+                        end
+                    end
+                end
+                z = _nz_sep_solve!(P; maxrounds=30)
+                z == -Inf && (z = _nz_dr_recheck_infeasible!(mdl))
+                push!(hist, z); push!(wid, sum(u .- l) / sum(nd.hU))
+                isfinite(z) || break
+            end
+        end
+        r̂ = isfinite(z) ? value.(v[:r]) : fill(NaN, S)
+        return (z=z, tg=0.0, tl=tl, fix=count(hi .- lo .<= 1e-4) / length(lo), nfix=nfix, nout=nout, r=r̂, hist=hist, wid=wid)
+    end
+    cases = [((f, fx), env -> caseH(f, fx, env)) for f in (2.0, 1.0, 0.5, 0.25, 0.06) for fx in (false, true)]
+    res = runcases(cases)
+    for (c, r) in zip(cases, res)
+        f, fx = c[1]
+        haskey(r, :err) ? @printf("  f=%-4.2f %s 오류: %s\n", f, fx ? "σ° 고정" : "범위   ", first(r.err, 300)) :
+        @printf("  %-6s %-8s 상한 %10.2f  gap %7.2f%%%s\n", f >= 2 ? "루트" : @sprintf("f=%.2f", f), fx ? "σ° 고정" : "범위", r.z, 100 * gapof(r.z),
+                fx ? @sprintf("  (고정한 성분 %d, 그중 상자의 범위 밖 %d, r̂ = %s)", r.nfix, r.nout, string(round.(r.r; digits=3))) : "")
+    end
+    flush(stdout)
+    println("  조각 고정 + 스케일하지 않은 복사본 (α 를 σ° 의 선형 구간으로 묶음 / 리더 복사본까지)")
+    cases4 = [((f, un), env -> caseH(f, true, env; uns=un)) for f in (2.0, 0.5, 0.25, 0.06) for un in (:none, :region, :leader)]
+    res4 = runcases(cases4)
+    for (c, r) in zip(cases4, res4)
+        f, un = c[1]
+        haskey(r, :err) ? @printf("  f=%-4.2f %s 오류: %s\n", f, un, first(r.err, 300)) :
+        @printf("  %-6s 복사본 %-7s 상한 %10.2f  gap %7.2f%%  r̂ = %s\n", f >= 2 ? "루트" : @sprintf("f=%.2f", f), string(un), r.z, 100 * gapof(r.z), string(round.(r.r; digits=3)))
+    end
+    flush(stdout)
+    println("  follower 값의 스칼라 곱 묶음 (:fval): 조각 고정 없이 / 조각 고정과 함께")
+    cases6 = [((f, fx), env -> caseH(f, fx, env; uns=:fval)) for f in (2.0, 0.5, 0.25, 0.06) for fx in (false, true)]
+    res6 = runcases(cases6)
+    for (c, r) in zip(cases6, res6)
+        f, fx = c[1]
+        haskey(r, :err) ? @printf("  f=%-4.2f 오류: %s
+", f, first(r.err, 300)) :
+        @printf("  %-6s %-8s + fval 상한 %10.2f  gap %7.2f%%
+", f >= 2 ? "루트" : @sprintf("f=%.2f", f), fx ? "σ° 고정" : "범위", r.z, 100 * gapof(r.z))
+    end
+    flush(stdout)
+    println("  조각 고정 + 선형 구간 + LP 범위 조임 (라운드마다 상한의 gap / α 폭 합)")
+    cases5 = [((f, un), env -> caseH(f, true, env; uns=un, obbt=6)) for f in (2.0, 0.25) for un in (:none, :region)]
+    res5 = runcases(cases5)
+    for (c, r) in zip(cases5, res5)
+        f, un = c[1]
+        haskey(r, :err) ? @printf("  f=%-4.2f %s 오류: %s\n", f, un, first(r.err, 300)) :
+        @printf("  %-6s 복사본 %-7s %s\n", f >= 2 ? "루트" : @sprintf("f=%.2f", f), string(un),
+                join([@sprintf("%.1f%% / %.1f%%", 100 * gapof(r.hist[t]), t <= length(r.wid) ? 100 * r.wid[t] : NaN) for t in eachindex(r.hist)], " → "))
+    end
+    flush(stdout)
+    # 조각을 고정한 뒤 남는 곱은 α × belief 뿐이다 → belief 상자를 줄이면 (α 상자는 루트 그대로) 닫히는가
+    println("  루트 α 상자 + belief 상자 (incumbent 의 d°, a°, r° 둘레 폭 w). 조각 고정 여부 × 어느 belief 를 묶는가")
+    cases3 = [((w, fx, fm), env -> caseH(2.0, fx, env; bw=w, fams=fm)) for w in (0.4, 0.2, 0.1, 0.05, 0.02, 0.0) for fx in (true, false)
+              for fm in ((:d, :a, :r), (:d,), (:a, :r)) if fx || fm == (:d, :a, :r)]
+    res3 = runcases(cases3)
+    for (c, r) in zip(cases3, res3)
+        w, fx, fm = c[1]
+        haskey(r, :err) ? @printf("  w=%-4.2f 오류: %s\n", w, first(r.err, 300)) :
+        @printf("  w=%-4.2f %-8s belief %-10s 상한 %10.2f  gap %7.2f%%  (LP %.1fs)\n", w, fx ? "σ° 고정" : "범위", join(string.(fm), ","), r.z, 100 * gapof(r.z), r.tl)
+    end
+    flush(stdout)
+end
