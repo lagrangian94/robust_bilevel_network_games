@@ -1,0 +1,79 @@
+Set parameter Username
+Set parameter LicenseID to value 2742039
+Academic license - for non-commercial use only - expires 2026-11-20
+Set parameter Username
+Set parameter LicenseID to value 2742039
+Academic license - for non-commercial use only - expires 2026-11-20
+Set parameter Username
+Set parameter LicenseID to value 2742039
+Academic license - for non-commercial use only - expires 2026-11-20
+Set parameter Username
+Set parameter LicenseID to value 2742039
+Academic license - for non-commercial use only - expires 2026-11-20
+Set parameter Username
+Set parameter LicenseID to value 2742039
+Academic license - for non-commercial use only - expires 2026-11-20
+Set parameter Username
+Set parameter LicenseID to value 2742039
+Academic license - for non-commercial use only - expires 2026-11-20
+Set parameter Username
+Set parameter LicenseID to value 2742039
+Academic license - for non-commercial use only - expires 2026-11-20
+Set parameter Username
+Set parameter LicenseID to value 2742039
+Academic license - for non-commercial use only - expires 2026-11-20
+Set parameter Username
+Set parameter LicenseID to value 2742039
+Academic license - for non-commercial use only - expires 2026-11-20
+Set parameter Username
+Set parameter LicenseID to value 2742039
+Academic license - for non-commercial use only - expires 2026-11-20
+Set parameter Username
+Set parameter LicenseID to value 2742039
+Academic license - for non-commercial use only - expires 2026-11-20
+Set parameter Username
+Set parameter LicenseID to value 2742039
+Academic license - for non-commercial use only - expires 2026-11-20
+Set parameter Username
+Set parameter LicenseID to value 2742039
+Academic license - for non-commercial use only - expires 2026-11-20
+Set parameter Username
+Set parameter LicenseID to value 2742039
+Academic license - for non-commercial use only - expires 2026-11-20
+diag_root_gap: d=15 seed=1 S=3 x=[1] n_h=50 (활성 30) θᵁ=50.0 λᵁ=1000 | hᵁ 300, 수요 51~149
+A. incumbent LB=-1300.2464 (α° 고정 LP -1300.2464) | a°=[0.5, 0.15, 0.35] r°=[0.417, 0.0, 0.583] d°=[0.5, 0.25, 0.25] | α° > 0 인 좌표 17, 합 900.0
+
+C. α° 둘레 폭 f × hᵁ 인 상자의 상한 (gap = (상한 − LB) / |LB|)
+  f=1.000  rlt                       상한      -0.00  gap   100.0%  | 고정 비율  NaN  범위 MIP    0.0s  LP    1.2s
+  f=1.000  dr                        상한      -0.00  gap   100.0%  | 고정 비율 0.28  범위 MIP    2.7s  LP    0.1s
+  f=1.000  full                      상한      -0.00  gap   100.0%  | 고정 비율 0.28  범위 MIP   28.2s  LP    0.2s
+  f=0.500  rlt                       상한       0.00  gap   100.0%  | 고정 비율  NaN  범위 MIP    0.0s  LP    0.3s
+  f=0.500  dr                        상한    -325.50  gap    75.0%  | 고정 비율 0.29  범위 MIP    3.0s  LP    0.1s
+  f=0.500  full                      상한    -325.50  gap    75.0%  | 고정 비율 0.29  범위 MIP   35.3s  LP    0.3s
+  f=0.250  rlt                       상한    -431.13  gap    66.8%  | 고정 비율  NaN  범위 MIP    0.0s  LP    1.2s
+  f=0.250  dr                        상한    -803.00  gap    38.2%  | 고정 비율 0.40  범위 MIP    2.6s  LP    0.2s
+  f=0.250  full                      상한    -803.00  gap    38.2%  | 고정 비율 0.40  범위 MIP   23.5s  LP    0.3s
+  f=0.125  rlt                       상한    -806.21  gap    38.0%  | 고정 비율  NaN  범위 MIP    0.0s  LP    1.1s
+  f=0.125  dr                        상한   -1009.74  gap    22.3%  | 고정 비율 0.50  범위 MIP    2.6s  LP    0.1s
+  f=0.125  full                      상한   -1009.74  gap    22.3%  | 고정 비율 0.50  범위 MIP   13.4s  LP    0.2s
+  f=0.060  rlt                       상한   -1087.61  gap    16.4%  | 고정 비율  NaN  범위 MIP    0.0s  LP    0.2s
+  f=0.060  dr                        상한   -1183.91  gap     8.9%  | 고정 비율 0.68  범위 MIP    2.3s  LP    0.3s
+  f=0.060  full                      상한   -1183.91  gap     8.9%  | 고정 비율 0.68  범위 MIP    5.6s  LP    0.3s
+  f=0.030  rlt                       상한   -1195.25  gap     8.1%  | 고정 비율  NaN  범위 MIP    0.0s  LP    0.2s
+  f=0.030  dr                        상한   -1242.04  gap     4.5%  | 고정 비율 0.79  범위 MIP    2.3s  LP    0.3s
+  f=0.030  full                      상한   -1242.04  gap     4.5%  | 고정 비율 0.79  범위 MIP    3.7s  LP    0.3s
+  f=0.015  rlt                       상한   -1248.41  gap     4.0%  | 고정 비율  NaN  범위 MIP    0.0s  LP    0.2s
+  f=0.015  dr                        상한   -1271.10  gap     2.2%  | 고정 비율 0.82  범위 MIP    1.6s  LP    0.2s
+  f=0.015  full                      상한   -1271.10  gap     2.2%  | 고정 비율 0.82  범위 MIP    2.5s  LP    0.4s
+  (42s)
+
+E. d 를 d° 둘레 폭 w 로 묶음 → 그 d 상자의 최적 반응 α 범위 (KKT-MIP) 로 α 상자를 줄임 → 상한. (a, r) 은 자유
+  w=0.000 α 범위: 폭 합 100.0% (hᵁ 대비), 자유 좌표 30 / 30, α° 포함 true, MIP 1201.1s (시간 제한 60) | gap: RLT   100.0%  쌍대 범위   100.0%  기본   100.0%  (belief 행 없이 쌍대 범위   100.0%) | 고정 비율 0.28
+  w=0.010 α 범위: 폭 합 100.0% (hᵁ 대비), 자유 좌표 30 / 30, α° 포함 true, MIP 1201.3s (시간 제한 60) | gap: RLT   100.0%  쌍대 범위   100.0%  기본   100.0%  (belief 행 없이 쌍대 범위   100.0%) | 고정 비율 0.28
+  w=0.020 α 범위: 폭 합 100.0% (hᵁ 대비), 자유 좌표 30 / 30, α° 포함 true, MIP 1201.1s (시간 제한 60) | gap: RLT   100.0%  쌍대 범위   100.0%  기본   100.0%  (belief 행 없이 쌍대 범위   100.0%) | 고정 비율 0.28
+  w=0.050 α 범위: 폭 합 100.0% (hᵁ 대비), 자유 좌표 30 / 30, α° 포함 true, MIP 1201.3s (시간 제한 60) | gap: RLT   100.0%  쌍대 범위   100.0%  기본   100.0%  (belief 행 없이 쌍대 범위   100.0%) | 고정 비율 0.28
+  w=0.100 α 범위: 폭 합 100.0% (hᵁ 대비), 자유 좌표 30 / 30, α° 포함 true, MIP 1201.4s (시간 제한 60) | gap: RLT   100.0%  쌍대 범위   100.0%  기본   100.0%  (belief 행 없이 쌍대 범위   100.0%) | 고정 비율 0.28
+  w=0.200 α 범위: 폭 합 100.0% (hᵁ 대비), 자유 좌표 30 / 30, α° 포함 true, MIP 1201.0s (시간 제한 60) | gap: RLT   100.0%  쌍대 범위   100.0%  기본   100.0%  (belief 행 없이 쌍대 범위   100.0%) | 고정 비율 0.28
+  w=0.400 α 범위: 폭 합 100.0% (hᵁ 대비), 자유 좌표 30 / 30, α° 포함 true, MIP 1201.1s (시간 제한 60) | gap: RLT   100.0%  쌍대 범위   100.0%  기본   100.0%  (belief 행 없이 쌍대 범위   100.0%) | 고정 비율 0.28
+  w=1.000 α 범위: 폭 합 100.0% (hᵁ 대비), 자유 좌표 30 / 30, α° 포함 true, MIP 1201.0s (시간 제한 60) | gap: RLT   100.0%  쌍대 범위   100.0%  기본   100.0%  (belief 행 없이 쌍대 범위   100.0%) | 고정 비율 0.28
+  (1273s)
