@@ -102,7 +102,8 @@ pair 행렬의 행은 수요 (고객 j), 선주문 (y^R_ij 하나만), 용량 (�
 """
 function nz_theta_circuit_exact(nd::NZData; maxpaths::Int=10^8)
     meta = nd.meta
-    get(meta, :reservation, :none) == :pair || error("nz_theta_circuit_exact: location reservation = :pair 전용")
+    get(meta, :reservation, :none) == :pooled && return _nz_theta_circuit_exact_pooled(nd; maxpaths=maxpaths)
+    get(meta, :reservation, :none) == :pair || error("nz_theta_circuit_exact: location reservation = :pair | :pooled 전용")
     nst, ncu = meta[:nst], meta[:ncu]
     iyR, iyS = meta[:iyR], meta[:iyS]
     cost(col) = -nd.c[col]                                  # follower 비용 (nd.c 는 follower 가 최대화하는 −비용)
@@ -143,6 +144,77 @@ function nz_theta_circuit_exact(nd::NZData; maxpaths::Int=10^8)
         join([(s = (k % 2 == 1 ? "+" : "−"); (col, i, j) = arcs[a];
                "$(s)$(col == iyR(i, j) ? "R" : "S")($(i),$(j))") for (k, a) in enumerate(arg[1])], " ") *
         "  (부호 $(arg[2] > 0 ? "+" : "−"), 비용 증가 $(arg[3]), ℓ 변화 $(arg[4]))"
+    return best, Dict(:npaths => npaths, :circuit => desc)
+end
+
+"""
+    _nz_theta_circuit_exact_pooled(nd; maxpaths) -> (θ̄, 정보)
+
+location (reservation = :pooled, 점포별 예약 풀 Σ_j y^R_ij ≤ h_i) 의 정확한 circuit 상계. nz_theta_circuit_exact 가 부른다.
+
+사영: F_ij = y^R_ij + y^S_ij, res_i = Σ_j y^R_ij, spot_i = Σ_j y^S_ij. 현장구매 프리미엄이 점포마다 일정 (p_ij = p_i) 하고
+ℓ 이 y^R, y^S 를 구분하지 않으면 cᵀy = −(Σ c_ij F_ij + Σ_i p_i spot_i), ℓᵀy = Σ ℓ_ij F_ij 로 사영 변수만의 함수다.
+Y(b) 의 사영 N(b) 는 순환 네트워크 s → 점포 i (호 둘: 예약 res_i ≤ h_i 비용 0, 현장 spot_i 비용 p_i),
+점포 i → 고객 j (F_ij, 비용 c_ij, 점포 유입 = 용량 이하), 고객 j → t (≥ ξ_j), t → s 의 흐름이다 (F 가 주어지면
+res_i ≤ Σ_j F_ij 이므로 y^R_ij ≤ F_ij, Σ_j y^R_ij = res_i 인 분해가 있어 사영이 정확하다).
+Lemma phi (ii) 의 논증은 어떤 다면체 {z : Mz ≤ b} 에도 성립하므로 N(b) 에 쓰면 되고 (비관적 최적값과 두 목적의 값은
+사영에서 같다), 네트워크 행렬의 circuit 은 단순 사이클이다. 점포의 총판매량을 바꾸는 사이클은 s 를 지나야 하므로
+(점포의 유입 호는 s 에서 오는 둘뿐) 사이클은 s → 점포 i → (점포–고객 교대 경로) → 점포 k ← s 또는 → 고객 j → t → s 이고,
+모두 열거해 max ℓᵀg / (−cᵀg) (cᵀg < 0, ℓᵀg > 0, g 와 −g) 를 구한다. s 를 지나지 않는 사이클은 점포 총량을 안 바꿔 ℓᵀg = 0.
+"""
+function _nz_theta_circuit_exact_pooled(nd::NZData; maxpaths::Int=10^8)
+    meta = nd.meta
+    nst, ncu = meta[:nst], meta[:ncu]
+    iyR, iyS = meta[:iyR], meta[:iyS]
+    cst = [-nd.c[iyR(i, j)] for i in 1:nst, j in 1:ncu]                     # 예약분 단위 비용 c_ij
+    prem = [-nd.c[iyS(i, j)] - cst[i, j] for i in 1:nst, j in 1:ncu]       # 현장 프리미엄 p_ij
+    ell = [nd.ell[iyR(i, j)] for i in 1:nst, j in 1:ncu]
+    for i in 1:nst, j in 1:ncu
+        isapprox(prem[i, j], prem[i, 1]; atol=1e-9) || error("_nz_theta_circuit_exact_pooled: 점포 $i 의 현장 프리미엄이 고객마다 다름 — 사영 논증이 성립 안 함")
+        nd.ell[iyS(i, j)] == ell[i, j] || error("_nz_theta_circuit_exact_pooled: ℓ 이 예약분/현장분을 구분함 — 사영 논증이 성립 안 함")
+    end
+    entry = [(0.0, prem[i, 1]) for i in 1:nst]                              # s → 점포 i 의 두 호 (예약, 현장) 비용
+    best = 0.0; arg = nothing; npaths = 0
+    vst = falses(nst); vcu = falses(ncu); path = Tuple{Symbol,Int,Int}[]
+    function rec!(gc, gl, closing)
+        for σ in (1.0, -1.0)                                                # g 와 −g. gc = 비용 증가 (−cᵀg), gl = ℓᵀg
+            dc, dl = σ * gc, σ * gl
+            if dc > 1e-9 && dl > 1e-12 && dl / dc > best
+                best = dl / dc; arg = (vcat(path, [closing]), σ, dc, dl)
+            end
+        end
+    end
+    function at_store(i, gc, gl)                                            # 점포 i 에 들어옴 → 새 고객으로 정방향
+        for j in 1:ncu
+            vcu[j] && continue
+            npaths += 1
+            npaths > maxpaths && error("_nz_theta_circuit_exact_pooled: 경로 수가 maxpaths 를 넘음")
+            vcu[j] = true; push!(path, (:F, i, j))
+            at_customer(j, gc + cst[i, j], gl + ell[i, j])
+            pop!(path); vcu[j] = false
+        end
+    end
+    function at_customer(j, gc, gl)                                         # 고객 j 에 정방향으로 들어옴
+        rec!(gc, gl, (:t, 0, j))                                            # j → t → s 로 닫기 (비용 0)
+        for k in 1:nst
+            vst[k] && continue
+            vst[k] = true; push!(path, (:Fback, k, j))
+            gc2, gl2 = gc - cst[k, j], gl - ell[k, j]
+            for (e, nm) in zip(entry[k], (:res, :spot))
+                rec!(gc2 - e, gl2, (nm, k, 0))                              # s → k 를 역방향으로 닫기
+            end
+            at_store(k, gc2, gl2)
+            pop!(path); vst[k] = false
+        end
+    end
+    for i in 1:nst, (e, nm) in zip(entry[i], (:res, :spot))
+        vst[i] = true; push!(path, (nm, i, 0))
+        at_store(i, e, 0.0)
+        pop!(path); vst[i] = false
+    end
+    fmt(t) = t[1] == :F ? "+F($(t[2]),$(t[3]))" : t[1] == :Fback ? "−F($(t[2]),$(t[3]))" : t[1] == :t ? "→t" : "$(t[1])($(t[2]))"
+    desc = arg === nothing ? "ℓᵀg > 0 인 비용 증가 circuit 없음" :
+        join(fmt.(arg[1]), " ") * "  (부호 $(arg[2] > 0 ? "+" : "−"), 비용 증가 $(arg[3]), ℓ 변화 $(arg[4]))"
     return best, Dict(:npaths => npaths, :circuit => desc)
 end
 
