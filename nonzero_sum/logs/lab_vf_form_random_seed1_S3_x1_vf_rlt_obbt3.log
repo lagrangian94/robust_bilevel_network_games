@@ -1,0 +1,113 @@
+Set parameter Username
+Set parameter LicenseID to value 2742039
+Academic license - for non-commercial use only - expires 2026-11-20
+Set parameter Username
+Set parameter LicenseID to value 2742039
+Academic license - for non-commercial use only - expires 2026-11-20
+lab_vf_form: 무작위 d=15 seed=1 S=3 x=[1] n_h=50 (활성 30 → 프리솔브 resp 뒤 22, 27.7s) | form=vf rec=none bits=0 | gap 1e-03, 제한 300s, 스레드 6
+시작해: belief 표본 2700 → 서로 다른 반응 26 → 최댓값 -1300.1667 (2.2s)
+Set parameter NonConvex to value 2
+Set parameter MIPGap to value 0.001
+Set parameter TimeLimit to value 300
+Set parameter Threads to value 6
+Set parameter OBBT to value 3
+Set parameter OBBT to value 3
+Set parameter NonConvex to value 2
+Set parameter MIPGap to value 0.001
+Set parameter Threads to value 6
+Set parameter TimeLimit to value 300
+Gurobi Optimizer version 13.0.0 build v13.0.0rc1 (win64 - Windows 10.0 (19045.2))
+
+CPU model: AMD Ryzen 9 5900X 12-Core Processor, instruction set [SSE2|AVX|AVX2]
+Thread count: 12 physical cores, 24 logical processors, using up to 6 threads
+
+Non-default parameters:
+TimeLimit  300
+MIPGap  0.001
+OBBT  3
+NonConvex  2
+Threads  6
+
+Optimize a model with 590 rows, 592 columns and 2867 nonzeros (Max)
+Model fingerprint: 0xdcdb8972
+Model has 3 linear objective coefficients
+Model has 18 quadratic constraints
+Coefficient statistics:
+  Matrix range     [1e-01, 8e+02]
+  QMatrix range    [1e+00, 1e+00]
+  QLMatrix range   [1e+00, 1e+00]
+  Objective range  [1e+00, 1e+00]
+  Bounds range     [1e-06, 4e+03]
+  RHS range        [1e-01, 8e+02]
+Presolve removed 226 rows and 180 columns
+
+Continuous model is non-convex -- solving as a MIP
+
+
+User MIP start produced solution with objective -1324.22 (0.02s)
+User MIP start produced solution with objective -1300.53 (0.05s)
+User MIP start produced solution with objective -1300.53 (0.06s)
+Loaded user MIP start with objective -1300.53
+
+Presolve removed 235 rows and 240 columns
+Presolve time: 0.00s
+Presolved: 427 rows, 353 columns, 1727 nonzeros
+Presolved model has 18 bilinear constraint(s)
+Variable types: 353 continuous, 0 integer (0 binary)
+
+Root relaxation: objective 3.000002e-06, 364 iterations, 0.00 seconds (0.00 work units)
+
+    Nodes    |    Current Node    |     Objective Bounds      |     Work
+ Expl Unexpl |  Obj  Depth IntInf | Incumbent    BestBd   Gap | It/Node Time
+
+     0     0    0.00000    0   13 -1300.5333    0.00000   100%     -    0s
+     0     0    0.00000    0   13 -1300.5333    0.00000   100%     -    0s
+     0     0    0.00000    0   13 -1300.5333    0.00000   100%     -    0s
+     0     0    0.00000    0   13 -1300.5333    0.00000   100%     -    0s
+H    0     0                    -1300.166667    0.00000   100%     -    0s
+     0     2    0.00000    0   13 -1300.1667    0.00000   100%     -    0s
+ 24425  2940 infeasible   33      -1300.1667 -872.90509  32.9%  15.8    5s
+ 71276  8188 infeasible   50      -1300.1667 -1130.5522  13.0%  10.8   10s
+ 109792 12892 -1224.6316   37   15 -1300.1667 -1174.7635  9.65%   9.3   15s
+ 156898 17648 infeasible   40      -1300.1667 -1206.6119  7.20%   8.3   20s
+ 205063 22816 -1281.3317   44    9 -1300.1667 -1225.4996  5.74%   7.6   25s
+H207569 22998                    -1300.166667 -1226.1626  5.69%   7.5   25s
+H217298 24009                    -1300.166666 -1229.0093  5.47%   7.4   26s
+ 252979 27138     cutoff   42      -1300.1667 -1238.7940  4.72%   7.1   30s
+ 301620 30873 -1296.8589   54   15 -1300.1667 -1248.7426  3.96%   6.7   35s
+ 349134 35694 -1299.0827   49    9 -1300.1667 -1255.4511  3.44%   6.5   40s
+ 398572 39514 -1295.6051   35   11 -1300.1667 -1261.0557  3.01%   6.2   45s
+ 441638 42085 infeasible   46      -1300.1667 -1265.5012  2.67%   6.1   50s
+ 491447 44528 infeasible   49      -1300.1667 -1269.7657  2.34%   5.9   55s
+ 542434 46089 -1282.7470   43   11 -1300.1667 -1273.5341  2.05%   5.7   60s
+ 592624 47001 -1277.2808   48   18 -1300.1667 -1276.7958  1.80%   5.6   65s
+ 641776 47232 -1284.0939   47   13 -1300.1667 -1279.6405  1.58%   5.4   70s
+ 689219 46708 -1296.4882   49   13 -1300.1667 -1282.2157  1.38%   5.3   75s
+ 741262 45645 -1293.6484   54    9 -1300.1667 -1284.6161  1.20%   5.2   80s
+ 792884 43720 infeasible   42      -1300.1667 -1286.7539  1.03%   5.1   85s
+H817772 42568                    -1300.166666 -1287.7272  0.96%   5.1   87s
+H819316 42474                    -1300.166665 -1287.7907  0.95%   5.1   87s
+ 853321 40210 infeasible   49      -1300.1667 -1289.1438  0.85%   5.0   90s
+H902165 36618                    -1300.166663 -1290.9847  0.71%   4.9   93s
+H904007 36492                    -1300.166661 -1291.0462  0.70%   4.9   93s
+ 916398 35253 -1300.1249   46   12 -1300.1667 -1291.5182  0.67%   4.9   95s
+ 985886 27513 -1296.6725   48   15 -1300.1667 -1294.0421  0.47%   4.8  100s
+ 1052582 18873 -1297.1583   53    9 -1300.1667 -1296.5394  0.28%   4.7  105s
+H1094754 13823                    -1300.166661 -1298.0155  0.17%   4.6  107s
+H1094979 13823                    -1300.166656 -1298.0160  0.17%   4.6  107s
+
+Cutting planes:
+  RLT: 10
+
+Explored 1122161 nodes (5073702 simplex iterations) in 109.52 seconds (110.54 work units)
+Thread count was 6 (of 24 available processors)
+
+Solution count 6: -1300.17 -1300.17 -1300.17 ... -1324.22
+
+Optimal solution found (tolerance 1.00e-03)
+Best objective -1.300166656273e+03, best bound -1.298872842696e+03, gap 0.0995%
+
+User-callback calls 3527, time in user-callback 0.00 sec
+범위: t_s ∈ [[-652.7, -395.6], [-567.2, -299.7], [-565.9, -307.8]], φ_s ∈ [(-3750.0, 0.0), (-3750.0, 0.0), (-3750.0, 0.0)]
+RESULT vf+rlt1+OBBT=3 S=3 n_h=50(활성 22) status=OPTIMAL 해=-1300.1667 (표본 하한 -1300.1667) 상한=-1298.8728 gap=9.951e-04 time=109.5 nodes=1122161 | 이진 0 곱 18
+  해: d = [0.5, 0.25, 0.25] r = [0.4167, 0.0, 0.5833] t = [-404.5, -319.69, -326.16] φ = [-1313.0, -1485.0, -1291.0]

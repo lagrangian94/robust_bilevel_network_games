@@ -1,0 +1,119 @@
+Set parameter Username
+Set parameter LicenseID to value 2742039
+Academic license - for non-commercial use only - expires 2026-11-20
+Set parameter Username
+Set parameter LicenseID to value 2742039
+Academic license - for non-commercial use only - expires 2026-11-20
+lab_vf_form: 무작위 d=15 seed=2 S=3 x=[2, 3] n_h=50 (활성 40 → 프리솔브 resp 뒤 19, 23.6s) | form=vf rec=none bits=0 | gap 1e-03, 제한 300s, 스레드 6
+시작해: belief 표본 2700 → 서로 다른 반응 52 → 최댓값 -2769.3333 (2.5s)
+Set parameter NonConvex to value 2
+Set parameter MIPGap to value 0.001
+Set parameter TimeLimit to value 300
+Set parameter Threads to value 6
+Set parameter NonConvex to value 2
+Set parameter MIPGap to value 0.001
+Set parameter Threads to value 6
+Set parameter TimeLimit to value 300
+Gurobi Optimizer version 13.0.0 build v13.0.0rc1 (win64 - Windows 10.0 (19045.2))
+
+CPU model: AMD Ryzen 9 5900X 12-Core Processor, instruction set [SSE2|AVX|AVX2]
+Thread count: 12 physical cores, 24 logical processors, using up to 6 threads
+
+Non-default parameters:
+TimeLimit  300
+MIPGap  0.001
+NonConvex  2
+Threads  6
+
+Optimize a model with 590 rows, 592 columns and 2870 nonzeros (Max)
+Model fingerprint: 0xdb0c543c
+Model has 3 linear objective coefficients
+Model has 18 quadratic constraints
+Coefficient statistics:
+  Matrix range     [1e-01, 8e+02]
+  QMatrix range    [1e+00, 1e+00]
+  QLMatrix range   [1e+00, 1e+00]
+  Objective range  [1e+00, 1e+00]
+  Bounds range     [1e-06, 8e+03]
+  RHS range        [1e-01, 8e+02]
+Presolve removed 165 rows and 158 columns
+
+Continuous model is non-convex -- solving as a MIP
+
+
+User MIP start produced solution with objective -2850.71 (0.01s)
+User MIP start produced solution with objective -2842.63 (0.02s)
+User MIP start produced solution with objective -2822.03 (0.03s)
+User MIP start produced solution with objective -2822.03 (0.04s)
+User MIP start produced solution with objective -2822.03 (0.04s)
+Loaded user MIP start with objective -2822.03
+
+Presolve removed 169 rows and 188 columns
+Presolve time: 0.00s
+Presolved: 493 rows, 405 columns, 2099 nonzeros
+Presolved model has 18 bilinear constraint(s)
+Variable types: 405 continuous, 0 integer (0 binary)
+
+Root relaxation: objective 3.000006e-06, 322 iterations, 0.00 seconds (0.00 work units)
+
+    Nodes    |    Current Node    |     Objective Bounds      |     Work
+ Expl Unexpl |  Obj  Depth IntInf | Incumbent    BestBd   Gap | It/Node Time
+
+     0     0    0.00000    0   18 -2822.0333    0.00000   100%     -    0s
+     0     0    0.00000    0   17 -2822.0333    0.00000   100%     -    0s
+     0     0    0.00000    0   18 -2822.0333    0.00000   100%     -    0s
+     0     0    0.00000    0   18 -2822.0333    0.00000   100%     -    0s
+     0     0    0.00000    0   17 -2822.0333    0.00000   100%     -    0s
+     0     0    0.00000    0   17 -2822.0333    0.00000   100%     -    0s
+     0     0    0.00000    0   17 -2822.0333    0.00000   100%     -    0s
+     0     0    0.00000    0   16 -2822.0333    0.00000   100%     -    0s
+     0     0    0.00000    0   16 -2822.0333    0.00000   100%     -    0s
+H    0     0                    -2769.924257    0.00000   100%     -    0s
+     0     2    0.00000    0   16 -2769.9243    0.00000   100%     -    0s
+H 3981   579                    -2769.333333 -1172.5571  57.7%  26.2    2s
+ 24723  4712 -2381.5572   37   11 -2769.3333 -2073.6844  25.1%  16.0    5s
+H61143 11270                    -2769.333333 -2380.9921  14.0%  11.6    9s
+ 65157 12001 infeasible   32      -2769.3333 -2393.3993  13.6%  11.3   10s
+ 114678 18850 -2627.5030   47   18 -2769.3333 -2495.9722  9.87%   9.2   15s
+ 165979 24588 -2655.5727   46   18 -2769.3333 -2553.6751  7.79%   8.2   20s
+ 216245 30074 -2684.9360   42   13 -2769.3333 -2592.2524  6.39%   7.4   25s
+ 270750 36134     cutoff   46      -2769.3333 -2620.1052  5.39%   6.9   30s
+ 328408 42353 infeasible   51      -2769.3333 -2639.3583  4.69%   6.4   35s
+ 370007 46497     cutoff   57      -2769.3333 -2650.3519  4.30%   6.2   40s
+ 411608 50956     cutoff   55      -2769.3333 -2658.4761  4.00%   6.0   45s
+ 452491 55368     cutoff   53      -2769.3333 -2665.5443  3.75%   5.8   50s
+ 492244 59186 -2717.4222   50   18 -2769.3333 -2671.7858  3.52%   5.7   55s
+ 529068 61905     cutoff   52      -2769.3333 -2678.0286  3.30%   5.5   60s
+ 569916 64491 -2740.0893   55   12 -2769.3333 -2684.3314  3.07%   5.4   65s
+ 611331 66757     cutoff   44      -2769.3333 -2689.9657  2.87%   5.3   70s
+ 652486 68431     cutoff   62      -2769.3333 -2695.1230  2.68%   5.2   75s
+ 693597 69231     cutoff   55      -2769.3333 -2700.0624  2.50%   5.2   80s
+ 730613 69836 -2760.4763   48   18 -2769.3333 -2704.1358  2.35%   5.1   85s
+ 771985 70038 -2723.0945   54   18 -2769.3333 -2708.2491  2.21%   5.0   90s
+ 813574 69785 -2734.4830   53   18 -2769.3333 -2712.3323  2.06%   5.0   95s
+ 854622 69112 -2751.2092   53   15 -2769.3333 -2716.0305  1.92%   4.9  100s
+ 889568 68334 -2744.1895   52    9 -2769.3333 -2719.1837  1.81%   4.9  105s
+ 930404 66898 -2764.3922   42   15 -2769.3333 -2722.6755  1.68%   4.8  110s
+ 971697 64948 -2747.7351   55   18 -2769.3333 -2726.3106  1.55%   4.8  115s
+ 1015153 62376     cutoff   52      -2769.3333 -2730.0832  1.42%   4.7  120s
+ 1056718 59258     cutoff   59      -2769.3333 -2733.6614  1.29%   4.7  125s
+H1085430 56919                    -2769.333332 -2735.9918  1.20%   4.6  128s
+ 1105426 54938 -2766.6261   51   15 -2769.3333 -2737.6148  1.15%   4.6  130s
+ 1145601 50308 -2760.3343   52    9 -2769.3333 -2740.9432  1.03%   4.6  135s
+ 1191628 43931 -2766.9371   51   15 -2769.3333 -2744.9463  0.88%   4.5  140s
+ 1237557 36336     cutoff   56      -2769.3333 -2749.3804  0.72%   4.5  145s
+ 1282927 27487 -2757.6700   49   18 -2769.3333 -2754.2970  0.54%   4.5  150s
+ 1332204 14389     cutoff   53      -2769.3333 -2761.4058  0.29%   4.4  155s
+
+Explored 1357950 nodes (5979962 simplex iterations) in 157.77 seconds (149.98 work units)
+Thread count was 6 (of 24 available processors)
+
+Solution count 5: -2769.33 -2769.92 -2822.03 ... -2850.71
+
+Optimal solution found (tolerance 1.00e-03)
+Best objective -2.769333332301e+03, best bound -2.766613004852e+03, gap 0.0982%
+
+User-callback calls 5582, time in user-callback 0.00 sec
+범위: t_s ∈ [[-450.9, -187.7], [-478.6, -213.9], [-426.9, -166.5]], φ_s ∈ [(-7500.0, 0.0), (-7500.0, 0.0), (-7500.0, 0.0)]
+RESULT vf+rlt S=3 n_h=50(활성 19) status=OPTIMAL 해=-2769.3333 (표본 하한 -2769.3333) 상한=-2766.6130 gap=9.823e-04 time=157.8 nodes=1357950 | 이진 0 곱 18
+  해: d = [0.5, 0.1667, 0.3333] r = [0.0, 0.4444, 0.5556] t = [-189.3, -267.07, -178.19] φ = [-3217.66, -2646.0, -2868.0]
