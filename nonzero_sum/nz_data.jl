@@ -174,6 +174,12 @@ function _nz_theta_circuit_exact_pooled(nd::NZData; maxpaths::Int=10^8)
         nd.ell[iyS(i, j)] == ell[i, j] || error("_nz_theta_circuit_exact_pooled: ℓ 이 예약분/현장분을 구분함 — 사영 논증이 성립 안 함")
     end
     entry = [(0.0, prem[i, 1]) for i in 1:nst]                              # s → 점포 i 의 두 호 (예약, 현장) 비용
+    # 조기 종료 상계: 비용이 모두 1/D 의 배수면 비용 증가 > 0 인 사이클은 ≥ 1/D 이고, 사이클은 s 를 한 번 지나므로 |ℓᵀg| ≤ max |ℓ| (점포 하나의
+    # 총량이 1 단위 바뀜, 사이에 지나는 점포는 들어온 만큼 나감 — ℓ 이 점포마다 고객과 무관할 때). 열거 중 이 값에 닿으면 더 볼 필요가 없다
+    D = get(meta, :D, nothing)
+    ellconst = all(isapprox(ell[i, j], ell[i, 1]; atol=1e-12) for i in 1:nst, j in 1:ncu)
+    lattice = D !== nothing && all(isapprox(x * D, round(x * D); atol=1e-6) for x in vcat(vec(cst), prem[:, 1]))
+    cap = (ellconst && lattice) ? maximum(abs, ell) * D : Inf
     best = 0.0; arg = nothing; npaths = 0
     vst = falses(nst); vcu = falses(ncu); path = Tuple{Symbol,Int,Int}[]
     function rec!(gc, gl, closing)
@@ -184,8 +190,10 @@ function _nz_theta_circuit_exact_pooled(nd::NZData; maxpaths::Int=10^8)
             end
         end
     end
+    done() = best >= cap * (1 - 1e-9)
     function at_store(i, gc, gl)                                            # 점포 i 에 들어옴 → 새 고객으로 정방향
         for j in 1:ncu
+            done() && return
             vcu[j] && continue
             npaths += 1
             npaths > maxpaths && error("_nz_theta_circuit_exact_pooled: 경로 수가 maxpaths 를 넘음")
@@ -197,6 +205,7 @@ function _nz_theta_circuit_exact_pooled(nd::NZData; maxpaths::Int=10^8)
     function at_customer(j, gc, gl)                                         # 고객 j 에 정방향으로 들어옴
         rec!(gc, gl, (:t, 0, j))                                            # j → t → s 로 닫기 (비용 0)
         for k in 1:nst
+            done() && return
             vst[k] && continue
             vst[k] = true; push!(path, (:Fback, k, j))
             gc2, gl2 = gc - cst[k, j], gl - ell[k, j]
@@ -215,7 +224,7 @@ function _nz_theta_circuit_exact_pooled(nd::NZData; maxpaths::Int=10^8)
     fmt(t) = t[1] == :F ? "+F($(t[2]),$(t[3]))" : t[1] == :Fback ? "−F($(t[2]),$(t[3]))" : t[1] == :t ? "→t" : "$(t[1])($(t[2]))"
     desc = arg === nothing ? "ℓᵀg > 0 인 비용 증가 circuit 없음" :
         join(fmt.(arg[1]), " ") * "  (부호 $(arg[2] > 0 ? "+" : "−"), 비용 증가 $(arg[3]), ℓ 변화 $(arg[4]))"
-    return best, Dict(:npaths => npaths, :circuit => desc)
+    return best, Dict(:npaths => npaths, :circuit => desc, :cap => cap, :early => done())
 end
 
 "h 상한 (hU) 만 바꾼 사본 (α-B&B 프리솔브용)"
