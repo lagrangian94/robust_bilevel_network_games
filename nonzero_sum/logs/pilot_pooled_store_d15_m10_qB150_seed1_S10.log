@@ -1,0 +1,63 @@
+Set parameter Username
+Set parameter LicenseID to value 2742039
+Academic license - for non-commercial use only - expires 2026-11-20
+
+--- pooled(거점별 300) d=15 A=5 B=5 (N_B≤3) seed=1 S=10: n_h=10, |X|=26, 용량 150, 출점비 150, f=0.10 p=0.30, θᵁ=50.0 λᵁ=1000.0, TL=1800s, 프리솔브 켬
+  [설정] 전역 oracle = α-B&B (nz_alpha_bnb_dr), worker 10, gap 1e-03, 이어 풀기 켬, bnb_kw = (ipopt_time = 120.0,)
+  [설정] oracle 시간: 남은 시간 전체 (끊지 않음), 목표값 조기 종료 켬, local cut 켬
+  [loc]  it   1 LB=-10000000.0000 UB=        Inf x=Int64[]    Ω_loc=    -0.0002 (0.2s) menu=1 (+belief)
+  [menu] it   2 LB=-89550.0003 UB=        Inf x=[1, 2, 5]  menu cut 1/1 (V_menu=-1844.3945)
+  [menu] it   3 LB=-54700.0003 UB=        Inf x=[1, 5]     menu cut 1/1 (V_menu=-1111.8392)
+  [menu] it   4 LB=-54700.0002 UB=        Inf x=[2, 5]     menu cut 1/1 (V_menu=-1689.8845)
+  [menu] it   5 LB=-20917.1914 UB=        Inf x=[2, 3, 4]  menu cut 1/1 (V_menu=-1245.1906)
+  [menu] it   6 LB=-19850.0002 UB=        Inf x=[5]        menu cut 1/1 (V_menu=-778.7894)
+  [menu] it   7 LB= -1544.3945 UB=        Inf x=[1, 2]     menu cut 1/1 (V_menu=-1596.1685)
+  [menu] it   8 LB= -1542.8400 UB=        Inf x=[2, 4, 5]  menu cut 1/1 (V_menu=-1836.2857)
+  [loc]  it   9 LB= -1394.3945 UB=        Inf x=[1, 2, 5]  Ω_loc=  -623.0002 (0.2s) menu=2 (+belief)
+  [menu] it  10 LB= -1389.8845 UB=        Inf x=[2, 5]     menu cut 1/2 (V_menu=-604.0001)
+  [menu] it  11 LB= -1019.8972 UB=        Inf x=[2]        menu cut 2/2 (V_menu=-604.0000)
+  [menu] it  12 LB=  -886.5458 UB=        Inf x=[1]        menu cut 2/2 (V_menu=-441.0000)
+  [menu] it  13 LB=  -783.2225 UB=        Inf x=[3, 4, 5]  menu cut 2/2 (V_menu=-350.1668)
+Set parameter Username
+Set parameter LicenseID to value 2742039
+Academic license - for non-commercial use only - expires 2026-11-20
+    [반응 프리솔브] x=[2]: 활성 6 중 0 개를 0 으로 고정 (67.4s)
+Set parameter Username
+Set parameter LicenseID to value 2742039
+Academic license - for non-commercial use only - expires 2026-11-20
+Set parameter Username
+Set parameter LicenseID to value 2742039
+Academic license - for non-commercial use only - expires 2026-11-20
+Set parameter Username
+Set parameter LicenseID to value 2742039
+Academic license - for non-commercial use only - expires 2026-11-20
+Set parameter Username
+Set parameter LicenseID to value 2742039
+Academic license - for non-commercial use only - expires 2026-11-20
+Set parameter Username
+Set parameter LicenseID to value 2742039
+Academic license - for non-commercial use only - expires 2026-11-20
+Set parameter Username
+Set parameter LicenseID to value 2742039
+Academic license - for non-commercial use only - expires 2026-11-20
+Set parameter Username
+Set parameter LicenseID to value 2742039
+Academic license - for non-commercial use only - expires 2026-11-20
+Set parameter Username
+Set parameter LicenseID to value 2742039
+Academic license - for non-commercial use only - expires 2026-11-20
+Set parameter Username
+Set parameter LicenseID to value 2742039
+Academic license - for non-commercial use only - expires 2026-11-20
+Set parameter Username
+Set parameter LicenseID to value 2742039
+Academic license - for non-commercial use only - expires 2026-11-20
+
+******************************************************************************
+This program contains Ipopt, a library for large-scale nonlinear optimization.
+ Ipopt is released as open source code under the Eclipse Public License (EPL).
+         For more information visit https://github.com/coin-or/Ipopt
+******************************************************************************
+
+  [orcl] it  14 LB=  -454.0000 UB=  -438.0825 x=[2]        Ω=  -604.0000 (1867.4s) menu=2
+RESULT pooled-store d=15 m=10 nA=5 nB=5 seed=1 S=10 nh=10 status=TimeLimit x={2} LB=-454.000001 UB=-438.082527 gap=3.63e-02 iters=15 global=1 local=2 menu=2 time=1881.2

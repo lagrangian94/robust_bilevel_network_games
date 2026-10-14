@@ -20,7 +20,8 @@ lab_vf_form.jl — 고정 x̄ 의 oracle 을 범용 전역 솔버 (Gurobi) 에 �
           뿐이라 McCormick 오차가 2^-p 배로 준다. 공간 분기를 MIP 분기로 바꾸는 기법 — 분기 차원이 n_h 가 아니라 2S.
 
 환경변수: NZ_SEED = 1  VF_S = 3  VF_X = "1"  VF_NLOC = 15  VF_INST = random | sgb  VF_TL = 300  VF_THREADS = 12  VF_GAP = 1e-3
-          VF_RES = pair | pooled (예약 구조. pooled = 점포별 예약 풀, 한도 1ᵀh ≤ 300. θᵁ 는 둘 다 정확한 circuit 값)
+          VF_RES = pair | pooled (예약 구조. pooled = 점포별 예약 풀. θᵁ 는 둘 다 정확한 circuit 값)
+          VF_POOL = total | store (pooled 의 한도: 전체 1ᵀh ≤ 300, 또는 거점별 h_i ≤ VF_QUOTA = 300)
           VF_PRE = resp (기본: 닫힌 점포 + 예약 상한 ≤ 최대 수요 + 반응 정의역 프리솔브) | basic (앞의 둘만)   VF_START = 1 (belief 표본의 최적 반응을 시작해로)
           VF_RLT = 0 | 1 (vf 전용: 확률 합 Σ_s d_s = 1, Σ_s r_s = 1 에 t_s', φ_s' 를 곱한 RLT 등식 — pooling 의 pq 정식화와 같은 종류. 교차 곱 d_s t_s', r_s φ_s' 를
                   변수로 두므로 곱이 2S² 개로 는다)
@@ -41,6 +42,8 @@ envf(k, d) = get(ENV, k, d); pf(s) = parse(Float64, s)
 seed = parse(Int, envf("NZ_SEED", "1")); S = parse(Int, envf("VF_S", "3")); nloc = parse(Int, envf("VF_NLOC", "15")); inst = envf("VF_INST", "random")
 xi = parse.(Int, split(envf("VF_X", inst == "sgb" ? "1,2" : "1"), ",")); TL = pf(envf("VF_TL", "300")); GAP = pf(envf("VF_GAP", "1e-3"))
 res = Symbol(envf("VF_RES", "pair")); res in (:pair, :pooled) || error("VF_RES = pair | pooled")
+pool = Symbol(envf("VF_POOL", "total")); vquota = parse(Float64, envf("VF_QUOTA", "300"))
+poolkw = res == :pooled ? (pool_limit=pool, quota=vquota) : (quota=300.0,)
 form = envf("VF_FORM", "vf"); rec = envf("VF_REC", "none"); bits = parse(Int, envf("VF_BITS", "0")); pre = envf("VF_PRE", "resp")
 form in ("omega", "vf") || error("VF_FORM = omega | vf"); rec in ("none", "lattice") || error("VF_REC = none | lattice"); pre in ("resp", "basic") || error("VF_PRE = resp | basic")
 nthr = parse(Int, envf("VF_THREADS", "12")); rlt = parse(Int, envf("VF_RLT", "0")); dminv = pf(envf("VF_DMIN", "0"))
@@ -52,7 +55,7 @@ if inst == "sgb"
 else
     cap = 150.0 * (nloc - 5) / 2
     nd0 = nz_with_delta(make_location_instance(; coords=:random, n_loc=nloc, nA=2, nB=3, NB=3, S=S, seed=seed,
-        bA=cap, bB=cap, qB=cap, dlo=50.0, dhi=150.0, reservation=res, quota=300.0, wres=300.0, eps_hat=0.3, eps_tilde=0.3, beta=0.4), 0.1)
+        bA=cap, bB=cap, qB=cap, dlo=50.0, dhi=150.0, reservation=res, wres=300.0, eps_hat=0.3, eps_tilde=0.3, beta=0.4, poolkw...), 0.1)
     res == :pooled && (nd0 = nz_with_bounds(nd0; thetaU=nz_theta_circuit_exact(nd0)[1]))
 end
 x̄ = zeros(nd0.nx); x̄[xi] .= 1

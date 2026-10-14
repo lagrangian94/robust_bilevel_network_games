@@ -88,6 +88,18 @@ for S in parse.(Int, split(envf("TVP_S", "3"), ","))
             αsnap = clamp.(value.(αf), 0.0, nd0.hU); Gs = nz_eval_alpha!(F0, nd0, αsnap)
             if isfinite(Gs) && Gs >= G0 - 1e-6 * max(1.0, abs(G0))
                 ref = "꼭짓점"; αref = αsnap; V = Gs
+            else
+                # 최적 반응이 면이라 simplex 꼭짓점이 리더에게 다른 값을 줄 때: d° 의 최적면 위에서 α° 에 가장 가까운 점 (ℓ1 사영) 을 쓴다
+                vF = objective_value(fm); a0 = clamp.(αref, 0.0, nd0.hU)
+                @variable(fm, dev[1:nh0] >= 0); @constraint(fm, [i = 1:nh0], dev[i] >= αf[i] - a0[i]); @constraint(fm, [i = 1:nh0], dev[i] >= a0[i] - αf[i])
+                @constraint(fm, dot(nd0.c0, αf) + sum(d0[s] * nd0.c[j] * yf[j, s] for j in 1:ny0, s in 1:S if nd0.c[j] != 0) >= vF - 1e-9 * max(1.0, abs(vF)))
+                @objective(fm, Min, sum(dev)); optimize!(fm)
+                αproj = clamp.(value.(αf), 0.0, nd0.hU); Gp = nz_eval_alpha!(F0, nd0, αproj)
+                if isfinite(Gp) && Gp >= G0 - 1e-6 * max(1.0, abs(G0))
+                    ref = "최적면 사영"; αref = αproj; V = Gp
+                end
+                @printf("    [기준점] x=%s: G(α°)=%.4f, G(꼭짓점)=%.4f, G(사영)=%.4f, ‖사영−α°‖₁=%.2e
+", string(xi), G0, Gs, Gp, sum(abs.(αproj .- a0)))
             end
         end
         # KKT 평가기 (MIPGap 1e-6, indicator 허용오차) 는 참값 0 인 x 에서도 ±2e-6 쯤을 낸다 (SGB128 x = ∅, {3,4}) → 판정 허용오차 1e-5 상대

@@ -6,7 +6,7 @@ test_dr_validity_pooled.jl 의 상자 검사에서 off (범위 행 없음) 는 �
     range+C : 상자별 범위 + 상자 상보성 (기본)       range : 범위만 (comp=false)
     global+C: 전역 범위 [0, ϖᵁ] + 상자 상보성           global: 전역 범위만
   그리고 α° 에서 시나리오별 recourse LP 의 최적 쌍대 (더 낮출 수 없는 것) 를 직접 구해 범위 [lo, hi] 안에 있는지 본다.
-환경변수: DG_NLOC = 8  NZ_SEED = 1  DG_X = "3"  DG_S = 3
+환경변수: DG_NLOC = 8  NZ_SEED = 1  DG_X = "3"  DG_S = 3  DG_POOL = total | store (거점별 한도 300)
 실행: julia -t 4,1 nonzero_sum/diag_pooled_dr.jl
 """
 root = dirname(@__DIR__)
@@ -21,7 +21,7 @@ nloc = parse(Int, envf("DG_NLOC", "8")); seed = parse(Int, envf("NZ_SEED", "1"))
 xi = parse.(Int, split(envf("DG_X", "3"), ","))
 cap = 150.0 * (nloc - 5) / 2
 nd1 = nz_with_delta(make_location_instance(; coords=:random, n_loc=nloc, nA=2, nB=3, NB=3, S=S, seed=seed, bA=cap, bB=cap, qB=cap,
-                                          dlo=50.0, dhi=150.0, reservation=:pooled, wres=300.0, eps_hat=0.3, eps_tilde=0.3, beta=0.4), 0.1)
+                                          dlo=50.0, dhi=150.0, reservation=:pooled, wres=300.0, pool_limit=Symbol(envf("DG_POOL", "total")), quota=300.0, eps_hat=0.3, eps_tilde=0.3, beta=0.4), 0.1)
 ndf = nz_with_bounds(nd1; thetaU=nz_theta_circuit_exact(nd1)[1])
 x̄ = zeros(ndf.nx); x̄[xi] .= 1
 r = nz_alpha_bnb_dr(ndf, x̄; nworkers=2, time_limit=120.0, rel_gap=1e-4, verbose=false, ipopt_time=30.0)
