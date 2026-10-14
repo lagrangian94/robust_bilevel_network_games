@@ -1,0 +1,61 @@
+Set parameter Username
+Set parameter LicenseID to value 2742039
+Academic license - for non-commercial use only - expires 2026-11-20
+scale_oracle_random: pair d=15 seed=1 S=3 x=[1] n_h=50 (활성 30) θᵁ=0.0 Σhᵁ=9000 (quota) TL=300s gap=1e-03 solver=dr kw=(dual_range = false,)
+Set parameter Username
+Set parameter LicenseID to value 2742039
+Academic license - for non-commercial use only - expires 2026-11-20
+Set parameter Username
+Set parameter LicenseID to value 2742039
+Academic license - for non-commercial use only - expires 2026-11-20
+Set parameter Username
+Set parameter LicenseID to value 2742039
+Academic license - for non-commercial use only - expires 2026-11-20
+Set parameter Username
+Set parameter LicenseID to value 2742039
+Academic license - for non-commercial use only - expires 2026-11-20
+Set parameter Username
+Set parameter LicenseID to value 2742039
+Academic license - for non-commercial use only - expires 2026-11-20
+Set parameter Username
+Set parameter LicenseID to value 2742039
+Academic license - for non-commercial use only - expires 2026-11-20
+Set parameter Username
+Set parameter LicenseID to value 2742039
+Academic license - for non-commercial use only - expires 2026-11-20
+Set parameter Username
+Set parameter LicenseID to value 2742039
+Academic license - for non-commercial use only - expires 2026-11-20
+Set parameter Username
+Set parameter LicenseID to value 2742039
+Academic license - for non-commercial use only - expires 2026-11-20
+Set parameter Username
+Set parameter LicenseID to value 2742039
+Academic license - for non-commercial use only - expires 2026-11-20
+Set parameter Username
+Set parameter LicenseID to value 2742039
+Academic license - for non-commercial use only - expires 2026-11-20
+Set parameter Username
+Set parameter LicenseID to value 2742039
+Academic license - for non-commercial use only - expires 2026-11-20
+Set parameter Username
+Set parameter LicenseID to value 2742039
+Academic license - for non-commercial use only - expires 2026-11-20
+
+******************************************************************************
+This program contains Ipopt, a library for large-scale nonlinear optimization.
+ Ipopt is released as open source code under the Eclipse Public License (EPL).
+         For more information visit https://github.com/coin-or/Ipopt
+******************************************************************************
+
+    [nz-α-B&B-dr] t=  33.7s nodes=10085 open= 3537 LB=-303.545921 UB=-300.077200 gap=1.143e-02
+    [nz-α-B&B-dr] t=  64.1s nodes=22766 open= 4418 LB=-303.545917 UB=-300.605653 gap=9.686e-03
+    [nz-α-B&B-dr] t=  94.2s nodes=34961 open= 5655 LB=-303.545494 UB=-300.961979 gap=8.511e-03
+    [nz-α-B&B-dr] t= 124.4s nodes=46765 open=10121 LB=-303.545494 UB=-300.979699 gap=8.453e-03
+    [nz-α-B&B-dr] t= 154.5s nodes=59312 open=13724 LB=-303.545494 UB=-301.041598 gap=8.249e-03
+    [nz-α-B&B-dr] t= 184.7s nodes=71170 open=16770 LB=-303.545494 UB=-301.112272 gap=8.016e-03
+    [nz-α-B&B-dr] t= 214.8s nodes=83678 open=20010 LB=-303.545494 UB=-301.182658 gap=7.784e-03
+    [nz-α-B&B-dr] t= 244.9s nodes=95688 open=22418 LB=-303.545494 UB=-301.269699 gap=7.497e-03
+    [nz-α-B&B-dr] t= 275.1s nodes=107860 open=24287 LB=-303.545494 UB=-301.341138 gap=7.262e-03
+nz_alpha_bnb_dr: 기본이 아닌 구성으로 실행 — dual_range = false, comp = false, vcut = false, cslift = false, fwd = false, kmc = false, dd = false, cbranch = false
+RESULT TimeLim LB=-303.5455 UB=-301.4018 gap=7.062e-03 time=303.7 nodes=118815 rootUB=-299.74 | worker 합 3645s = 완화 LP 2946 + 범위 MIP 0 (MIP 0, 노드당 0) + 재확인 0 + α 고정 LP 127 | 고정비율 0.00 실행불가능 0 (되살아남 0) 수치오류 0 (실패 0) 상보성 분기 0 GC 대기 12s | 느린 노드 NTuple{4, Float64}[]

@@ -6,6 +6,8 @@ scale_oracle_random.jl — 무작위 location 인스턴스 (Goyal §7.3 최소 �
           SR_KW = (α-B&B 인자, 예 "(dd=false,)")
           SR_SOLVER = dr (기본: nz_alpha_bnb_dr) | legacy (옛 구현 nz_alpha_bnb, 쌍대 범위 없음. SR_KW = "(varpi_branch=true,)" 로 ϖ 분기)
           SR_PRE = none (기본) | resp (반응 정의역 프리솔브 nz_root_tighten.jl 을 먼저 적용해 0 으로 고정된 좌표를 뺀다)
+          SR_ZS = 0 | 1 (1: 같은 데이터에서 리더 손실만 follower 의 recourse 값으로 바꾼 대조군: ℓ = c, θᵁ = 0. 리더 블록에 recourse 쌍대해 ϖ 와의 곱이 없어진다
+                  — zero-sum 과 같은 구조. 분기 차원·시나리오·follower 블록은 그대로라 "비제로섬에서만 안 닫히는 원인" 을 가른다)
           SR_HU = quota (기본: 예약 상한 = 점포별 할당량) | demand (예약 상한을 고객의 최대 수요로 줄임: h_ij > max_s ξ_j^s 인 예약은 어느 시나리오에서도
                   쓰이지 않고 예약비 f > 0 만 내므로 follower 의 최적 반응이 될 수 없다. nz_presolve_hU 와 같은 종류의 지배 논증)
 실행: julia -t 14,1 nonzero_sum/scale_oracle_random.jl
@@ -30,6 +32,11 @@ if humode == "demand"
     mt = nd.meta; mt[:reservation] == :pair || error("SR_HU = demand 는 pair 예약 전용")
     dmaxj = [maximum(mt[:xi][j, :]) for j in 1:mt[:ncu]]
     global nd = nz_with_hU(nd, [min(nd.hU[mt[:hidx](i, j)], dmaxj[j]) for i in 1:mt[:nst] for j in 1:mt[:ncu]])
+end
+if envf("SR_ZS", "0") == "1"
+    # ℓ = c 면 리더 복사본이 cᵀŷ 를 최대화하므로 recourse 최적성이 저절로 성립 → θ 벌점 (과 α·ϖ 곱) 이 필요 없다. 리더 쪽 x 행 상계는 follower 의 것과 같다
+    global nd = NZData(nd.name * "_zs", nd.A, nd.c, copy(nd.c), nd.u, nd.hrow, nd.hcoef, nd.xrow, nd.g, nd.W, nd.wvec, nd.c0, nd.hU, nd.nx, nd.x_allowed, nd.gamma, nd.qx,
+                       nd.S, nd.q_hat, nd.eps_hat, nd.eps_tilde, nd.beta, 0.0, copy(nd.piFU), nd.piFU, nd.lambdaU, nd.varpiU, nd.meta)
 end
 x̄ = zeros(nd.nx); x̄[xi] .= 1
 solver = envf("SR_SOLVER", "dr"); solver in ("dr", "legacy") || error("SR_SOLVER = dr | legacy")
