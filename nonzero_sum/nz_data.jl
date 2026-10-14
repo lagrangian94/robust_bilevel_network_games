@@ -295,7 +295,9 @@ Goyal et al. (2023) §7.1 기본 사례를 따른다 (SGB128 좌표 대신 [0,1]
   수송비 c_ij = Euclidean 거리를 dist_res (기본 0.1) 단위로 반올림.
   리더 손실 ℓ = −v (B 점포에서 나가는 모든 flow, v=5).
 확장 (html): 고객이 사전예약 h 를 정함 (단위 예약비 f), 예약분은 c_ij, 현장구매는 c_ij + p.
-  reservation = :pooled (기존) — 점포별 예약 풀 h_i, Σ_j y^R_ij ≤ h_i, 한도 1ᵀh ≤ wres
+  reservation = :pooled (기존) — 점포별 예약 풀 h_i, Σ_j y^R_ij ≤ h_i
+                  pool_limit = :total (기본, 기존) — 한도 1ᵀh ≤ wres
+                             | :store — 거점별 한도 h_i ≤ quota_i (retailer 모형: 공급 거점이 계약으로 팔 수 있는 용량, 2026-10-14)
               | :pair         — 고객×점포별 선주문 h_ij, y^R_ij ≤ h_ij, 점포별 선판매 할당량 Σ_j h_ij ≤ quota
                                 (aggregate LP 가 개별 고객 선주문의 가격 균형과 같아지는 형태, test_nz_equilibrium.jl)
 RCR: A 총용량 > 최대 총수요 (assert).
@@ -303,10 +305,12 @@ RCR: A 총용량 > 최대 총수요 (assert).
 function make_location_instance(; coords::Symbol=:sgb128, n_loc=8, nA=1, nB=4, NB=4, S=5, seed=1,
         bA=720.0, bB=360.0, qB=305.0, dlo=30.0, dhi=240.0, v=5.0,
         p=nothing, f=nothing, wres=300.0, dist_res=nothing,
-        reservation::Symbol=:pooled, quota=wres,
+        reservation::Symbol=:pooled, quota=wres, pool_limit::Symbol=:total,
         eps_hat=0.2, eps_tilde=0.2, beta=0.4,
         thetaU=:circuit, lambdaU=nothing, bigm::Symbol=:tight)
     reservation in (:pooled, :pair) || error("reservation = :pooled | :pair")
+    pool_limit in (:total, :store) || error("pool_limit = :total | :store")
+    reservation == :pair && pool_limit != :total && error("pool_limit 는 reservation = :pooled 전용")
     coords in (:sgb128, :random) || error("coords = :sgb128 | :random")
     # λᵁ (follower exact penalty) 는 비용 단위에 묶인 상수. follower McCormick 상한이 λᵁ·(c^max + p) 라
     # 척도를 따라가야 한다. random 에서 경계가 v/해상도 = 50 → λᵁ = 1000. sgb128 (해상도 1) 은 경계 ~5 로 보고 100.
@@ -391,7 +395,12 @@ function make_location_instance(; coords::Symbol=:sgb128, n_loc=8, nA=1, nB=4, N
         qv = quota isa Real ? fill(Float64(quota), nst) : Float64.(quota)
         wvec = qv; c0 = fill(-f, nh); hU = [qv[i] for i in 1:nst for j in 1:ncu]
     else
-        W = ones(1, nst); wvec = [wres]; c0 = fill(-f, nst); hU = fill(wres, nst)
+        if pool_limit == :store
+            qv = quota isa Real ? fill(Float64(quota), nst) : Float64.(quota)
+            W = Matrix{Float64}(I, nst, nst); wvec = qv; c0 = fill(-f, nst); hU = copy(qv)
+        else
+            W = ones(1, nst); wvec = [wres]; c0 = fill(-f, nst); hU = fill(wres, nst)
+        end
     end
 
     # ---- 상계 (html Step 2 + location 구조) ----
@@ -426,9 +435,9 @@ function make_location_instance(; coords::Symbol=:sgb128, n_loc=8, nA=1, nB=4, N
     meta = Dict{Symbol,Any}(:kind => :location, :coords => coords, :cities => cities, :coord => coord, :dist => dist, :xi => ξ,
         :nA => nA, :nB => nB, :ncu => ncu, :p => p, :f => f, :v => v, :wres => wres,
         :bA => bA, :bB => bB, :cmax => cmax, :D => D, :piLU_fn => piLU_fn,
-        :iyR => iyR, :iyS => iyS, :reservation => reservation, :nst => nst,
+        :iyR => iyR, :iyS => iyS, :reservation => reservation, :pool_limit => pool_limit, :nst => nst,
         :rdem => rdem, :rres => rres, :rcap => rcap, :hidx => hidx, :isB => isB, :gapB => gapB, :bigm => bigm)
-    return NZData((sgb ? "location_sgb128" : "location_n$(n_loc)_A$(nA)_B$(nB)") * "_S$(S)_seed$(seed)" * (pair ? "_pair" : ""),
+    return NZData((sgb ? "location_sgb128" : "location_n$(n_loc)_A$(nA)_B$(nB)") * "_S$(S)_seed$(seed)" * (pair ? "_pair" : pool_limit == :store ? "_poolstore" : ""),
         A, c, ell, u, hrow, hcoef, xrow, g, W, wvec, c0, hU,
         nx, fill(true, nx), NB, fill(qB, nx),
         S, fill(1.0 / S, S), eps_hat, eps_tilde, beta,

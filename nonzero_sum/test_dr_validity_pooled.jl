@@ -13,6 +13,7 @@ test_dr_validity_pooled.jl — pooled 예약 (retailer 모형) 에서 비제로�
 
 환경변수: TVP_INST = sgb | random   TVP_NLOC = 8 (random)   NZ_SEED = 1   TVP_S = "3"   TVP_N = 200 (x̄ 마다 상자 수)   TVP_WRES = 300
           TVP_EPS = 0.3   TVP_DELTA = 0.1   TVP_KKT_TL = 600   TVP_THREADS = 2   TVP_BNB = 1   TVP_BNB_TL = 120   TVP_WORKERS = 2
+          TVP_POOL = total | store (예약 한도: 전체 합 Σ h ≤ TVP_WRES, 또는 거점별 h_i ≤ TVP_QUOTA)   TVP_QUOTA = 150 (sgb) / 300 (random)
           TVP_X = "" (비우면 모든 x, 예 "3;1,3")   TVP_MODES = "full" (상자 검사의 완화 구성, test_dr_validity_boxes.jl 과 같은 이름:
                      full, old (FWD·KMC·DD 없음), fwd / kmc / dd (old + 하나), base (W·F·C 만), off (범위 행 없음))
 실행: julia -t 4,1 nonzero_sum/test_dr_validity_pooled.jl
@@ -28,14 +29,15 @@ include(joinpath(root, "nonzero_sum", "nz_alpha_bnb_dr.jl"))
 envf(k, d) = get(ENV, k, d); pd(s) = strip(s) == "Inf" ? Inf : parse(Float64, s)
 ε = parse(Float64, envf("TVP_EPS", "0.3")); δ = pd(envf("TVP_DELTA", "0.1")); N = parse(Int, envf("TVP_N", "200"))
 inst = envf("TVP_INST", "sgb"); nloc = parse(Int, envf("TVP_NLOC", "8")); seed = parse(Int, envf("NZ_SEED", "1")); wres = parse(Float64, envf("TVP_WRES", "300"))
+pool = Symbol(envf("TVP_POOL", "total")); quota = parse(Float64, envf("TVP_QUOTA", inst == "sgb" ? "150" : "300"))
 WMIN = 1e-4
 function mkinst(S)
     nd0 = if inst == "sgb"
-        make_location_instance(; coords=:sgb128, reservation=:pooled, wres=wres, S=S, seed=seed, eps_hat=ε, eps_tilde=ε, beta=0.4)
+        make_location_instance(; coords=:sgb128, reservation=:pooled, wres=wres, pool_limit=pool, quota=quota, S=S, seed=seed, eps_hat=ε, eps_tilde=ε, beta=0.4)
     else
         cap = 150.0 * (nloc - 5) / 2
         make_location_instance(; coords=:random, n_loc=nloc, nA=2, nB=3, NB=3, S=S, seed=seed, bA=cap, bB=cap, qB=cap,
-                               dlo=50.0, dhi=150.0, reservation=:pooled, wres=wres, eps_hat=ε, eps_tilde=ε, beta=0.4)
+                               dlo=50.0, dhi=150.0, reservation=:pooled, wres=wres, pool_limit=pool, quota=quota, eps_hat=ε, eps_tilde=ε, beta=0.4)
     end
     nd1 = nz_with_delta(nd0, δ)
     return nz_with_bounds(nd1; thetaU=nz_theta_circuit_exact(nd1)[1])
@@ -50,7 +52,8 @@ mkw = Dict("full" => NamedTuple(), "old" => (fwd=false, kmc=false, dd=false), "f
 nbad = 0
 for S in parse.(Int, split(envf("TVP_S", "3"), ","))
     ndf = mkinst(S)
-    @printf("== %s pooled S=%d seed=%d n_h=%d θᵁ=%.3f λᵁ=%.1f 예약 한도 %.0f\n", inst == "sgb" ? "SGB128" : "무작위 d=$nloc", S, seed, nz_nh(ndf), ndf.thetaU, ndf.lambdaU, wres)
+    @printf("== %s pooled S=%d seed=%d n_h=%d θᵁ=%.3f λᵁ=%.1f 예약 한도 %s\n", inst == "sgb" ? "SGB128" : "무작위 d=$nloc", S, seed, nz_nh(ndf), ndf.thetaU, ndf.lambdaU,
+            pool == :store ? "거점별 $quota" : "전체 $wres")
     for xv in all_x(ndf)
         xi = findall(xv .> 0.5)
         xsel === nothing || xi in xsel || continue
