@@ -1,0 +1,670 @@
+Set parameter Username
+Set parameter LicenseID to value 2742039
+Academic license - for non-commercial use only - expires 2026-11-20
+
+--- pooled(거점별 300) d=17 A=4 B=3 (N_B≤3) seed=1 S=10: n_h=7, |X|=8, 용량 375, 출점비 375, f=0.10 p=0.30, θᵁ=50.0 λᵁ=2000.0, TL=3600s, 프리솔브 켬
+  [설정] 전역 oracle = α-B&B (nz_alpha_bnb_dr), worker 12, gap 1e-03, 이어 풀기 켬, bnb_kw = (ipopt_time = 120.0,)
+  [설정] oracle 시간: 남은 시간 전체 (끊지 않음), 목표값 조기 종료 켬, local cut 켬
+  [loc]  it   1 LB=-10000000.0000 UB=        Inf x=Int64[]    Ω_loc=    -0.0006 (0.2s) menu=1 (+belief)
+  [menu] it   2 LB=-330854.1667 UB=        Inf x=[1, 2, 3]  menu cut 1/1 (V_menu=-2446.3121)
+  [menu] it   3 LB=-164875.0000 UB=        Inf x=[2, 3]     menu cut 1/1 (V_menu=-1959.7979)
+  [menu] it   4 LB=-105218.6166 UB=        Inf x=[1]        menu cut 1/1 (V_menu=-1625.2762)
+  [menu] it   5 LB=-86187.5000 UB=        Inf x=[2]        menu cut 1/1 (V_menu=-634.2552)
+  [menu] it   6 LB=-78687.5000 UB=        Inf x=[3]        menu cut 1/1 (V_menu=-1325.5427)
+  [menu] it   7 LB= -1696.3121 UB=        Inf x=[1, 2]     menu cut 1/1 (V_menu=-2240.7817)
+  [menu] it   8 LB= -1618.8023 UB=        Inf x=[1, 3]     menu cut 1/1 (V_menu=-1830.8066)
+  [loc]  it   9 LB= -1490.7817 UB=        Inf x=[1, 2]     Ω_loc=  -423.9174 (0.4s) menu=2 (+belief)
+  [menu] it  10 LB= -1250.2762 UB=        Inf x=[1]        menu cut 1/2 (V_menu=-424.1679)
+  [menu] it  11 LB= -1209.7979 UB=        Inf x=[2, 3]     menu cut 1/2 (V_menu=-116.6069)
+  [menu] it  12 LB=  -950.5427 UB=        Inf x=[3]        menu cut 1/2 (V_menu=-116.6068)
+  [menu] it  13 LB=  -259.2552 UB=        Inf x=[2]        menu cut 1/2 (V_menu=-41.6949)
+  [loc]  it  14 LB=   -49.1679 UB=        Inf x=[1]        Ω_loc=  -381.0841 (0.3s) menu=3 (+belief)
+Set parameter Username
+Set parameter LicenseID to value 2742039
+Academic license - for non-commercial use only - expires 2026-11-20
+    [반응 프리솔브] x=[1]: 활성 5 중 0 개를 0 으로 고정 (29.2s)
+Set parameter Username
+Set parameter LicenseID to value 2742039
+Academic license - for non-commercial use only - expires 2026-11-20
+Set parameter Username
+Set parameter LicenseID to value 2742039
+Academic license - for non-commercial use only - expires 2026-11-20
+Set parameter Username
+Set parameter LicenseID to value 2742039
+Academic license - for non-commercial use only - expires 2026-11-20
+Set parameter Username
+Set parameter LicenseID to value 2742039
+Academic license - for non-commercial use only - expires 2026-11-20
+Set parameter Username
+Set parameter LicenseID to value 2742039
+Academic license - for non-commercial use only - expires 2026-11-20
+Set parameter Username
+Set parameter LicenseID to value 2742039
+Academic license - for non-commercial use only - expires 2026-11-20
+Set parameter Username
+Set parameter LicenseID to value 2742039
+Academic license - for non-commercial use only - expires 2026-11-20
+Set parameter Username
+Set parameter LicenseID to value 2742039
+Academic license - for non-commercial use only - expires 2026-11-20
+Set parameter Username
+Set parameter LicenseID to value 2742039
+Academic license - for non-commercial use only - expires 2026-11-20
+Set parameter Username
+Set parameter LicenseID to value 2742039
+Academic license - for non-commercial use only - expires 2026-11-20
+Set parameter Username
+Set parameter LicenseID to value 2742039
+Academic license - for non-commercial use only - expires 2026-11-20
+Set parameter Username
+Set parameter LicenseID to value 2742039
+Academic license - for non-commercial use only - expires 2026-11-20
+
+******************************************************************************
+This program contains Ipopt, a library for large-scale nonlinear optimization.
+ Ipopt is released as open source code under the Eclipse Public License (EPL).
+         For more information visit https://github.com/coin-or/Ipopt
+******************************************************************************
+
+  [orcl] it  15 LB=    -6.0833 UB=   375.0000 x=[1]        Ω=  -335.0941 (62.6s) menu=4 (+belief, LP@x̄=-333.5833, gap -1.5e+00)
+  [menu] it  16 LB=    -0.0000 UB=   375.0000 x=Int64[]    menu cut 1/4 (V_menu=0.0000)
+    [반응 프리솔브] x=Int64[]: 활성 4 중 0 개를 0 으로 고정 (12.1s)
+  [orcl] it  17 LB=    -0.0000 UB=     0.0000 x=Int64[]    Ω=    -0.0001 (24.8s) menu=4
+RESULT pooled-store λ=2000 qB=375 d=17 m=7 nA=4 nB=3 seed=1 S=10 nh=7 status=Optimal x={} LB=-0.000000 UB=0.000001 gap=1.00e-06 iters=18 global=2 local=3 menu=4 time=104.0
+
+--- pooled(거점별 300) d=17 A=4 B=3 (N_B≤3) seed=2 S=10: n_h=7, |X|=8, 용량 375, 출점비 375, f=0.10 p=0.30, θᵁ=50.0 λᵁ=2000.0, TL=3600s, 프리솔브 켬
+  [설정] 전역 oracle = α-B&B (nz_alpha_bnb_dr), worker 12, gap 1e-03, 이어 풀기 켬, bnb_kw = (ipopt_time = 120.0,)
+  [설정] oracle 시간: 남은 시간 전체 (끊지 않음), 목표값 조기 종료 켬, local cut 켬
+  [loc]  it   1 LB=-10000000.0000 UB=        Inf x=Int64[]    Ω_loc=    -0.0006 (0.1s) menu=1 (+belief)
+  [menu] it   2 LB=-388875.0011 UB=        Inf x=[1, 2, 3]  menu cut 1/1 (V_menu=-4573.5292)
+  [menu] it   3 LB=-285784.9003 UB=        Inf x=[1, 2]     menu cut 1/1 (V_menu=-2876.9951)
+  [menu] it   4 LB=-269250.0006 UB=        Inf x=[1, 3]     menu cut 1/1 (V_menu=-2777.2791)
+  [menu] it   5 LB=-194625.0006 UB=        Inf x=[1]        menu cut 1/1 (V_menu=-1190.9943)
+  [menu] it   6 LB=-183586.4789 UB=        Inf x=[2, 3]     menu cut 1/1 (V_menu=-3565.4210)
+  [menu] it   7 LB=-119625.0006 UB=        Inf x=[2]        menu cut 1/1 (V_menu=-1805.4672)
+  [menu] it   8 LB=-74625.0000 UB=        Inf x=[3]        menu cut 1/1 (V_menu=-1564.9517)
+  [loc]  it   9 LB= -3448.5292 UB=        Inf x=[1, 2, 3]  Ω_loc= -1222.0009 (0.3s) menu=2 (+belief)
+  [menu] it  10 LB= -2815.4210 UB=        Inf x=[2, 3]     menu cut 1/2 (V_menu=-894.7503)
+  [menu] it  11 LB= -2126.9951 UB=        Inf x=[1, 2]     menu cut 1/2 (V_menu=-883.1670)
+  [menu] it  12 LB= -2027.2791 UB=        Inf x=[1, 3]     menu cut 1/2 (V_menu=-722.6193)
+  [menu] it  13 LB= -1430.4672 UB=        Inf x=[2]        menu cut 1/2 (V_menu=-599.2502)
+  [menu] it  14 LB= -1189.9517 UB=        Inf x=[3]        menu cut 1/2 (V_menu=-569.0002)
+  [menu] it  15 LB=  -815.9943 UB=        Inf x=[1]        menu cut 1/2 (V_menu=-419.0835)
+  [loc]  it  16 LB=  -224.2502 UB=        Inf x=[2]        Ω_loc=  -369.2507 (0.3s) menu=3 (+belief)
+  [loc]  it  17 LB=  -194.0002 UB=        Inf x=[3]        Ω_loc=  -350.4174 (0.2s) menu=4 (+belief)
+  [loc]  it  18 LB=  -144.7503 UB=        Inf x=[2, 3]     Ω_loc=  -889.0841 (0.5s) menu=5 (+belief)
+    [반응 프리솔브] x=[2, 3]: 활성 6 중 0 개를 0 으로 고정 (52.4s)
+  [orcl] it  19 LB=  -139.0833 UB=   750.0000 x=[2, 3]     Ω=  -718.8201 (105.2s) menu=6 (+belief, LP@x̄=-718.4000, gap -4.2e-01)
+  [menu] it  20 LB=  -133.1670 UB=   750.0000 x=[1, 2]     menu cut 2/6 (V_menu=-767.0009)
+    [반응 프리솔브] x=[1, 2, 3]: 활성 7 중 0 개를 0 으로 고정 (52.6s)
+  [orcl] it  21 LB=   -97.0000 UB=   750.0000 x=[1, 2, 3]  Ω= -1097.3199 (105.9s) menu=7 (+belief, LP@x̄=-1096.8333, gap -4.9e-01)
+  [menu] it  22 LB=   -44.0835 UB=   750.0000 x=[1]        menu cut 3/7 (V_menu=-346.0000)
+  [loc]  it  23 LB=   -17.0009 UB=   750.0000 x=[1, 2]     Ω_loc=  -750.1675 (0.8s) menu=8 (+belief)
+    [반응 프리솔브] x=[1, 2]: 활성 6 중 0 개를 0 으로 고정 (32.1s)
+  [orcl] it  24 LB=    -0.1667 UB=   750.0000 x=[1, 2]     Ω=  -740.2349 (117.2s) menu=9 (+belief, LP@x̄=-739.7500, gap -4.8e-01)
+  [menu] it  25 LB=    -0.0000 UB=   750.0000 x=Int64[]    menu cut 2/9 (V_menu=0.0000)
+    [반응 프리솔브] x=Int64[]: 활성 4 중 0 개를 0 으로 고정 (23.4s)
+  [orcl] it  26 LB=    -0.0000 UB=     0.0000 x=Int64[]    Ω=    -0.0002 (47.6s) menu=9
+RESULT pooled-store λ=2000 qB=375 d=17 m=7 nA=4 nB=3 seed=2 S=10 nh=7 status=Optimal x={} LB=-0.000000 UB=0.000001 gap=1.00e-06 iters=27 global=4 local=6 menu=9 time=383.6
+
+--- pooled(거점별 300) d=17 A=4 B=3 (N_B≤3) seed=3 S=10: n_h=7, |X|=8, 용량 375, 출점비 375, f=0.10 p=0.30, θᵁ=50.0 λᵁ=2000.0, TL=3600s, 프리솔브 켬
+  [설정] 전역 oracle = α-B&B (nz_alpha_bnb_dr), worker 12, gap 1e-03, 이어 풀기 켬, bnb_kw = (ipopt_time = 120.0,)
+  [설정] oracle 시간: 남은 시간 전체 (끊지 않음), 목표값 조기 종료 켬, local cut 켬
+  [loc]  it   1 LB=-10000000.0000 UB=        Inf x=Int64[]    Ω_loc=    -0.0005 (0.1s) menu=1 (+belief)
+  [menu] it   2 LB=-149625.0001 UB=        Inf x=[2]        menu cut 1/1 (V_menu=-1111.4616)
+  [menu] it   3 LB= -2227.6666 UB=        Inf x=[1, 2]     menu cut 1/1 (V_menu=-2532.3105)
+  [loc]  it   4 LB= -1782.3105 UB=        Inf x=[1, 2]     Ω_loc=  -524.2508 (0.6s) menu=2 (+belief)
+  [menu] it   5 LB= -1407.3105 UB=        Inf x=[1, 2, 3]  menu cut 1/2 (V_menu=-524.2517)
+  [menu] it   6 LB=  -149.2517 UB=        Inf x=[2]        menu cut 1/2 (V_menu=-524.2502)
+    [반응 프리솔브] x=[2]: 활성 5 중 0 개를 0 으로 고정 (32.0s)
+  [orcl] it   7 LB=  -149.2502 UB=   375.0000 x=[2]        Ω=  -386.6594 (64.3s) menu=3 (+belief, LP@x̄=-386.2500, gap -4.1e-01)
+  [menu] it   8 LB=   -11.6594 UB=   375.0000 x=[2]        menu cut 1/3 (V_menu=-386.2500)
+  [orcl] it   9 LB=   -11.2500 UB=   -10.8638 x=[2]        Ω=  -386.2501 (1524.1s) menu=3
+  [orcl] it  10 LB=   -11.2500 UB=   -10.8638 x=[2]        Ω=  -386.2501 (0.6s) menu=3
+  [orcl] it  11 LB=   -11.2500 UB=   -10.8638 x=[2]        Ω=  -386.2501 (0.7s) menu=3
+  [orcl] it  12 LB=   -11.2500 UB=   -10.8638 x=[2]        Ω=  -386.2501 (0.6s) menu=3
+  [orcl] it  13 LB=   -11.2500 UB=   -10.8638 x=[2]        Ω=  -386.2501 (0.9s) menu=3
+  [orcl] it  14 LB=   -11.2500 UB=   -10.8638 x=[2]        Ω=  -386.2501 (0.6s) menu=3
+  [orcl] it  15 LB=   -11.2500 UB=   -10.8638 x=[2]        Ω=  -386.2501 (0.7s) menu=3
+  [orcl] it  16 LB=   -11.2500 UB=   -10.8638 x=[2]        Ω=  -386.2501 (0.6s) menu=3
+  [orcl] it  17 LB=   -11.2500 UB=   -10.8638 x=[2]        Ω=  -386.2501 (0.7s) menu=3
+  [orcl] it  18 LB=   -11.2500 UB=   -10.8638 x=[2]        Ω=  -386.2501 (0.6s) menu=3
+  [orcl] it  19 LB=   -11.2500 UB=   -10.8638 x=[2]        Ω=  -386.2501 (0.7s) menu=3
+  [orcl] it  20 LB=   -11.2500 UB=   -10.8638 x=[2]        Ω=  -386.2501 (0.6s) menu=3
+  [orcl] it  21 LB=   -11.2500 UB=   -10.8638 x=[2]        Ω=  -386.2501 (0.7s) menu=3
+  [orcl] it  22 LB=   -11.2500 UB=   -10.8638 x=[2]        Ω=  -386.2501 (0.6s) menu=3
+  [orcl] it  23 LB=   -11.2500 UB=   -10.8638 x=[2]        Ω=  -386.2501 (0.6s) menu=3
+  [orcl] it  24 LB=   -11.2500 UB=   -10.8638 x=[2]        Ω=  -386.2501 (0.6s) menu=3
+  [orcl] it  25 LB=   -11.2500 UB=   -10.8638 x=[2]        Ω=  -386.2501 (0.6s) menu=3
+  [orcl] it  26 LB=   -11.2500 UB=   -10.8638 x=[2]        Ω=  -386.2501 (0.7s) menu=3
+  [orcl] it  27 LB=   -11.2500 UB=   -10.8638 x=[2]        Ω=  -386.2501 (0.6s) menu=3
+  [orcl] it  28 LB=   -11.2500 UB=   -10.8638 x=[2]        Ω=  -386.2501 (0.7s) menu=3
+  [orcl] it  29 LB=   -11.2500 UB=   -10.8638 x=[2]        Ω=  -386.2501 (0.6s) menu=3
+  [orcl] it  30 LB=   -11.2500 UB=   -10.8638 x=[2]        Ω=  -386.2501 (0.6s) menu=3
+  [orcl] it  31 LB=   -11.2500 UB=   -10.8638 x=[2]        Ω=  -386.2501 (0.7s) menu=3
+  [orcl] it  32 LB=   -11.2500 UB=   -10.8638 x=[2]        Ω=  -386.2501 (0.6s) menu=3
+  [orcl] it  33 LB=   -11.2500 UB=   -10.8638 x=[2]        Ω=  -386.2501 (0.6s) menu=3
+  [orcl] it  34 LB=   -11.2500 UB=   -10.8638 x=[2]        Ω=  -386.2501 (0.6s) menu=3
+  [orcl] it  35 LB=   -11.2500 UB=   -10.8638 x=[2]        Ω=  -386.2501 (0.6s) menu=3
+  [orcl] it  36 LB=   -11.2500 UB=   -10.8638 x=[2]        Ω=  -386.2501 (0.7s) menu=3
+  [orcl] it  37 LB=   -11.2500 UB=   -10.8638 x=[2]        Ω=  -386.2501 (0.5s) menu=3
+  [orcl] it  38 LB=   -11.2500 UB=   -10.8638 x=[2]        Ω=  -386.2501 (0.6s) menu=3
+  [orcl] it  39 LB=   -11.2500 UB=   -10.8638 x=[2]        Ω=  -386.2501 (0.6s) menu=3
+  [orcl] it  40 LB=   -11.2500 UB=   -10.8638 x=[2]        Ω=  -386.2501 (0.7s) menu=3
+  [orcl] it  41 LB=   -11.2500 UB=   -10.8638 x=[2]        Ω=  -386.2501 (0.6s) menu=3
+  [orcl] it  42 LB=   -11.2500 UB=   -10.8638 x=[2]        Ω=  -386.2501 (0.7s) menu=3
+  [orcl] it  43 LB=   -11.2500 UB=   -10.8638 x=[2]        Ω=  -386.2501 (0.6s) menu=3
+  [orcl] it  44 LB=   -11.2500 UB=   -10.8638 x=[2]        Ω=  -386.2501 (0.6s) menu=3
+  [orcl] it  45 LB=   -11.2500 UB=   -10.8638 x=[2]        Ω=  -386.2501 (0.6s) menu=3
+  [orcl] it  46 LB=   -11.2500 UB=   -10.8638 x=[2]        Ω=  -386.2501 (0.7s) menu=3
+  [orcl] it  47 LB=   -11.2500 UB=   -10.8638 x=[2]        Ω=  -386.2501 (0.6s) menu=3
+  [orcl] it  48 LB=   -11.2500 UB=   -10.8638 x=[2]        Ω=  -386.2501 (0.7s) menu=3
+  [orcl] it  49 LB=   -11.2500 UB=   -10.8638 x=[2]        Ω=  -386.2501 (0.7s) menu=3
+  [orcl] it  50 LB=   -11.2500 UB=   -10.8638 x=[2]        Ω=  -386.2501 (0.6s) menu=3
+  [orcl] it  51 LB=   -11.2500 UB=   -10.8638 x=[2]        Ω=  -386.2501 (0.6s) menu=3
+  [orcl] it  52 LB=   -11.2500 UB=   -10.8638 x=[2]        Ω=  -386.2501 (0.7s) menu=3
+  [orcl] it  53 LB=   -11.2500 UB=   -10.8638 x=[2]        Ω=  -386.2501 (0.6s) menu=3
+  [orcl] it  54 LB=   -11.2500 UB=   -10.8638 x=[2]        Ω=  -386.2501 (0.6s) menu=3
+  [orcl] it  55 LB=   -11.2500 UB=   -10.8638 x=[2]        Ω=  -386.2501 (0.6s) menu=3
+  [orcl] it  56 LB=   -11.2500 UB=   -10.8638 x=[2]        Ω=  -386.2501 (0.7s) menu=3
+  [orcl] it  57 LB=   -11.2500 UB=   -10.8638 x=[2]        Ω=  -386.2501 (0.6s) menu=3
+  [orcl] it  58 LB=   -11.2500 UB=   -10.8638 x=[2]        Ω=  -386.2501 (0.6s) menu=3
+  [orcl] it  59 LB=   -11.2500 UB=   -10.8638 x=[2]        Ω=  -386.2501 (0.6s) menu=3
+  [orcl] it  60 LB=   -11.2500 UB=   -10.8638 x=[2]        Ω=  -386.2501 (0.7s) menu=3
+  [orcl] it  61 LB=   -11.2500 UB=   -10.8638 x=[2]        Ω=  -386.2501 (0.6s) menu=3
+  [orcl] it  62 LB=   -11.2500 UB=   -10.8638 x=[2]        Ω=  -386.2501 (0.6s) menu=3
+  [orcl] it  63 LB=   -11.2500 UB=   -10.8638 x=[2]        Ω=  -386.2501 (0.6s) menu=3
+  [orcl] it  64 LB=   -11.2500 UB=   -10.8638 x=[2]        Ω=  -386.2501 (0.6s) menu=3
+  [orcl] it  65 LB=   -11.2500 UB=   -10.8638 x=[2]        Ω=  -386.2501 (0.6s) menu=3
+  [orcl] it  66 LB=   -11.2500 UB=   -10.8638 x=[2]        Ω=  -386.2501 (0.7s) menu=3
+  [orcl] it  67 LB=   -11.2500 UB=   -10.8638 x=[2]        Ω=  -386.2501 (0.5s) menu=3
+  [orcl] it  68 LB=   -11.2500 UB=   -10.8638 x=[2]        Ω=  -386.2501 (0.6s) menu=3
+  [orcl] it  69 LB=   -11.2500 UB=   -10.8638 x=[2]        Ω=  -386.2501 (0.6s) menu=3
+  [orcl] it  70 LB=   -11.2500 UB=   -10.8638 x=[2]        Ω=  -386.2501 (0.6s) menu=3
+  [orcl] it  71 LB=   -11.2500 UB=   -10.8638 x=[2]        Ω=  -386.2501 (0.5s) menu=3
+  [orcl] it  72 LB=   -11.2500 UB=   -10.8638 x=[2]        Ω=  -386.2501 (0.6s) menu=3
+  [orcl] it  73 LB=   -11.2500 UB=   -10.8638 x=[2]        Ω=  -386.2501 (0.6s) menu=3
+  [orcl] it  74 LB=   -11.2500 UB=   -10.8638 x=[2]        Ω=  -386.2501 (0.6s) menu=3
+  [orcl] it  75 LB=   -11.2500 UB=   -10.8638 x=[2]        Ω=  -386.2501 (0.6s) menu=3
+  [orcl] it  76 LB=   -11.2500 UB=   -10.8638 x=[2]        Ω=  -386.2501 (0.7s) menu=3
+  [orcl] it  77 LB=   -11.2500 UB=   -10.8638 x=[2]        Ω=  -386.2501 (0.5s) menu=3
+  [orcl] it  78 LB=   -11.2500 UB=   -10.8638 x=[2]        Ω=  -386.2501 (0.6s) menu=3
+  [orcl] it  79 LB=   -11.2500 UB=   -10.8638 x=[2]        Ω=  -386.2501 (0.6s) menu=3
+  [orcl] it  80 LB=   -11.2500 UB=   -10.8638 x=[2]        Ω=  -386.2501 (0.7s) menu=3
+  [orcl] it  81 LB=   -11.2500 UB=   -10.8638 x=[2]        Ω=  -386.2501 (0.6s) menu=3
+  [orcl] it  82 LB=   -11.2500 UB=   -10.8638 x=[2]        Ω=  -386.2501 (0.6s) menu=3
+  [orcl] it  83 LB=   -11.2500 UB=   -10.8638 x=[2]        Ω=  -386.2501 (0.6s) menu=3
+  [orcl] it  84 LB=   -11.2500 UB=   -10.8638 x=[2]        Ω=  -386.2501 (0.6s) menu=3
+  [orcl] it  85 LB=   -11.2500 UB=   -10.8638 x=[2]        Ω=  -386.2501 (0.6s) menu=3
+  [orcl] it  86 LB=   -11.2500 UB=   -10.8638 x=[2]        Ω=  -386.2501 (0.7s) menu=3
+  [orcl] it  87 LB=   -11.2500 UB=   -10.8638 x=[2]        Ω=  -386.2501 (0.6s) menu=3
+  [orcl] it  88 LB=   -11.2500 UB=   -10.8638 x=[2]        Ω=  -386.2501 (0.6s) menu=3
+  [orcl] it  89 LB=   -11.2500 UB=   -10.8638 x=[2]        Ω=  -386.2501 (0.7s) menu=3
+  [orcl] it  90 LB=   -11.2500 UB=   -10.8638 x=[2]        Ω=  -386.2501 (0.7s) menu=3
+  [orcl] it  91 LB=   -11.2500 UB=   -10.8638 x=[2]        Ω=  -386.2501 (0.5s) menu=3
+  [orcl] it  92 LB=   -11.2500 UB=   -10.8638 x=[2]        Ω=  -386.2501 (0.6s) menu=3
+  [orcl] it  93 LB=   -11.2500 UB=   -10.8638 x=[2]        Ω=  -386.2501 (0.6s) menu=3
+  [orcl] it  94 LB=   -11.2500 UB=   -10.8638 x=[2]        Ω=  -386.2501 (0.6s) menu=3
+  [orcl] it  95 LB=   -11.2500 UB=   -10.8638 x=[2]        Ω=  -386.2501 (0.6s) menu=3
+  [orcl] it  96 LB=   -11.2500 UB=   -10.8638 x=[2]        Ω=  -386.2501 (0.6s) menu=3
+  [orcl] it  97 LB=   -11.2500 UB=   -10.8638 x=[2]        Ω=  -386.2501 (0.6s) menu=3
+  [orcl] it  98 LB=   -11.2500 UB=   -10.8638 x=[2]        Ω=  -386.2501 (0.6s) menu=3
+  [orcl] it  99 LB=   -11.2500 UB=   -10.8638 x=[2]        Ω=  -386.2501 (0.6s) menu=3
+  [orcl] it 100 LB=   -11.2500 UB=   -10.8638 x=[2]        Ω=  -386.2501 (0.6s) menu=3
+  [orcl] it 101 LB=   -11.2500 UB=   -10.8638 x=[2]        Ω=  -386.2501 (0.6s) menu=3
+  [orcl] it 102 LB=   -11.2500 UB=   -10.8638 x=[2]        Ω=  -386.2501 (0.6s) menu=3
+  [orcl] it 103 LB=   -11.2500 UB=   -10.8638 x=[2]        Ω=  -386.2501 (0.6s) menu=3
+  [orcl] it 104 LB=   -11.2500 UB=   -10.8638 x=[2]        Ω=  -386.2501 (0.6s) menu=3
+  [orcl] it 105 LB=   -11.2500 UB=   -10.8638 x=[2]        Ω=  -386.2501 (0.5s) menu=3
+  [orcl] it 106 LB=   -11.2500 UB=   -10.8638 x=[2]        Ω=  -386.2501 (0.6s) menu=3
+  [orcl] it 107 LB=   -11.2500 UB=   -10.8638 x=[2]        Ω=  -386.2501 (0.7s) menu=3
+  [orcl] it 108 LB=   -11.2500 UB=   -10.8638 x=[2]        Ω=  -386.2501 (0.5s) menu=3
+  [orcl] it 109 LB=   -11.2500 UB=   -10.8638 x=[2]        Ω=  -386.2501 (0.5s) menu=3
+  [orcl] it 110 LB=   -11.2500 UB=   -10.8638 x=[2]        Ω=  -386.2501 (0.6s) menu=3
+  [orcl] it 111 LB=   -11.2500 UB=   -10.8638 x=[2]        Ω=  -386.2501 (0.6s) menu=3
+  [orcl] it 112 LB=   -11.2500 UB=   -10.8638 x=[2]        Ω=  -386.2501 (0.6s) menu=3
+  [orcl] it 113 LB=   -11.2500 UB=   -10.8638 x=[2]        Ω=  -386.2501 (0.5s) menu=3
+  [orcl] it 114 LB=   -11.2500 UB=   -10.8638 x=[2]        Ω=  -386.2501 (0.7s) menu=3
+  [orcl] it 115 LB=   -11.2500 UB=   -10.8638 x=[2]        Ω=  -386.2501 (0.6s) menu=3
+  [orcl] it 116 LB=   -11.2500 UB=   -10.8638 x=[2]        Ω=  -386.2501 (0.6s) menu=3
+  [orcl] it 117 LB=   -11.2500 UB=   -10.8638 x=[2]        Ω=  -386.2501 (0.6s) menu=3
+  [orcl] it 118 LB=   -11.2500 UB=   -10.8638 x=[2]        Ω=  -386.2501 (0.6s) menu=3
+  [orcl] it 119 LB=   -11.2500 UB=   -10.8638 x=[2]        Ω=  -386.2501 (0.6s) menu=3
+  [orcl] it 120 LB=   -11.2500 UB=   -10.8638 x=[2]        Ω=  -386.2501 (0.6s) menu=3
+  [orcl] it 121 LB=   -11.2500 UB=   -10.8638 x=[2]        Ω=  -386.2501 (0.6s) menu=3
+  [orcl] it 122 LB=   -11.2500 UB=   -10.8638 x=[2]        Ω=  -386.2501 (0.6s) menu=3
+  [orcl] it 123 LB=   -11.2500 UB=   -10.8638 x=[2]        Ω=  -386.2501 (0.6s) menu=3
+  [orcl] it 124 LB=   -11.2500 UB=   -10.8638 x=[2]        Ω=  -386.2501 (0.5s) menu=3
+  [orcl] it 125 LB=   -11.2500 UB=   -10.8638 x=[2]        Ω=  -386.2501 (0.7s) menu=3
+  [orcl] it 126 LB=   -11.2500 UB=   -10.8638 x=[2]        Ω=  -386.2501 (0.6s) menu=3
+  [orcl] it 127 LB=   -11.2500 UB=   -10.8638 x=[2]        Ω=  -386.2501 (0.6s) menu=3
+  [orcl] it 128 LB=   -11.2500 UB=   -10.8638 x=[2]        Ω=  -386.2501 (0.6s) menu=3
+  [orcl] it 129 LB=   -11.2500 UB=   -10.8638 x=[2]        Ω=  -386.2501 (0.6s) menu=3
+  [orcl] it 130 LB=   -11.2500 UB=   -10.8638 x=[2]        Ω=  -386.2501 (0.6s) menu=3
+  [orcl] it 131 LB=   -11.2500 UB=   -10.8638 x=[2]        Ω=  -386.2501 (0.5s) menu=3
+  [orcl] it 132 LB=   -11.2500 UB=   -10.8638 x=[2]        Ω=  -386.2501 (0.7s) menu=3
+  [orcl] it 133 LB=   -11.2500 UB=   -10.8638 x=[2]        Ω=  -386.2501 (0.6s) menu=3
+  [orcl] it 134 LB=   -11.2500 UB=   -10.8638 x=[2]        Ω=  -386.2501 (0.6s) menu=3
+  [orcl] it 135 LB=   -11.2500 UB=   -10.8638 x=[2]        Ω=  -386.2501 (0.6s) menu=3
+  [orcl] it 136 LB=   -11.2500 UB=   -10.8638 x=[2]        Ω=  -386.2501 (0.6s) menu=3
+  [orcl] it 137 LB=   -11.2500 UB=   -10.8638 x=[2]        Ω=  -386.2501 (0.6s) menu=3
+  [orcl] it 138 LB=   -11.2500 UB=   -10.8638 x=[2]        Ω=  -386.2501 (0.6s) menu=3
+  [orcl] it 139 LB=   -11.2500 UB=   -10.8638 x=[2]        Ω=  -386.2501 (0.6s) menu=3
+  [orcl] it 140 LB=   -11.2500 UB=   -10.8638 x=[2]        Ω=  -386.2501 (0.7s) menu=3
+  [orcl] it 141 LB=   -11.2500 UB=   -10.8638 x=[2]        Ω=  -386.2501 (0.6s) menu=3
+  [orcl] it 142 LB=   -11.2500 UB=   -10.8638 x=[2]        Ω=  -386.2501 (0.6s) menu=3
+  [orcl] it 143 LB=   -11.2500 UB=   -10.8638 x=[2]        Ω=  -386.2501 (0.7s) menu=3
+  [orcl] it 144 LB=   -11.2500 UB=   -10.8638 x=[2]        Ω=  -386.2501 (0.5s) menu=3
+  [orcl] it 145 LB=   -11.2500 UB=   -10.8638 x=[2]        Ω=  -386.2501 (0.6s) menu=3
+  [orcl] it 146 LB=   -11.2500 UB=   -10.8638 x=[2]        Ω=  -386.2501 (0.6s) menu=3
+  [orcl] it 147 LB=   -11.2500 UB=   -10.8638 x=[2]        Ω=  -386.2501 (0.6s) menu=3
+  [orcl] it 148 LB=   -11.2500 UB=   -10.8638 x=[2]        Ω=  -386.2501 (0.6s) menu=3
+  [orcl] it 149 LB=   -11.2500 UB=   -10.8638 x=[2]        Ω=  -386.2501 (0.6s) menu=3
+  [orcl] it 150 LB=   -11.2500 UB=   -10.8638 x=[2]        Ω=  -386.2501 (0.7s) menu=3
+  [orcl] it 151 LB=   -11.2500 UB=   -10.8638 x=[2]        Ω=  -386.2501 (0.6s) menu=3
+  [orcl] it 152 LB=   -11.2500 UB=   -10.8638 x=[2]        Ω=  -386.2501 (0.6s) menu=3
+  [orcl] it 153 LB=   -11.2500 UB=   -10.8638 x=[2]        Ω=  -386.2501 (0.6s) menu=3
+  [orcl] it 154 LB=   -11.2500 UB=   -10.8638 x=[2]        Ω=  -386.2501 (0.6s) menu=3
+  [orcl] it 155 LB=   -11.2500 UB=   -10.8638 x=[2]        Ω=  -386.2501 (0.6s) menu=3
+  [orcl] it 156 LB=   -11.2500 UB=   -10.8638 x=[2]        Ω=  -386.2501 (0.5s) menu=3
+  [orcl] it 157 LB=   -11.2500 UB=   -10.8638 x=[2]        Ω=  -386.2501 (0.7s) menu=3
+  [orcl] it 158 LB=   -11.2500 UB=   -10.8638 x=[2]        Ω=  -386.2501 (0.6s) menu=3
+  [orcl] it 159 LB=   -11.2500 UB=   -10.8638 x=[2]        Ω=  -386.2501 (0.5s) menu=3
+  [orcl] it 160 LB=   -11.2500 UB=   -10.8638 x=[2]        Ω=  -386.2501 (0.6s) menu=3
+  [orcl] it 161 LB=   -11.2500 UB=   -10.8638 x=[2]        Ω=  -386.2501 (0.6s) menu=3
+  [orcl] it 162 LB=   -11.2500 UB=   -10.8638 x=[2]        Ω=  -386.2501 (0.6s) menu=3
+  [orcl] it 163 LB=   -11.2500 UB=   -10.8638 x=[2]        Ω=  -386.2501 (0.6s) menu=3
+  [orcl] it 164 LB=   -11.2500 UB=   -10.8638 x=[2]        Ω=  -386.2501 (0.7s) menu=3
+  [orcl] it 165 LB=   -11.2500 UB=   -10.8638 x=[2]        Ω=  -386.2501 (0.6s) menu=3
+  [orcl] it 166 LB=   -11.2500 UB=   -10.8638 x=[2]        Ω=  -386.2501 (0.6s) menu=3
+  [orcl] it 167 LB=   -11.2500 UB=   -10.8638 x=[2]        Ω=  -386.2501 (0.6s) menu=3
+  [orcl] it 168 LB=   -11.2500 UB=   -10.8638 x=[2]        Ω=  -386.2501 (0.6s) menu=3
+  [orcl] it 169 LB=   -11.2500 UB=   -10.8638 x=[2]        Ω=  -386.2501 (0.5s) menu=3
+  [orcl] it 170 LB=   -11.2500 UB=   -10.8638 x=[2]        Ω=  -386.2501 (0.6s) menu=3
+  [orcl] it 171 LB=   -11.2500 UB=   -10.8638 x=[2]        Ω=  -386.2501 (0.6s) menu=3
+  [orcl] it 172 LB=   -11.2500 UB=   -10.8638 x=[2]        Ω=  -386.2501 (0.6s) menu=3
+  [orcl] it 173 LB=   -11.2500 UB=   -10.8638 x=[2]        Ω=  -386.2501 (0.6s) menu=3
+  [orcl] it 174 LB=   -11.2500 UB=   -10.8638 x=[2]        Ω=  -386.2501 (0.7s) menu=3
+  [orcl] it 175 LB=   -11.2500 UB=   -10.8638 x=[2]        Ω=  -386.2501 (0.6s) menu=3
+  [orcl] it 176 LB=   -11.2500 UB=   -10.8638 x=[2]        Ω=  -386.2501 (0.6s) menu=3
+  [orcl] it 177 LB=   -11.2500 UB=   -10.8638 x=[2]        Ω=  -386.2501 (0.6s) menu=3
+  [orcl] it 178 LB=   -11.2500 UB=   -10.8638 x=[2]        Ω=  -386.2501 (0.6s) menu=3
+  [orcl] it 179 LB=   -11.2500 UB=   -10.8638 x=[2]        Ω=  -386.2501 (0.5s) menu=3
+  [orcl] it 180 LB=   -11.2500 UB=   -10.8638 x=[2]        Ω=  -386.2501 (0.6s) menu=3
+  [orcl] it 181 LB=   -11.2500 UB=   -10.8638 x=[2]        Ω=  -386.2501 (0.6s) menu=3
+  [orcl] it 182 LB=   -11.2500 UB=   -10.8638 x=[2]        Ω=  -386.2501 (0.6s) menu=3
+  [orcl] it 183 LB=   -11.2500 UB=   -10.8638 x=[2]        Ω=  -386.2501 (0.6s) menu=3
+  [orcl] it 184 LB=   -11.2500 UB=   -10.8638 x=[2]        Ω=  -386.2501 (0.7s) menu=3
+  [orcl] it 185 LB=   -11.2500 UB=   -10.8638 x=[2]        Ω=  -386.2501 (0.6s) menu=3
+  [orcl] it 186 LB=   -11.2500 UB=   -10.8638 x=[2]        Ω=  -386.2501 (0.6s) menu=3
+  [orcl] it 187 LB=   -11.2500 UB=   -10.8638 x=[2]        Ω=  -386.2501 (0.7s) menu=3
+  [orcl] it 188 LB=   -11.2500 UB=   -10.8638 x=[2]        Ω=  -386.2501 (0.6s) menu=3
+  [orcl] it 189 LB=   -11.2500 UB=   -10.8638 x=[2]        Ω=  -386.2501 (0.6s) menu=3
+  [orcl] it 190 LB=   -11.2500 UB=   -10.8638 x=[2]        Ω=  -386.2501 (0.5s) menu=3
+  [orcl] it 191 LB=   -11.2500 UB=   -10.8638 x=[2]        Ω=  -386.2501 (0.7s) menu=3
+  [orcl] it 192 LB=   -11.2500 UB=   -10.8638 x=[2]        Ω=  -386.2501 (0.6s) menu=3
+  [orcl] it 193 LB=   -11.2500 UB=   -10.8638 x=[2]        Ω=  -386.2501 (0.6s) menu=3
+  [orcl] it 194 LB=   -11.2500 UB=   -10.8638 x=[2]        Ω=  -386.2501 (0.7s) menu=3
+  [orcl] it 195 LB=   -11.2500 UB=   -10.8638 x=[2]        Ω=  -386.2501 (0.6s) menu=3
+  [orcl] it 196 LB=   -11.2500 UB=   -10.8638 x=[2]        Ω=  -386.2501 (0.5s) menu=3
+  [orcl] it 197 LB=   -11.2500 UB=   -10.8638 x=[2]        Ω=  -386.2501 (0.6s) menu=3
+  [orcl] it 198 LB=   -11.2500 UB=   -10.8638 x=[2]        Ω=  -386.2501 (0.6s) menu=3
+  [orcl] it 199 LB=   -11.2500 UB=   -10.8638 x=[2]        Ω=  -386.2501 (0.7s) menu=3
+  [orcl] it 200 LB=   -11.2500 UB=   -10.8638 x=[2]        Ω=  -386.2501 (0.6s) menu=3
+  [orcl] it 201 LB=   -11.2500 UB=   -10.8638 x=[2]        Ω=  -386.2501 (0.6s) menu=3
+  [orcl] it 202 LB=   -11.2500 UB=   -10.8638 x=[2]        Ω=  -386.2501 (0.7s) menu=3
+  [orcl] it 203 LB=   -11.2500 UB=   -10.8638 x=[2]        Ω=  -386.2501 (0.5s) menu=3
+  [orcl] it 204 LB=   -11.2500 UB=   -10.8638 x=[2]        Ω=  -386.2501 (0.6s) menu=3
+  [orcl] it 205 LB=   -11.2500 UB=   -10.8638 x=[2]        Ω=  -386.2501 (0.7s) menu=3
+  [orcl] it 206 LB=   -11.2500 UB=   -10.8638 x=[2]        Ω=  -386.2501 (0.5s) menu=3
+  [orcl] it 207 LB=   -11.2500 UB=   -10.8638 x=[2]        Ω=  -386.2501 (0.6s) menu=3
+  [orcl] it 208 LB=   -11.2500 UB=   -10.8638 x=[2]        Ω=  -386.2501 (0.6s) menu=3
+  [orcl] it 209 LB=   -11.2500 UB=   -10.8638 x=[2]        Ω=  -386.2501 (0.7s) menu=3
+  [orcl] it 210 LB=   -11.2500 UB=   -10.8638 x=[2]        Ω=  -386.2501 (0.6s) menu=3
+  [orcl] it 211 LB=   -11.2500 UB=   -10.8638 x=[2]        Ω=  -386.2501 (0.6s) menu=3
+  [orcl] it 212 LB=   -11.2500 UB=   -10.8638 x=[2]        Ω=  -386.2501 (0.7s) menu=3
+  [orcl] it 213 LB=   -11.2500 UB=   -10.8638 x=[2]        Ω=  -386.2501 (0.6s) menu=3
+  [orcl] it 214 LB=   -11.2500 UB=   -10.8638 x=[2]        Ω=  -386.2501 (0.6s) menu=3
+  [orcl] it 215 LB=   -11.2500 UB=   -10.8638 x=[2]        Ω=  -386.2501 (0.6s) menu=3
+  [orcl] it 216 LB=   -11.2500 UB=   -10.8638 x=[2]        Ω=  -386.2501 (0.6s) menu=3
+  [orcl] it 217 LB=   -11.2500 UB=   -10.8638 x=[2]        Ω=  -386.2501 (0.6s) menu=3
+  [orcl] it 218 LB=   -11.2500 UB=   -10.8638 x=[2]        Ω=  -386.2501 (0.6s) menu=3
+  [orcl] it 219 LB=   -11.2500 UB=   -10.8638 x=[2]        Ω=  -386.2501 (0.6s) menu=3
+  [orcl] it 220 LB=   -11.2500 UB=   -10.8638 x=[2]        Ω=  -386.2501 (0.6s) menu=3
+  [orcl] it 221 LB=   -11.2500 UB=   -10.8638 x=[2]        Ω=  -386.2501 (0.6s) menu=3
+  [orcl] it 222 LB=   -11.2500 UB=   -10.8638 x=[2]        Ω=  -386.2501 (0.6s) menu=3
+  [orcl] it 223 LB=   -11.2500 UB=   -10.8638 x=[2]        Ω=  -386.2501 (0.5s) menu=3
+  [orcl] it 224 LB=   -11.2500 UB=   -10.8638 x=[2]        Ω=  -386.2501 (0.6s) menu=3
+  [orcl] it 225 LB=   -11.2500 UB=   -10.8638 x=[2]        Ω=  -386.2501 (0.6s) menu=3
+  [orcl] it 226 LB=   -11.2500 UB=   -10.8638 x=[2]        Ω=  -386.2501 (0.7s) menu=3
+  [orcl] it 227 LB=   -11.2500 UB=   -10.8638 x=[2]        Ω=  -386.2501 (0.5s) menu=3
+  [orcl] it 228 LB=   -11.2500 UB=   -10.8638 x=[2]        Ω=  -386.2501 (0.6s) menu=3
+  [orcl] it 229 LB=   -11.2500 UB=   -10.8638 x=[2]        Ω=  -386.2501 (0.6s) menu=3
+  [orcl] it 230 LB=   -11.2500 UB=   -10.8638 x=[2]        Ω=  -386.2501 (0.6s) menu=3
+  [orcl] it 231 LB=   -11.2500 UB=   -10.8638 x=[2]        Ω=  -386.2501 (0.6s) menu=3
+  [orcl] it 232 LB=   -11.2500 UB=   -10.8638 x=[2]        Ω=  -386.2501 (0.6s) menu=3
+  [orcl] it 233 LB=   -11.2500 UB=   -10.8638 x=[2]        Ω=  -386.2501 (0.5s) menu=3
+  [orcl] it 234 LB=   -11.2500 UB=   -10.8638 x=[2]        Ω=  -386.2501 (0.6s) menu=3
+  [orcl] it 235 LB=   -11.2500 UB=   -10.8638 x=[2]        Ω=  -386.2501 (0.6s) menu=3
+  [orcl] it 236 LB=   -11.2500 UB=   -10.8638 x=[2]        Ω=  -386.2501 (0.6s) menu=3
+  [orcl] it 237 LB=   -11.2500 UB=   -10.8638 x=[2]        Ω=  -386.2501 (0.6s) menu=3
+  [orcl] it 238 LB=   -11.2500 UB=   -10.8638 x=[2]        Ω=  -386.2501 (0.5s) menu=3
+  [orcl] it 239 LB=   -11.2500 UB=   -10.8638 x=[2]        Ω=  -386.2501 (0.6s) menu=3
+  [orcl] it 240 LB=   -11.2500 UB=   -10.8638 x=[2]        Ω=  -386.2501 (0.6s) menu=3
+  [orcl] it 241 LB=   -11.2500 UB=   -10.8638 x=[2]        Ω=  -386.2501 (0.5s) menu=3
+  [orcl] it 242 LB=   -11.2500 UB=   -10.8638 x=[2]        Ω=  -386.2501 (0.6s) menu=3
+  [orcl] it 243 LB=   -11.2500 UB=   -10.8638 x=[2]        Ω=  -386.2501 (0.6s) menu=3
+  [orcl] it 244 LB=   -11.2500 UB=   -10.8638 x=[2]        Ω=  -386.2501 (0.6s) menu=3
+  [orcl] it 245 LB=   -11.2500 UB=   -10.8638 x=[2]        Ω=  -386.2501 (0.6s) menu=3
+  [orcl] it 246 LB=   -11.2500 UB=   -10.8638 x=[2]        Ω=  -386.2501 (0.7s) menu=3
+  [orcl] it 247 LB=   -11.2500 UB=   -10.8638 x=[2]        Ω=  -386.2501 (0.5s) menu=3
+  [orcl] it 248 LB=   -11.2500 UB=   -10.8638 x=[2]        Ω=  -386.2501 (0.6s) menu=3
+  [orcl] it 249 LB=   -11.2500 UB=   -10.8638 x=[2]        Ω=  -386.2501 (0.6s) menu=3
+  [orcl] it 250 LB=   -11.2500 UB=   -10.8638 x=[2]        Ω=  -386.2501 (0.6s) menu=3
+  [orcl] it 251 LB=   -11.2500 UB=   -10.8638 x=[2]        Ω=  -386.2501 (0.6s) menu=3
+  [orcl] it 252 LB=   -11.2500 UB=   -10.8638 x=[2]        Ω=  -386.2501 (0.6s) menu=3
+  [orcl] it 253 LB=   -11.2500 UB=   -10.8638 x=[2]        Ω=  -386.2501 (0.7s) menu=3
+  [orcl] it 254 LB=   -11.2500 UB=   -10.8638 x=[2]        Ω=  -386.2501 (0.6s) menu=3
+  [orcl] it 255 LB=   -11.2500 UB=   -10.8638 x=[2]        Ω=  -386.2501 (0.6s) menu=3
+  [orcl] it 256 LB=   -11.2500 UB=   -10.8638 x=[2]        Ω=  -386.2501 (0.6s) menu=3
+  [orcl] it 257 LB=   -11.2500 UB=   -10.8638 x=[2]        Ω=  -386.2501 (0.6s) menu=3
+  [orcl] it 258 LB=   -11.2500 UB=   -10.8638 x=[2]        Ω=  -386.2501 (0.6s) menu=3
+  [orcl] it 259 LB=   -11.2500 UB=   -10.8638 x=[2]        Ω=  -386.2501 (0.6s) menu=3
+  [orcl] it 260 LB=   -11.2500 UB=   -10.8638 x=[2]        Ω=  -386.2501 (0.6s) menu=3
+  [orcl] it 261 LB=   -11.2500 UB=   -10.8638 x=[2]        Ω=  -386.2501 (0.5s) menu=3
+  [orcl] it 262 LB=   -11.2500 UB=   -10.8638 x=[2]        Ω=  -386.2501 (0.6s) menu=3
+  [orcl] it 263 LB=   -11.2500 UB=   -10.8638 x=[2]        Ω=  -386.2501 (0.6s) menu=3
+  [orcl] it 264 LB=   -11.2500 UB=   -10.8638 x=[2]        Ω=  -386.2501 (0.6s) menu=3
+  [orcl] it 265 LB=   -11.2500 UB=   -10.8638 x=[2]        Ω=  -386.2501 (0.6s) menu=3
+  [orcl] it 266 LB=   -11.2500 UB=   -10.8638 x=[2]        Ω=  -386.2501 (0.7s) menu=3
+  [orcl] it 267 LB=   -11.2500 UB=   -10.8638 x=[2]        Ω=  -386.2501 (0.5s) menu=3
+  [orcl] it 268 LB=   -11.2500 UB=   -10.8638 x=[2]        Ω=  -386.2501 (0.6s) menu=3
+  [orcl] it 269 LB=   -11.2500 UB=   -10.8638 x=[2]        Ω=  -386.2501 (0.6s) menu=3
+  [orcl] it 270 LB=   -11.2500 UB=   -10.8638 x=[2]        Ω=  -386.2501 (0.6s) menu=3
+  [orcl] it 271 LB=   -11.2500 UB=   -10.8638 x=[2]        Ω=  -386.2501 (0.6s) menu=3
+  [orcl] it 272 LB=   -11.2500 UB=   -10.8638 x=[2]        Ω=  -386.2501 (0.6s) menu=3
+  [orcl] it 273 LB=   -11.2500 UB=   -10.8638 x=[2]        Ω=  -386.2501 (0.6s) menu=3
+  [orcl] it 274 LB=   -11.2500 UB=   -10.8638 x=[2]        Ω=  -386.2501 (0.6s) menu=3
+  [orcl] it 275 LB=   -11.2500 UB=   -10.8638 x=[2]        Ω=  -386.2501 (0.6s) menu=3
+  [orcl] it 276 LB=   -11.2500 UB=   -10.8638 x=[2]        Ω=  -386.2501 (0.7s) menu=3
+  [orcl] it 277 LB=   -11.2500 UB=   -10.8638 x=[2]        Ω=  -386.2501 (0.5s) menu=3
+  [orcl] it 278 LB=   -11.2500 UB=   -10.8638 x=[2]        Ω=  -386.2501 (0.6s) menu=3
+  [orcl] it 279 LB=   -11.2500 UB=   -10.8638 x=[2]        Ω=  -386.2501 (0.6s) menu=3
+  [orcl] it 280 LB=   -11.2500 UB=   -10.8638 x=[2]        Ω=  -386.2501 (0.7s) menu=3
+  [orcl] it 281 LB=   -11.2500 UB=   -10.8638 x=[2]        Ω=  -386.2501 (0.6s) menu=3
+  [orcl] it 282 LB=   -11.2500 UB=   -10.8638 x=[2]        Ω=  -386.2501 (0.6s) menu=3
+  [orcl] it 283 LB=   -11.2500 UB=   -10.8638 x=[2]        Ω=  -386.2501 (0.6s) menu=3
+  [orcl] it 284 LB=   -11.2500 UB=   -10.8638 x=[2]        Ω=  -386.2501 (0.6s) menu=3
+  [orcl] it 285 LB=   -11.2500 UB=   -10.8638 x=[2]        Ω=  -386.2501 (0.6s) menu=3
+  [orcl] it 286 LB=   -11.2500 UB=   -10.8638 x=[2]        Ω=  -386.2501 (0.7s) menu=3
+  [orcl] it 287 LB=   -11.2500 UB=   -10.8638 x=[2]        Ω=  -386.2501 (0.6s) menu=3
+  [orcl] it 288 LB=   -11.2500 UB=   -10.8638 x=[2]        Ω=  -386.2501 (0.6s) menu=3
+  [orcl] it 289 LB=   -11.2500 UB=   -10.8638 x=[2]        Ω=  -386.2501 (0.5s) menu=3
+  [orcl] it 290 LB=   -11.2500 UB=   -10.8638 x=[2]        Ω=  -386.2501 (0.7s) menu=3
+  [orcl] it 291 LB=   -11.2500 UB=   -10.8638 x=[2]        Ω=  -386.2501 (0.6s) menu=3
+  [orcl] it 292 LB=   -11.2500 UB=   -10.8638 x=[2]        Ω=  -386.2501 (0.6s) menu=3
+  [orcl] it 293 LB=   -11.2500 UB=   -10.8638 x=[2]        Ω=  -386.2501 (0.6s) menu=3
+  [orcl] it 294 LB=   -11.2500 UB=   -10.8638 x=[2]        Ω=  -386.2501 (0.6s) menu=3
+  [orcl] it 295 LB=   -11.2500 UB=   -10.8638 x=[2]        Ω=  -386.2501 (0.6s) menu=3
+  [orcl] it 296 LB=   -11.2500 UB=   -10.8638 x=[2]        Ω=  -386.2501 (0.6s) menu=3
+  [orcl] it 297 LB=   -11.2500 UB=   -10.8638 x=[2]        Ω=  -386.2501 (0.6s) menu=3
+  [orcl] it 298 LB=   -11.2500 UB=   -10.8638 x=[2]        Ω=  -386.2501 (0.6s) menu=3
+  [orcl] it 299 LB=   -11.2500 UB=   -10.8638 x=[2]        Ω=  -386.2501 (0.6s) menu=3
+  [orcl] it 300 LB=   -11.2500 UB=   -10.8638 x=[2]        Ω=  -386.2501 (0.6s) menu=3
+  [orcl] it 301 LB=   -11.2500 UB=   -10.8638 x=[2]        Ω=  -386.2501 (0.7s) menu=3
+  [orcl] it 302 LB=   -11.2500 UB=   -10.8638 x=[2]        Ω=  -386.2501 (0.5s) menu=3
+  [orcl] it 303 LB=   -11.2500 UB=   -10.8638 x=[2]        Ω=  -386.2501 (0.6s) menu=3
+  [orcl] it 304 LB=   -11.2500 UB=   -10.8638 x=[2]        Ω=  -386.2501 (0.6s) menu=3
+  [orcl] it 305 LB=   -11.2500 UB=   -10.8638 x=[2]        Ω=  -386.2501 (0.6s) menu=3
+  [orcl] it 306 LB=   -11.2500 UB=   -10.8638 x=[2]        Ω=  -386.2501 (0.6s) menu=3
+  [orcl] it 307 LB=   -11.2500 UB=   -10.8638 x=[2]        Ω=  -386.2501 (0.7s) menu=3
+  [orcl] it 308 LB=   -11.2500 UB=   -10.8638 x=[2]        Ω=  -386.2501 (0.5s) menu=3
+  [orcl] it 309 LB=   -11.2500 UB=   -10.8638 x=[2]        Ω=  -386.2501 (0.5s) menu=3
+  [orcl] it 310 LB=   -11.2500 UB=   -10.8638 x=[2]        Ω=  -386.2501 (0.6s) menu=3
+  [orcl] it 311 LB=   -11.2500 UB=   -10.8638 x=[2]        Ω=  -386.2501 (0.6s) menu=3
+  [orcl] it 312 LB=   -11.2500 UB=   -10.8638 x=[2]        Ω=  -386.2501 (0.6s) menu=3
+  [orcl] it 313 LB=   -11.2500 UB=   -10.8638 x=[2]        Ω=  -386.2501 (0.5s) menu=3
+  [orcl] it 314 LB=   -11.2500 UB=   -10.8638 x=[2]        Ω=  -386.2501 (0.7s) menu=3
+  [orcl] it 315 LB=   -11.2500 UB=   -10.8638 x=[2]        Ω=  -386.2501 (0.6s) menu=3
+  [orcl] it 316 LB=   -11.2500 UB=   -10.8638 x=[2]        Ω=  -386.2501 (0.5s) menu=3
+  [orcl] it 317 LB=   -11.2500 UB=   -10.8638 x=[2]        Ω=  -386.2501 (0.6s) menu=3
+  [orcl] it 318 LB=   -11.2500 UB=   -10.8638 x=[2]        Ω=  -386.2501 (0.6s) menu=3
+  [orcl] it 319 LB=   -11.2500 UB=   -10.8638 x=[2]        Ω=  -386.2501 (0.6s) menu=3
+  [orcl] it 320 LB=   -11.2500 UB=   -10.8638 x=[2]        Ω=  -386.2501 (0.6s) menu=3
+  [orcl] it 321 LB=   -11.2500 UB=   -10.8638 x=[2]        Ω=  -386.2501 (0.7s) menu=3
+  [orcl] it 322 LB=   -11.2500 UB=   -10.8638 x=[2]        Ω=  -386.2501 (0.6s) menu=3
+  [orcl] it 323 LB=   -11.2500 UB=   -10.8638 x=[2]        Ω=  -386.2501 (0.6s) menu=3
+  [orcl] it 324 LB=   -11.2500 UB=   -10.8638 x=[2]        Ω=  -386.2501 (0.7s) menu=3
+  [orcl] it 325 LB=   -11.2500 UB=   -10.8638 x=[2]        Ω=  -386.2501 (0.6s) menu=3
+  [orcl] it 326 LB=   -11.2500 UB=   -10.8638 x=[2]        Ω=  -386.2501 (0.6s) menu=3
+  [orcl] it 327 LB=   -11.2500 UB=   -10.8638 x=[2]        Ω=  -386.2501 (0.6s) menu=3
+  [orcl] it 328 LB=   -11.2500 UB=   -10.8638 x=[2]        Ω=  -386.2501 (0.7s) menu=3
+  [orcl] it 329 LB=   -11.2500 UB=   -10.8638 x=[2]        Ω=  -386.2501 (0.6s) menu=3
+  [orcl] it 330 LB=   -11.2500 UB=   -10.8638 x=[2]        Ω=  -386.2501 (0.5s) menu=3
+  [orcl] it 331 LB=   -11.2500 UB=   -10.8638 x=[2]        Ω=  -386.2501 (0.6s) menu=3
+  [orcl] it 332 LB=   -11.2500 UB=   -10.8638 x=[2]        Ω=  -386.2501 (0.6s) menu=3
+  [orcl] it 333 LB=   -11.2500 UB=   -10.8638 x=[2]        Ω=  -386.2501 (0.6s) menu=3
+  [orcl] it 334 LB=   -11.2500 UB=   -10.8638 x=[2]        Ω=  -386.2501 (0.5s) menu=3
+  [orcl] it 335 LB=   -11.2500 UB=   -10.8638 x=[2]        Ω=  -386.2501 (0.7s) menu=3
+  [orcl] it 336 LB=   -11.2500 UB=   -10.8638 x=[2]        Ω=  -386.2501 (0.6s) menu=3
+  [orcl] it 337 LB=   -11.2500 UB=   -10.8638 x=[2]        Ω=  -386.2501 (0.5s) menu=3
+  [orcl] it 338 LB=   -11.2500 UB=   -10.8638 x=[2]        Ω=  -386.2501 (0.6s) menu=3
+  [orcl] it 339 LB=   -11.2500 UB=   -10.8638 x=[2]        Ω=  -386.2501 (0.6s) menu=3
+  [orcl] it 340 LB=   -11.2500 UB=   -10.8638 x=[2]        Ω=  -386.2501 (0.6s) menu=3
+  [orcl] it 341 LB=   -11.2500 UB=   -10.8638 x=[2]        Ω=  -386.2501 (0.6s) menu=3
+  [orcl] it 342 LB=   -11.2500 UB=   -10.8638 x=[2]        Ω=  -386.2501 (0.7s) menu=3
+  [orcl] it 343 LB=   -11.2500 UB=   -10.8638 x=[2]        Ω=  -386.2501 (0.6s) menu=3
+  [orcl] it 344 LB=   -11.2500 UB=   -10.8638 x=[2]        Ω=  -386.2501 (0.6s) menu=3
+  [orcl] it 345 LB=   -11.2500 UB=   -10.8638 x=[2]        Ω=  -386.2501 (0.7s) menu=3
+  [orcl] it 346 LB=   -11.2500 UB=   -10.8638 x=[2]        Ω=  -386.2501 (0.6s) menu=3
+  [orcl] it 347 LB=   -11.2500 UB=   -10.8638 x=[2]        Ω=  -386.2501 (0.6s) menu=3
+  [orcl] it 348 LB=   -11.2500 UB=   -10.8638 x=[2]        Ω=  -386.2501 (0.6s) menu=3
+  [orcl] it 349 LB=   -11.2500 UB=   -10.8638 x=[2]        Ω=  -386.2501 (0.6s) menu=3
+  [orcl] it 350 LB=   -11.2500 UB=   -10.8638 x=[2]        Ω=  -386.2501 (0.6s) menu=3
+  [orcl] it 351 LB=   -11.2500 UB=   -10.8638 x=[2]        Ω=  -386.2501 (0.6s) menu=3
+  [orcl] it 352 LB=   -11.2500 UB=   -10.8638 x=[2]        Ω=  -386.2501 (0.6s) menu=3
+  [orcl] it 353 LB=   -11.2500 UB=   -10.8638 x=[2]        Ω=  -386.2501 (0.6s) menu=3
+  [orcl] it 354 LB=   -11.2500 UB=   -10.8638 x=[2]        Ω=  -386.2501 (0.6s) menu=3
+  [orcl] it 355 LB=   -11.2500 UB=   -10.8638 x=[2]        Ω=  -386.2501 (0.5s) menu=3
+  [orcl] it 356 LB=   -11.2500 UB=   -10.8638 x=[2]        Ω=  -386.2501 (0.7s) menu=3
+  [orcl] it 357 LB=   -11.2500 UB=   -10.8638 x=[2]        Ω=  -386.2501 (0.6s) menu=3
+  [orcl] it 358 LB=   -11.2500 UB=   -10.8638 x=[2]        Ω=  -386.2501 (0.6s) menu=3
+  [orcl] it 359 LB=   -11.2500 UB=   -10.8638 x=[2]        Ω=  -386.2501 (0.6s) menu=3
+  [orcl] it 360 LB=   -11.2500 UB=   -10.8638 x=[2]        Ω=  -386.2501 (0.6s) menu=3
+  [orcl] it 361 LB=   -11.2500 UB=   -10.8638 x=[2]        Ω=  -386.2501 (0.6s) menu=3
+  [orcl] it 362 LB=   -11.2500 UB=   -10.8638 x=[2]        Ω=  -386.2501 (0.6s) menu=3
+  [orcl] it 363 LB=   -11.2500 UB=   -10.8638 x=[2]        Ω=  -386.2501 (0.6s) menu=3
+  [orcl] it 364 LB=   -11.2500 UB=   -10.8638 x=[2]        Ω=  -386.2501 (0.7s) menu=3
+  [orcl] it 365 LB=   -11.2500 UB=   -10.8638 x=[2]        Ω=  -386.2501 (0.6s) menu=3
+  [orcl] it 366 LB=   -11.2500 UB=   -10.8638 x=[2]        Ω=  -386.2501 (0.6s) menu=3
+  [orcl] it 367 LB=   -11.2500 UB=   -10.8638 x=[2]        Ω=  -386.2501 (0.6s) menu=3
+  [orcl] it 368 LB=   -11.2500 UB=   -10.8638 x=[2]        Ω=  -386.2501 (0.6s) menu=3
+  [orcl] it 369 LB=   -11.2500 UB=   -10.8638 x=[2]        Ω=  -386.2501 (0.6s) menu=3
+  [orcl] it 370 LB=   -11.2500 UB=   -10.8638 x=[2]        Ω=  -386.2501 (0.6s) menu=3
+  [orcl] it 371 LB=   -11.2500 UB=   -10.8638 x=[2]        Ω=  -386.2501 (0.7s) menu=3
+  [orcl] it 372 LB=   -11.2500 UB=   -10.8638 x=[2]        Ω=  -386.2501 (0.6s) menu=3
+  [orcl] it 373 LB=   -11.2500 UB=   -10.8638 x=[2]        Ω=  -386.2501 (0.6s) menu=3
+  [orcl] it 374 LB=   -11.2500 UB=   -10.8638 x=[2]        Ω=  -386.2501 (0.6s) menu=3
+  [orcl] it 375 LB=   -11.2500 UB=   -10.8638 x=[2]        Ω=  -386.2501 (0.6s) menu=3
+  [orcl] it 376 LB=   -11.2500 UB=   -10.8638 x=[2]        Ω=  -386.2501 (0.6s) menu=3
+  [orcl] it 377 LB=   -11.2500 UB=   -10.8638 x=[2]        Ω=  -386.2501 (0.6s) menu=3
+  [orcl] it 378 LB=   -11.2500 UB=   -10.8638 x=[2]        Ω=  -386.2501 (0.7s) menu=3
+  [orcl] it 379 LB=   -11.2500 UB=   -10.8638 x=[2]        Ω=  -386.2501 (0.5s) menu=3
+  [orcl] it 380 LB=   -11.2500 UB=   -10.8638 x=[2]        Ω=  -386.2501 (0.6s) menu=3
+  [orcl] it 381 LB=   -11.2500 UB=   -10.8638 x=[2]        Ω=  -386.2501 (0.6s) menu=3
+  [orcl] it 382 LB=   -11.2500 UB=   -10.8638 x=[2]        Ω=  -386.2501 (0.6s) menu=3
+  [orcl] it 383 LB=   -11.2500 UB=   -10.8638 x=[2]        Ω=  -386.2501 (0.6s) menu=3
+  [orcl] it 384 LB=   -11.2500 UB=   -10.8638 x=[2]        Ω=  -386.2501 (0.7s) menu=3
+  [orcl] it 385 LB=   -11.2500 UB=   -10.8638 x=[2]        Ω=  -386.2501 (0.6s) menu=3
+  [orcl] it 386 LB=   -11.2500 UB=   -10.8638 x=[2]        Ω=  -386.2501 (0.6s) menu=3
+  [orcl] it 387 LB=   -11.2500 UB=   -10.8638 x=[2]        Ω=  -386.2501 (0.6s) menu=3
+  [orcl] it 388 LB=   -11.2500 UB=   -10.8638 x=[2]        Ω=  -386.2501 (0.6s) menu=3
+  [orcl] it 389 LB=   -11.2500 UB=   -10.8638 x=[2]        Ω=  -386.2501 (0.6s) menu=3
+  [orcl] it 390 LB=   -11.2500 UB=   -10.8638 x=[2]        Ω=  -386.2501 (0.6s) menu=3
+  [orcl] it 391 LB=   -11.2500 UB=   -10.8638 x=[2]        Ω=  -386.2501 (0.7s) menu=3
+  [orcl] it 392 LB=   -11.2500 UB=   -10.8638 x=[2]        Ω=  -386.2501 (0.6s) menu=3
+  [orcl] it 393 LB=   -11.2500 UB=   -10.8638 x=[2]        Ω=  -386.2501 (0.6s) menu=3
+  [orcl] it 394 LB=   -11.2500 UB=   -10.8638 x=[2]        Ω=  -386.2501 (0.6s) menu=3
+  [orcl] it 395 LB=   -11.2500 UB=   -10.8638 x=[2]        Ω=  -386.2501 (0.6s) menu=3
+  [orcl] it 396 LB=   -11.2500 UB=   -10.8638 x=[2]        Ω=  -386.2501 (0.6s) menu=3
+  [orcl] it 397 LB=   -11.2500 UB=   -10.8638 x=[2]        Ω=  -386.2501 (0.5s) menu=3
+  [orcl] it 398 LB=   -11.2500 UB=   -10.8638 x=[2]        Ω=  -386.2501 (0.7s) menu=3
+  [orcl] it 399 LB=   -11.2500 UB=   -10.8638 x=[2]        Ω=  -386.2501 (0.6s) menu=3
+  [orcl] it 400 LB=   -11.2500 UB=   -10.8638 x=[2]        Ω=  -386.2501 (0.5s) menu=3
+  [orcl] it 401 LB=   -11.2500 UB=   -10.8638 x=[2]        Ω=  -386.2501 (0.6s) menu=3
+  [orcl] it 402 LB=   -11.2500 UB=   -10.8638 x=[2]        Ω=  -386.2501 (0.6s) menu=3
+  [orcl] it 403 LB=   -11.2500 UB=   -10.8638 x=[2]        Ω=  -386.2501 (0.6s) menu=3
+  [orcl] it 404 LB=   -11.2500 UB=   -10.8638 x=[2]        Ω=  -386.2501 (0.5s) menu=3
+  [orcl] it 405 LB=   -11.2500 UB=   -10.8638 x=[2]        Ω=  -386.2501 (0.7s) menu=3
+  [orcl] it 406 LB=   -11.2500 UB=   -10.8638 x=[2]        Ω=  -386.2501 (0.5s) menu=3
+  [orcl] it 407 LB=   -11.2500 UB=   -10.8638 x=[2]        Ω=  -386.2501 (0.6s) menu=3
+  [orcl] it 408 LB=   -11.2500 UB=   -10.8638 x=[2]        Ω=  -386.2501 (0.6s) menu=3
+  [orcl] it 409 LB=   -11.2500 UB=   -10.8638 x=[2]        Ω=  -386.2501 (0.7s) menu=3
+  [orcl] it 410 LB=   -11.2500 UB=   -10.8638 x=[2]        Ω=  -386.2501 (0.6s) menu=3
+  [orcl] it 411 LB=   -11.2500 UB=   -10.8638 x=[2]        Ω=  -386.2501 (0.6s) menu=3
+  [orcl] it 412 LB=   -11.2500 UB=   -10.8638 x=[2]        Ω=  -386.2501 (0.7s) menu=3
+  [orcl] it 413 LB=   -11.2500 UB=   -10.8638 x=[2]        Ω=  -386.2501 (0.6s) menu=3
+  [orcl] it 414 LB=   -11.2500 UB=   -10.8638 x=[2]        Ω=  -386.2501 (0.6s) menu=3
+  [orcl] it 415 LB=   -11.2500 UB=   -10.8638 x=[2]        Ω=  -386.2501 (0.7s) menu=3
+  [orcl] it 416 LB=   -11.2500 UB=   -10.8638 x=[2]        Ω=  -386.2501 (0.7s) menu=3
+  [orcl] it 417 LB=   -11.2500 UB=   -10.8638 x=[2]        Ω=  -386.2501 (0.6s) menu=3
+  [orcl] it 418 LB=   -11.2500 UB=   -10.8638 x=[2]        Ω=  -386.2501 (0.6s) menu=3
+  [orcl] it 419 LB=   -11.2500 UB=   -10.8638 x=[2]        Ω=  -386.2501 (0.7s) menu=3
+  [orcl] it 420 LB=   -11.2500 UB=   -10.8638 x=[2]        Ω=  -386.2501 (0.6s) menu=3
+  [orcl] it 421 LB=   -11.2500 UB=   -10.8638 x=[2]        Ω=  -386.2501 (0.6s) menu=3
+  [orcl] it 422 LB=   -11.2500 UB=   -10.8638 x=[2]        Ω=  -386.2501 (0.6s) menu=3
+  [orcl] it 423 LB=   -11.2500 UB=   -10.8638 x=[2]        Ω=  -386.2501 (0.8s) menu=3
+  [orcl] it 424 LB=   -11.2500 UB=   -10.8638 x=[2]        Ω=  -386.2501 (0.6s) menu=3
+  [orcl] it 425 LB=   -11.2500 UB=   -10.8638 x=[2]        Ω=  -386.2501 (0.6s) menu=3
+  [orcl] it 426 LB=   -11.2500 UB=   -10.8638 x=[2]        Ω=  -386.2501 (0.6s) menu=3
+  [orcl] it 427 LB=   -11.2500 UB=   -10.8638 x=[2]        Ω=  -386.2501 (0.6s) menu=3
+  [orcl] it 428 LB=   -11.2500 UB=   -10.8638 x=[2]        Ω=  -386.2501 (0.6s) menu=3
+  [orcl] it 429 LB=   -11.2500 UB=   -10.8638 x=[2]        Ω=  -386.2501 (0.6s) menu=3
+  [orcl] it 430 LB=   -11.2500 UB=   -10.8638 x=[2]        Ω=  -386.2501 (0.6s) menu=3
+  [orcl] it 431 LB=   -11.2500 UB=   -10.8638 x=[2]        Ω=  -386.2501 (0.6s) menu=3
+  [orcl] it 432 LB=   -11.2500 UB=   -10.8638 x=[2]        Ω=  -386.2501 (0.5s) menu=3
+  [orcl] it 433 LB=   -11.2500 UB=   -10.8638 x=[2]        Ω=  -386.2501 (0.6s) menu=3
+  [orcl] it 434 LB=   -11.2500 UB=   -10.8638 x=[2]        Ω=  -386.2501 (0.7s) menu=3
+  [orcl] it 435 LB=   -11.2500 UB=   -10.8638 x=[2]        Ω=  -386.2501 (0.5s) menu=3
+  [orcl] it 436 LB=   -11.2500 UB=   -10.8638 x=[2]        Ω=  -386.2501 (0.6s) menu=3
+  [orcl] it 437 LB=   -11.2500 UB=   -10.8638 x=[2]        Ω=  -386.2501 (0.6s) menu=3
+  [orcl] it 438 LB=   -11.2500 UB=   -10.8638 x=[2]        Ω=  -386.2501 (0.6s) menu=3
+  [orcl] it 439 LB=   -11.2500 UB=   -10.8638 x=[2]        Ω=  -386.2501 (0.6s) menu=3
+  [orcl] it 440 LB=   -11.2500 UB=   -10.8638 x=[2]        Ω=  -386.2501 (0.5s) menu=3
+  [orcl] it 441 LB=   -11.2500 UB=   -10.8638 x=[2]        Ω=  -386.2501 (0.7s) menu=3
+  [orcl] it 442 LB=   -11.2500 UB=   -10.8638 x=[2]        Ω=  -386.2501 (0.5s) menu=3
+  [orcl] it 443 LB=   -11.2500 UB=   -10.8638 x=[2]        Ω=  -386.2501 (0.6s) menu=3
+  [orcl] it 444 LB=   -11.2500 UB=   -10.8638 x=[2]        Ω=  -386.2501 (0.6s) menu=3
+  [orcl] it 445 LB=   -11.2500 UB=   -10.8638 x=[2]        Ω=  -386.2501 (0.6s) menu=3
+  [orcl] it 446 LB=   -11.2500 UB=   -10.8638 x=[2]        Ω=  -386.2501 (0.5s) menu=3
+  [orcl] it 447 LB=   -11.2500 UB=   -10.8638 x=[2]        Ω=  -386.2501 (0.6s) menu=3
+  [orcl] it 448 LB=   -11.2500 UB=   -10.8638 x=[2]        Ω=  -386.2501 (0.6s) menu=3
+  [orcl] it 449 LB=   -11.2500 UB=   -10.8638 x=[2]        Ω=  -386.2501 (0.6s) menu=3
+  [orcl] it 450 LB=   -11.2500 UB=   -10.8638 x=[2]        Ω=  -386.2501 (0.6s) menu=3
+  [orcl] it 451 LB=   -11.2500 UB=   -10.8638 x=[2]        Ω=  -386.2501 (0.7s) menu=3
+  [orcl] it 452 LB=   -11.2500 UB=   -10.8638 x=[2]        Ω=  -386.2501 (0.6s) menu=3
+  [orcl] it 453 LB=   -11.2500 UB=   -10.8638 x=[2]        Ω=  -386.2501 (0.6s) menu=3
+  [orcl] it 454 LB=   -11.2500 UB=   -10.8638 x=[2]        Ω=  -386.2501 (0.7s) menu=3
+  [orcl] it 455 LB=   -11.2500 UB=   -10.8638 x=[2]        Ω=  -386.2501 (0.6s) menu=3
+  [orcl] it 456 LB=   -11.2500 UB=   -10.8638 x=[2]        Ω=  -386.2501 (0.6s) menu=3
+  [orcl] it 457 LB=   -11.2500 UB=   -10.8638 x=[2]        Ω=  -386.2501 (0.6s) menu=3
+  [orcl] it 458 LB=   -11.2500 UB=   -10.8638 x=[2]        Ω=  -386.2501 (0.6s) menu=3
+  [orcl] it 459 LB=   -11.2500 UB=   -10.8638 x=[2]        Ω=  -386.2501 (0.7s) menu=3
+  [orcl] it 460 LB=   -11.2500 UB=   -10.8638 x=[2]        Ω=  -386.2501 (0.6s) menu=3
+  [orcl] it 461 LB=   -11.2500 UB=   -10.8638 x=[2]        Ω=  -386.2501 (0.7s) menu=3
+  [orcl] it 462 LB=   -11.2500 UB=   -10.8638 x=[2]        Ω=  -386.2501 (0.6s) menu=3
+  [orcl] it 463 LB=   -11.2500 UB=   -10.8638 x=[2]        Ω=  -386.2501 (0.6s) menu=3
+  [orcl] it 464 LB=   -11.2500 UB=   -10.8638 x=[2]        Ω=  -386.2501 (0.6s) menu=3
+  [orcl] it 465 LB=   -11.2500 UB=   -10.8638 x=[2]        Ω=  -386.2501 (0.6s) menu=3
+  [orcl] it 466 LB=   -11.2500 UB=   -10.8638 x=[2]        Ω=  -386.2501 (0.5s) menu=3
+  [orcl] it 467 LB=   -11.2500 UB=   -10.8638 x=[2]        Ω=  -386.2501 (0.6s) menu=3
+  [orcl] it 468 LB=   -11.2500 UB=   -10.8638 x=[2]        Ω=  -386.2501 (0.6s) menu=3
+  [orcl] it 469 LB=   -11.2500 UB=   -10.8638 x=[2]        Ω=  -386.2501 (0.6s) menu=3
+  [orcl] it 470 LB=   -11.2500 UB=   -10.8638 x=[2]        Ω=  -386.2501 (0.6s) menu=3
+  [orcl] it 471 LB=   -11.2500 UB=   -10.8638 x=[2]        Ω=  -386.2501 (0.6s) menu=3
+  [orcl] it 472 LB=   -11.2500 UB=   -10.8638 x=[2]        Ω=  -386.2501 (0.6s) menu=3
+  [orcl] it 473 LB=   -11.2500 UB=   -10.8638 x=[2]        Ω=  -386.2501 (0.6s) menu=3
+  [orcl] it 474 LB=   -11.2500 UB=   -10.8638 x=[2]        Ω=  -386.2501 (0.7s) menu=3
+  [orcl] it 475 LB=   -11.2500 UB=   -10.8638 x=[2]        Ω=  -386.2501 (0.6s) menu=3
+  [orcl] it 476 LB=   -11.2500 UB=   -10.8638 x=[2]        Ω=  -386.2501 (0.6s) menu=3
+  [orcl] it 477 LB=   -11.2500 UB=   -10.8638 x=[2]        Ω=  -386.2501 (0.6s) menu=3
+  [orcl] it 478 LB=   -11.2500 UB=   -10.8638 x=[2]        Ω=  -386.2501 (0.7s) menu=3
+  [orcl] it 479 LB=   -11.2500 UB=   -10.8638 x=[2]        Ω=  -386.2501 (0.6s) menu=3
+  [orcl] it 480 LB=   -11.2500 UB=   -10.8638 x=[2]        Ω=  -386.2501 (0.6s) menu=3
+  [orcl] it 481 LB=   -11.2500 UB=   -10.8638 x=[2]        Ω=  -386.2501 (0.7s) menu=3
+  [orcl] it 482 LB=   -11.2500 UB=   -10.8638 x=[2]        Ω=  -386.2501 (0.6s) menu=3
+  [orcl] it 483 LB=   -11.2500 UB=   -10.8638 x=[2]        Ω=  -386.2501 (0.6s) menu=3
+  [orcl] it 484 LB=   -11.2500 UB=   -10.8638 x=[2]        Ω=  -386.2501 (0.6s) menu=3
+  [orcl] it 485 LB=   -11.2500 UB=   -10.8638 x=[2]        Ω=  -386.2501 (0.7s) menu=3
+  [orcl] it 486 LB=   -11.2500 UB=   -10.8638 x=[2]        Ω=  -386.2501 (0.6s) menu=3
+  [orcl] it 487 LB=   -11.2500 UB=   -10.8638 x=[2]        Ω=  -386.2501 (0.6s) menu=3
+  [orcl] it 488 LB=   -11.2500 UB=   -10.8638 x=[2]        Ω=  -386.2501 (0.6s) menu=3
+  [orcl] it 489 LB=   -11.2500 UB=   -10.8638 x=[2]        Ω=  -386.2501 (0.7s) menu=3
+  [orcl] it 490 LB=   -11.2500 UB=   -10.8638 x=[2]        Ω=  -386.2501 (0.5s) menu=3
+  [orcl] it 491 LB=   -11.2500 UB=   -10.8638 x=[2]        Ω=  -386.2501 (0.6s) menu=3
+  [orcl] it 492 LB=   -11.2500 UB=   -10.8638 x=[2]        Ω=  -386.2501 (0.6s) menu=3
+  [orcl] it 493 LB=   -11.2500 UB=   -10.8638 x=[2]        Ω=  -386.2501 (0.7s) menu=3
+  [orcl] it 494 LB=   -11.2500 UB=   -10.8638 x=[2]        Ω=  -386.2501 (0.5s) menu=3
+  [orcl] it 495 LB=   -11.2500 UB=   -10.8638 x=[2]        Ω=  -386.2501 (0.6s) menu=3
+  [orcl] it 496 LB=   -11.2500 UB=   -10.8638 x=[2]        Ω=  -386.2501 (0.6s) menu=3
+  [orcl] it 497 LB=   -11.2500 UB=   -10.8638 x=[2]        Ω=  -386.2501 (0.6s) menu=3
+  [orcl] it 498 LB=   -11.2500 UB=   -10.8638 x=[2]        Ω=  -386.2501 (0.6s) menu=3
+  [orcl] it 499 LB=   -11.2500 UB=   -10.8638 x=[2]        Ω=  -386.2501 (0.6s) menu=3
+  [orcl] it 500 LB=   -11.2500 UB=   -10.8638 x=[2]        Ω=  -386.2501 (0.6s) menu=3
+RESULT pooled-store λ=2000 qB=375 d=17 m=7 nA=4 nB=3 seed=3 S=10 nh=7 status=MaxIter x={2} LB=-11.250000 UB=-10.863839 gap=3.55e-02 iters=500 global=493 local=2 menu=3 time=2233.6
+
+--- pooled(거점별 300) d=17 A=4 B=3 (N_B≤3) seed=4 S=10: n_h=7, |X|=8, 용량 375, 출점비 375, f=0.10 p=0.30, θᵁ=50.0 λᵁ=2000.0, TL=3600s, 프리솔브 켬
+  [설정] 전역 oracle = α-B&B (nz_alpha_bnb_dr), worker 12, gap 1e-03, 이어 풀기 켬, bnb_kw = (ipopt_time = 120.0,)
+  [설정] oracle 시간: 남은 시간 전체 (끊지 않음), 목표값 조기 종료 켬, local cut 켬
+  [loc]  it   1 LB=-10000000.0000 UB=        Inf x=Int64[]    Ω_loc=    -0.0006 (0.2s) menu=1 (+belief)
+  [menu] it   2 LB=-723250.0008 UB=        Inf x=[1, 2, 3]  menu cut 1/1 (V_menu=-5155.8583)
+  [menu] it   3 LB=-384250.0005 UB=        Inf x=[1, 2]     menu cut 1/1 (V_menu=-3762.0346)
+  [menu] it   4 LB=-376125.0005 UB=        Inf x=[1, 3]     menu cut 1/1 (V_menu=-3716.9479)
+  [menu] it   5 LB=-347125.0003 UB=        Inf x=[2]        menu cut 1/1 (V_menu=-1795.4413)
+  [menu] it   6 LB=-279101.1887 UB=        Inf x=[3]        menu cut 1/1 (V_menu=-2263.9597)
+  [menu] it   7 LB=-270529.0348 UB=        Inf x=[2, 3]     menu cut 1/1 (V_menu=-4146.9402)
+  [menu] it   8 LB=-37125.0003 UB=        Inf x=[1]        menu cut 1/1 (V_menu=-1820.1208)
+  [loc]  it   9 LB= -4030.8583 UB=        Inf x=[1, 2, 3]  Ω_loc= -1637.5842 (0.4s) menu=2 (+belief)
+  [menu] it  10 LB= -3012.0346 UB=        Inf x=[1, 2]     menu cut 1/2 (V_menu=-409.5835)
+  [menu] it  11 LB= -2966.9479 UB=        Inf x=[1, 3]     menu cut 1/2 (V_menu=-1335.4169)
+  [menu] it  12 LB= -2467.5023 UB=        Inf x=[2, 3]     menu cut 1/2 (V_menu=-1637.5836)
+  [menu] it  13 LB= -1888.9597 UB=        Inf x=[3]        menu cut 1/2 (V_menu=-1297.0895)
+  [menu] it  14 LB= -1445.1208 UB=        Inf x=[1]        menu cut 1/2 (V_menu=-74.4169)
+  [loc]  it  15 LB=  -922.0895 UB=        Inf x=[3]        Ω_loc= -1226.3341 (0.3s) menu=3 (+belief)
+    [반응 프리솔브] x=[2, 3]: 활성 6 중 0 개를 0 으로 고정 (45.4s)
+  [orcl] it  16 LB=  -887.5836 UB=  -724.0314 x=[2, 3]     Ω= -1637.6896 (3643.7s) menu=3
+RESULT pooled-store λ=2000 qB=375 d=17 m=7 nA=4 nB=3 seed=4 S=10 nh=7 status=TimeLimit x={2,3} LB=-887.583558 UB=-724.031446 gap=2.26e-01 iters=17 global=1 local=3 menu=3 time=3646.3
+
+--- pooled(거점별 300) d=17 A=4 B=3 (N_B≤3) seed=5 S=10: n_h=7, |X|=8, 용량 375, 출점비 375, f=0.10 p=0.30, θᵁ=50.0 λᵁ=2000.0, TL=3600s, 프리솔브 켬
+  [설정] 전역 oracle = α-B&B (nz_alpha_bnb_dr), worker 12, gap 1e-03, 이어 풀기 켬, bnb_kw = (ipopt_time = 120.0,)
+  [설정] oracle 시간: 남은 시간 전체 (끊지 않음), 목표값 조기 종료 켬, local cut 켬
+  [loc]  it   1 LB=-10000000.0000 UB=        Inf x=Int64[]    Ω_loc=    -0.0005 (0.6s) menu=1 (+belief)
+  [menu] it   2 LB=-696375.0007 UB=        Inf x=[1, 2, 3]  menu cut 1/1 (V_menu=-5114.9475)
+  [menu] it   3 LB=-387375.0005 UB=        Inf x=[1, 2]     menu cut 1/1 (V_menu=-2393.2393)
+  [menu] it   4 LB=-387375.0003 UB=        Inf x=[1, 3]     menu cut 1/1 (V_menu=-3444.0957)
+  [menu] it   5 LB=-78375.0001 UB=        Inf x=[1]        menu cut 1/1 (V_menu=-549.9828)
+  [menu] it   6 LB=-71824.8711 UB=        Inf x=[3]        menu cut 1/1 (V_menu=-2849.7640)
+  [menu] it   7 LB= -4364.9475 UB=        Inf x=[2, 3]     menu cut 1/1 (V_menu=-4843.6619)
+  [loc]  it   8 LB= -4093.6619 UB=        Inf x=[2, 3]     Ω_loc= -2912.6674 (0.2s) menu=2 (+belief)
+  [menu] it   9 LB= -2694.0957 UB=        Inf x=[1, 3]     menu cut 1/2 (V_menu=-1533.1162)
+  [menu] it  10 LB= -2474.7640 UB=        Inf x=[3]        menu cut 1/2 (V_menu=-1504.6047)
+    [반응 프리솔브] x=[2, 3]: 활성 6 중 0 개를 0 으로 고정 (113.5s)
+  [orcl] it  11 LB= -2162.6667 UB= -1683.9330 x=[2, 3]     Ω= -2913.1474 (3712.1s) menu=2
+RESULT pooled-store λ=2000 qB=375 d=17 m=7 nA=4 nB=3 seed=5 S=10 nh=7 status=TimeLimit x={2,3} LB=-2162.666680 UB=-1683.933045 gap=2.84e-01 iters=12 global=1 local=2 menu=2 time=3715.3
+
+--- pooled(거점별 300) d=17 A=4 B=3 (N_B≤3) seed=6 S=10: n_h=7, |X|=8, 용량 375, 출점비 375, f=0.10 p=0.30, θᵁ=50.0 λᵁ=2000.0, TL=3600s, 프리솔브 켬
+  [설정] 전역 oracle = α-B&B (nz_alpha_bnb_dr), worker 12, gap 1e-03, 이어 풀기 켬, bnb_kw = (ipopt_time = 120.0,)
+  [설정] oracle 시간: 남은 시간 전체 (끊지 않음), 목표값 조기 종료 켬, local cut 켬
+  [loc]  it   1 LB=-10000000.0000 UB=        Inf x=Int64[]    Ω_loc=    -0.0005 (0.1s) menu=1 (+belief)
+  [menu] it   2 LB=-998250.0000 UB=        Inf x=[1, 2, 3]  menu cut 1/1 (V_menu=-2998.9370)
+  [menu] it   3 LB=-422316.5342 UB=        Inf x=[2]        menu cut 1/1 (V_menu=-1766.8212)
+  [menu] it   4 LB=-347546.2279 UB=        Inf x=[1]        menu cut 1/1 (V_menu=-1765.4203)
+  [menu] it   5 LB=-76500.0000 UB=        Inf x=[3]        menu cut 1/1 (V_menu=-1268.4313)
+  [menu] it   6 LB= -2878.9148 UB=        Inf x=[2, 3]     menu cut 1/1 (V_menu=-2998.9370)
+  [menu] it   7 LB= -2877.5139 UB=        Inf x=[1, 3]     menu cut 1/1 (V_menu=-2997.5361)
+  [loc]  it   8 LB= -2248.9370 UB=        Inf x=[2, 3]     Ω_loc= -1162.9175 (1.0s) menu=2 (+belief)
+  [menu] it   9 LB= -2247.5361 UB=        Inf x=[1, 3]     menu cut 1/2 (V_menu=-1162.9169)
+  [menu] it  10 LB=  -893.4313 UB=        Inf x=[3]        menu cut 1/2 (V_menu=-100.3334)
+  [menu] it  11 LB=  -787.9202 UB=        Inf x=[2]        menu cut 1/2 (V_menu=-1162.9169)
+    [반응 프리솔브] x=[2]: 활성 5 중 0 개를 0 으로 고정 (11.8s)
+(중단: 2026-10-16 순서 변경으로 seed 6 실행 중 멈춤 — seed 6~10 은 main_pooled_store_A4_d17_S10_seeds6-10.log 로 다시 실행)
