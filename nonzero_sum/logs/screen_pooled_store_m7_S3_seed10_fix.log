@@ -1,0 +1,102 @@
+Set parameter Username
+Set parameter LicenseID to value 2742039
+Academic license - for non-commercial use only - expires 2026-11-20
+
+--- pooled(거점별 300) d=15 A=2 B=5 (N_B≤3) seed=10 S=3: n_h=7, |X|=26, 용량 600, 출점비 600, f=0.10 p=0.30, θᵁ=50.0 λᵁ=2000.0, TL=600s, 프리솔브 켬
+  [설정] 전역 oracle = α-B&B (nz_alpha_bnb_dr), worker 12, gap 1e-03, 이어 풀기 켬, bnb_kw = (ipopt_time = 120.0,)
+  [설정] oracle 시간: 남은 시간 전체 (끊지 않음), 목표값 조기 종료 켬, local cut 켬
+  [loc]  it   1 LB=-10000000.0000 UB=        Inf x=Int64[]    Ω_loc=    -0.0002 (0.1s) menu=1 (+belief)
+  [menu] it   2 LB=-1579200.0000 UB=        Inf x=[1, 2, 5]  menu cut 1/1 (V_menu=-4730.4000)
+  [menu] it   3 LB=-770403.3750 UB=        Inf x=[3, 4, 5]  menu cut 1/1 (V_menu=-4368.4190)
+  [menu] it   4 LB=-608663.6030 UB=        Inf x=[1, 4]     menu cut 1/1 (V_menu=-6589.3596)
+  [menu] it   5 LB=-550353.6435 UB=        Inf x=[2, 3]     menu cut 1/1 (V_menu=-5513.6191)
+  [menu] it   6 LB=-411846.2771 UB=        Inf x=[1, 3, 5]  menu cut 1/1 (V_menu=-6223.8323)
+  [menu] it   7 LB=-369453.5586 UB=        Inf x=[5]        menu cut 1/1 (V_menu=-2335.4978)
+  [menu] it   8 LB=-359288.0128 UB=        Inf x=[3]        menu cut 1/1 (V_menu=-3920.7920)
+  [menu] it   9 LB=-357511.9078 UB=        Inf x=[2, 4, 5]  menu cut 1/1 (V_menu=-5423.6190)
+  [menu] it  10 LB=-356260.9555 UB=        Inf x=[4]        menu cut 1/1 (V_menu=-4189.1133)
+  [menu] it  11 LB=-332407.7949 UB=        Inf x=[2, 5]     menu cut 1/1 (V_menu=-4889.8349)
+  [menu] it  12 LB=-205575.7005 UB=        Inf x=[4, 5]     menu cut 1/1 (V_menu=-4368.4190)
+  [menu] it  13 LB=-201172.1357 UB=        Inf x=[1, 2, 3]  menu cut 1/1 (V_menu=-5495.0097)
+  [menu] it  14 LB=-197536.0724 UB=        Inf x=[2]        menu cut 1/1 (V_menu=-3398.8334)
+  [menu] it  15 LB=-196465.3547 UB=        Inf x=[2, 4]     menu cut 1/1 (V_menu=-5341.4079)
+  [menu] it  16 LB=-172088.7939 UB=        Inf x=[2, 3, 5]  menu cut 1/1 (V_menu=-5386.1188)
+  [menu] it  17 LB=-166446.2771 UB=        Inf x=[3, 5]     menu cut 1/1 (V_menu=-4286.2524)
+  [menu] it  18 LB=-120470.1488 UB=        Inf x=[1]        menu cut 1/1 (V_menu=-4651.0081)
+  [menu] it  19 LB=-118137.7467 UB=        Inf x=[1, 2]     menu cut 1/1 (V_menu=-5200.0136)
+  [menu] it  20 LB=-117537.7467 UB=        Inf x=[1, 2, 4]  menu cut 1/1 (V_menu=-5495.0097)
+  [menu] it  21 LB=-92450.9306 UB=        Inf x=[1, 3]     menu cut 1/1 (V_menu=-6589.3596)
+  [menu] it  22 LB=-88988.4464 UB=        Inf x=[1, 5]     menu cut 1/1 (V_menu=-5931.2034)
+  [menu] it  23 LB=-10131.2034 UB=        Inf x=[1, 4, 5]  menu cut 1/1 (V_menu=-6223.8323)
+  [loc]  it  24 LB= -5389.3596 UB=        Inf x=[1, 3]     Ω_loc= -1254.5003 (0.1s) menu=2 (+belief)
+  [menu] it  25 LB= -5389.3596 UB=        Inf x=[1, 4]     menu cut 1/2 (V_menu=-1254.5007)
+  [menu] it  26 LB= -4989.0944 UB=        Inf x=[3, 4]     menu cut 2/2 (V_menu=-923.0005)
+  [menu] it  27 LB= -4731.2034 UB=        Inf x=[1, 5]     menu cut 1/2 (V_menu=-1800.0003)
+  [menu] it  28 LB= -4423.8323 UB=        Inf x=[1, 3, 5]  menu cut 1/2 (V_menu=-1841.0003)
+  [menu] it  29 LB= -4423.8323 UB=        Inf x=[1, 4, 5]  menu cut 1/2 (V_menu=-1841.0007)
+  [menu] it  30 LB= -4313.6191 UB=        Inf x=[2, 3]     menu cut 1/2 (V_menu=-1703.5002)
+  [menu] it  31 LB= -4141.4079 UB=        Inf x=[2, 4]     menu cut 1/2 (V_menu=-1703.5006)
+  [menu] it  32 LB= -4051.0081 UB=        Inf x=[1]        menu cut 1/2 (V_menu=-1258.0001)
+  [menu] it  33 LB= -4000.0136 UB=        Inf x=[1, 2]     menu cut 1/2 (V_menu=-2415.0001)
+  [menu] it  34 LB= -3695.0097 UB=        Inf x=[1, 2, 3]  menu cut 1/2 (V_menu=-2411.5001)
+  [menu] it  35 LB= -3695.0097 UB=        Inf x=[1, 2, 4]  menu cut 1/2 (V_menu=-2411.5007)
+  [menu] it  36 LB= -3689.8349 UB=        Inf x=[2, 5]     menu cut 1/2 (V_menu=-1706.0004)
+  [menu] it  37 LB= -3623.6190 UB=        Inf x=[2, 4, 5]  menu cut 1/2 (V_menu=-2234.5007)
+  [menu] it  38 LB= -3586.1188 UB=        Inf x=[2, 3, 5]  menu cut 1/2 (V_menu=-2234.5004)
+  [menu] it  39 LB= -3320.7920 UB=        Inf x=[3]        menu cut 1/2 (V_menu=-1050.0001)
+  [menu] it  40 LB= -3168.4190 UB=        Inf x=[4, 5]     menu cut 1/2 (V_menu=-1100.5007)
+  [menu] it  41 LB= -3086.2524 UB=        Inf x=[3, 5]     menu cut 1/2 (V_menu=-1100.5004)
+  [menu] it  42 LB= -2930.4000 UB=        Inf x=[1, 2, 5]  menu cut 1/2 (V_menu=-2957.0003)
+  [menu] it  43 LB= -2798.8334 UB=        Inf x=[2]        menu cut 1/2 (V_menu=-1689.0001)
+  [menu] it  44 LB= -1735.4979 UB=        Inf x=[5]        menu cut 1/2 (V_menu=-1285.5002)
+  [loc]  it  45 LB= -1215.0001 UB=        Inf x=[1, 2]     Ω_loc= -2399.9447 (0.1s) menu=3 (+belief)
+Set parameter Username
+Set parameter LicenseID to value 2742039
+Academic license - for non-commercial use only - expires 2026-11-20
+    [반응 프리솔브] x=[1, 2]: 활성 4 중 0 개를 0 으로 고정 (5.7s)
+Set parameter Username
+Set parameter LicenseID to value 2742039
+Academic license - for non-commercial use only - expires 2026-11-20
+Set parameter Username
+Set parameter LicenseID to value 2742039
+Academic license - for non-commercial use only - expires 2026-11-20
+Set parameter Username
+Set parameter LicenseID to value 2742039
+Academic license - for non-commercial use only - expires 2026-11-20
+Set parameter Username
+Set parameter LicenseID to value 2742039
+Academic license - for non-commercial use only - expires 2026-11-20
+Set parameter Username
+Set parameter LicenseID to value 2742039
+Academic license - for non-commercial use only - expires 2026-11-20
+Set parameter Username
+Set parameter LicenseID to value 2742039
+Academic license - for non-commercial use only - expires 2026-11-20
+Set parameter Username
+Set parameter LicenseID to value 2742039
+Academic license - for non-commercial use only - expires 2026-11-20
+Set parameter Username
+Set parameter LicenseID to value 2742039
+Academic license - for non-commercial use only - expires 2026-11-20
+Set parameter Username
+Set parameter LicenseID to value 2742039
+Academic license - for non-commercial use only - expires 2026-11-20
+Set parameter Username
+Set parameter LicenseID to value 2742039
+Academic license - for non-commercial use only - expires 2026-11-20
+Set parameter Username
+Set parameter LicenseID to value 2742039
+Academic license - for non-commercial use only - expires 2026-11-20
+Set parameter Username
+Set parameter LicenseID to value 2742039
+Academic license - for non-commercial use only - expires 2026-11-20
+
+******************************************************************************
+This program contains Ipopt, a library for large-scale nonlinear optimization.
+ Ipopt is released as open source code under the Eclipse Public License (EPL).
+         For more information visit https://github.com/coin-or/Ipopt
+******************************************************************************
+
+  [orcl] it  46 LB= -1199.9444 UB=  -642.2465 x=[1, 2]     Ω= -2359.7225 (19.2s) menu=4 (+belief, LP@x̄=-2359.7222, gap -2.5e-04)
+  [orcl] it  47 LB= -1159.7225 UB= -1155.2840 x=[1, 2]     Ω= -2359.7222 (13.2s) menu=4
+RESULT pooled-store λ=2000 qB=600 d=15 m=7 nA=2 nB=5 seed=10 S=3 nh=7 status=Optimal x={1,2} LB=-1159.722225 UB=-1155.284011 gap=3.84e-03 iters=48 global=2 local=3 menu=4 time=44.9

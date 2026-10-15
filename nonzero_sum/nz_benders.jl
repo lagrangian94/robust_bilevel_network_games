@@ -41,6 +41,12 @@ _nz_oracle_banner(oracle, bnb, nworkers, gap, bnb_kw, resume=false) = oracle == 
 
 function _nz_omp(nd::NZData; optimizer, t_lb=-1e7)
     omp = Model(optimizer); set_silent(omp)
+    # x 를 정확히 0/1 로 (2026-10-15). cut 의 x 계수는 λᵁ·π_Fᵁ 크기 (수백~수천) 라, 정수 허용오차 1e-5 안의 x (0.99999) 에서 t0 가
+    # 반올림한 x̄ 의 cut 값보다 1e-6 상대 넘게 낮아질 수 있다 → menu 가 같은 cut 을 끝없이 다시 넣음 (pooled 거점별 한도 seed 10, 문서 §10.21)
+    for (k, val) in (("IntegralityFocus", 1), ("IntFeasTol", 1e-9))
+        try set_optimizer_attribute(omp, k, val) catch end
+    end
+    omp.ext[:cuts] = Tuple{Float64,Vector{Float64}}[]
     @variable(omp, x[1:nd.nx], Bin)
     @variable(omp, t0 >= t_lb)
     @constraint(omp, sum(x) <= nd.gamma)
@@ -55,7 +61,20 @@ function _nz_omp(nd::NZData; optimizer, t_lb=-1e7)
     return omp, x, t0
 end
 
-_add_cut!(omp, x, t0, cut) = @constraint(omp, t0 >= cut[:intercept] + dot(cut[:slope], x))
+function _add_cut!(omp, x, t0, cut)
+    haskey(omp.ext, :cuts) && push!(omp.ext[:cuts], (Float64(cut[:intercept]), Float64.(cut[:slope])))
+    return @constraint(omp, t0 >= cut[:intercept] + dot(cut[:slope], x))
+end
+
+"""마스터의 t0 를 반올림한 x̄ 에서 다시 잰 값: max(value(t0), 기존 cut 들의 x̄ 값). 위반 판정은 이 값과 비교한다 — 마스터 해의 x 가
+허용오차 안에서 분수여도 이미 넣은 cut 을 위반으로 보지 않는다 (같은 cut 의 반복 방지)."""
+function _t0_at(omp, t0, x̄)
+    v = value(t0)
+    for (a, g) in get(omp.ext, :cuts, Tuple{Float64,Vector{Float64}}[])
+        v = max(v, a + dot(g, x̄))
+    end
+    return v
+end
 
 "cut 기록 (검증용): kind = :restricted (α 고정 LP) | :omega (Gurobi Ω 해) | :belief (menu belief LP), mw = MW 강화 여부"
 _log_cut!(cuts, kind, iter, x̄, cut, mw) =
@@ -272,7 +291,8 @@ function nz_standard_benders(nd::NZData; optimizer, max_iter=200, tol=1e-4, orac
             if rl !== nothing
                 cut, ok = _nz_alpha_cut(Oloc, Fx, nd, x̄; mw=mw, x_core=x_core)
                 cval = cut[:intercept] + dot(cut[:slope], x̄)
-                if cval > value(t0) + tol * max(1.0, abs(value(t0)))
+                t0x = _t0_at(omp, t0, x̄)
+                if cval > t0x + tol * max(1.0, abs(t0x))
                     _add_cut!(omp, x, t0, cut); _log_cut!(cuts, :local, iter, x̄, cut, ok); n_local += 1; n_mw += ok
                     push!(hist, (iter=iter, LB=LB, UB=UB, x=findall(x̄ .> 0.5), F=rl[:Fval], t=t_l, w=w_LB))
                     verbose && @printf("  [loc] it %3d LB=%11.4f UB=%11.4f x=%-10s Ω_loc=%11.4f (%.1fs)\n",
@@ -366,7 +386,7 @@ function nz_belief_menu_benders(nd::NZData; optimizer, lp_optimizer=optimizer, c
         optimize!(omp)
         x̄ = Float64.(value.(x) .> 0.5)
         LB = objective_value(omp); w_LB = time() - wall     # 이 LB 가 정해진 시각 (hist 의 w)
-        t0v = value(t0)
+        t0v = _t0_at(omp, t0, x̄)                            # 반올림한 x̄ 에서의 t0 (위반 판정 기준)
         _rel(LB, UB) <= tol && (status = :Optimal; break)
         time() - wall > time_limit && (status = :TimeLimit; break)
 
