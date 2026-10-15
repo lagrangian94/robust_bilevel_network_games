@@ -14,7 +14,7 @@ lab_lambda_certify.jl — follower 벌점 λᵁ 의 사후 인증 (문서 §10.1
   tolF 는 LP 허용오차 몫 (1e-7 상대).
 LB_exact 후보: B&B incumbent α°, α° 의 belief d° 에서 follower LP 최적 꼭짓점 (simplex), d° 의 최적면 위에서 α° 에 가장 가까운 점.
 
-환경변수: LC_NLOC = 15  LC_NA = 2  LC_NB = 3  LC_S = 3  NZ_SEED = 1  LC_POOL = store  LC_QUOTA = 300  LC_QB = 750  LC_LAM0 = 1000  LC_LAMMAX = 64000
+환경변수: LC_NLOC = 15  LC_NA = 2  LC_NB = 3  LC_NBMAX = (기본 nB)  LC_S = 3  NZ_SEED = 1  LC_POOL = store  LC_QUOTA = 300  LC_QB = 750 (cap 이면 거점 용량)  LC_LAM0 = 1000  LC_LAMMAX = 64000
           LC_TOL = 1e-3 (인증 허용오차, Benders 0.5% 보다 엄격)  LC_BNB_TL = 300  LC_WORKERS = 6  LC_X = "" (비우면 모든 x, 예 "1,2;3")
 실행: julia -t 8,1 nonzero_sum/lab_lambda_certify.jl
 """
@@ -100,15 +100,17 @@ function exact_lb(nd, x̄, α°)
 end
 
 nloc = pint("LC_NLOC", "15"); nA = pint("LC_NA", "2"); nB = pint("LC_NB", "3"); S = pint("LC_S", "3"); seed = pint("NZ_SEED", "1")
-pool = Symbol(envf("LC_POOL", "store")); quota = pf("LC_QUOTA", "300"); qB = pf("LC_QB", "750")
+pool = Symbol(envf("LC_POOL", "store")); quota = pf("LC_QUOTA", "300"); NBmax = pint("LC_NBMAX", string(nB))
 λ0 = pf("LC_LAM0", "1000"); λmax = pf("LC_LAMMAX", "64000"); tol = pf("LC_TOL", "1e-3"); TL = pf("LC_BNB_TL", "300"); nw = pint("LC_WORKERS", "6")
 capv = 150.0 * (nloc - nA - nB) / nA
-nd1 = nz_with_delta(make_location_instance(; coords=:random, n_loc=nloc, nA=nA, nB=nB, NB=nB, S=S, seed=seed, bA=capv, bB=capv, qB=qB,
+qB = envf("LC_QB", "750") == "cap" ? capv : pf("LC_QB", "750")
+nd1 = nz_with_delta(make_location_instance(; coords=:random, n_loc=nloc, nA=nA, nB=nB, NB=NBmax, S=S, seed=seed, bA=capv, bB=capv, qB=qB,
     dlo=50.0, dhi=150.0, reservation=:pooled, wres=300.0, pool_limit=pool, quota=quota, eps_hat=0.3, eps_tilde=0.3, beta=0.4), 0.1)
 θ̄ = nz_theta_circuit_exact(nd1)[1]
 xs = [Float64.(collect(bb)) for bb in Iterators.product(fill(0:1, nd1.nx)...) if sum(bb) <= nd1.gamma]
 xsel = strip(envf("LC_X", "")); xsel = isempty(xsel) ? nothing : [sort(parse.(Int, split(t, ","))) for t in split(xsel, ";")]
-@printf("lab_lambda_certify: pooled(%s) d=%d A=%d B=%d seed=%d S=%d n_h=%d θ̄=%.1f λ0=%.0f 허용오차 %.0e\n", pool, nloc, nA, nB, seed, S, nz_nh(nd1), θ̄, λ0, tol); flush(stdout)
+@printf("lab_lambda_certify: pooled(%s) d=%d A=%d B=%d (N_B≤%d) 출점비 %.0f seed=%d S=%d n_h=%d |X|=%d θ̄=%.1f λ0=%.0f 허용오차 %.0e\n", pool, nloc, nA, nB, NBmax, qB,
+        seed, S, nz_nh(nd1), length(xs), θ̄, λ0, tol); flush(stdout)
 λcert = λ0
 for x̄ in xs
     xi = findall(x̄ .> 0.5); xsel === nothing || xi in xsel || continue
