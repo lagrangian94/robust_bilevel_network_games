@@ -1,0 +1,79 @@
+Set parameter Username
+Set parameter LicenseID to value 2742039
+Academic license - for non-commercial use only - expires 2026-11-20
+
+--- pooled(거점별 300) d=15 A=3 B=2 (N_B≤2) seed=1 S=50: n_h=5, |X|=4, 용량 500, 출점비 750, f=0.10 p=0.30, θᵁ=50.0 λᵁ=2000.0, TL=3600s, 프리솔브 켬
+  [설정] 전역 oracle = α-B&B (nz_alpha_bnb_dr), worker 12, gap 1e-03, 이어 풀기 켬, bnb_kw = (ipopt_time = 120.0,)
+  [설정] oracle 시간: 남은 시간 전체 (끊지 않음), 목표값 조기 종료 켬, local cut 켬
+  [loc]  it   1 LB=-10000000.0000 UB=        Inf x=Int64[]    Ω_loc=    -0.0027 (0.5s) menu=1 (+belief)
+  [menu] it   2 LB=-1080333.3333 UB=        Inf x=[1, 2]     menu cut 1/1 (V_menu=-2041.8418)
+  [menu] it   3 LB=-330875.5268 UB=        Inf x=[1]        menu cut 1/1 (V_menu=-2036.1397)
+  [menu] it   4 LB= -1291.8418 UB=        Inf x=[2]        menu cut 1/1 (V_menu=-1988.7738)
+  [loc]  it   5 LB= -1286.1397 UB=        Inf x=[1]        Ω_loc=  -351.0372 (5.2s) menu=2 (+belief)
+  [menu] it   6 LB= -1238.7738 UB=        Inf x=[2]        menu cut 1/2 (V_menu=-351.0678)
+Set parameter Username
+Set parameter LicenseID to value 2742039
+Academic license - for non-commercial use only - expires 2026-11-20
+    [반응 프리솔브] x=Int64[]: 활성 3 중 0 개를 0 으로 고정 (29.3s)
+Set parameter Username
+Set parameter LicenseID to value 2742039
+Academic license - for non-commercial use only - expires 2026-11-20
+Set parameter Username
+Set parameter LicenseID to value 2742039
+Academic license - for non-commercial use only - expires 2026-11-20
+Set parameter Username
+Set parameter LicenseID to value 2742039
+Academic license - for non-commercial use only - expires 2026-11-20
+Set parameter Username
+Set parameter LicenseID to value 2742039
+Academic license - for non-commercial use only - expires 2026-11-20
+Set parameter Username
+Set parameter LicenseID to value 2742039
+Academic license - for non-commercial use only - expires 2026-11-20
+Set parameter Username
+Set parameter LicenseID to value 2742039
+Academic license - for non-commercial use only - expires 2026-11-20
+Set parameter Username
+Set parameter LicenseID to value 2742039
+Academic license - for non-commercial use only - expires 2026-11-20
+Set parameter Username
+Set parameter LicenseID to value 2742039
+Academic license - for non-commercial use only - expires 2026-11-20
+Set parameter Username
+Set parameter LicenseID to value 2742039
+Academic license - for non-commercial use only - expires 2026-11-20
+Set parameter Username
+Set parameter LicenseID to value 2742039
+Academic license - for non-commercial use only - expires 2026-11-20
+Set parameter Username
+Set parameter LicenseID to value 2742039
+Academic license - for non-commercial use only - expires 2026-11-20
+Set parameter Username
+Set parameter LicenseID to value 2742039
+Academic license - for non-commercial use only - expires 2026-11-20
+
+******************************************************************************
+This program contains Ipopt, a library for large-scale nonlinear optimization.
+ Ipopt is released as open source code under the Eclipse Public License (EPL).
+         For more information visit https://github.com/coin-or/Ipopt
+******************************************************************************
+
+  [orcl] it   7 LB=     0.0000 UB=     0.0000 x=Int64[]    Ω=    -0.0002 (61.9s) menu=2
+RESULT pooled-store λ=2000 qB=750 d=15 m=5 nA=3 nB=2 seed=1 S=50 nh=5 status=Optimal x={} LB=0.000000 UB=0.000001 gap=1.00e-06 iters=8 global=1 local=2 menu=2 time=91.9
+
+--- pooled(거점별 300) d=15 A=3 B=2 (N_B≤2) seed=2 S=50: n_h=5, |X|=4, 용량 500, 출점비 750, f=0.10 p=0.30, θᵁ=50.0 λᵁ=2000.0, TL=3600s, 프리솔브 켬
+  [설정] 전역 oracle = α-B&B (nz_alpha_bnb_dr), worker 12, gap 1e-03, 이어 풀기 켬, bnb_kw = (ipopt_time = 120.0,)
+  [설정] oracle 시간: 남은 시간 전체 (끊지 않음), 목표값 조기 종료 켬, local cut 켬
+  [loc]  it   1 LB=-10000000.0000 UB=        Inf x=Int64[]    Ω_loc=    -0.0028 (0.5s) menu=1 (+belief)
+  [menu] it   2 LB=-973249.9994 UB=        Inf x=[1, 2]     menu cut 1/1 (V_menu=-4422.6540)
+  [menu] it   3 LB=-309416.6667 UB=        Inf x=[1]        menu cut 1/1 (V_menu=-2969.0253)
+  [menu] it   4 LB=-248501.5622 UB=        Inf x=[2]        menu cut 1/1 (V_menu=-3852.8819)
+  [loc]  it   5 LB= -3102.8819 UB=        Inf x=[2]        Ω_loc= -1193.4542 (1.4s) menu=2 (+belief)
+  [menu] it   6 LB= -2922.6540 UB=        Inf x=[1, 2]     menu cut 1/2 (V_menu=-1955.2176)
+  [menu] it   7 LB= -2219.0253 UB=        Inf x=[1]        menu cut 1/2 (V_menu=-1483.5302)
+  [loc]  it   8 LB=  -733.5302 UB=        Inf x=[1]        Ω_loc= -1081.8697 (1.0s) menu=3 (+belief)
+  [loc]  it   9 LB=  -455.2176 UB=        Inf x=[1, 2]     Ω_loc= -1714.8041 (2.3s) menu=4 (+belief)
+    [oracle gap] 9.3e-04 (목적값 -443.45 가 |V| 1193.45 보다 작아 조임)
+    [반응 프리솔브] x=[2]: 활성 4 중 0 개를 0 으로 고정 (114.0s)
+  [orcl] it  10 LB=  -443.4500 UB=  -171.3259 x=[2]        Ω= -1187.8195 (327.8s) menu=5 (+belief, LP@x̄=-1186.0000, gap -1.8e+00)
+  [menu] it  11 LB=  -437.8195 UB=  -171.3259 x=[2]        menu cut 1/5 (V_menu=-1186.0000)

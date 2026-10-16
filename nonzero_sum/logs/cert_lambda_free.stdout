@@ -1,0 +1,18 @@
+Set parameter Username
+Set parameter LicenseID to value 2742039
+Academic license - for non-commercial use only - expires 2026-11-20
+ERROR: LoadError: cannot document the following expression:
+
+"α 고정 recourse: Q_s(α) = max cᵀy, φ_s(α) = max ℓᵀy s.t. cᵀy ≥ Q_s (pessimistic)"
+
+Stacktrace:
+ [1] error(::String, ::String)
+   @ Base .\error.jl:44
+ [2] top-level scope
+   @ C:\Users\user\robust_bilevel_network_games\nonzero_sum\nz_exact_eval.jl:1
+ [3] include(fname::String)
+   @ Main .\sysimg.jl:38
+ [4] top-level scope
+   @ C:\Users\user\robust_bilevel_network_games\nonzero_sum\cert_lambda_free.jl:24
+in expression starting at C:\Users\user\robust_bilevel_network_games\nonzero_sum\nz_exact_eval.jl:1
+in expression starting at C:\Users\user\robust_bilevel_network_games\nonzero_sum\cert_lambda_free.jl:24
