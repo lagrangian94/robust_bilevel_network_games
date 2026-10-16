@@ -2,7 +2,8 @@
 run_loc_base_scaling.jl — 기본 인스턴스 (SGB128 Goyal 기본 사례 + 예약, quota 150) 에서 시나리오 수 S 를 늘리며 방법 비교.
 
 방법 (원고 6.1 Algorithms)
-  E    : 모든 x 를 KKT 독립 평가 (big-M·재정식화 없음). x 하나라도 시간 제한이면 미해결.
+  E    : 모든 x 를 KKT 독립 평가 (big-M·재정식화 없음). x 마다 MIPGap = LB_E_GAP (기본 = LB_OGAP), 전체 gap ≤ LB_TOL 이면 Optimal.
+         x 하나라도 시간 제한이면 미해결. (2026-10-16 부터. 그 전에는 x 마다 MIPGap 1e-6)
   SBG  : 표준 Benders, local (OptimalityTarget=1) cut 먼저, 위반 cut 이 없을 때만 Gurobi 전역 Ω (남은 시간 전체)
   SBA  : 같은 구조, 전역은 α-B&B (남은 시간 전체). MW 는 α-B&B 의 restricted cut 에만 (SB-G 전역 cut, local cut 은 MW 없음)
   ALG, ALGL : 2026-10-12 부터 전역 α-B&B 에 남은 시간 전체 (oracle_remaining). 위반 값을 찾으면 목표값 조기 종료로 바로 돌아오므로
@@ -21,7 +22,7 @@ run_loc_base_scaling.jl — 기본 인스턴스 (SGB128 Goyal 기본 사례 + �
 환경변수
   LB_S = "3,20,50,200"   LB_METHODS = "E,SBG,SBA,ALG"  (+ ALGG, SBA0, ALG0)   LB_EPS = 0.3   LB_BETA = 0.4   LB_DELTA = 0.1   LB_QUOTA = 150
   LB_TL = 3600 (방법당 전체)   LB_E_TL = 300 (E 의 x 하나당)   LB_E_FORM = reduced | full
-  LB_TOL = 5e-3 (Benders 상대 허용오차, zero-sum 과 같음)   LB_OGAP = 1e-3 (전역 oracle 목표 gap)   LB_IPOPT = 120 (α-B&B Ipopt 1 회 시간)
+  LB_TOL = 5e-3 (모든 방법의 상대 허용오차, zero-sum 과 같음)   LB_OGAP = 1e-3 (전역 oracle 목표 gap)   LB_E_GAP = LB_OGAP (E 의 x 별 MIPGap)   LB_IPOPT = 120 (α-B&B Ipopt 1 회 시간)
   LB_THETA = circuit | res | 숫자 (θᵁ)   LB_ORACLE_TIME = 600   LB_BOOST = 2400   LB_LOCAL_TIME = 60   LB_WORKERS = 12   NZ_SEED = 1
 실행: julia -t 14,1 nonzero_sum/run_loc_base_scaling.jl
 """
@@ -48,6 +49,9 @@ nw = parse(Int, envf("LB_WORKERS", "12"))
 Threads.nthreads() >= nw + 2 || error("α-B&B: Julia 스레드 $(Threads.nthreads()) < LB_WORKERS+2 = $(nw + 2) (julia -t $(nw + 2),1)")
 # 허용오차: zero-sum 실험과 같은 0.5% (2026-10-10 결정). α-B&B 목표 gap 은 그보다 작게 (LB_OGAP).
 tol_b = parse(Float64, envf("LB_TOL", "5e-3")); ogap = parse(Float64, envf("LB_OGAP", "1e-3"))
+# E 도 같은 기준 (2026-10-16 사용자 결정): x 마다 KKT MIP 를 oracle 과 같은 목표 gap (LB_E_GAP, 기본 = LB_OGAP) 으로 풀고,
+# 전체 gap (min_x (qx + 값) ~ min_x (qx + 상한)) 이 tol_b 이하일 때만 Optimal. 이전에는 x 마다 MIPGap 1e-6 이었다.
+egap = parse(Float64, envf("LB_E_GAP", string(ogap)))
 common = (optimizer=GRB, tol=tol_b, oracle_gap=ogap, nworkers=nw, time_limit=TL, verbose=true,
           # Ipopt 1 회 시간: zero-sum 과 같은 120 s. LB_BNB_KW = "(fwd=false,)" 처럼 주면 α-B&B 인자를 덮어씀 (ablation 용, 기본은 비움)
           bnb_kw=merge((ipopt_time=parse(Float64, envf("LB_IPOPT", "120")),), eval(Meta.parse(envf("LB_BNB_KW", "NamedTuple()")))),
@@ -68,8 +72,8 @@ all_x(nd) = [Float64.(collect(bits)) for bits in Iterators.product(fill(0:1, nd.
 xstr(x) = "{" * join(findall(x .> 0.5), ",") * "}"
 
 println("="^100)
-@printf("기본 인스턴스 S 스케일링: SGB128 pair quota=%g ε̂=ε̃=%.2f β=%.2f δ=%s seed=%d | TL=%.0fs E_TL/x=%.0fs E=%s workers=%d θᵁ=%.4f (%s) tol=%.0e ogap=%.0e\n",
-        quota, ε, β, string(δ), seed, TL, E_TL, string(kkt), nw, mk(3).thetaU, envf("LB_THETA", "circuit"), tol_b, ogap)
+@printf("기본 인스턴스 S 스케일링: SGB128 pair quota=%g ε̂=ε̃=%.2f β=%.2f δ=%s seed=%d | TL=%.0fs E_TL/x=%.0fs E=%s workers=%d θᵁ=%.4f (%s) tol=%.0e ogap=%.0e egap=%.0e\n",
+        quota, ε, β, string(δ), seed, TL, E_TL, string(kkt), nw, mk(3).thetaU, envf("LB_THETA", "circuit"), tol_b, ogap, egap)
 println("="^100); flush(stdout)
 
 given_up = Set{String}()
@@ -82,21 +86,28 @@ for S in Ss
         end
         t0 = time()
         if meth == "E"
-            best = (Inf, Float64[]); solved = true
+            # V*(x) ∈ [값, 상한] (KKT MIP 는 max). 리더는 최소화 → 전체 LB = min_x (qx + 값), UB = min_x (qx + 상한), 해는 UB 를 주는 x
+            lo = Inf; best = (Inf, Float64[]); solved = true
             for x in all_x(nd)
-                r = try kkt(nd, x; optimizer=GRB, time_limit=E_TL) catch e; nothing end
+                r = try kkt(nd, x; optimizer=GRB, time_limit=E_TL, gap=egap) catch e; nothing end
                 if r === nothing || r[:status] != MOI.OPTIMAL
                     solved = false
                     @printf("  E: x=%s 에서 %s (%.0fs)\n", xstr(x), r === nothing ? "시간 제한 (incumbent 없음)" :
                             string(r[:status]), time() - t0)
                     break
                 end
-                v = dot(nd.qx, x) + r[:value]; v < best[1] && (best = (v, x))
+                lo = min(lo, dot(nd.qx, x) + r[:value])
+                u = dot(nd.qx, x) + r[:bound]; u < best[1] && (best = (u, x))
                 time() - t0 > TL && (solved = false; println("  E: 전체 TL 초과"); break)
             end
+            gapE = solved ? abs(best[1] - lo) / max(1.0, abs(best[1])) : NaN
+            if solved && gapE > tol_b
+                solved = false
+                @printf("  E: 모든 x 가 목표 gap %.0e 로 풀렸지만 전체 gap %.2e > %.0e (LB_E_GAP 을 줄일 것)\n", egap, gapE, tol_b)
+            end
             solved || push!(given_up, meth)
-            @printf("RESULT S=%d method=E status=%s x=%s value=%.6f time=%.1f\n", S, solved ? "Optimal" : "Unsolved",
-                    solved ? xstr(best[2]) : "-", solved ? best[1] : NaN, time() - t0)
+            @printf("RESULT S=%d method=E status=%s x=%s LB=%.6f UB=%.6f gap=%.2e egap=%.0e time=%.1f\n", S, solved ? "Optimal" : "Unsolved",
+                    solved ? xstr(best[2]) : "-", solved ? lo : NaN, solved ? best[1] : NaN, gapE, egap, time() - t0)
         else
             meth in ("ALG", "ALGD", "ALG0", "ALGG", "ALGL", "SBA", "SBAD", "SBA0", "SBG") || error("알 수 없는 방법: $meth")
             bnb = meth in ("ALG0", "SBA0") ? :legacy : :dr           # α-B&B 구현 (oracle = :alpha_bnb 일 때만 쓰임)
