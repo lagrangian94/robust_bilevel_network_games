@@ -76,6 +76,14 @@ function _t0_at(omp, t0, x̄)
     return v
 end
 
+"""oracle 의 목표 상대 gap (2026-10-16). oracle (α-B&B) 은 자기 값 |V(x̄)| 기준으로, Benders 는 전체 목적값 |q_xᵀx + V| 기준으로 상대 gap 을 잰다.
+출점비와 V 가 상쇄해 전체 목적값이 0 근처면 (|V| ≫ |LB|) oracle 이 Benders 에 필요한 것보다 거칠게 멈추고 같은 결과를 되풀이한다
+(pooled |A|=4 S=10 seed 3: |V| ≈ 386, |LB| ≈ 11 → oracle 0.1% = 0.39, Benders 0.5% = 0.055 → 반복 한도, 문서 §10.23).
+oracle 의 절대 오차를 Benders 허용오차의 절반 (0.5·tol·max(1,|LB|)) 이하로: gap = min(oracle_gap, 0.5·tol·max(1,|LB|) / max(1,|vest|)).
+vest 는 x̄ 에서의 V 추정 (마스터의 t₀ 등). 보통은 oracle_gap 그대로."""
+_oracle_gap_eff(oracle_gap, tol, LB, vest) =
+    min(oracle_gap, 0.5 * tol * max(1.0, abs(LB)) / max(1.0, isfinite(vest) ? abs(vest) : 1.0))
+
 "cut 기록 (검증용): kind = :restricted (α 고정 LP) | :omega (Gurobi Ω 해) | :belief (menu belief LP), mw = MW 강화 여부"
 _log_cut!(cuts, kind, iter, x̄, cut, mw) =
     push!(cuts, (kind=kind, iter=iter, x=copy(x̄), intercept=cut[:intercept], slope=copy(cut[:slope]), mw=mw))
@@ -310,7 +318,8 @@ function nz_standard_benders(nd::NZData; optimizer, max_iter=200, tol=1e-4, orac
             lim = _remaining(wall, time_limit, lim)
         end
         ncalls += 1
-        t_o = @elapsed ((zinc, zbd, src) = _nz_oracle!(O, Fx, nd, x̄; oracle=oracle, time_limit=lim, gap=oracle_gap,
+        gap_o = _oracle_gap_eff(oracle_gap, tol, LB, _t0_at(omp, t0, x̄))
+        t_o = @elapsed ((zinc, zbd, src) = _nz_oracle!(O, Fx, nd, x̄; oracle=oracle, time_limit=lim, gap=gap_o,
                                                        nworkers=nworkers, bnb=bnb, bnb_kw=bnb_kw, cache=bnb_cache))
         t_o < 0.9 * lim && delete!(tl, x̄)           # 시간 제한에 걸린 호출만 stall 판정에 셈
         if oracle == :alpha_bnb                     # src = α 고정 LP → MW 가능
@@ -448,7 +457,10 @@ function nz_belief_menu_benders(nd::NZData; optimizer, lp_optimizer=optimizer, c
         #   (출점비 305) → oracle 은 상한 ≤ target 으로 멈추는데 gap 은 0.53% > tol 이고 새 cut 도 없어 같은 x̄ 를 시간 제한까지 반복.
         #   oracle 상한 zbd ≤ t₀ + δ 이면 UB = q_xᵀx̄ + zbd ≤ LB + δ, |UB| ≥ |LB| − δ 이므로 δ = 0.99·tol·|LB| / (1 + tol) 이면 δ ≤ tol·|UB|.
         target = target_stop ? t0v + 0.99 * tol * max(1.0, abs(LB)) / (1 + tol) : nothing
-        t_o = @elapsed ((zinc, zbd, src) = _nz_oracle!(O, Fx, nd, x̄; oracle=oracle, time_limit=lim, gap=oracle_gap,
+        gap_o = _oracle_gap_eff(oracle_gap, tol, LB, max(abs(t0v), isfinite(V_menu) ? abs(V_menu) : 0.0))
+        gap_o < oracle_gap && verbose && @printf("    [oracle gap] %.1e (목적값 %.2f 가 |V| %.2f 보다 작아 조임)\n", gap_o, LB,
+                                                 max(abs(t0v), isfinite(V_menu) ? abs(V_menu) : 0.0))
+        t_o = @elapsed ((zinc, zbd, src) = _nz_oracle!(O, Fx, nd, x̄; oracle=oracle, time_limit=lim, gap=gap_o,
                                                        nworkers=nworkers, target=target, bnb=bnb, bnb_kw=bnb_kw, cache=bnb_cache))
         # 시간 제한에 걸린 호출만 stall 판정에 셈. 목표값 조기 종료 (target_stop) 로 끝난 호출은 같은 x̄ 를 다시 불러도
         # 정상이다 (t₀ 가 올라간 뒤 다시 확인하는 것). 이전에는 같은 x̄ 세 번째 호출에서 무조건 :Stalled.
