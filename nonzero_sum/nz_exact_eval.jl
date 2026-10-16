@@ -1,11 +1,10 @@
-"""
-nz_exact_eval.jl — λ·θ 와 무관한 정확한 평가 (witness 값). lab_lambda_certify.jl 의 같은 이름 함수를 옮긴 것 (2026-10-17).
-  nz_recourse_values(nd, x̄, α) : α 고정 recourse 값 Q_s, pessimistic φ_s
-  nz_exact_value(nd, x̄, α)     : α 가 어떤 belief 에서 follower 최적일 때 리더 평가의 최댓값 (LP, 아니면 −Inf) ≤ V*(x̄)
-  exact_lb(nd, x̄, α°)          : incumbent α° 와 그 둘레의 정확히 최적인 반응들 (꼭짓점, 최적면 사영) 중 최댓값 ≤ V*(x̄)
-주의: lab_lambda_certify.jl 은 아직 자기 안의 복사본을 쓴다 (돌고 있는 큐가 그 파일을 쓰므로 큐가 끝난 뒤 이 파일을 include 하도록 정리).
-GRB1() (스레드 1, 조용히) 를 부르는 쪽에서 정의해야 한다.
-"""
+# nz_exact_eval.jl — λ·θ 와 무관한 정확한 평가 (witness 값). lab_lambda_certify.jl 의 같은 이름 함수를 옮긴 것 (2026-10-17).
+#   nz_recourse_values(nd, x̄, α) : α 고정 recourse 값 Q_s, pessimistic φ_s
+#   nz_exact_value(nd, x̄, α)     : α 가 어떤 belief 에서 follower 최적일 때 리더 평가의 최댓값 (LP, 아니면 −Inf) ≤ V*(x̄)
+#   exact_lb(nd, x̄, α°)          : incumbent α° 와 그 둘레의 정확히 최적인 반응들 (꼭짓점, 최적면 사영) 중 최댓값 ≤ V*(x̄)
+# 주의: lab_lambda_certify.jl 은 아직 자기 안의 복사본을 쓴다 (돌고 있는 큐가 그 파일을 쓰므로 큐가 끝난 뒤 이 파일을 include 하도록 정리).
+# GRB1() (스레드 1, 조용히) 를 부르는 쪽에서 정의해야 한다.
+# (2026-10-17: 머리말을 docstring 으로 썼다가 바로 뒤 함수 docstring 과 겹쳐 "cannot document" 오류 → 주석으로 바꿈)
 "α 고정 recourse: Q_s(α) = max cᵀy, φ_s(α) = max ℓᵀy s.t. cᵀy ≥ Q_s (pessimistic)"
 function nz_recourse_values(nd::NZData, x̄, α)
     S, m, ny = nd.S, nz_m(nd), nz_ny(nd)
