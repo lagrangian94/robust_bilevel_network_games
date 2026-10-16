@@ -1,0 +1,10 @@
+lab_lambda_certify: pooled(store) d=25 A=2 B=3 (N_B≤3) 출점비 750 seed=1 S=10 n_h=5 |X|=8 θ̄=50.0 λ0=2000 허용오차 1e-03
+  x=Int64[]   λ=   2000  B&B [-0.0000, 0.0000] Opt 16s | LB_exact -0.0000 (incumbent) | UB − LB_exact = 1.000e-06 → 인증
+  x=[1]       λ=   2000  B&B [-2831.1668, -2831.1638] Opt 5s | LB_exact -2831.1666 (꼭짓점) | UB − LB_exact = 9.854e-07 → 인증
+  x=[2]       λ=   2000  B&B [-3248.4169, -3248.4134] Opt 4s | LB_exact -3248.4166 (꼭짓점) | UB − LB_exact = 9.881e-07 → 인증
+  x=[1, 2]    λ=   2000  B&B [-4642.8120, -4642.2454] Opt 12s | LB_exact -4642.2500 (최적면 사영) | UB − LB_exact = 9.928e-07 → 인증
+  x=[3]       λ=   2000  B&B [-1499.9985, -1499.9985] Opt 5s | LB_exact -1500.0000 (incumbent) | UB − LB_exact = 9.826e-07 → 인증
+  x=[1, 3]    λ=   2000  B&B [-4331.1623, -4331.1623] Opt 13s | LB_exact -4331.1666 (incumbent) | UB − LB_exact = 9.921e-07 → 인증
+  x=[2, 3]    λ=   2000  B&B [-4393.8289, -4393.8289] Opt 15s | LB_exact -4393.8333 (incumbent) | UB − LB_exact = 9.963e-07 → 인증
+  x=[1, 2, 3] λ=   2000  B&B [-5735.7520, -5734.5776] Opt 68s | LB_exact -5734.5833 (최적면 사영) | UB − LB_exact = 9.880e-07 → 인증
+RESULT 인증된 λᵁ = 2000 (모든 x 에서 UB − LB_exact ≤ 1e-03 상대)

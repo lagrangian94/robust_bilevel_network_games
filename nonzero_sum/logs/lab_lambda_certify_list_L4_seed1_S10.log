@@ -1,0 +1,8 @@
+lab_lambda_certify: pooled(store) d=20 A=3 B=2 (N_B≤2) 출점비 750 seed=1 S=10 n_h=5 |X|=4 θ̄=50.0 λ0=2000 허용오차 1e-03
+  x=Int64[]   λ=   2000  B&B [-0.0000, 0.0000] Opt 19s | LB_exact 0.0000 (꼭짓점) | UB − LB_exact = -3.138e-06 → 인증
+  x=[1]       λ=   2000  B&B [-1500.0000, -1499.8253] Opt 66s | LB_exact -1500.0000 (꼭짓점) | UB − LB_exact = 1.164e-04 → 인증
+  x=[2]       λ=   2000  B&B [-1500.0000, -1499.7562] Opt 63s | LB_exact -1500.0000 (incumbent) | UB − LB_exact = 1.625e-04 → 인증
+  x=[1, 2]    λ=   2000  B&B [-1741.6879, -1705.7150] TL 1212s | LB_exact -1741.6669 (최적면 사영) | UB − LB_exact = 2.064e-02 → 미종료
+ERROR: LoadError: B&B 가 시간 안에 안 끝나 판정 불가 (x=[1, 2], λ=2000.0) — LC_BNB_TL 을 늘릴 것
+ [1] error(s::String)
+   @ Base .\error.jl:35
