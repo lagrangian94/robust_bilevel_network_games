@@ -1,4 +1,4 @@
-# 남은 실험 계획 (2026-10-17 11:10 일시 정지 시점)
+# 남은 실험 계획 (2026-10-17 11:20 일시 정지 시점)
 
 비제로섬 입지 (retailer + 거점별 예약) 본 실험. 계획 전체와 결정 경위는 `alpha_bnb_nonzero_analysis.md` §10.24~10.25, 메모리 `nz_pooled_retailer`.
 공통: Algorithm 2 (ALGL), 1 시간, 허용오차 0.5%, λᵁ = 2,000, 시드 1~10, ε̂ = ε̃ = 0.3, δ = 0.1, β = 0.4. 규칙: 어떤 S 에서 Optimal < 5/10 이면 그 설정의 더 큰 S 는 안 돌림.
@@ -8,7 +8,7 @@
 | 설정 | d | \|A\| / B | S=10 | S=20 | S=50 |
 |---|---|---|---|---|---|
 | L1 | 15 | 2 / 3 | 10/10 | 10/10 | 9/10 |
-| L2 | 15 | 3 / 2 | 10/10 | 10/10 | **7/10 까지 (seed 1~7)**, 그중 seed 5 TimeLimit |
+| L2 | 15 | 3 / 2 | 10/10 | 10/10 | **seed 1~6 까지** (5 Optimal, seed 5 TimeLimit). seed 7 은 풀던 중 사용자가 다른 세션에서 종료 |
 | L3 | 20 | 2 / 3 | 10/10 | 10/10 | — |
 | L4 | 20 | 3 / 2 | 10/10 | 10/10 | — |
 | L5 | 25 | 2 / 3 | 10/10 | 10/10 | 10/10 |
@@ -20,7 +20,7 @@
 
 | 순서 | 작업 | 로그 | 예상 |
 |---|---|---|---|
-| 1 | **L2 S=50 seed 8~10** (방법 (a): 같은 로그에 이어 붙임) | `main_list_L2_d15_A3B2_S50.log` | 1~3 h |
+| 1 | **L2 S=50 seed 7~10** (방법 (a): 같은 로그에 이어 붙임) | `main_list_L2_d15_A3B2_S50.log` | 1~3 h |
 | 2 | L3 S=50 | `main_list_L3_d20_A2B3_S50.log` | 약 2 h |
 | 3 | L4 S=50 | `main_list_L4_d20_A3B2_S50.log` | 약 4.5 h |
 | 4 | 보충 \|A\|=3 S=50 | `main_pooled_store_A3_d16_S50.log` | 6~10 h |
@@ -30,11 +30,11 @@
 
 ### 실행 방법
 
-1 (seed 8~10 을 같은 로그에 이어 붙이기 — RESULT 가 10 줄이 되어야 큐가 이 로그를 건너뛴다):
+1 (seed 7~10 을 같은 로그에 이어 붙이기 — RESULT 가 10 줄이 되어야 큐가 이 로그를 건너뛴다):
 
 ```bash
 cd /c/Users/user/robust_bilevel_network_games
-PP_NLOC=15 PP_NA=3 PP_NB=2 PP_NBMAX=2 PP_QB=750 PP_LAMBDA=2000 PP_S=50 PP_SEEDS="8,9,10" PP_TL=3600 PP_WORKERS=12 \
+PP_NLOC=15 PP_NA=3 PP_NB=2 PP_NBMAX=2 PP_QB=750 PP_LAMBDA=2000 PP_S=50 PP_SEEDS="7,8,9,10" PP_TL=3600 PP_WORKERS=12 \
   julia -t 14,1 nonzero_sum/pilot_pooled_store.jl >> nonzero_sum/logs/main_list_L2_d15_A3B2_S50.log 2>&1
 ```
 
