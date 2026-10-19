@@ -281,3 +281,71 @@ RESULT pooled-store λ=2000 qB=750 d=15 m=5 nA=3 nB=2 seed=9 S=50 nh=5 status=Op
   [menu] it   7 LB= -1135.6413 UB=        Inf x=[1]        menu cut 1/2 (V_menu=-1481.8586)
   [loc]  it   8 LB=  -731.8586 UB=        Inf x=[1]        Ω_loc=  -674.8039 (6.6s) menu=3 (+belief)
   [loc]  it   9 LB=   -74.0687 UB=        Inf x=[2]        Ω_loc=  -615.9539 (2.5s) menu=4 (+belief)
+Set parameter Username
+Set parameter LicenseID to value 2742039
+Academic license - for non-commercial use only - expires 2026-11-20
+
+--- pooled(거점별 300) d=15 A=3 B=2 (N_B≤2) seed=10 S=50: n_h=5, |X|=4, 용량 500, 출점비 750, f=0.10 p=0.30, θᵁ=50.0 λᵁ=2000.0, TL=3600s, 프리솔브 켬
+  [설정] 전역 oracle = α-B&B (nz_alpha_bnb_dr), worker 12, gap 1e-03, 이어 풀기 켬, bnb_kw = (ipopt_time = 120.0,)
+  [설정] oracle 시간: 남은 시간 전체 (끊지 않음), 목표값 조기 종료 켬, local cut 켬
+  [loc]  it   1 LB=-10000000.0000 UB=        Inf x=Int64[]    Ω_loc=    -0.0026 (0.5s) menu=1 (+belief)
+  [menu] it   2 LB=-764333.3323 UB=        Inf x=[1, 2]     menu cut 1/1 (V_menu=-5082.5405)
+  [menu] it   3 LB=-383166.6664 UB=        Inf x=[2]        menu cut 1/1 (V_menu=-3418.8179)
+  [menu] it   4 LB=-270411.3252 UB=        Inf x=[1]        menu cut 1/1 (V_menu=-1885.6413)
+  [loc]  it   5 LB= -3582.5405 UB=        Inf x=[1, 2]     Ω_loc= -1520.7374 (4.0s) menu=2 (+belief)
+  [menu] it   6 LB= -2668.8179 UB=        Inf x=[2]        menu cut 1/2 (V_menu=-824.0687)
+  [menu] it   7 LB= -1135.6413 UB=        Inf x=[1]        menu cut 1/2 (V_menu=-1481.8586)
+  [loc]  it   8 LB=  -731.8586 UB=        Inf x=[1]        Ω_loc=  -674.8039 (6.6s) menu=3 (+belief)
+  [loc]  it   9 LB=   -74.0687 UB=        Inf x=[2]        Ω_loc=  -615.9539 (2.6s) menu=4 (+belief)
+Set parameter Username
+Set parameter LicenseID to value 2742039
+Academic license - for non-commercial use only - expires 2026-11-20
+    [oracle gap] 3.4e-05 (목적값 -20.73 가 |V| 1520.73 보다 작아 조임)
+    [반응 프리솔브] x=[1, 2]: 활성 5 중 0 개를 0 으로 고정 (192.3s)
+Set parameter Username
+Set parameter LicenseID to value 2742039
+Academic license - for non-commercial use only - expires 2026-11-20
+Set parameter Username
+Set parameter LicenseID to value 2742039
+Academic license - for non-commercial use only - expires 2026-11-20
+Set parameter Username
+Set parameter LicenseID to value 2742039
+Academic license - for non-commercial use only - expires 2026-11-20
+Set parameter Username
+Set parameter LicenseID to value 2742039
+Academic license - for non-commercial use only - expires 2026-11-20
+Set parameter Username
+Set parameter LicenseID to value 2742039
+Academic license - for non-commercial use only - expires 2026-11-20
+Set parameter Username
+Set parameter LicenseID to value 2742039
+Academic license - for non-commercial use only - expires 2026-11-20
+Set parameter Username
+Set parameter LicenseID to value 2742039
+Academic license - for non-commercial use only - expires 2026-11-20
+Set parameter Username
+Set parameter LicenseID to value 2742039
+Academic license - for non-commercial use only - expires 2026-11-20
+Set parameter Username
+Set parameter LicenseID to value 2742039
+Academic license - for non-commercial use only - expires 2026-11-20
+Set parameter Username
+Set parameter LicenseID to value 2742039
+Academic license - for non-commercial use only - expires 2026-11-20
+Set parameter Username
+Set parameter LicenseID to value 2742039
+Academic license - for non-commercial use only - expires 2026-11-20
+Set parameter Username
+Set parameter LicenseID to value 2742039
+Academic license - for non-commercial use only - expires 2026-11-20
+
+******************************************************************************
+This program contains Ipopt, a library for large-scale nonlinear optimization.
+ Ipopt is released as open source code under the Eclipse Public License (EPL).
+         For more information visit https://github.com/coin-or/Ipopt
+******************************************************************************
+
+  [orcl] it  10 LB=   -20.7334 UB=  1162.3277 x=[1, 2]     Ω= -1512.5667 (383.7s) menu=5 (+belief, LP@x̄=-1512.5667, gap -4.6e-05)
+    [oracle gap] 2.1e-05 (목적값 -12.57 가 |V| 1512.57 보다 작아 조임)
+  [orcl] it  11 LB=   -12.5667 UB=  1041.2477 x=[1, 2]     Ω= -1512.5667 (3358.7s) menu=5
+RESULT pooled-store λ=2000 qB=750 d=15 m=5 nA=3 nB=2 seed=10 S=50 nh=5 status=TimeLimit x={1,2} LB=-12.566713 UB=1041.247671 gap=1.01e+00 iters=12 global=2 local=4 menu=5 time=3799.9
