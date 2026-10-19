@@ -52,3 +52,6 @@
 끝남: main_list_L4_d20_A3B2_S20.log  Optimal 10/10
 건너뜀 (이미 끝남): main_list_L5_d25_A2B3_S20.log
 === 중단 Sat Oct 17 11:23:54     2026: 사용자 요청(zonal_consistency 세션)으로 julia(L2 S=50, RESULT 6개)와 대기 스크립트를 모두 멈춤. 남은 큐는 다시 걸어야 함 ===
+=== 재개 Mon Oct 19 11:36:02     2026: L2 S=50 seed 7~10 을 같은 로그에 이어 붙임 ===
+=== 일시 정지 Mon Oct 19 13:47:54     2026: 사용자 요청 (다른 실험) — L2 S=50 seed 9 풀던 중 julia 와 재개 사슬을 멈춤. RESULT 9 줄 (seed 1~8). 다시 시작할 때 seed 9~10 을 같은 로그에 이어 붙일 것 ===
+=== 정정: 멈출 때 seed 9 는 이미 끝남 (Optimal 90.8 s). RESULT 9 줄 (seed 1~9), 멈춘 것은 seed 10. 다시 시작할 때 seed 10 만 같은 로그에 이어 붙일 것 ===
