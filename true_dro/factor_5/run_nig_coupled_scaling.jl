@@ -7,14 +7,15 @@ grid5x5·polska·sioux_falls 0.1, abilene·nobel_us 0.2, generate_oos_summary_ta
   naive   = Plain BD          (mini_benders = false, valid_inequality = :none)
   mb_only = Enhanced BD       (mini_benders = true,  valid_inequality = :none)
   full    = Enhanced BD + VIs (mini_benders = true,  valid_inequality = :mincut)
-S = 10 은 세 변형 모두, S = 20·50 은 full 만 (비교는 작은 S 에서, 확장성은 우리 방법으로).
+  menu    = Algorithm 2 의 zero-sum 판 (belief_menu_benders_optimize!: α-B&B oracle, local cut, belief menu + MW, min-cut VI) — 2026-10-20 추가
+S = 10 은 네 변형 모두, S = 20·50 은 menu 만 (비교는 작은 S 에서, 확장성은 우리 방법 = Algorithm 2 로).
 인스턴스 생성은 run_coupling_batch.jl 과 같음 (factor_additive k=5, seed 42, w = 0.5γ·median, v ~ Bernoulli(0.75), λᵁ = 10, γ = 2).
 boost (전역 subproblem) 는 true_dro_benders_optimize! 의 기본값 = zero-sum α-B&B (global_bilinear_solver.jl, worker NS_NWORKERS).
 시간 한도는 입지 실험과 같은 3,600 s (2026-10-20 사용자 결정, 기존 tab:computational 은 7,200 s).
 
 환경변수 (쉼표 구분)
   NS_NETS = grid5x5,polska,abilene,nobel_us,sioux_falls   NS_S = 10,20,50   NS_DELTA = 0.1   NS_BETA = 0.4
-  NS_VARIANTS_S10 = naive,mb_only,full   NS_VARIANTS_LARGE = full   NS_NWORKERS = 12   NS_WALL = 3600   NS_TOL = 5e-3
+  NS_VARIANTS_S10 = naive,mb_only,full,menu   NS_VARIANTS_LARGE = menu   NS_NWORKERS = 12   NS_WALL = 3600   NS_TOL = 5e-3
   NS_LOGROOT = logs/nig_coupled   (factor_5 기준)
 로그: <NS_LOGROOT>/S_<S>/<net>_<variant>.log, 끝까지 간 로그 (RESULT 줄) 는 건너뜀.
 실행: julia -t 14 run_nig_coupled_scaling.jl
@@ -32,6 +33,7 @@ include("../true_dro_build_isp_leader.jl")
 include("../true_dro_build_isp_follower.jl")
 include("../true_dro_benders.jl")
 include("../true_dro_mincut_vi.jl")
+include("../belief_menu_benders.jl")
 
 # ── tee helper (run_baseline_batch.jl 과 같음) ──
 function run_with_tee(f, log_path)
@@ -96,14 +98,15 @@ envlist(k, d) = [strip(s) for s in split(get(ENV, k, d), ",") if !isempty(strip(
 log_done(p) = isfile(p) && any(startswith(l, "RESULT ") for l in eachline(p))
 
 const NETWORK_EPS = Dict("grid5x5" => 0.1, "polska" => 0.1, "sioux_falls" => 0.1, "abilene" => 0.2, "nobel_us" => 0.2)
-const VARIANTS = Dict("naive" => (false, :none), "mb_only" => (true, :none), "full" => (true, :mincut))
+# (mini_benders, valid_inequality). menu 는 belief_menu_benders_optimize! (mini-Benders 대신 belief menu, min-cut VI)
+const VARIANTS = Dict("naive" => (false, :none), "mb_only" => (true, :none), "full" => (true, :mincut), "menu" => (false, :mincut))
 
 networks   = String.(envlist("NS_NETS", "grid5x5,polska,abilene,nobel_us,sioux_falls"))
 S_list     = parse.(Int, envlist("NS_S", "10,20,50"))
 δ          = parse(Float64, get(ENV, "NS_DELTA", "0.1"))
 β_risk     = parse(Float64, get(ENV, "NS_BETA", "0.4"))
-var_s10    = String.(envlist("NS_VARIANTS_S10", "naive,mb_only,full"))
-var_large  = String.(envlist("NS_VARIANTS_LARGE", "full"))
+var_s10    = String.(envlist("NS_VARIANTS_S10", "naive,mb_only,full,menu"))
+var_large  = String.(envlist("NS_VARIANTS_LARGE", "menu"))
 nworkers   = parse(Int, get(ENV, "NS_NWORKERS", "12"))
 wall       = parse(Float64, get(ENV, "NS_WALL", "3600"))
 tol        = parse(Float64, get(ENV, "NS_TOL", "5e-3"))
@@ -148,22 +151,30 @@ for S in S_list
             end
             run_with_tee(log_path) do
                 println("=" ^ 60)
-                @printf("%s — %s: S=%d, ε̂=ε̃=%.2f, β=%.2f, δ=%.3f (mini_benders=%s, VI=%s)\n",
-                        network_name, variant, S, eps, β_risk, δ, string(mb), string(vi))
+                @printf("%s — %s: S=%d, ε̂=ε̃=%.2f, β=%.2f, δ=%.3f (%s)\n", network_name, variant, S, eps, β_risk, δ,
+                        variant == "menu" ? "belief_menu_benders_optimize!, oracle α-B&B, local_first, menu MW, VI=mincut" :
+                                            "true_dro_benders_optimize!, mini_benders=$(mb), VI=$(vi), boost α-B&B")
                 @printf("arcs=%d, intd=%d, γ=%d, w=%.4f, started %s\n", num_arcs, length(intd_idx), γ, w, string(now()))
                 println("=" ^ 60)
                 flush(stdout)
                 td = make_true_dro_data(net, caps, q_hat, eps, eps;
                     w=w, lambda_U=λU, gamma=γ, beta=β_risk, v_scenarios=v_rand)
                 t0 = time()
-                res = true_dro_benders_optimize!(td;
-                    mip_optimizer=Gurobi.Optimizer, nlp_optimizer=Gurobi.Optimizer, lp_optimizer=Gurobi.Optimizer,
-                    max_iter=1000, tol=tol, verbose=true, sub_time_limit=15.0,
-                    mini_benders=mb, max_mini_benders_iter=5,
-                    strengthen_cuts=:mw, valid_inequality=vi,
-                    inexact=true, nonconvex_attr=("NonConvex" => 2),
-                    source_sink_cut=ss_cut, wall_time_limit=wall,
-                    boost_nworkers=nworkers, delta_couple=δ)
+                res = if variant == "menu"
+                    belief_menu_benders_optimize!(td;
+                        mip_optimizer=Gurobi.Optimizer, nlp_optimizer=Gurobi.Optimizer, lp_optimizer=Gurobi.Optimizer,
+                        nworkers=nworkers, max_iter=1000, tol=tol, verbose=true,
+                        valid_inequality=:mincut, source_sink_cut=ss_cut, wall_time_limit=wall, delta_couple=δ)
+                else
+                    true_dro_benders_optimize!(td;
+                        mip_optimizer=Gurobi.Optimizer, nlp_optimizer=Gurobi.Optimizer, lp_optimizer=Gurobi.Optimizer,
+                        max_iter=1000, tol=tol, verbose=true, sub_time_limit=15.0,
+                        mini_benders=mb, max_mini_benders_iter=5,
+                        strengthen_cuts=:mw, valid_inequality=vi,
+                        inexact=true, nonconvex_attr=("NonConvex" => 2),
+                        source_sink_cut=ss_cut, wall_time_limit=wall,
+                        boost_nworkers=nworkers, delta_couple=δ)
+                end
                 wt = time() - t0
                 xs = findall(round.(Int, res[:x]) .> 0)
                 @printf("\nResult (%s, S=%d): Z₀=%.6f, iters=%d, time=%.1fs\n", variant, S, res[:Z0], res[:iters], wt)

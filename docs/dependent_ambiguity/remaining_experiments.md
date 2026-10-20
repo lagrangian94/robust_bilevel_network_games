@@ -78,7 +78,7 @@ zonal_consistency 세션의 큐 (`exp2_chain.sh` → `exp2_rep.sh`, 대표일 �
 - 큐 스크립트는 쓰지 않는다 (그러면 3 까지 이어서 돌기 때문). 3 (|A|=4 S=50) 과 4 (λ 무관 인증) 는 사용자가 나중에.
 - 진행·종료 표시는 `logs/run_pooled_store_queue.out` 의 `=== ` 줄.
 - 그 뒤에 이어서 (2026-10-20 사용자 결정): **§6.2 네트워크 차단 계산 성능을 결합 집합으로 다시** — δ = 0.1, β = 0.4, ε̂ = ε̃ = ε*(네트워크) (grid·polska·sioux_falls 0.1, abilene·nobel_us 0.2), S = 10·20·50.
-  S = 10 은 세 변형 (Plain BD, Enhanced BD, Enhanced BD + VIs), S = 20·50 은 Enhanced BD + VIs 만. 시간 한도 3,600 s (입지 실험과 통일, 사용자 결정), 허용오차 0.5%. 전역 subproblem 은 zero-sum α-B&B (global_bilinear_solver.jl).
+  S = 10 은 네 변형 (Plain BD, Enhanced BD, Enhanced BD + VIs, Algorithm 2 의 zero-sum 판 = belief menu), S = 20·50 은 belief menu 만 (사용자 결정 2026-10-20). 시간 한도 3,600 s (입지 실험과 통일, 사용자 결정), 허용오차 0.5%. 전역 subproblem 은 zero-sum α-B&B (global_bilinear_solver.jl).
   스크립트 `true_dro/factor_5/run_nig_coupled_scaling.jl` (기존 스크립트는 그대로), 로그 `true_dro/factor_5/logs/nig_coupled/S_<S>/<net>_<variant>.log`.
   out-of-sample 은 이번에 안 함. 시작 조건: 보충 사슬·zonal 체인이 없고 python·julia 도 없을 때 (scratchpad `nig_after.sh`).
   참고: 기존 tab:computational 의 숫자는 지금 남은 로그 (true_dro/factor_5/logs/factor/...) 로 다시 계산하면 맞지 않는다 (예: Grid Plain BD 1,162 s vs 원고 924 s) — 더 이전 실행에서 만든 표로 보임. 이번 결과로 표를 새로 만든다.
