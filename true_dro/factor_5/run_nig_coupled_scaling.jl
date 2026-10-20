@@ -8,14 +8,14 @@ grid5x5·polska·sioux_falls 0.1, abilene·nobel_us 0.2, generate_oos_summary_ta
   mb_only = Enhanced BD       (mini_benders = true,  valid_inequality = :none)
   full    = Enhanced BD + VIs (mini_benders = true,  valid_inequality = :mincut)
   menu    = Algorithm 2 의 zero-sum 판 (belief_menu_benders_optimize!: α-B&B oracle, local cut, belief menu + MW, min-cut VI) — 2026-10-20 추가
-S = 10 은 네 변형 모두, S = 20·50 은 menu 만 (비교는 작은 S 에서, 확장성은 우리 방법 = Algorithm 2 로).
+기본은 menu 만 S = 10·20·50 (2026-10-20 사용자 결정: 벤치마크는 나중에). 벤치마크는 NS_VARIANTS_S10=naive,mb_only,full 로 따로.
 인스턴스 생성은 run_coupling_batch.jl 과 같음 (factor_additive k=5, seed 42, w = 0.5γ·median, v ~ Bernoulli(0.75), λᵁ = 10, γ = 2).
 boost (전역 subproblem) 는 true_dro_benders_optimize! 의 기본값 = zero-sum α-B&B (global_bilinear_solver.jl, worker NS_NWORKERS).
 시간 한도는 입지 실험과 같은 3,600 s (2026-10-20 사용자 결정, 기존 tab:computational 은 7,200 s).
 
 환경변수 (쉼표 구분)
   NS_NETS = grid5x5,polska,abilene,nobel_us,sioux_falls   NS_S = 10,20,50   NS_DELTA = 0.1   NS_BETA = 0.4
-  NS_VARIANTS_S10 = naive,mb_only,full,menu   NS_VARIANTS_LARGE = menu   NS_NWORKERS = 12   NS_WALL = 3600   NS_TOL = 5e-3
+  NS_VARIANTS_S10 = menu   NS_VARIANTS_LARGE = menu   NS_NWORKERS = 12   NS_WALL = 3600   NS_TOL = 5e-3
   NS_LOGROOT = logs/nig_coupled   (factor_5 기준)
 로그: <NS_LOGROOT>/S_<S>/<net>_<variant>.log, 끝까지 간 로그 (RESULT 줄) 는 건너뜀.
 실행: julia -t 14 run_nig_coupled_scaling.jl
@@ -105,7 +105,7 @@ networks   = String.(envlist("NS_NETS", "grid5x5,polska,abilene,nobel_us,sioux_f
 S_list     = parse.(Int, envlist("NS_S", "10,20,50"))
 δ          = parse(Float64, get(ENV, "NS_DELTA", "0.1"))
 β_risk     = parse(Float64, get(ENV, "NS_BETA", "0.4"))
-var_s10    = String.(envlist("NS_VARIANTS_S10", "naive,mb_only,full,menu"))
+var_s10    = String.(envlist("NS_VARIANTS_S10", "menu"))
 var_large  = String.(envlist("NS_VARIANTS_LARGE", "menu"))
 nworkers   = parse(Int, get(ENV, "NS_NWORKERS", "12"))
 wall       = parse(Float64, get(ENV, "NS_WALL", "3600"))
