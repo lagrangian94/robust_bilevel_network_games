@@ -69,3 +69,11 @@ julia -t 14,1 nonzero_sum/cert_lambda_free.jl >> nonzero_sum/logs/cert_lambda_fr
 | value of robustness (ε·δ 를 바꾼 실험), out-of-sample | 계산 성능 실험 뒤 |
 | 원고: §6.1.2 의 λ 서술을 λ 무관 인증 결과로, 계산 성능 표 (3 단계), 보충 §G·§H 결과 표, Algorithms 단락의 ε = 10⁻⁴ 문구 | 결과가 나온 뒤 |
 | `lab_lambda_certify.jl` 이 `nz_exact_eval.jl` 을 include 하도록 정리 (지금은 같은 함수 복사본) | 큐가 그 파일을 안 쓸 때 |
+
+## 4. 걸어 둔 순서 (2026-10-20 22:10)
+
+zonal_consistency 세션의 큐 (`exp2_chain.sh` → `exp2_rep.sh`, 대표일 시각별 실험) 가 끝난 뒤 자동으로 1 → 2 를 돈다 (scratchpad `after_zonal_chain.sh`, 세션이 끝나면 사라짐).
+- 시작 조건: zonal 체인 셸이 없고 python·julia 도 없는 상태가 2 분 간격으로 두 번 연속 (정상 종료든 중간 정지든).
+- 1 (|A|=3 S=50 seed 7~10) 은 로그의 RESULT 가 6 줄일 때만 이어 붙인다. 2 (|A|=4 S=20) 는 로그가 이미 있으면 덮어쓰지 않고 멈춘다.
+- 큐 스크립트는 쓰지 않는다 (그러면 3 까지 이어서 돌기 때문). 3 (|A|=4 S=50) 과 4 (λ 무관 인증) 는 사용자가 나중에.
+- 진행·종료 표시는 `logs/run_pooled_store_queue.out` 의 `=== ` 줄.
