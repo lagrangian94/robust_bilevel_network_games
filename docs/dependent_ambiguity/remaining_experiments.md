@@ -88,3 +88,4 @@ zonal_consistency 세션의 큐 (`exp2_chain.sh` → `exp2_rep.sh`, 대표일 �
   zero-sum: `true_dro/factor_5/demo_value_zs.jl` (Polska, S = 10, ε* = 0.1). 비제로섬: `nonzero_sum/demo_value_nz.jl` (SGB128 기본 사례, 거점별 한도 150, S = 10, ε = 0.3, λᵁ = 100 미인증 — 평가는 정확한 LP 라 무관).
   그림: `true_dro/factor_5/demo_value_plot.jl` → fig_tail.png (τ vs 실현 손실 95% 분위수), fig_mean.png. 결과 폴더 `.../logs/demo_value/<net>/`. 대기 스크립트 scratchpad `demo_after.sh`.
   첫 관문: 결합 효과가 0 인 인스턴스가 많았음 → x_<model>.txt 가 모델마다 다른지 먼저 확인 (같으면 네트워크·δ 를 바꿔야 함).
+- **2026-10-21 순서 변경 (사용자):** |A|=3 S=50 seed 9~10 (진행 중) → 발표용 예시 비제로섬 → §6.2 결합 집합 실험 → 발표용 예시 zero-sum → 보충 |A|=4 S=20 (맨 뒤). 대기 스크립트 scratchpad `order_chain.sh` (이전 after_zonal_chain·nig_after·demo_after 는 멈춤). |A|=4 S=50 과 λ 무관 인증은 여전히 나중에.
