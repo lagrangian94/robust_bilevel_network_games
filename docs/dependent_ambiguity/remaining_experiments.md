@@ -82,3 +82,9 @@ zonal_consistency 세션의 큐 (`exp2_chain.sh` → `exp2_rep.sh`, 대표일 �
   스크립트 `true_dro/factor_5/run_nig_coupled_scaling.jl` (기존 스크립트는 그대로), 로그 `true_dro/factor_5/logs/nig_coupled/S_<S>/<net>_<variant>.log`.
   out-of-sample 은 이번에 안 함. 시작 조건: 보충 사슬·zonal 체인이 없고 python·julia 도 없을 때 (scratchpad `nig_after.sh`).
   참고: 기존 tab:computational 의 숫자는 지금 남은 로그 (true_dro/factor_5/logs/factor/...) 로 다시 계산하면 맞지 않는다 (예: Grid Plain BD 1,162 s vs 원고 924 s) — 더 이전 실행에서 만든 표로 보임. 이번 결과로 표를 새로 만든다.
+- 그 뒤에 이어서 (2026-10-20 사용자 요청): **학회 발표용 예시 두 개** — 모델의 가치 (belief 모호성·결합을 무시하면 생기는 손해).
+  모델 4 종: Nominal / Belief-known (ε̃ = 0) / Product (결합 없음) / Coupled (δ = 0.05·0.1·0.2), 모두 우리 알고리즘 (belief menu) 으로 풂.
+  평가: 진실 p ~ Dir(5·S·q̂), belief p̃ = (1−τ)p + τu (d_TV ≤ τ), follower 는 p̃ 에 최적 반응, 실현 손실 = CVaR_β^p. τ = 0~0.4, 모델 공통 난수.
+  zero-sum: `true_dro/factor_5/demo_value_zs.jl` (Polska, S = 10, ε* = 0.1). 비제로섬: `nonzero_sum/demo_value_nz.jl` (SGB128 기본 사례, 거점별 한도 150, S = 10, ε = 0.3, λᵁ = 100 미인증 — 평가는 정확한 LP 라 무관).
+  그림: `true_dro/factor_5/demo_value_plot.jl` → fig_tail.png (τ vs 실현 손실 95% 분위수), fig_mean.png. 결과 폴더 `.../logs/demo_value/<net>/`. 대기 스크립트 scratchpad `demo_after.sh`.
+  첫 관문: 결합 효과가 0 인 인스턴스가 많았음 → x_<model>.txt 가 모델마다 다른지 먼저 확인 (같으면 네트워크·δ 를 바꿔야 함).

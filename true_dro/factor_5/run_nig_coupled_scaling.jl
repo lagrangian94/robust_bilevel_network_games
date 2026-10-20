@@ -1,4 +1,4 @@
-"""
+#=
 run_nig_coupled_scaling.jl — 원고 §6.2 (zero-sum 네트워크 차단) 계산 성능을 결합 ambiguity set D_δ 로 다시 (2026-10-20 사용자 결정).
 
 결정: δ = 0.1 (입지 실험과 같음), (β, ε) 는 한 조합으로 고정 — β = 0.4, ε̂ = ε̃ = ε*(네트워크) (out-of-sample 보정값:
@@ -19,7 +19,7 @@ boost (전역 subproblem) 는 true_dro_benders_optimize! 의 기본값 = zero-su
   NS_LOGROOT = logs/nig_coupled   (factor_5 기준)
 로그: <NS_LOGROOT>/S_<S>/<net>_<variant>.log, 끝까지 간 로그 (RESULT 줄) 는 건너뜀.
 실행: julia -t 14 run_nig_coupled_scaling.jl
-"""
+=#
 
 using JuMP, Gurobi, Printf, Dates, Serialization, LinearAlgebra, Random
 
