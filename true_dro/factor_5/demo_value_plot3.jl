@@ -7,7 +7,7 @@ demo_value_plot3.jl — 발표용 예시 그림, 원고 §6.2 OOS 그림 (fig:oo
   zero-sum  : true_dro/factor_5/plots/eps_0p1_beta_0p4/polska_factor_phaseAB.jls (원고 OOS, plot_phaseAB_3way.jl)
   비제로섬 : nonzero_sum/logs/demo_value/<DP_NZ_TAG>/eval_phaseab.csv (demo_value_nz.jl DN_STAGE=phaseab)
 결과: 각 데이터 폴더의 fig_*_oos_g<γ>.png, 그리고 γ·ζ 별 q95·평균 표 (stdout)
-환경변수: DP_NZ_TAG = sgb128_S10_eps0p20_q100_s3   DP_GAMMAS = 0.1,1.0
+환경변수: DP_NZ_TAG = sgb128_S10_eps0p20_q100_s3   DP_NZ_EPS = 0.2   DP_NZ_OURS = coupled_d0p1   DP_GAMMAS = 0.1,1.0
 실행: julia demo_value_plot3.jl
 =#
 using Plots, Printf, Statistics, Serialization
@@ -19,7 +19,6 @@ zsjls = joinpath(root, "true_dro", "factor_5", "plots", "eps_0p1_beta_0p4", "pol
 zsdir = joinpath(root, "true_dro", "factor_5", "logs", "demo_value", "polska")
 gammas = parse.(Float64, split(get(ENV, "DP_GAMMAS", "0.1,1.0"), ","))
 zetas = [0.0, 0.5, 1.0, 2.0, 5.0]
-labels = ["Nominal", "Partial DR (leader-side only)", "Ours (Full DR)"]
 colors = [:gray45, :steelblue, :darkorange]
 
 "상자 하나: 25~75% 상자, 5~95% 수염, 중앙값 선, 평균 ◆"
@@ -35,7 +34,7 @@ function box!(plt, pos, v; color, w=0.11)
 end
 
 "data[(γ, ζ)] = [3 개 해의 비용 벡터] 로 패널 하나"
-function panel(data, γ; title, ylabel)
+function panel(data, γ, labels; title, ylabel)
     plt = plot(; title=title, ylabel=ylabel, legend=:outertop, legendcolumns=3, size=(900, 480), left_margin=8Plots.mm,
                xticks=(1:length(zetas), ["Phase A\n(ζ = 0)"; ["ζ = $(z)" for z in zetas[2:end]]]), xlims=(0.4, length(zetas) + 0.6),
                bottom_margin=6Plots.mm)
@@ -48,7 +47,7 @@ function panel(data, γ; title, ylabel)
     return plt
 end
 
-function table(data, name)
+function table(data, name, labels)
     println("\n[$name] q95 / 평균 (" * join(labels, " | ") * ")")
     for γ in sort(unique(first.(keys(data)))), ζ in zetas
         v = data[(γ, ζ)]
@@ -64,9 +63,11 @@ for γ in keys(r), (ph, v) in r[γ]
     ζ = startswith(ph, "β") ? 0.0 : parse(Float64, split(ph, "=")[2])
     zs[(γ, ζ)] = [v["nominal"], v["single_l"], v["double"]]
 end
-table(zs, "zero-sum Polska, x: nominal $(d[:x_arcs][1]), partial $(d[:x_arcs][2]), ours $(d[:x_arcs][3])")
+# 우리 모형 = Full DR 해 x = {13, 34}: Coupled δ = 0.1 도 같은 결정 (demo_value_zs.jl, x_coupled_d0p1.txt)
+zs_labels = ["Nominal", "Partial DR (ε̃ = 0)", "Ours (ε = 0.1, δ = 0.1)"]
+table(zs, "zero-sum Polska, x: nominal $(d[:x_arcs][1]), partial $(d[:x_arcs][2]), ours $(d[:x_arcs][3])", zs_labels)
 for γ in gammas
-    plt = panel(zs, γ; title=@sprintf("Zero-sum (Polska, ε = 0.1, β = 0.4), Dirichlet γ = %.1f", γ),
+    plt = panel(zs, γ, zs_labels; title=@sprintf("Zero-sum (Polska, ε = 0.1, β = 0.4), Dirichlet γ = %.1f", γ),
                 ylabel="out-of-sample CVaR of max flow (lower is better)")
     f = joinpath(zsdir, @sprintf("fig_zs_oos_g%s.png", replace(string(γ), "." => "p"))); savefig(plt, f); println("saved $f")
 end
@@ -74,7 +75,9 @@ end
 # ---------------- 비제로섬 ----------------
 ls = readlines(joinpath(nzdir, "eval_phaseab.csv")); hdr = split(ls[1], ",")
 col(n) = findfirst(==(n), hdr)
-nzmodels = ["nominal", "partial", "product"]     # 이 인스턴스에서 product = coupled δ = 0.1 (같은 결정)
+nzeps = get(ENV, "DP_NZ_EPS", "0.2"); nzours = get(ENV, "DP_NZ_OURS", "coupled_d0p1")
+nzmodels = ["nominal", "partial", nzours]
+nz_labels = ["Nominal", "Partial DR (ε̃ = 0)", "Ours (ε = $nzeps, δ = " * replace(replace(nzours, "coupled_d" => ""), "p" => ".") * ")"]
 nz = Dict{Tuple{Float64,Float64},Vector{Vector{Float64}}}()
 xs_nz = Dict{String,String}()
 for l in ls[2:end]
@@ -84,9 +87,9 @@ for l in ls[2:end]
     v = get!(() -> [Float64[] for _ in nzmodels], nz, key)
     push!(v[findfirst(==(m), nzmodels)], parse(Float64, f[col("cost")])); xs_nz[m] = f[col("x")]
 end
-table(nz, "비제로섬 $nztag, x: " * join(["$m $(xs_nz[m])" for m in nzmodels], ", "))
+table(nz, "비제로섬 $nztag, x: " * join(["$m $(xs_nz[m])" for m in nzmodels], ", "), nz_labels)
 for γ in gammas
-    plt = panel(nz, γ; title=@sprintf("Non-zero-sum (location, ε = 0.2, β = 0.4), Dirichlet γ = %.1f", γ),
+    plt = panel(nz, γ, nz_labels; title=@sprintf("Non-zero-sum (location, ε = %s, β = 0.4), Dirichlet γ = %.1f", nzeps, γ),
                 ylabel="out-of-sample cost of B (lower is better)")
     f = joinpath(nzdir, @sprintf("fig_nz_oos_g%s.png", replace(string(γ), "." => "p"))); savefig(plt, f); println("saved $f")
 end
