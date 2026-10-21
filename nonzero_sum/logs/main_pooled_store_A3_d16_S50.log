@@ -220,3 +220,162 @@ RESULT pooled-store λ=2000 qB=500 d=16 m=6 nA=3 nB=3 seed=6 S=50 nh=6 status=Op
   [loc]  it  20 LB= -1558.5612 UB=        Inf x=[1, 2]     Ω_loc= -2140.8547 (6.7s) menu=6 (+belief)
   [loc]  it  21 LB= -1446.4975 UB=        Inf x=[2, 3]     Ω_loc= -2340.6771 (1.4s) menu=7 (+belief)
     [반응 프리솔브] x=[1, 3]: 활성 5 중 0 개를 0 으로 고정 (352.6s)
+Set parameter Username
+Set parameter LicenseID to value 2742039
+Academic license - for non-commercial use only - expires 2026-11-20
+
+--- pooled(거점별 300) d=16 A=3 B=3 (N_B≤3) seed=7 S=50: n_h=6, |X|=8, 용량 500, 출점비 500, f=0.10 p=0.30, θᵁ=50.0 λᵁ=2000.0, TL=3600s, 프리솔브 켬
+  [설정] 전역 oracle = α-B&B (nz_alpha_bnb_dr), worker 12, gap 1e-03, 이어 풀기 켬, bnb_kw = (ipopt_time = 120.0,)
+  [설정] oracle 시간: 남은 시간 전체 (끊지 않음), 목표값 조기 종료 켬, local cut 켬
+  [loc]  it   1 LB=-10000000.0000 UB=        Inf x=Int64[]    Ω_loc=    -0.0030 (1.2s) menu=1 (+belief)
+  [menu] it   2 LB=-2338000.0000 UB=        Inf x=[1, 2, 3]  menu cut 1/1 (V_menu=-6526.7382)
+  [menu] it   3 LB=-916000.0000 UB=        Inf x=[2]        menu cut 1/1 (V_menu=-4278.9593)
+  [menu] it   4 LB=-740628.6127 UB=        Inf x=[1]        menu cut 1/1 (V_menu=-5919.4007)
+  [menu] it   5 LB=-506000.0001 UB=        Inf x=[3]        menu cut 1/1 (V_menu=-5156.1865)
+  [menu] it   6 LB=-238403.5998 UB=        Inf x=[1, 2]     menu cut 1/1 (V_menu=-5242.8108)
+  [menu] it   7 LB=-212996.9603 UB=        Inf x=[2, 3]     menu cut 1/1 (V_menu=-7053.0874)
+  [menu] it   8 LB=-161020.8635 UB=        Inf x=[1, 3]     menu cut 1/1 (V_menu=-8099.0461)
+  [loc]  it   9 LB= -7099.0461 UB=        Inf x=[1, 3]     Ω_loc= -2340.9045 (6.5s) menu=2 (+belief)
+  [menu] it  10 LB= -6053.0874 UB=        Inf x=[2, 3]     menu cut 1/2 (V_menu=-2446.4975)
+  [menu] it  11 LB= -5419.4008 UB=        Inf x=[1]        menu cut 1/2 (V_menu=-3175.2979)
+  [menu] it  12 LB= -5026.7382 UB=        Inf x=[1, 2, 3]  menu cut 1/2 (V_menu=-2514.3164)
+  [menu] it  13 LB= -4656.1865 UB=        Inf x=[3]        menu cut 1/2 (V_menu=-3012.7361)
+  [menu] it  14 LB= -4242.8108 UB=        Inf x=[1, 2]     menu cut 1/2 (V_menu=-2558.5611)
+  [menu] it  15 LB= -3778.9593 UB=        Inf x=[2]        menu cut 1/2 (V_menu=-3123.9515)
+  [loc]  it  16 LB= -2675.2979 UB=        Inf x=[1]        Ω_loc= -1763.0710 (2.3s) menu=3 (+belief)
+  [menu] it  17 LB= -2623.9515 UB=        Inf x=[2]        menu cut 1/3 (V_menu=-2740.4028)
+  [loc]  it  18 LB= -2512.7361 UB=        Inf x=[3]        Ω_loc= -1500.0037 (1.6s) menu=4 (+belief)
+  [loc]  it  19 LB= -2240.4028 UB=        Inf x=[2]        Ω_loc= -1500.0036 (1.8s) menu=5 (+belief)
+  [loc]  it  20 LB= -1558.5612 UB=        Inf x=[1, 2]     Ω_loc= -2140.8547 (6.5s) menu=6 (+belief)
+  [loc]  it  21 LB= -1446.4975 UB=        Inf x=[2, 3]     Ω_loc= -2340.6771 (1.4s) menu=7 (+belief)
+Set parameter Username
+Set parameter LicenseID to value 2742039
+Academic license - for non-commercial use only - expires 2026-11-20
+    [반응 프리솔브] x=[1, 3]: 활성 5 중 0 개를 0 으로 고정 (270.6s)
+Set parameter Username
+Set parameter LicenseID to value 2742039
+Academic license - for non-commercial use only - expires 2026-11-20
+Set parameter Username
+Set parameter LicenseID to value 2742039
+Academic license - for non-commercial use only - expires 2026-11-20
+Set parameter Username
+Set parameter LicenseID to value 2742039
+Academic license - for non-commercial use only - expires 2026-11-20
+Set parameter Username
+Set parameter LicenseID to value 2742039
+Academic license - for non-commercial use only - expires 2026-11-20
+Set parameter Username
+Set parameter LicenseID to value 2742039
+Academic license - for non-commercial use only - expires 2026-11-20
+Set parameter Username
+Set parameter LicenseID to value 2742039
+Academic license - for non-commercial use only - expires 2026-11-20
+Set parameter Username
+Set parameter LicenseID to value 2742039
+Academic license - for non-commercial use only - expires 2026-11-20
+Set parameter Username
+Set parameter LicenseID to value 2742039
+Academic license - for non-commercial use only - expires 2026-11-20
+Set parameter Username
+Set parameter LicenseID to value 2742039
+Academic license - for non-commercial use only - expires 2026-11-20
+Set parameter Username
+Set parameter LicenseID to value 2742039
+Academic license - for non-commercial use only - expires 2026-11-20
+Set parameter Username
+Set parameter LicenseID to value 2742039
+Academic license - for non-commercial use only - expires 2026-11-20
+Set parameter Username
+Set parameter LicenseID to value 2742039
+Academic license - for non-commercial use only - expires 2026-11-20
+
+******************************************************************************
+This program contains Ipopt, a library for large-scale nonlinear optimization.
+ Ipopt is released as open source code under the Eclipse Public License (EPL).
+         For more information visit https://github.com/coin-or/Ipopt
+******************************************************************************
+
+  [orcl] it  22 LB= -1340.9001 UB= -1032.1944 x=[1, 3]     Ω= -2340.9068 (3964.9s) menu=7
+RESULT pooled-store λ=2000 qB=500 d=16 m=6 nA=3 nB=3 seed=7 S=50 nh=6 status=TimeLimit x={1,3} LB=-1340.900092 UB=-1032.194419 gap=2.99e-01 iters=23 global=1 local=7 menu=7 time=4054.0
+
+--- pooled(거점별 300) d=16 A=3 B=3 (N_B≤3) seed=8 S=50: n_h=6, |X|=8, 용량 500, 출점비 500, f=0.10 p=0.30, θᵁ=50.0 λᵁ=2000.0, TL=3600s, 프리솔브 켬
+  [설정] 전역 oracle = α-B&B (nz_alpha_bnb_dr), worker 12, gap 1e-03, 이어 풀기 켬, bnb_kw = (ipopt_time = 120.0,)
+  [설정] oracle 시간: 남은 시간 전체 (끊지 않음), 목표값 조기 종료 켬, local cut 켬
+  [loc]  it   1 LB=-10000000.0000 UB=        Inf x=Int64[]    Ω_loc=    -0.0032 (0.5s) menu=1 (+belief)
+  [menu] it   2 LB=-1247666.6670 UB=        Inf x=[1, 2, 3]  menu cut 1/1 (V_menu=-8616.9652)
+  [menu] it   3 LB=-615666.6669 UB=        Inf x=[2, 3]     menu cut 1/1 (V_menu=-4757.7079)
+  [menu] it   4 LB=-555211.8825 UB=        Inf x=[1]        menu cut 1/1 (V_menu=-5589.5014)
+  [menu] it   5 LB=-256583.3334 UB=        Inf x=[3]        menu cut 1/1 (V_menu=-2548.3025)
+  [menu] it   6 LB=-124629.6052 UB=        Inf x=[1, 3]     menu cut 1/1 (V_menu=-7260.3372)
+  [menu] it   7 LB= -7616.9652 UB=        Inf x=[1, 2]     menu cut 1/1 (V_menu=-8538.9998)
+  [loc]  it   8 LB= -7538.9998 UB=        Inf x=[1, 2]     Ω_loc= -2412.4882 (1.5s) menu=2 (+belief)
+  [menu] it   9 LB= -6260.3372 UB=        Inf x=[1, 3]     menu cut 1/2 (V_menu=-1974.5882)
+  [menu] it  10 LB= -5089.5014 UB=        Inf x=[1]        menu cut 1/2 (V_menu=-1530.9002)
+  [menu] it  11 LB= -4257.7079 UB=        Inf x=[2]        menu cut 2/2 (V_menu=-1091.6155)
+  [menu] it  12 LB= -2048.3025 UB=        Inf x=[3]        menu cut 1/2 (V_menu=-616.6046)
+    [반응 프리솔브] x=[1, 2]: 활성 5 중 0 개를 0 으로 고정 (157.4s)
+  [orcl] it  13 LB= -1412.4834 UB= -1185.4500 x=[1, 2]     Ω= -2400.2834 (3993.9s) menu=3 (+belief, LP@x̄=-2400.0667, gap -2.2e-01)
+RESULT pooled-store λ=2000 qB=500 d=16 m=6 nA=3 nB=3 seed=8 S=50 nh=6 status=TimeLimit x={1,2} LB=-1400.283425 UB=-1185.449953 gap=1.81e-01 iters=14 global=1 local=2 menu=3 time=4008.2
+
+--- pooled(거점별 300) d=16 A=3 B=3 (N_B≤3) seed=9 S=50: n_h=6, |X|=8, 용량 500, 출점비 500, f=0.10 p=0.30, θᵁ=50.0 λᵁ=2000.0, TL=3600s, 프리솔브 켬
+  [설정] 전역 oracle = α-B&B (nz_alpha_bnb_dr), worker 12, gap 1e-03, 이어 풀기 켬, bnb_kw = (ipopt_time = 120.0,)
+  [설정] oracle 시간: 남은 시간 전체 (끊지 않음), 목표값 조기 종료 켬, local cut 켬
+  [loc]  it   1 LB=-10000000.0000 UB=        Inf x=Int64[]    Ω_loc=    -0.0031 (1.2s) menu=1 (+belief)
+  [menu] it   2 LB=-1407000.0003 UB=        Inf x=[1, 2, 3]  menu cut 1/1 (V_menu=-5516.4542)
+  [menu] it   3 LB=-580333.3336 UB=        Inf x=[1]        menu cut 1/1 (V_menu=-2823.0655)
+  [menu] it   4 LB=-570083.3336 UB=        Inf x=[3]        menu cut 1/1 (V_menu=-4091.8721)
+  [menu] it   5 LB=-256583.3336 UB=        Inf x=[2]        menu cut 1/1 (V_menu=-3471.2077)
+  [menu] it   6 LB=-182781.3487 UB=        Inf x=[1, 3]     menu cut 1/1 (V_menu=-4533.2512)
+  [menu] it   7 LB=-177281.4887 UB=        Inf x=[1, 2]     menu cut 1/1 (V_menu=-5853.9698)
+  [menu] it   8 LB=-166496.9137 UB=        Inf x=[2, 3]     menu cut 1/1 (V_menu=-5913.0734)
+  [loc]  it   9 LB= -4913.0734 UB=        Inf x=[2, 3]     Ω_loc= -1877.1547 (3.9s) menu=2 (+belief)
+  [menu] it  10 LB= -4853.9698 UB=        Inf x=[1, 2]     menu cut 1/2 (V_menu=-1845.4113)
+  [menu] it  11 LB= -4016.4542 UB=        Inf x=[1, 2, 3]  menu cut 1/2 (V_menu=-2071.3224)
+  [menu] it  12 LB= -3591.8722 UB=        Inf x=[3]        menu cut 1/2 (V_menu=-1306.4994)
+  [menu] it  13 LB= -3533.2512 UB=        Inf x=[1, 3]     menu cut 1/2 (V_menu=-1492.0307)
+  [menu] it  14 LB= -2971.2077 UB=        Inf x=[2]        menu cut 1/2 (V_menu=-1126.9997)
+  [menu] it  15 LB= -2323.0655 UB=        Inf x=[1]        menu cut 1/2 (V_menu=-1348.9848)
+    [반응 프리솔브] x=[2, 3]: 활성 5 중 0 개를 0 으로 고정 (139.4s)
+  [orcl] it  16 LB=  -877.1501 UB=   442.8640 x=[2, 3]     Ω= -1835.7887 (284.9s) menu=3 (+belief, LP@x̄=-1835.2333, gap -5.6e-01)
+  [loc]  it  17 LB=  -848.9848 UB=   442.8640 x=[1]        Ω_loc= -1232.8204 (1.6s) menu=4 (+belief)
+  [loc]  it  18 LB=  -845.4113 UB=   442.8640 x=[1, 2]     Ω_loc= -1812.1380 (3.8s) menu=5 (+belief)
+  [menu] it  19 LB=  -835.7887 UB=   442.8640 x=[2, 3]     menu cut 1/5 (V_menu=-1835.2333)
+  [orcl] it  20 LB=  -835.2333 UB=   251.1180 x=[2, 3]     Ω= -1830.8381 (269.8s) menu=6 (+belief, LP@x̄=-1830.6833, gap -1.5e-01)
+  [menu] it  21 LB=  -830.8381 UB=   251.1180 x=[2, 3]     menu cut 1/6 (V_menu=-1830.6833)
+  [orcl] it  22 LB=  -830.6833 UB=    16.8292 x=[2, 3]     Ω= -1804.7834 (867.9s) menu=7 (+belief, LP@x̄=-1803.6167, gap -1.2e+00)
+    [반응 프리솔브] x=[1, 2]: 활성 5 중 0 개를 0 으로 고정 (129.1s)
+  [orcl] it  23 LB=  -812.1334 UB=    16.8292 x=[1, 2]     Ω= -1714.4879 (1293.1s) menu=8 (+belief, LP@x̄=-1712.6500, gap -1.8e+00)
+  [menu] it  24 LB=  -806.4994 UB=    16.8292 x=[3]        menu cut 1/8 (V_menu=-1297.7500)
+  [menu] it  25 LB=  -804.7834 UB=    16.8292 x=[2, 3]     menu cut 1/8 (V_menu=-1803.6167)
+  [orcl] it  26 LB=  -803.6167 UB=  -196.3712 x=[2, 3]     Ω= -1786.7721 (1071.2s) menu=9 (+belief, LP@x̄=-1786.7278, gap -4.4e-02)
+RESULT pooled-store λ=2000 qB=500 d=16 m=6 nA=3 nB=3 seed=9 S=50 nh=6 status=TimeLimit x={2,3} LB=-797.750001 UB=-196.371150 gap=3.06e+00 iters=27 global=5 local=4 menu=9 time=3860.1
+
+--- pooled(거점별 300) d=16 A=3 B=3 (N_B≤3) seed=10 S=50: n_h=6, |X|=8, 용량 500, 출점비 500, f=0.10 p=0.30, θᵁ=50.0 λᵁ=2000.0, TL=3600s, 프리솔브 켬
+  [설정] 전역 oracle = α-B&B (nz_alpha_bnb_dr), worker 12, gap 1e-03, 이어 풀기 켬, bnb_kw = (ipopt_time = 120.0,)
+  [설정] oracle 시간: 남은 시간 전체 (끊지 않음), 목표값 조기 종료 켬, local cut 켬
+  [loc]  it   1 LB=-10000000.0000 UB=        Inf x=Int64[]    Ω_loc=    -0.0029 (0.5s) menu=1 (+belief)
+  [menu] it   2 LB=-1028416.6668 UB=        Inf x=[1, 2, 3]  menu cut 1/1 (V_menu=-7213.2512)
+  [menu] it   3 LB=-487834.3436 UB=        Inf x=[2, 3]     menu cut 1/1 (V_menu=-6306.5220)
+  [menu] it   4 LB=-280057.2771 UB=        Inf x=[1]        menu cut 1/1 (V_menu=-4672.4327)
+  [menu] it   5 LB=-192333.3334 UB=        Inf x=[3]        menu cut 1/1 (V_menu=-4080.0291)
+  [menu] it   6 LB= -7312.7517 UB=        Inf x=[1, 3]     menu cut 1/1 (V_menu=-7076.9043)
+  [menu] it   7 LB= -6163.6343 UB=        Inf x=[1, 2]     menu cut 1/1 (V_menu=-5927.1537)
+  [loc]  it   8 LB= -6076.9043 UB=        Inf x=[1, 3]     Ω_loc= -1132.2379 (3.9s) menu=2 (+belief)
+  [menu] it   9 LB= -5713.2512 UB=        Inf x=[1, 2, 3]  menu cut 1/2 (V_menu=-1856.8450)
+  [menu] it  10 LB= -5306.5220 UB=        Inf x=[2, 3]     menu cut 1/2 (V_menu=-1145.2924)
+  [menu] it  11 LB= -3580.0291 UB=        Inf x=[3]        menu cut 1/2 (V_menu=-570.7836)
+  [loc]  it  12 LB=  -856.8450 UB=        Inf x=[1, 2]     Ω_loc= -1727.9880 (2.2s) menu=3 (+belief)
+    [반응 프리솔브] x=[1, 2]: 활성 5 중 0 개를 0 으로 고정 (207.6s)
+  [orcl] it  13 LB=  -727.9834 UB=   899.0333 x=[1, 2]     Ω= -1629.6668 (414.6s) menu=4 (+belief, LP@x̄=-1629.6667, gap -1.7e-04)
+  [loc]  it  14 LB=  -645.2924 UB=   899.0333 x=[2]        Ω_loc=  -507.3043 (2.4s) menu=5 (+belief)
+    [반응 프리솔브] x=[1]: 활성 4 중 0 개를 0 으로 고정 (91.7s)
+  [orcl] it  15 LB=  -632.2341 UB=   407.8910 x=[1]        Ω= -1105.7412 (233.8s) menu=6 (+belief, LP@x̄=-1105.1167, gap -6.2e-01)
+    [oracle gap] 9.7e-04 (목적값 -629.67 가 |V| 1629.67 보다 작아 조임)
+  [orcl] it  16 LB=  -629.6668 UB=   407.8910 x=[1, 2]     Ω= -1626.3111 (683.6s) menu=7 (+belief, LP@x̄=-1625.0867, gap -1.2e+00)
+  [menu] it  17 LB=  -626.3111 UB=   407.8910 x=[1, 2]     menu cut 1/7 (V_menu=-1625.0867)
+    [oracle gap] 9.6e-04 (목적값 -625.09 가 |V| 1625.09 보다 작아 조임)
+  [orcl] it  18 LB=  -625.0867 UB=   407.8910 x=[1, 2]     Ω= -1618.5264 (1609.7s) menu=8 (+belief, LP@x̄=-1617.6611, gap -8.7e-01)
+  [menu] it  19 LB=  -618.5264 UB=   407.8910 x=[1, 2]     menu cut 1/8 (V_menu=-1617.6611)
+    [oracle gap] 9.5e-04 (목적값 -617.66 가 |V| 1617.66 보다 작아 조임)
+  [orcl] it  20 LB=  -617.6611 UB=   407.8910 x=[1, 2]     Ω= -1616.9223 (857.7s) menu=9 (+belief, LP@x̄=-1616.9222, gap -5.2e-05)
+RESULT pooled-store λ=2000 qB=500 d=16 m=6 nA=3 nB=3 seed=10 S=50 nh=6 status=TimeLimit x={1} LB=-616.922275 UB=407.890976 gap=2.51e+00 iters=21 global=5 local=4 menu=9 time=3846.0

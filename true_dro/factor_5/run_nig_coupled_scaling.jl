@@ -18,7 +18,7 @@ boost (전역 subproblem) 는 true_dro_benders_optimize! 의 기본값 = zero-su
   NS_VARIANTS_S10 = menu   NS_VARIANTS_LARGE = menu   NS_NWORKERS = 12   NS_WALL = 3600   NS_TOL = 5e-3
   NS_LOGROOT = logs/nig_coupled   (factor_5 기준)
 로그: <NS_LOGROOT>/S_<S>/<net>_<variant>.log, 끝까지 간 로그 (RESULT 줄) 는 건너뜀.
-실행: julia -t 14 run_nig_coupled_scaling.jl
+실행: julia -t 14,1 run_nig_coupled_scaling.jl   (α-B&B 에 interactive 스레드 필요)
 =#
 
 using JuMP, Gurobi, Printf, Dates, Serialization, LinearAlgebra, Random

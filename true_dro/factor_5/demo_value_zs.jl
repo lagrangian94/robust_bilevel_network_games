@@ -20,7 +20,7 @@ demo_value_zs.jl — 학회 발표용 zero-sum (최대 흐름 네트워크 차�
 환경변수: DV_NET = polska   DV_S = 10   DV_BETA = 0.4   DV_EPS = (네트워크 ε*)   DV_DELTAS = 0.05,0.1,0.2
           DV_TAUS = 0,0.05,0.1,0.15,0.2,0.3,0.4   DV_N = 300   DV_CP = 5   DV_SEED = 2026
           DV_NWORKERS = 12   DV_WALL = 3600   DV_TOL = 5e-3   DV_STAGE = all | solve | eval
-실행: julia -t 14 demo_value_zs.jl
+실행: julia -t 14,1 demo_value_zs.jl   (α-B&B 에 interactive 스레드 필요)
 =#
 
 using JuMP, Gurobi, Printf, Dates, Serialization, LinearAlgebra, Random, Statistics, Distributions
