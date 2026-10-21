@@ -15,7 +15,7 @@ demo_value_zs.jl 과 같은 설계 (모델 4 종, belief 오차 τ 를 평가 �
 
 환경변수: DN_S = 10   DN_BETA = 0.4   DN_EPS = 0.3   DN_DELTAS = 0.05,0.1,0.2   DN_QUOTA = 150   DN_SEED_INST = 1
           DN_LAMBDA = 100   DN_TAUS = 0,0.05,0.1,0.15,0.2,0.3,0.4   DN_N = 200   DN_CP = 5   DN_SEED = 2026
-          DN_NWORKERS = 12   DN_TL = 3600   DN_STAGE = all | solve | eval
+          DN_NWORKERS = 12   DN_TL = 3600   DN_STAGE = all | solve | eval   DN_TAG = sgb128 (결과 폴더 이름)
 실행: julia -t 14,1 nonzero_sum/demo_value_nz.jl
 =#
 root = dirname(@__DIR__)
@@ -68,7 +68,7 @@ quota   = pf("DN_QUOTA", "150"); seed_inst = pint("DN_SEED_INST", "1"); lam = pf
 taus    = parse.(Float64, envlist("DN_TAUS", "0,0.05,0.1,0.15,0.2,0.3,0.4"))
 Ndraw   = pint("DN_N", "200"); cp = pf("DN_CP", "5"); seed = pint("DN_SEED", "2026")
 nw      = pint("DN_NWORKERS", "12"); TL = pf("DN_TL", "3600"); stage = envf("DN_STAGE", "all")
-outdir  = joinpath(root, "nonzero_sum", "logs", "demo_value", "sgb128")
+outdir  = joinpath(root, "nonzero_sum", "logs", "demo_value", envf("DN_TAG", "sgb128"))   # 설정별 폴더 (DN_TAG)
 mkpath(outdir)
 
 function mk(eh, et, δ)
