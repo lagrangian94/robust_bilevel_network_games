@@ -1,0 +1,32 @@
+Set parameter Username
+Set parameter LicenseID to value 2742039
+Academic license - for non-commercial use only - expires 2026-11-20
+demo_value_nz: SGB128 거점별 한도 150, S=10 (inst seed 7), β=0.40, ε=0.10, δ=[0.1], λᵁ=100 | τ=[0.0, 0.05, 0.1, 0.15, 0.2, 0.3, 0.4] N=200 cp=5.0 seed=2026 | stage=solve
+  [done] nominal → 1,2
+  [done] partial → 1,2
+  [done] product → 1
+  [done] coupled_d0p1 → 1
+Set parameter Username
+Set parameter LicenseID to value 2742039
+Academic license - for non-commercial use only - expires 2026-11-20
+demo_value_nz: SGB128 거점별 한도 150, S=10 (inst seed 7), β=0.40, ε=0.10, δ=[0.1], λᵁ=100 | τ=[0.0, 0.05, 0.1, 0.15, 0.2, 0.3, 0.4] N=200 cp=5.0 seed=2026 | stage=phaseab
+  x[nominal] = {1,2}
+  x[partial] = {1,2}
+  x[product] = {1}
+  x[coupled_d0p1] = {1}
+  γ=1.0 ζ=0.0: 500 추출 4s (φ 캐시 13)
+  γ=1.0 ζ=0.5: 500 추출 2s (φ 캐시 15)
+  γ=1.0 ζ=1.0: 500 추출 2s (φ 캐시 16)
+  γ=1.0 ζ=2.0: 500 추출 2s (φ 캐시 17)
+  γ=1.0 ζ=5.0: 500 추출 2s (φ 캐시 18)
+  γ=5.0 ζ=0.0: 500 추출 2s (φ 캐시 18)
+  γ=5.0 ζ=0.5: 500 추출 2s (φ 캐시 18)
+  γ=5.0 ζ=1.0: 500 추출 2s (φ 캐시 18)
+  γ=5.0 ζ=2.0: 500 추출 2s (φ 캐시 19)
+  γ=5.0 ζ=5.0: 500 추출 2s (φ 캐시 19)
+  γ=0.1 ζ=0.0: 500 추출 2s (φ 캐시 19)
+  γ=0.1 ζ=0.5: 500 추출 2s (φ 캐시 19)
+  γ=0.1 ζ=1.0: 500 추출 2s (φ 캐시 19)
+  γ=0.1 ζ=2.0: 500 추출 2s (φ 캐시 19)
+  γ=0.1 ζ=5.0: 500 추출 2s (φ 캐시 19)
+PHASEAB_DONE C:\Users\user\robust_bilevel_network_games\nonzero_sum\logs\demo_value\sgb128f_S10_eps0p10_q150_s7

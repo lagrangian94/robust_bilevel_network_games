@@ -1,0 +1,17 @@
+partial: ε̂=0.10 ε̃=0.00 δ=Inf β=0.40 S=10 θᵁ=1.00 λᵁ=100 (nz_belief_menu_benders, α-B&B dr, local_first)
+  [설정] 전역 oracle = α-B&B (nz_alpha_bnb_dr), worker 12, gap 1e-03, 이어 풀기 켬, bnb_kw = (ipopt_time = 120.0,)
+  [설정] oracle 시간: 남은 시간 전체 (끊지 않음), 목표값 조기 종료 켬, local cut 켬
+  [loc]  it   1 LB=-10000000.0000 UB=        Inf x=Int64[]    Ω_loc=    -0.0008 (0.0s) menu=1 (+belief)
+  [menu] it   2 LB=-9999695.0000 UB=        Inf x=[1]        menu cut 1/1 (V_menu=-45792.6264)
+  [menu] it   3 LB=-9999695.0000 UB=        Inf x=[2]        menu cut 1/1 (V_menu=-31162.6057)
+  [menu] it   4 LB=-6845280.2067 UB=        Inf x=[1, 2]     menu cut 1/1 (V_menu=-45732.1366)
+  [menu] it   5 LB=-971695.0003 UB=        Inf x=[3]        menu cut 1/1 (V_menu=-3336.2020)
+  [menu] it   6 LB=-48494.5002 UB=        Inf x=[1, 3]     menu cut 1/1 (V_menu=-46095.2927)
+  [loc]  it   7 LB=-45485.2927 UB=        Inf x=[1, 3]     Ω_loc= -1360.5845 (0.1s) menu=2 (+belief)
+  [menu] it   8 LB=-45122.1366 UB=        Inf x=[1, 2]     menu cut 1/2 (V_menu=-37919.5330)
+  [loc]  it   9 LB=-37309.5331 UB=        Inf x=[1, 2]     Ω_loc= -1783.5845 (0.1s) menu=3 (+belief)
+  [menu] it  10 LB=-30857.6057 UB=        Inf x=[2]        menu cut 2/3 (V_menu=-2816.4475)
+  [loc]  it  11 LB= -3031.2020 UB=        Inf x=[3]        Ω_loc=  -727.6676 (0.0s) menu=4 (+belief)
+  [loc]  it  12 LB= -2511.4475 UB=        Inf x=[2]        Ω_loc= -1324.5842 (0.0s) menu=5 (+belief)
+  [orcl] it  13 LB= -1173.5834 UB= -1173.5815 x=[1, 2]     Ω= -1783.5878 (0.8s) menu=5
+RESULT model=partial status=Optimal x={1,2} LB=-1173.583401 UB=-1173.581526 iters=14 time=1.4

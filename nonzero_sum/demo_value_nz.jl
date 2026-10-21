@@ -16,6 +16,7 @@ demo_value_zs.jl 과 같은 설계 (모델 4 종, belief 오차 τ 를 평가 �
 환경변수: DN_S = 10   DN_BETA = 0.4   DN_EPS = 0.3   DN_DELTAS = 0.05,0.1,0.2   DN_QUOTA = 150   DN_SEED_INST = 1
           DN_LAMBDA = 100   DN_TAUS = 0,0.05,0.1,0.15,0.2,0.3,0.4   DN_N = 200   DN_CP = 5   DN_SEED = 2026
           DN_NWORKERS = 12   DN_TL = 3600   DN_STAGE = all | solve | eval | phaseab (원고 OOS 추출) | bias (retailer 수요 편향), 아래 참고   DN_TAG = sgb128 (결과 폴더 이름)
+          DN_DEMAND = iid | factor (수요 생성, make_location_instance 의 demand)
 실행: julia -t 14,1 nonzero_sum/demo_value_nz.jl
 =#
 root = dirname(@__DIR__)
@@ -65,6 +66,7 @@ end
 S       = pint("DN_S", "10"); β = pf("DN_BETA", "0.4"); ε = pf("DN_EPS", "0.3")
 deltas  = parse.(Float64, envlist("DN_DELTAS", "0.05,0.1,0.2"))
 quota   = pf("DN_QUOTA", "150"); seed_inst = pint("DN_SEED_INST", "1"); lam = pf("DN_LAMBDA", "100")
+demand  = Symbol(envf("DN_DEMAND", "iid"))     # :iid | :factor (지역 요인 수요, nz_data.jl)
 taus    = parse.(Float64, envlist("DN_TAUS", "0,0.05,0.1,0.15,0.2,0.3,0.4"))
 Ndraw   = pint("DN_N", "200"); cp = pf("DN_CP", "5"); seed = pint("DN_SEED", "2026")
 nw      = pint("DN_NWORKERS", "12"); TL = pf("DN_TL", "3600"); stage = envf("DN_STAGE", "all")
@@ -73,7 +75,7 @@ mkpath(outdir)
 
 function mk(eh, et, δ)
     nd = make_location_instance(; coords=:sgb128, S=S, seed=seed_inst, reservation=:pooled, pool_limit=:store, quota=quota,
-                                eps_hat=eh, eps_tilde=et, beta=β)
+                                eps_hat=eh, eps_tilde=et, beta=β, demand=demand)
     isfinite(δ) && (nd = nz_with_delta(nd, δ))
     return nz_with_bounds(nd; thetaU=nz_theta_circuit_exact(nd)[1], lambdaU=lam)
 end

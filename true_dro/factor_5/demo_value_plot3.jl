@@ -66,7 +66,7 @@ end
 # 우리 모형 = Full DR 해 x = {13, 34}: Coupled δ = 0.1 도 같은 결정 (demo_value_zs.jl, x_coupled_d0p1.txt)
 zs_labels = ["Nominal", "Partial DR (ε̃ = 0)", "Ours (ε = 0.1, δ = 0.1)"]
 table(zs, "zero-sum Polska, x: nominal $(d[:x_arcs][1]), partial $(d[:x_arcs][2]), ours $(d[:x_arcs][3])", zs_labels)
-for γ in gammas
+for γ in filter(g -> haskey(zs, (g, 0.0)), gammas)     # 데이터에 있는 γ 만
     plt = panel(zs, γ, zs_labels; title=@sprintf("Zero-sum (Polska, ε = 0.1, β = 0.4), Dirichlet γ = %.1f", γ),
                 ylabel="out-of-sample CVaR of max flow (lower is better)")
     f = joinpath(zsdir, @sprintf("fig_zs_oos_g%s.png", replace(string(γ), "." => "p"))); savefig(plt, f); println("saved $f")
@@ -90,7 +90,7 @@ for l in ls[2:end]
     push!(v[findfirst(==(m), nzmodels)], parse(Float64, f[col("cost")])); xs_nz[m] = f[col("x")]
 end
 table(nz, "비제로섬 $nztag, x: " * join(["$m $(xs_nz[m])" for m in nzmodels], ", "), nz_labels)
-for γ in gammas
+for γ in filter(g -> haskey(nz, (g, 0.0)), gammas)
     plt = panel(nz, γ, nz_labels; title=@sprintf("Non-zero-sum (location, ε = %s, β = 0.4), Dirichlet γ = %.1f", nzeps, γ),
                 ylabel="out-of-sample cost of B (lower is better)")
     f = joinpath(nzdir, @sprintf("fig_nz_oos_%s_g%s.png", nzmid, replace(string(γ), "." => "p"))); savefig(plt, f); println("saved $f")
