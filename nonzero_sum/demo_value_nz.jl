@@ -15,7 +15,7 @@ demo_value_zs.jl 과 같은 설계 (모델 4 종, belief 오차 τ 를 평가 �
 
 환경변수: DN_S = 10   DN_BETA = 0.4   DN_EPS = 0.3   DN_DELTAS = 0.05,0.1,0.2   DN_QUOTA = 150   DN_SEED_INST = 1
           DN_LAMBDA = 100   DN_TAUS = 0,0.05,0.1,0.15,0.2,0.3,0.4   DN_N = 200   DN_CP = 5   DN_SEED = 2026
-          DN_NWORKERS = 12   DN_TL = 3600   DN_STAGE = all | solve | eval   DN_TAG = sgb128 (결과 폴더 이름)
+          DN_NWORKERS = 12   DN_TL = 3600   DN_STAGE = all | solve | eval | phaseab (원고 OOS 추출, 아래 참고)   DN_TAG = sgb128 (결과 폴더 이름)
 실행: julia -t 14,1 nonzero_sum/demo_value_nz.jl
 =#
 root = dirname(@__DIR__)
@@ -148,4 +148,54 @@ if stage in ("all", "eval")
         end
     end
     println("EVAL_DONE $(outdir)")
+end
+
+# 원고 §6.2 OOS 와 같은 추출 (true_dro/factor_5/plot_phaseAB_3way.jl): γ 마다
+#   Phase A (ζ = 0): p, p̃ 독립 ~ Dir(γ·S·q̂)
+#   Phase B (ζ > 0): α = γ·S·q̂ ⊙ (1 + ζ·randn), max(α, 0.01) 로 p, p̃ 를 각각 독립 α 에서
+# (q̂ 가 균등이면 원고의 Dir(γ·1) 과 같음). 실현 비용 = q_Bᵀx + CVaR_β^p[φ] (최소화, 낮을수록 좋음).
+# DN_STAGE=phaseab 로만 돈다. 환경변수: DN_GAMMAS = 0.1,0.3,0.5,1.0   DN_ZETAS = 0,0.5,1,2,5   DN_M = 500
+#   DN_OOS_SEED = 42   DN_EVAL_MODELS = (기본: 모든 모델)
+if stage == "phaseab"
+    nd = mk(0.0, 0.0, Inf)
+    gammas = parse.(Float64, envlist("DN_GAMMAS", "0.1,0.3,0.5,1.0")); zetas = parse.(Float64, envlist("DN_ZETAS", "0,0.5,1,2,5"))
+    M = pint("DN_M", "500"); oseed = pint("DN_OOS_SEED", "42")
+    enames = envlist("DN_EVAL_MODELS", join(first.(models), ","))
+    xs_of = Dict{String,Vector{Float64}}()
+    for name in enames
+        isfile(xfile(name)) || error("x 파일 없음: $(xfile(name)) (DN_STAGE=solve 먼저)")
+        idx = [parse(Int, t) for t in split(strip(read(xfile(name), String)), ",") if !isempty(t)]
+        x = zeros(nd.nx); x[idx] .= 1.0; xs_of[name] = x
+        @printf("  x[%s] = %s\n", name, xstr(x))
+    end
+    # 같은 결정은 한 번만 평가 (결정이 같으면 비용도 같음)
+    ukeys = unique(xstr(xs_of[n]) for n in enames); xu = Dict(xstr(xs_of[n]) => xs_of[n] for n in enames)
+    φcache = Dict{Tuple{String,Vector{Float64}},Vector{Float64}}()     # (x, 예약 h) → φ (꼭짓점 h 는 자주 반복)
+    base = nd.S .* nd.q_hat
+    io = open(joinpath(outdir, "eval_phaseab.csv"), "w")
+    println(io, "gamma,zeta,draw,model,x,cost")
+    for γ in gammas, ζ in zetas
+        rng = MersenneTwister(oseed); t0 = time()
+        for n in 1:M
+            if ζ == 0
+                p = rand(rng, Dirichlet(γ .* base)); pt = rand(rng, Dirichlet(γ .* base))
+            else
+                α = max.(γ .* base .* (1 .+ ζ .* randn(rng, nd.S)), 0.01); p = rand(rng, Dirichlet(α))
+                αt = max.(γ .* base .* (1 .+ ζ .* randn(rng, nd.S)), 0.01); pt = rand(rng, Dirichlet(αt))
+            end
+            cost = Dict{String,Float64}()
+            for k in ukeys
+                x = xu[k]; h = round.(follower_response(nd, x, pt); digits=6)
+                φ = get!(() -> nz_recourse_values(nd, x, h)[2], φcache, (k, h))
+                cost[k] = dot(nd.qx, x) + cvar_upper(φ, p, β)
+            end
+            for name in enames
+                k = xstr(xs_of[name]); @printf(io, "%.2f,%.2f,%d,%s,%s,%.6f\n", γ, ζ, n, name, replace(k, "," => ";"), cost[k])
+            end
+        end
+        flush(io)
+        @printf("  γ=%.1f ζ=%.1f: %d 추출 %.0fs (φ 캐시 %d)\n", γ, ζ, M, time() - t0, length(φcache)); flush(stdout)
+    end
+    close(io)
+    println("PHASEAB_DONE $(outdir)")
 end

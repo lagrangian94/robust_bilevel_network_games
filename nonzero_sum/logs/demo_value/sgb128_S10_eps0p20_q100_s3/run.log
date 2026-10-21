@@ -1,0 +1,41 @@
+Set parameter Username
+Set parameter LicenseID to value 2742039
+Academic license - for non-commercial use only - expires 2026-11-20
+demo_value_nz: SGB128 거점별 한도 100, S=10 (inst seed 3), β=0.40, ε=0.20, δ=[0.05, 0.1, 0.2], λᵁ=100 | τ=[0.0, 0.05, 0.1, 0.15, 0.2, 0.3, 0.4] N=200 cp=5.0 seed=2026 | stage=solve
+  [done] nominal → 2
+  [done] partial → 1,2
+  [done] product → 1
+  [done] coupled_d0p05 → 1,2
+  [done] coupled_d0p1 → 1
+  [done] coupled_d0p2 → 1
+Set parameter Username
+Set parameter LicenseID to value 2742039
+Academic license - for non-commercial use only - expires 2026-11-20
+demo_value_nz: SGB128 거점별 한도 100, S=10 (inst seed 3), β=0.40, ε=0.20, δ=[0.05, 0.1, 0.2], λᵁ=100 | τ=[0.0, 0.05, 0.1, 0.15, 0.2, 0.3, 0.4] N=200 cp=5.0 seed=2026 | stage=phaseab
+  x[nominal] = {2}
+  x[partial] = {1,2}
+  x[product] = {1}
+  x[coupled_d0p05] = {1,2}
+  x[coupled_d0p1] = {1}
+  x[coupled_d0p2] = {1}
+  γ=0.1 ζ=0.0: 500 추출 5s (φ 캐시 26)
+  γ=0.1 ζ=0.5: 500 추출 3s (φ 캐시 27)
+  γ=0.1 ζ=1.0: 500 추출 3s (φ 캐시 27)
+  γ=0.1 ζ=2.0: 500 추출 3s (φ 캐시 27)
+  γ=0.1 ζ=5.0: 500 추출 3s (φ 캐시 27)
+  γ=0.3 ζ=0.0: 500 추출 3s (φ 캐시 27)
+  γ=0.3 ζ=0.5: 500 추출 3s (φ 캐시 27)
+  γ=0.3 ζ=1.0: 500 추출 3s (φ 캐시 27)
+  γ=0.3 ζ=2.0: 500 추출 3s (φ 캐시 27)
+  γ=0.3 ζ=5.0: 500 추출 3s (φ 캐시 27)
+  γ=0.5 ζ=0.0: 500 추출 3s (φ 캐시 27)
+  γ=0.5 ζ=0.5: 500 추출 3s (φ 캐시 27)
+  γ=0.5 ζ=1.0: 500 추출 3s (φ 캐시 27)
+  γ=0.5 ζ=2.0: 500 추출 3s (φ 캐시 27)
+  γ=0.5 ζ=5.0: 500 추출 3s (φ 캐시 27)
+  γ=1.0 ζ=0.0: 500 추출 3s (φ 캐시 27)
+  γ=1.0 ζ=0.5: 500 추출 3s (φ 캐시 27)
+  γ=1.0 ζ=1.0: 500 추출 3s (φ 캐시 27)
+  γ=1.0 ζ=2.0: 500 추출 3s (φ 캐시 27)
+  γ=1.0 ζ=5.0: 500 추출 3s (φ 캐시 27)
+PHASEAB_DONE C:\Users\user\robust_bilevel_network_games\nonzero_sum\logs\demo_value\sgb128_S10_eps0p20_q100_s3
