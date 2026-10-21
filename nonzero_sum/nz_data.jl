@@ -301,17 +301,20 @@ Goyal et al. (2023) §7.1 기본 사례를 따른다 (SGB128 좌표 대신 [0,1]
               | :pair         — 고객×점포별 선주문 h_ij, y^R_ij ≤ h_ij, 점포별 선판매 할당량 Σ_j h_ij ≤ quota
                                 (aggregate LP 가 개별 고객 선주문의 가격 균형과 같아지는 형태, test_nz_equilibrium.jl)
 RCR: A 총용량 > 최대 총수요 (assert).
+demand = :iid (기본, 시장마다 독립 U[dlo, dhi]) | :factor (지역 요인 모형, nfac 개 요인, 적재 범위 fac_a; 아래 주석)
 """
 function make_location_instance(; coords::Symbol=:sgb128, n_loc=8, nA=1, nB=4, NB=4, S=5, seed=1,
         bA=720.0, bB=360.0, qB=305.0, dlo=30.0, dhi=240.0, v=5.0,
         p=nothing, f=nothing, wres=300.0, dist_res=nothing,
         reservation::Symbol=:pooled, quota=wres, pool_limit::Symbol=:total,
         eps_hat=0.2, eps_tilde=0.2, beta=0.4,
-        thetaU=:circuit, lambdaU=nothing, bigm::Symbol=:tight)
+        thetaU=:circuit, lambdaU=nothing, bigm::Symbol=:tight,
+        demand::Symbol=:iid, nfac::Int=2, fac_a=nothing)
     reservation in (:pooled, :pair) || error("reservation = :pooled | :pair")
     pool_limit in (:total, :store) || error("pool_limit = :total | :store")
     reservation == :pair && pool_limit != :total && error("pool_limit 는 reservation = :pooled 전용")
     coords in (:sgb128, :random) || error("coords = :sgb128 | :random")
+    demand in (:iid, :factor) || error("demand = :iid | :factor")
     # λᵁ (follower exact penalty) 는 비용 단위에 묶인 상수. follower McCormick 상한이 λᵁ·(c^max + p) 라
     # 척도를 따라가야 한다. random 에서 경계가 v/해상도 = 50 → λᵁ = 1000. sgb128 (해상도 1) 은 경계 ~5 로 보고 100.
     lambdaU = lambdaU === nothing ? (coords == :sgb128 ? 100.0 : 1000.0) : Float64(lambdaU)
@@ -341,7 +344,18 @@ function make_location_instance(; coords::Symbol=:sgb128, n_loc=8, nA=1, nB=4, N
         cities = String[]
     end
     dist = [round(norm(coord[i, :] .- coord[j, :]) / dist_res) * dist_res for i in st, j in cu]
-    ξ = round.(dlo .+ (dhi - dlo) .* rand(rng, ncu, S); digits=1)
+    if demand == :iid
+        ξ = round.(dlo .+ (dhi - dlo) .* rand(rng, ncu, S); digits=1)
+    else
+        # 지역 요인 수요 (2026-10-21): zero-sum 요인 용량 모형 (network_generator.jl generate_capacity_scenarios_factor_additive)
+        # 과 같은 형태. ξ_js = clamp(c̄ + Σ_k F_jk z_ks, dlo, dhi), F_jk ~ U(−a, a), z_ks ~ Exp(1), c̄ = 범위 중앙.
+        # 시장마다 요인 적재가 달라 시나리오별로 호황인 시장이 다름 (Goyal 의 support [dlo, dhi] 는 유지).
+        # a 기본값 = 0.4 c̄ (zero-sum 의 a/c̄ = 4/10 과 같은 비율)
+        cbar = (dlo + dhi) / 2; a = fac_a === nothing ? 0.4 * cbar : Float64(fac_a)
+        F = a .* (2 .* rand(rng, ncu, nfac) .- 1)
+        Z = -log.(rand(rng, nfac, S))                       # Exp(1)
+        ξ = round.(clamp.(cbar .+ F * Z, dlo, dhi); digits=1)
+    end
     @assert nA * bA > maximum(sum(ξ; dims=1)) "RCR/상계 논증: A 총용량 > 최대 총수요 필요"
 
     isB = [i > nA for i in 1:nst]
