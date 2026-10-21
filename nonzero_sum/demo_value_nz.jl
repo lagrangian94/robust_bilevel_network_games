@@ -15,7 +15,7 @@ demo_value_zs.jl 과 같은 설계 (모델 4 종, belief 오차 τ 를 평가 �
 
 환경변수: DN_S = 10   DN_BETA = 0.4   DN_EPS = 0.3   DN_DELTAS = 0.05,0.1,0.2   DN_QUOTA = 150   DN_SEED_INST = 1
           DN_LAMBDA = 100   DN_TAUS = 0,0.05,0.1,0.15,0.2,0.3,0.4   DN_N = 200   DN_CP = 5   DN_SEED = 2026
-          DN_NWORKERS = 12   DN_TL = 3600   DN_STAGE = all | solve | eval | phaseab (원고 OOS 추출, 아래 참고)   DN_TAG = sgb128 (결과 폴더 이름)
+          DN_NWORKERS = 12   DN_TL = 3600   DN_STAGE = all | solve | eval | phaseab (원고 OOS 추출) | bias (retailer 수요 편향), 아래 참고   DN_TAG = sgb128 (결과 폴더 이름)
 실행: julia -t 14,1 nonzero_sum/demo_value_nz.jl
 =#
 root = dirname(@__DIR__)
@@ -198,4 +198,49 @@ if stage == "phaseab"
     end
     close(io)
     println("PHASEAB_DONE $(outdir)")
+end
+
+# retailer 믿음의 수요 편향 (2026-10-21 사용자 요청): 진짜 분포 p ~ Dir(γ·S·q̂), 믿음 p̃_s ∝ p_s · exp(κ z_s),
+#   z = 시나리오 총수요의 표준화. κ > 0 = 낙관 (큰 수요 시나리오를 과대평가), κ < 0 = 비관, κ = 0 = 믿음이 맞음.
+# 실현 비용은 phaseab 와 같음. DN_STAGE=bias 로만 돈다.
+# 환경변수: DN_GAMMAS = 1,5   DN_KAPPAS = -1,-0.5,0,0.25,0.5,1,2   DN_M = 500   DN_OOS_SEED = 42   DN_EVAL_MODELS = (기본: 모든 모델)
+if stage == "bias"
+    nd = mk(0.0, 0.0, Inf)
+    gammas = parse.(Float64, envlist("DN_GAMMAS", "1,5")); kappas = parse.(Float64, envlist("DN_KAPPAS", "-1,-0.5,0,0.25,0.5,1,2"))
+    M = pint("DN_M", "500"); oseed = pint("DN_OOS_SEED", "42")
+    enames = envlist("DN_EVAL_MODELS", join(first.(models), ","))
+    xs_of = Dict{String,Vector{Float64}}()
+    for name in enames
+        isfile(xfile(name)) || error("x 파일 없음: $(xfile(name)) (DN_STAGE=solve 먼저)")
+        idx = [parse(Int, t) for t in split(strip(read(xfile(name), String)), ",") if !isempty(t)]
+        x = zeros(nd.nx); x[idx] .= 1.0; xs_of[name] = x
+    end
+    ukeys = unique(xstr(xs_of[n]) for n in enames); xu = Dict(xstr(xs_of[n]) => xs_of[n] for n in enames)
+    φcache = Dict{Tuple{String,Vector{Float64}},Vector{Float64}}()
+    rhs0(s) = nz_rhs(nd, zeros(nd.nx), zeros(nz_nh(nd)), s)
+    D = [-sum(r for r in rhs0(s) if r < 0) for s in 1:nd.S]     # 시나리오 총수요 (음수 우변 = 수요 행 −ξ, 나머지는 예약·용량 ≥ 0)
+    z = (D .- mean(D)) ./ std(D)
+    @printf("  시나리오 총수요 = %s\n", string(round.(D; digits=0))); flush(stdout)
+    io = open(joinpath(outdir, "eval_bias.csv"), "w")
+    println(io, "gamma,kappa,draw,tv,model,x,cost")
+    for γ in gammas, κ in kappas
+        rng = MersenneTwister(oseed); t0 = time(); tvs = 0.0
+        for n in 1:M
+            p = rand(rng, Dirichlet(γ .* nd.S .* nd.q_hat)); p ./= sum(p)
+            pt = p .* exp.(κ .* z); pt ./= sum(pt); tv = 0.5 * sum(abs.(p .- pt)); tvs += tv / M
+            cost = Dict{String,Float64}()
+            for k in ukeys
+                x = xu[k]; h = round.(follower_response(nd, x, pt); digits=6)
+                φ = get!(() -> nz_recourse_values(nd, x, h)[2], φcache, (k, h))
+                cost[k] = dot(nd.qx, x) + cvar_upper(φ, p, β)
+            end
+            for name in enames
+                k = xstr(xs_of[name]); @printf(io, "%.2f,%.2f,%d,%.5f,%s,%s,%.6f\n", γ, κ, n, tv, name, replace(k, "," => ";"), cost[k])
+            end
+        end
+        flush(io)
+        @printf("  γ=%.1f κ=%.2f: 평균 TV %.3f, %.0fs\n", γ, κ, tvs, time() - t0); flush(stdout)
+    end
+    close(io)
+    println("BIAS_DONE $(outdir)")
 end
