@@ -7,7 +7,7 @@ demo_value_plot3.jl — 발표용 예시 그림, 원고 §6.2 OOS 그림 (fig:oo
   zero-sum  : true_dro/factor_5/plots/eps_0p1_beta_0p4/polska_factor_phaseAB.jls (원고 OOS, plot_phaseAB_3way.jl)
   비제로섬 : nonzero_sum/logs/demo_value/<DP_NZ_TAG>/eval_phaseab.csv (demo_value_nz.jl DN_STAGE=phaseab)
 결과: 각 데이터 폴더의 fig_*_oos_g<γ>.png, 그리고 γ·ζ 별 q95·평균 표 (stdout)
-환경변수: DP_NZ_TAG = sgb128_S10_eps0p20_q100_s3   DP_NZ_EPS = 0.2   DP_NZ_OURS = coupled_d0p1   DP_GAMMAS = 0.1,1.0
+환경변수: DP_NZ_TAG = sgb128_S10_eps0p20_q100_s3   DP_NZ_EPS = 0.2   DP_NZ_OURS = coupled_d0p1   DP_NZ_MID = partial | product   DP_GAMMAS = 0.1,1.0
 실행: julia demo_value_plot3.jl
 =#
 using Plots, Printf, Statistics, Serialization
@@ -76,8 +76,10 @@ end
 ls = readlines(joinpath(nzdir, "eval_phaseab.csv")); hdr = split(ls[1], ",")
 col(n) = findfirst(==(n), hdr)
 nzeps = get(ENV, "DP_NZ_EPS", "0.2"); nzours = get(ENV, "DP_NZ_OURS", "coupled_d0p1")
-nzmodels = ["nominal", "partial", nzours]
-nz_labels = ["Nominal", "Partial DR (ε̃ = 0)", "Ours (ε = $nzeps, δ = " * replace(replace(nzours, "coupled_d" => ""), "p" => ".") * ")"]
+nzmid = get(ENV, "DP_NZ_MID", "partial")      # 가운데 상자: partial (ε̃ = 0) 또는 product (결합 없음, δ = ∞)
+nzmodels = ["nominal", nzmid, nzours]
+midlabel = nzmid == "partial" ? "Partial DR (ε̃ = 0)" : nzmid == "product" ? "Product (ε = $nzeps, δ = ∞)" : error("DP_NZ_MID = partial | product")
+nz_labels = ["Nominal", midlabel, "Ours (ε = $nzeps, δ = " * replace(replace(nzours, "coupled_d" => ""), "p" => ".") * ")"]
 nz = Dict{Tuple{Float64,Float64},Vector{Vector{Float64}}}()
 xs_nz = Dict{String,String}()
 for l in ls[2:end]
@@ -91,5 +93,5 @@ table(nz, "비제로섬 $nztag, x: " * join(["$m $(xs_nz[m])" for m in nzmodels]
 for γ in gammas
     plt = panel(nz, γ, nz_labels; title=@sprintf("Non-zero-sum (location, ε = %s, β = 0.4), Dirichlet γ = %.1f", nzeps, γ),
                 ylabel="out-of-sample cost of B (lower is better)")
-    f = joinpath(nzdir, @sprintf("fig_nz_oos_g%s.png", replace(string(γ), "." => "p"))); savefig(plt, f); println("saved $f")
+    f = joinpath(nzdir, @sprintf("fig_nz_oos_%s_g%s.png", nzmid, replace(string(γ), "." => "p"))); savefig(plt, f); println("saved $f")
 end
