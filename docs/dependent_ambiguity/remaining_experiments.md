@@ -89,3 +89,22 @@ zonal_consistency 세션의 큐 (`exp2_chain.sh` → `exp2_rep.sh`, 대표일 �
   그림: `true_dro/factor_5/demo_value_plot.jl` → fig_tail.png (τ vs 실현 손실 95% 분위수), fig_mean.png. 결과 폴더 `.../logs/demo_value/<net>/`. 대기 스크립트 scratchpad `demo_after.sh`.
   첫 관문: 결합 효과가 0 인 인스턴스가 많았음 → x_<model>.txt 가 모델마다 다른지 먼저 확인 (같으면 네트워크·δ 를 바꿔야 함).
 - **2026-10-21 순서 변경 (사용자):** |A|=3 S=50 seed 9~10 (진행 중) → 발표용 예시 비제로섬 → §6.2 결합 집합 실험 → 발표용 예시 zero-sum → 보충 |A|=4 S=20 (맨 뒤). 대기 스크립트 scratchpad `order_chain.sh` (이전 after_zonal_chain·nig_after·demo_after 는 멈춤). |A|=4 S=50 과 λ 무관 인증은 여전히 나중에.
+
+## 5. 발표용 예시와 비제로섬 가치 평가 (2026-10-21, 내일 이어서)
+
+**zero-sum (Polska)**: 끝. 원고 OOS 데이터 (`true_dro/factor_5/plots/eps_0p1_beta_0p4/polska_factor_phaseAB.jls`) 를 `demo_value_plot3.jl` 로
+다시 그림 (`logs/demo_value/polska/fig_zs_oos_g0p1.png`). Nominal = Partial {3,33} → 우리 모형 {13,34}, q95 가 20 칸 모두 개선.
+
+**비제로섬에서 알게 된 것** (스크립트 `nonzero_sum/demo_screen_nz{2,3,4}.jl`, 결과 `nonzero_sum/logs/demo_value/screen*`):
+- 독립 수요 (Goyal U[30,240] 시장별 독립): 560 개 중 follower 쪽이 결정을 바꾼 것 3 개. 최적값 증가도 86% 가 0.5% 미만.
+  x 별 진단: follower 쪽 벌점은 두 점포 동시 출점 ({1,2}) 과 먼 점포 ({3}) 에만 붙고 리더 쪽의 약 1/10. β 가 클수록 사라짐 (β=0.7·0.9 에서 0).
+  현장구매 프리미엄 p 를 키워도 (200 → 1200) 효과 없음.
+- 원고 OOS 는 p, p̃ 독립이라 d_TV(p, p̃) 중앙값 0.47~0.90 → 결합 가정이 거의 항상 깨짐. 믿음을 진짜 분포에 묶어도 (데이터 N_F, 섞기 τ) 독립 수요에서는 순위 그대로.
+- **지역 요인 수요** (`make_location_instance(...; demand=:factor)`, zero-sum 요인 용량 모형과 같은 형태): follower/리더 벌점 비 0.19 → 0.83,
+  90 개 중 6 개에서 follower 쪽이 결정을 바꿈. seed 7 한도 150 ε=0.1: {1,2} → {1}, γ=1·5 에서 q95 −40~−64 개선, 평균 8~9% 손해
+  (`nonzero_sum/logs/demo_value/sgb128f_S10_eps0p10_q150_s7/fig_nz_oos_partial_g*.png`).
+- 평균 손해가 큰 이유: 의미 있는 후보지가 B1·B2 뿐이라 강건한 결정 = 점포를 닫는 것 (Polska 는 같은 예산에서 아크를 바꿈).
+
+**내일 정할 것**: ① 지금 인스턴스를 평균 대 q95 산점도로 (발표), ② 후보지가 많고 출점 수가 고정된 무작위 좌표 + 요인 수요로 "바꾸는" 결정 탐색 (원고,
+"정확히 k 곳" 제약 추가 필요). 원고 §6.2 OOS 설계 (독립 추출) 를 결합에 맞게 고칠지도 정해야 함.
+그림은 `GKSwstype=nul` 로 그릴 것 (GR 창 오류 시 그림 크기 깨짐).
