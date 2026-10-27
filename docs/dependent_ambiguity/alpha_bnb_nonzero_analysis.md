@@ -1455,4 +1455,19 @@ L6 seed 1, x̄ = {2,3} (활성 h 7 개), worker 12, 600 s.
 - S=3 은 Gurobi 가 빠르고 (기본 인스턴스와 같은 경향), S=10 은 범위 끈 α-B&B 가 Gurobi 를 크게 이김 (0.89% vs 16.7%).
 - 이전 기록 (§10.14, n_h=50 pair: `dual_range=false` 44% 로 가장 나음) 과 같은 방향. 범위 MIP 의 이득은 recourse 가 작은 인스턴스에 한정된다.
 
-다음: Benders 전체 (L6 S=3 시드 10 × 600 s 를 옛 스크리닝 1/10 과 비교, S=10 시드 1~3 × 1 h), `PP_PRE=0 PP_BNBKW="dual_range=false"`.
+**(3) Benders (L6 S=3, 시드 10, 600 s, `dual_range=false`, 프리솔브 끔)**: 1/10 Optimal (옛 스크리닝도 1/10). 대신 gap 이 20%~63,000% → 0.7%~31%. 시드 3 (x̄={3}) 은 옛 기본 구성이 풀었는데 (oracle 329 s) 이번엔 3.6% — 목적값이 −160 으로 작아 oracle 이 Ω 기준 0.044% 를 요구, 범위 MIP 의 강한 상한이 필요한 경우.
+
+**(4) 범위 MIP 예산** (`nz_alpha_bnb_dr` 새 인자, 기본값 그대로, 커밋 b4ec224):
+`range_mip=false` (범위 MIP 없이 전역 범위 [0, ϖᵁ]. `dual_range=false` 와 달리 FWD·KMC·상보성·상보성 분기는 유지),
+`range_time=T` (호출 시작 뒤 T 초까지만 범위 MIP. 마감에 걸린 MIP 는 쌍대 bound 만 쓴다 — 유효. 그 뒤 노드는 부모 범위를 물려받음), `range_nodes`.
+
+| 고정 x̄, 600 s | 기본 | `dual_range=false` | `range_mip=false, dd=false` | `range_time=120, dd=false` |
+|---|---|---|---|---|
+| S=3 seed 1 {2,3} | 44% | 0.33% | 43 s 해결 | 90 s 해결 |
+| S=3 seed 3 {3} | 355 s 해결 | 0.61% | 0.27% | **117 s 해결** |
+| S=10 seed 1 {2,3} | — | 0.89% | 0.41% | 0.40% |
+
+- `range_time` 를 노드 시작 시점에만 보면 루트 한 노드의 범위 계산 (S=10 에서 600 s 이상) 이 예산을 무시함 → MIP 마다 마감 시간을 걸어야 함 (두 번째 구현).
+- 강한 범위가 필요한 x̄ (seed 3) 와 처리량이 필요한 x̄ (seed 1) 를 둘 다 잡는 것은 "처음 잠깐만 범위 MIP" 구성.
+
+다음: Benders L6 S=10 시드 1~3 × 1 h, 이어서 S=3 시드 10 × 600 s (`PP_PRE=0 PP_BNBKW="range_time=120.0,dd=false"`, 로그 `bend_L6_S10_rtd.log`, `bend_L6_S3_rtd.log`).
