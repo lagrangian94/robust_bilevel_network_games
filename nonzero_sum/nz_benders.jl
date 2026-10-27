@@ -4,6 +4,9 @@ nz_benders.jl — 비제로섬 Ω 위의 Benders 두 가지.
 기본 구성 (zero-sum 과 동일 방침): oracle = α-B&B, cut = Magnanti–Wong 강화 (mw = true).
   전역 oracle 은 두 인자로 정한다 (실행을 시작할 때 "[설정]" 줄로 출력, 결과 Dict 의 :oracle, :bnb 에도 기록):
     oracle = :alpha_bnb (기본) | :gurobi (Ω NonConvex)
+           | :omega_grb (nz_belief_menu_benders 전용, 2026-10-27 2×2 ablation 용: 전역 단계를 BD-G (nz_bd_kkt.jl 의 _nz_omega_global!) 와
+             똑같이 — Ω NonConvex, 목표값 조기 종료, 남은 시간 전체, Gurobi 스레드 = global_optimizer, cut 은 α 고정 LP + MW.
+             BD-G 와는 belief cut 유무만, 기본 구성과는 전역 oracle 만 다르다. nz_bd_kkt.jl 이 include 되어 있어야 함)
     bnb    = :dr (기본: nz_alpha_bnb_dr, 상자별 쌍대 범위 조임) | :legacy (nz_alpha_bnb, 2026-10-10 까지의 구현)   — oracle = :alpha_bnb 일 때만 의미
     oracle_resume = true (기본): bnb = :dr 일 때 같은 x̄ 의 재호출은 이전 호출이 멈춘 곳에서 이어 풂
     bnb_kw = α-B&B 에 그대로 넘길 인자 (예: (ipopt_time = 120.0,)). 인자 목록은 각 함수의 docstring. 두 구현의 인자는 서로 다르다.
@@ -35,7 +38,8 @@ _nz_bnb_solver(bnb::Symbol) = bnb == :dr ? Main.nz_alpha_bnb_dr : bnb == :legacy
 const _NZ_CACHE_MAX = 6
 "실행 시작 시 한 줄: 어떤 전역 oracle 로 도는지"
 _nz_oracle_banner(oracle, bnb, nworkers, gap, bnb_kw, resume=false) = oracle == :gurobi ?
-    @sprintf("  [설정] 전역 oracle = Gurobi Ω (NonConvex), gap %.0e", gap) :
+    @sprintf("  [설정] 전역 oracle = Gurobi Ω (NonConvex), gap %.0e", gap) : oracle == :omega_grb ?
+    @sprintf("  [설정] 전역 oracle = Gurobi Ω (NonConvex, BD-G 의 전역 단계와 같음: 목표값 조기 종료, α 고정 LP cut), gap %.0e", gap) :
     @sprintf("  [설정] 전역 oracle = α-B&B (%s), worker %d, gap %.0e, 이어 풀기 %s, bnb_kw = %s", string(nameof(_nz_bnb_solver(bnb))),
              nworkers, gap, resume ? "켬" : "끔", string(bnb_kw))
 
@@ -168,6 +172,13 @@ function _nz_oracle!(O, Fx, nd, x̄; oracle, time_limit, gap, nworkers, target=n
     if oracle == :gurobi
         res = nz_solve!(O, nd, x̄; time_limit=time_limit, gap=gap)
         return res[:Fval], res[:bound], O
+    end
+    if oracle == :omega_grb             # BD-G 의 전역 단계 그대로. incumbent α 를 고정한 LP (Fx) 로 cut·belief (BD-G 와 같음)
+        k = Main._nz_omega_global!(O, nd, x̄; time_limit=time_limit, gap=gap, target=target)
+        k[:α] === nothing && return -Inf, k[:bound], nothing     # incumbent 없음 (상한만): 호출 측이 cut·belief 를 건너뜀
+        nz_set_objective!(Fx, nd, x̄)
+        z = Main.nz_eval_alpha!(Fx, nd, k[:α])
+        return z, max(k[:bound], z), Fx
     end
     # 구현은 bnb 로 고른다 (:dr 기본 | :legacy). 반환 Dict 의 :α, :UB 만 쓰므로 인터페이스는 같다.
     # cache (x̄ → (순번, α-B&B 상태)): 같은 x̄ 를 다시 부르면 이전 호출이 멈춘 곳에서 이어 푼다 (nz_alpha_bnb_dr 의 resume, :dr 전용).
@@ -346,9 +357,9 @@ end
 function nz_belief_menu_benders(nd::NZData; optimizer, lp_optimizer=optimizer, cert::Symbol=:recompute,
                                 cert_rows::Symbol=:hrows, max_iter=500, tol=1e-4, oracle_time=600.0, boost_time=3600.0,
                                 oracle::Symbol=:alpha_bnb, bnb::Symbol=:dr, oracle_gap=1e-5, nworkers=12, bnb_kw=NamedTuple(),
-                                target_stop::Bool=(oracle == :alpha_bnb), mw::Bool=true, vi::Bool=false,
+                                target_stop::Bool=(oracle in (:alpha_bnb, :omega_grb)), mw::Bool=true, vi::Bool=false,
                                 verbose=true, time_limit=Inf, local_first::Bool=false, local_time=60.0,
-                                oracle_resume::Bool=true,
+                                oracle_resume::Bool=true, global_optimizer=optimizer,
                                 oracle_remaining::Bool=(target_stop && isfinite(time_limit)))
     # oracle_remaining (기본: 목표값 조기 종료를 쓰고 전체 시간 제한이 유한하면 켬): 전역 oracle 에 남은 시간 전체를 준다.
     #   목표값 조기 종료가 있으면 oracle 이 오래 도는 것은 "위반 값이 없어 상한을 증명해야 하는" 경우뿐이고, 그때 호출을 끊어도
@@ -364,18 +375,21 @@ function nz_belief_menu_benders(nd::NZData; optimizer, lp_optimizer=optimizer, c
     # local_first: menu 가 x̄ 에서 수렴한 뒤 전역 oracle 을 부르기 전에 Ω 의 local 해 (Gurobi OptimalityTarget = 1, SB-G / SB-A 와 같음) 를
     #   먼저 본다. 그 해의 cut (α 고정 LP, MW) 이 x̄ 에서 tol 이상 위반되면 cut 을 넣고, 그 해의 belief + recourse 쌍대해도 menu 에 넣는다
     #   (local 해도 Ω 의 실행가능해라 cut 과 menu 원소 모두 유효. 값은 하한일 뿐이라 UB 에는 쓰지 않음). 위반이 없을 때만 전역 oracle.
+    # global_optimizer: oracle = :omega_grb 의 Ω 모형에만 쓰는 optimizer (BD-G 와 같은 스레드 수를 주려고)
     cert in (:recompute, :solution) || error("cert = :recompute | :solution")
-    oracle in (:gurobi, :alpha_bnb) || error("oracle = :gurobi | :alpha_bnb")
+    oracle in (:gurobi, :alpha_bnb, :omega_grb) || error("oracle = :gurobi | :alpha_bnb | :omega_grb")
+    oracle == :omega_grb && !isdefined(Main, :_nz_omega_global!) && error("oracle = :omega_grb 은 nz_bd_kkt.jl 을 먼저 include 해야 함")
     oracle == :alpha_bnb && _nz_bnb_solver(bnb)
     verbose && (println(_nz_oracle_banner(oracle, bnb, nworkers, oracle_gap, bnb_kw, bnb_cache !== nothing));
                 println("  [설정] oracle 시간: ", oracle_remaining ? "남은 시간 전체 (끊지 않음)" : "$(oracle_time) s, 재방문 시 최대 $(boost_time) s",
                         ", 목표값 조기 종료 ", target_stop ? "켬" : "끔", ", local cut ", local_first ? "켬" : "끔"); flush(stdout))
     x_core = nz_core_point(nd); n_mw = 0
-    target_stop && oracle != :alpha_bnb && error("target_stop 은 oracle=:alpha_bnb 에서만")
+    target_stop && oracle == :gurobi && error("target_stop 은 oracle=:alpha_bnb | :omega_grb 에서만")
     omp, x, t0 = _nz_omp(nd; optimizer=optimizer)
     vi && nz_add_dual_vi!(omp, x, t0, nd)
-    O = oracle == :gurobi ? build_nz_omega(nd; optimizer=optimizer) : nothing
-    Fx = (oracle == :alpha_bnb || (local_first && mw)) ? Main.nz_build_fixed_alpha(nd, zeros(nd.nx); optimizer=optimizer) : nothing
+    O = oracle == :gurobi ? build_nz_omega(nd; optimizer=optimizer) :
+        oracle == :omega_grb ? build_nz_omega(nd; optimizer=global_optimizer) : nothing
+    Fx = (oracle in (:alpha_bnb, :omega_grb) || (local_first && mw)) ? Main.nz_build_fixed_alpha(nd, zeros(nd.nx); optimizer=optimizer) : nothing
     Oloc = nothing; n_local = 0
     if local_first
         Oloc = build_nz_omega(nd; optimizer=optimizer)
@@ -466,8 +480,17 @@ function nz_belief_menu_benders(nd::NZData; optimizer, lp_optimizer=optimizer, c
         # 정상이다 (t₀ 가 올라간 뒤 다시 확인하는 것). 이전에는 같은 x̄ 세 번째 호출에서 무조건 :Stalled.
         t_o < 0.9 * lim && delete!(tl, x̄)
         res = Dict(:Fval => zinc, :bound => zbd)
+        ub_here = dot(nd.qx, x̄) + res[:bound]
+        if src === nothing                                # :omega_grb 에서 incumbent 없이 끝남 (BD-G 와 같이 상한만 갱신)
+            ub_here < UB && (UB = ub_here; best_x = copy(x̄))
+            push!(hist, (iter=iter, LB=LB, UB=UB, x=findall(x̄ .> 0.5), kind=:oracle, n=length(menu), w=w_LB))
+            verbose && @printf("  [orcl] it %3d LB=%11.4f UB=%11.4f x=%-10s incumbent 없음, 상한 %.4f (%.1fs)\n",
+                               iter, LB, UB, string(findall(x̄ .> 0.5)), res[:bound], t_o)
+            verbose && flush(stdout)
+            continue
+        end
         bel_raw = nz_read_belief(src, nd)                 # MW 재풀이 전에 읽음 (재풀이가 해를 바꿈)
-        if oracle == :alpha_bnb
+        if oracle in (:alpha_bnb, :omega_grb)
             cut, ok = _nz_lp_cut!(src, nd, x̄, zinc; mw=mw, x_core=x_core); n_mw += ok
             _log_cut!(cuts, :restricted, iter, x̄, cut, ok)
         else
@@ -475,7 +498,6 @@ function nz_belief_menu_benders(nd::NZData; optimizer, lp_optimizer=optimizer, c
             _log_cut!(cuts, :omega, iter, x̄, cut, false)
         end
         _add_cut!(omp, x, t0, cut)
-        ub_here = dot(nd.qx, x̄) + res[:bound]
         ub_here < UB && (UB = ub_here; best_x = copy(x̄))
         new_b = res[:Fval] > V_menu + 1e-6 * max(1.0, abs(res[:Fval]))
         if new_b
