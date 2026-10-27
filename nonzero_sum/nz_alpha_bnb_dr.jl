@@ -264,6 +264,16 @@ end
 
 const _NZ_DR_FAIL_SHOWN = Threads.Atomic{Int}(0)
 
+"시간 제한으로 끝난 범위 MIP 의 쌍대 bound. 아주 짧은 제한에서는 Gurobi 가 bound 를 만들기 전에 멈춰 ObjBound 를 읽을 수 없다 → NaN (호출자는 부모 값 유지)"
+function _nz_dr_bound_or_nan(model)
+    try
+        return objective_bound(model)
+    catch e
+        e isa MOI.GetAttributeNotAllowed || rethrow()
+        return NaN
+    end
+end
+
 """
 범위·값 MIP 풀이. Gurobi 가 optimize 도중 오류를 내면 (worker 12 개 실행에서 간헐적으로 "Gurobi Error 10005: Unable to retrieve
 attribute 'ObjBound'" 관찰, 단일 스레드 무작위 상자 4.6 만 회에서는 재현 안 됨 — 원인 미확인) 한 번 다시 풀고, 또 실패하면 false.
@@ -321,7 +331,7 @@ function _nz_dr_ranges(DR::_NZDR, nd::NZData, l, u, lo0, hi0, wit0, phib0; fixto
                 st = termination_status(M.model)
                 st in (MOI.INFEASIBLE, MOI.INFEASIBLE_OR_UNBOUNDED) && return nothing
                 if st == MOI.TIME_LIMIT && isfinite(mip_deadline)     # range_time 마감: 쌍대 bound 는 유효한 범위 (못 구했으면 부모 값)
-                    b = objective_bound(M.model)
+                    b = _nz_dr_bound_or_nan(M.model)
                     isfinite(b) && (ismax ? (hi[a, s] = min(hi[a, s], b + 1e-6)) : (lo[a, s] = max(lo[a, s], b - 1e-6)))
                     continue
                 end
@@ -350,7 +360,7 @@ function _nz_dr_ranges(DR::_NZDR, nd::NZData, l, u, lo0, hi0, wit0, phib0; fixto
                     st = termination_status(M.model)
                     st in (MOI.INFEASIBLE, MOI.INFEASIBLE_OR_UNBOUNDED) && return nothing
                     if st == MOI.TIME_LIMIT && isfinite(mip_deadline)                        # range_time 마감: bound 만 (witness 없음)
-                        b = objective_bound(M.model)
+                        b = _nz_dr_bound_or_nan(M.model)
                         isfinite(b) && (phib[s] = min(phib[s], b + 1e-6 * max(1.0, abs(b))))
                     else
                         st == MOI.OPTIMAL || error("nz_alpha_bnb_dr 값 MIP (s=$s): $st")
