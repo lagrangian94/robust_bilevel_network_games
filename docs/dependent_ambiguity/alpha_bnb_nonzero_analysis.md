@@ -1431,3 +1431,28 @@ SGM = shifted geometric mean (shift 10 s, 못 푼 것은 3,600 s), 반복·전�
 - 12:23~13:27 에 예전 사슬의 julia (|A| = 3 S = 50) 가 남아 큐와 CPU 를 나눠 씀 → L2~L5 스크리닝 시간은 부풀려짐 (판정은 유효), 그 |A| = 3 S = 50 결과는 `*_contended_orphan.log` 로 따로 두고 쓰지 않음. Git Bash ps 에 부모가 끝난 julia 가 안 보임 → 전환 때 PowerShell Get-Process julia 로 확인할 것.
 
 **원고 (로컬, Overleaf 반영 전):** §6.1.2 Instances and Setup 새로 (표 tab:loc-settings, θ̄ 사이클 열거, λ 사후 인증), Lemma phi 뒤 적용 범위 단락 (zero-sum θ = 0, 행 스케일 TU 면 θ = D_F‖d_L‖₁, network 면 정확한 최솟값), Lemma certificate → Proposition ((iii) λ̄ polynomial encoding length, 증명은 Hoffman 대신 꼭짓점·직선 논증), Corollary conservative bounds, Corollary membership (Σ₂ᵖ·NP 소속, Prop 1 은 hardness 그대로), 보충 §H (|A| 축), 보충에 natbib·참고문헌 추가.
+
+### 10.26 L6 (Goyal 9) 진단: 시간은 전부 쌍대 범위 MIP 였다 (2026-10-28 밤, 사용자 요청 "L6 이 왜 안 되는지 다각도로")
+
+진단 스크립트 `nonzero_sum/diag_l6.jl` (고정 x̄ oracle, 인스턴스는 `pilot_pooled_store.jl` 과 같음), 로그 `nonzero_sum/logs/l6diag/`.
+L6 seed 1, x̄ = {2,3} (활성 h 7 개), worker 12, 600 s.
+
+**(1) 반응 정의역 프리솔브**: 403 s 를 쓰고 7 개 중 0 개 고정. 스크리닝 로그에서도 L6 의 모든 x̄ 에서 0 개 (34~606 s). L6 에서는 순손실 → `PP_PRE=0`.
+
+**(2) 고정 x̄ oracle (프리솔브 끔)**
+
+| S | 구성 | 노드 | 루트 상한 | 600 s 결과 | 시간 분해 (worker 합) |
+|---|---|---|---|---|---|
+| 3 | 기본 (`dual_range` 켬) | 11 | −1802 | gap 44% | 범위 MIP 595 개 1,166 s, 노드 LP 0.8 s |
+| 3 | `dd=false` | 255 | −1802 | 15% | 범위 MIP 3,983 개 5,488 s, LP 14 s |
+| 3 | `dual_range=false` | **255,836** | −1739 | **0.33%** | LP 2,544 s |
+| 3 | Gurobi Ω (NonConvex, 12 스레드) | — | — | **47 s Optimal** (−2791.0) | |
+| 10 | `dual_range=false` | 42,937 | | **0.89%** (−2619.5 / −2596.3) | |
+| 10 | Gurobi Ω | — | | 16.7% (−2636.5 / −2259.3) | |
+
+- 기본 구성의 시간은 **전부 노드마다 푸는 쌍대 범위 KKT-MIP** 였다. 이 MIP 는 시나리오마다 recourse 전체 (시장 15 × 거점 10 수송) 의 상보성 이진변수를 갖고 노드 안에서 한 worker 가 순서대로 푼다 (루트에서는 나머지 11 worker 가 논다). SGB128 기본 인스턴스에서는 작아서 이득이었지만 L6 에서는 루트만 ~400 s.
+- 범위를 끄면 루트 상한은 조금 약해지지만 (−1802 → −1739) 노드 처리량이 만 배 이상 → 600 s 에 gap 0.33% (S=3), 0.89% (S=10).
+- S=3 은 Gurobi 가 빠르고 (기본 인스턴스와 같은 경향), S=10 은 범위 끈 α-B&B 가 Gurobi 를 크게 이김 (0.89% vs 16.7%).
+- 이전 기록 (§10.14, n_h=50 pair: `dual_range=false` 44% 로 가장 나음) 과 같은 방향. 범위 MIP 의 이득은 recourse 가 작은 인스턴스에 한정된다.
+
+다음: Benders 전체 (L6 S=3 시드 10 × 600 s 를 옛 스크리닝 1/10 과 비교, S=10 시드 1~3 × 1 h), `PP_PRE=0 PP_BNBKW="dual_range=false"`.

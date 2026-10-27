@@ -50,7 +50,16 @@ if PRE          # nz_alpha_bnb_dr 의 프리솔브 호출에 반응 정의역 �
     end
 end
 xstr(x) = "{" * join(findall(x .> 0.5), ",") * "}"
-kw = (ipopt_time=120.0,)
+# PP_BNBKW = "" (기본) | 예 "dual_range=false": α-B&B 에 더 넘길 Bool/숫자 인자 (2026-10-28 L6 진단용, 기본 실행은 그대로)
+function _pp_kw(str)
+    kv = Pair{Symbol,Any}[]
+    for t in split(str, ","; keepempty=false)
+        a, b = strip.(split(t, "="))
+        push!(kv, Symbol(a) => (b == "true" ? true : b == "false" ? false : occursin(r"^[0-9]+$", b) ? parse(Int, b) : parse(Float64, b)))
+    end
+    return (; kv...)
+end
+kw = merge((ipopt_time=120.0,), _pp_kw(envf("PP_BNBKW", "")))
 for seed in seeds, S in sort(Ss)
     nd = mk(S, seed)
     @printf("\n--- pooled(거점별 %.0f) d=%d A=%d B=%d (N_B≤%d) seed=%d S=%d: n_h=%d, |X|=%d, 용량 %.0f, 출점비 %.0f, f=%.2f p=%.2f, θᵁ=%.1f λᵁ=%.1f, TL=%.0fs, 프리솔브 %s\n",
@@ -63,6 +72,6 @@ for seed in seeds, S in sort(Ss)
     @printf("RESULT pooled-store λ=%.0f qB=%.0f d=%d m=%d nA=%d nB=%d seed=%d S=%d nh=%d status=%s x=%s LB=%.6f UB=%.6f gap=%.2e iters=%d global=%d local=%s menu=%s time=%.1f%s\n",
             lam, qB, nloc, m, nA, nB, seed, S, nz_nh(nd), r[:status], xstr(r[:x]), r[:LB], r[:UB], gap, r[:iters], r[:oracle_calls],
             string(get(r, :local_cuts, "-")), string(get(r, :menu_size, "-")), time() - t0,
-            ORC == :omega_grb ? " oracle=omega_grb" : "")      # ablation 실행 표시 (기본 실행의 RESULT 형식은 그대로)
+            (ORC == :omega_grb ? " oracle=omega_grb" : "") * (isempty(envf("PP_BNBKW", "")) ? "" : " bnbkw=" * replace(envf("PP_BNBKW", ""), " " => "")) * (PRE ? "" : " pre=0"))      # ablation 실행 표시 (기본 실행의 RESULT 형식은 그대로)
     flush(stdout)
 end
