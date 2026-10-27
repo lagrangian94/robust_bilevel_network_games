@@ -227,7 +227,7 @@ end
 wit0 는 부모의 witness, wit 는 이 노드의 witness (여기에 차이 MIP 의 witness 를 더한다. 키는 (−쌍 번호, s, ismax)).
 두 성분이 모두 고정되지 않은 쌍만 MIP 를 푼다 (하나라도 고정이면 성분별 범위가 함의하는 값이 정확).
 """
-function _nz_dr_dranges!(DR::_NZDR, nd::NZData, l, u, lo, hi, dlo0, dhi0, wit0, wit; fixtol=1e-4, deadline=Inf)
+function _nz_dr_dranges!(DR::_NZDR, nd::NZData, l, u, lo, hi, dlo0, dhi0, wit0, wit; fixtol=1e-4, deadline=Inf, mip_deadline=Inf)
     dlo = copy(dlo0); dhi = copy(dhi0)
     S, nh = nd.S, nz_nh(nd)
     inbox(α) = all(l[i] - 1e-12 <= α[i] <= u[i] + 1e-12 for i in 1:nh)
@@ -249,6 +249,7 @@ function _nz_dr_dranges!(DR::_NZDR, nd::NZData, l, u, lo, hi, dlo0, dhi0, wit0, 
                     boxset = true
                 end
                 @objective(M.model, ismax ? MAX_SENSE : MIN_SENSE, M.σ[ka] - M.σ[kb])
+                isfinite(mip_deadline) && set_time_limit_sec(M.model, max(mip_deadline - time(), 0.01))
                 _nz_dr_opt!(DR, M, l, u, "s=$s 쌍 ($ka, $kb) $(ismax ? "max" : "min")") || continue
                 termination_status(M.model) == MOI.OPTIMAL || continue          # 상자가 비었으면 _nz_dr_ranges 가 이미 걸렀음. 그 밖에는 부모 값 유지
                 bd = objective_bound(M.model)
@@ -291,7 +292,7 @@ end
 witness: 범위 MIP 의 해 α (그 값을 달성하는 점). 부모의 witness 가 자식 상자 안에 있으면 그 값은 자식에서도 그대로이므로
 MIP 를 다시 풀지 않는다 (상자를 한 좌표에서 나누면 witness 는 자식 중 하나에는 반드시 남는다).
 상자 안에 실행가능한 α 가 없으면 nothing."""
-function _nz_dr_ranges(DR::_NZDR, nd::NZData, l, u, lo0, hi0, wit0, phib0; fixtol=1e-4, deadline=Inf)
+function _nz_dr_ranges(DR::_NZDR, nd::NZData, l, u, lo0, hi0, wit0, phib0; fixtol=1e-4, deadline=Inf, mip_deadline=Inf)
     lo = copy(lo0); hi = copy(hi0); phib = copy(phib0)
     wit = Dict{Tuple{Int,Int,Bool},Vector{Float64}}()
     S, nh = nd.S, nz_nh(nd)
@@ -315,9 +316,15 @@ function _nz_dr_ranges(DR::_NZDR, nd::NZData, l, u, lo0, hi0, wit0, phib0; fixto
                     boxset = true
                 end
                 @objective(M.model, ismax ? MAX_SENSE : MIN_SENSE, M.σ[k])
+                isfinite(mip_deadline) && set_time_limit_sec(M.model, max(mip_deadline - time(), 0.01))
                 _nz_dr_opt!(DR, M, l, u, "s=$s k=$k $(ismax ? "max" : "min")") || continue    # 실패: 부모 값 유지
                 st = termination_status(M.model)
                 st in (MOI.INFEASIBLE, MOI.INFEASIBLE_OR_UNBOUNDED) && return nothing
+                if st == MOI.TIME_LIMIT && isfinite(mip_deadline)     # range_time 마감: 쌍대 bound 는 유효한 범위 (못 구했으면 부모 값)
+                    b = objective_bound(M.model)
+                    isfinite(b) && (ismax ? (hi[a, s] = min(hi[a, s], b + 1e-6)) : (lo[a, s] = max(lo[a, s], b - 1e-6)))
+                    continue
+                end
                 st == MOI.OPTIMAL || error("nz_alpha_bnb_dr 범위 MIP (s=$s, k=$k): $st")
                 b = objective_bound(M.model)
                 ismax ? (hi[a, s] = min(hi[a, s], b + 1e-6)) : (lo[a, s] = max(lo[a, s], b - 1e-6))
@@ -338,13 +345,19 @@ function _nz_dr_ranges(DR::_NZDR, nd::NZData, l, u, lo0, hi0, wit0, phib0; fixto
                     boxset = true
                 end
                 @objective(M.model, Max, sum(nd.ell[j] * M.y[j] for j in eachindex(M.y) if nd.ell[j] != 0))
+                isfinite(mip_deadline) && set_time_limit_sec(M.model, max(mip_deadline - time(), 0.01))
                 if _nz_dr_opt!(DR, M, l, u, "s=$s 값")                                          # 실패: 부모 값 유지
                     st = termination_status(M.model)
                     st in (MOI.INFEASIBLE, MOI.INFEASIBLE_OR_UNBOUNDED) && return nothing
-                    st == MOI.OPTIMAL || error("nz_alpha_bnb_dr 값 MIP (s=$s): $st")
-                    b = objective_bound(M.model)
-                    phib[s] = min(phib[s], b + 1e-6 * max(1.0, abs(b)))
-                    wit[key] = clamp.(value.(M.α), l, u)
+                    if st == MOI.TIME_LIMIT && isfinite(mip_deadline)                        # range_time 마감: bound 만 (witness 없음)
+                        b = objective_bound(M.model)
+                        isfinite(b) && (phib[s] = min(phib[s], b + 1e-6 * max(1.0, abs(b))))
+                    else
+                        st == MOI.OPTIMAL || error("nz_alpha_bnb_dr 값 MIP (s=$s): $st")
+                        b = objective_bound(M.model)
+                        phib[s] = min(phib[s], b + 1e-6 * max(1.0, abs(b)))
+                        wit[key] = clamp.(value.(M.α), l, u)
+                    end
                 end
             end
         end
@@ -525,7 +538,7 @@ const _NZ_DR_ANNOUNCE_LOCK = ReentrantLock()
 
 "기본 구성 (2026-10-13). 이 값과 다른 항목이 있으면 _nz_dr_announce 가 stderr 에 알린다"
 const _NZ_DR_DEFAULT = (dual_range=true, comp=true, vcut=true, cslift=true, fwd=true, kmc=true, dd=true, cbranch=true, sticky=true,
-                        lp_tol=1e-7, branch_point=:mid, child_rounds=1, resp=false)
+                        lp_tol=1e-7, branch_point=:mid, child_rounds=1, resp=false, range_mip=true, range_nodes=typemax(Int), range_time=Inf)
 
 "구성이 기본과 다르면 다른 항목을 stderr 에 한 번 알린다 (같은 구성은 프로세스당 한 번) — 의도하지 않은 구성으로 도는 것을 막기 위해"
 function _nz_dr_announce(config)
@@ -608,6 +621,14 @@ function nz_alpha_bnb_dr(nd::NZData, x̄;
                          cbranch::Bool=true, sticky::Bool=true, lp_tol::Float64=1e-7,
                          # primal 휴리스틱: 노드 완화의 belief 에서 follower 의 최적 반응을 평가 (nz_resp_heuristic.jl)
                          resp::Bool=false,
+                         # range_mip = false: 쌍대 범위 KKT-MIP 를 풀지 않고 범위를 전역 값 [0, ϖᵁ] 으로 둔다 (dual_range 의 나머지 강화 — FWD, KMC,
+                         #   상보성·상보성 분기, RLT — 는 그대로). recourse 가 커서 범위 MIP 가 노드 시간을 다 쓰는 인스턴스용 (L6, 문서 §10.26)
+                         range_mip::Bool=true,
+                         # range_nodes: 범위 MIP 를 처음 range_nodes 개 노드에서만 푼다. 그 뒤 노드는 부모 범위를 물려받는다 (부모 상자의 범위는
+                         #   자식 상자에서도 유효). range_mip = false 와 기본 (모든 노드) 의 중간 (L6, 문서 §10.26)
+                         range_nodes::Int=typemax(Int),
+                         # range_time: 호출 시작 뒤 range_time 초까지만 범위 MIP 를 푼다 (그 뒤 노드는 부모 범위). range_nodes 와 함께 쓰면 둘 다 만족할 때만
+                         range_time::Float64=Inf,
                          # 이어 풀기: 같은 x̄ 의 이전 호출이 돌려준 r[:state]
                          resume=nothing)
     branch_point in (:alphahat, :mid) || error("branch_point = :alphahat | :mid")
@@ -615,8 +636,9 @@ function nz_alpha_bnb_dr(nd::NZData, x̄;
               branch_point=branch_point, child_rounds=child_rounds, maxrounds=maxrounds, dive_max=dive_max,
               sep_maxadd=sep_maxadd, presolve=presolve, heuristic=heuristic,
               fwd=dual_range && cslift && fwd, kmc=dual_range && cslift && kmc, dd=dual_range && dd,
-              cbranch=dual_range && comp && cbranch, sticky=sticky, lp_tol=lp_tol, resp=resp)
+              cbranch=dual_range && comp && cbranch, sticky=sticky, lp_tol=lp_tol, resp=resp, range_mip=range_mip, range_nodes=range_nodes, range_time=range_time)
     _nz_dr_announce(config)
+    n_rnode = Threads.Atomic{Int}(0)                                         # 범위 MIP 를 푼 노드 수 (range_nodes)
     n_cbranch = Threads.Atomic{Int}(0)                                       # 상보성 분기 횟수
     n_infeas = Threads.Atomic{Int}(0); n_infrec = Threads.Atomic{Int}(0)     # 실행 불가능 노드 (1e-6 재확인 통과) / 재확인에서 되살아난 노드
     nfix = 0
@@ -733,15 +755,21 @@ function nz_alpha_bnb_dr(nd::NZData, x̄;
                 sticky ? _nz_sticky_set_box!(P, l, u) : _nz_sep_set_box!(P, l, u)
                 _nz_sep_set_wbox!(P, P.Lw, P.Uw)
                 empty_box = false
-                if dual_range
-                    tg = @elapsed (rg = _nz_dr_ranges(DR, nd, l, u, lop, hip, witp, phibp; deadline=t_end))
+                if dual_range && !(range_mip && time() - t0 < range_time && Threads.atomic_add!(n_rnode, 1) < range_nodes)   # 범위는 부모 값 그대로, 나머지 강화만 상자에 맞춤
+                    _nz_dr_set!(P, DR, nd, l, u, lo, hi, phib; comp=comp, eq=eqp, dlo=dlo, dhi=dhi)
+                    fixfrac = count(hi .- lo .<= 1e-4) / max(1, length(lo))
+                elseif dual_range
+                    rdl = min(t_end, t0 + range_time)            # range_time 마감 (기본 Inf 면 t_end)
+                    tg = @elapsed (rg = _nz_dr_ranges(DR, nd, l, u, lop, hip, witp, phibp; deadline=rdl,
+                                                      mip_deadline=(isfinite(range_time) ? rdl : Inf)))
                     Threads.atomic_add!(t_range, tg); tn_rg += tg
                     if rg === nothing
                         empty_box = true                 # 상자 안에 실행가능한 α 가 없음
                     else
                         lo, hi, wit, phib = rg
                         if config.dd
-                            tg2 = @elapsed ((dlo, dhi) = _nz_dr_dranges!(DR, nd, l, u, lo, hi, ext.dlo, ext.dhi, witp, wit; deadline=t_end))
+                            tg2 = @elapsed ((dlo, dhi) = _nz_dr_dranges!(DR, nd, l, u, lo, hi, ext.dlo, ext.dhi, witp, wit; deadline=rdl,
+                                                                          mip_deadline=(isfinite(range_time) ? rdl : Inf)))
                             Threads.atomic_add!(t_range, tg2); tn_rg += tg2
                         end
                         _nz_dr_set!(P, DR, nd, l, u, lo, hi, phib; comp=comp, eq=eqp, dlo=dlo, dhi=dhi)
