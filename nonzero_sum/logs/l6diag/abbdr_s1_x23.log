@@ -1,0 +1,69 @@
+Set parameter Username
+Set parameter LicenseID to value 2742039
+Academic license - for non-commercial use only - expires 2026-11-20
+diag_l6: seed=1 S=3 x̄=[2, 3] n_h=10 θ=50.000 (circuit 50.000) λ=2000 TL=600 gap=1e-03 workers=12 프리솔브 켬
+  hU = [300.0, 300.0, 300.0, 300.0, 300.0, 300.0, 300.0, 300.0, 300.0, 300.0]
+  q_hat = [0.333, 0.333, 0.333]
+Set parameter Username
+Set parameter LicenseID to value 2742039
+Academic license - for non-commercial use only - expires 2026-11-20
+    [반응 프리솔브] x=[2, 3]: 활성 7 중 0 개를 0 으로 고정 (402.7s)
+Set parameter Username
+Set parameter LicenseID to value 2742039
+Academic license - for non-commercial use only - expires 2026-11-20
+Set parameter Username
+Set parameter LicenseID to value 2742039
+Academic license - for non-commercial use only - expires 2026-11-20
+Set parameter Username
+Set parameter LicenseID to value 2742039
+Academic license - for non-commercial use only - expires 2026-11-20
+Set parameter Username
+Set parameter LicenseID to value 2742039
+Academic license - for non-commercial use only - expires 2026-11-20
+Set parameter Username
+Set parameter LicenseID to value 2742039
+Academic license - for non-commercial use only - expires 2026-11-20
+Set parameter Username
+Set parameter LicenseID to value 2742039
+Academic license - for non-commercial use only - expires 2026-11-20
+Set parameter Username
+Set parameter LicenseID to value 2742039
+Academic license - for non-commercial use only - expires 2026-11-20
+Set parameter Username
+Set parameter LicenseID to value 2742039
+Academic license - for non-commercial use only - expires 2026-11-20
+Set parameter Username
+Set parameter LicenseID to value 2742039
+Academic license - for non-commercial use only - expires 2026-11-20
+Set parameter Username
+Set parameter LicenseID to value 2742039
+Academic license - for non-commercial use only - expires 2026-11-20
+Set parameter Username
+Set parameter LicenseID to value 2742039
+Academic license - for non-commercial use only - expires 2026-11-20
+Set parameter Username
+Set parameter LicenseID to value 2742039
+Academic license - for non-commercial use only - expires 2026-11-20
+
+******************************************************************************
+This program contains Ipopt, a library for large-scale nonlinear optimization.
+ Ipopt is released as open source code under the Eclipse Public License (EPL).
+         For more information visit https://github.com/coin-or/Ipopt
+******************************************************************************
+
+    [nz-α-B&B-dr] t=  60.5s nodes=    0 open=    0 LB=-2807.611146 UB=Inf gap=Inf
+    [nz-α-B&B-dr] t= 120.8s nodes=    0 open=    0 LB=-2807.611146 UB=Inf gap=Inf
+    [nz-α-B&B-dr] t= 181.0s nodes=    0 open=    0 LB=-2807.611146 UB=Inf gap=Inf
+    [nz-α-B&B-dr] t= 241.2s nodes=    0 open=    0 LB=-2807.611146 UB=Inf gap=Inf
+    [nz-α-B&B-dr] t= 301.2s nodes=    0 open=    0 LB=-2807.611146 UB=Inf gap=Inf
+    [nz-α-B&B-dr] t= 361.3s nodes=    0 open=    0 LB=-2807.611146 UB=Inf gap=Inf
+    [nz-α-B&B-dr] t= 421.4s nodes=    2 open=    0 LB=-2791.245887 UB=-1802.079696 gap=3.544e-01
+    [nz-α-B&B-dr] t= 481.6s nodes=    2 open=    0 LB=-2791.245887 UB=-1802.079696 gap=3.544e-01
+    [nz-α-B&B-dr] t= 541.7s nodes=    4 open=    0 LB=-2791.245887 UB=-1881.948299 gap=3.258e-01
+ERROR: LoadError: KeyError: key :status not found
+Stacktrace:
+ [1] getindex(h::Dict{Symbol, Any}, key::Symbol)
+   @ Base .\dict.jl:477
+ [2] top-level scope
+   @ C:\Users\user\robust_bilevel_network_games\nonzero_sum\diag_l6.jl:61
+in expression starting at C:\Users\user\robust_bilevel_network_games\nonzero_sum\diag_l6.jl:58

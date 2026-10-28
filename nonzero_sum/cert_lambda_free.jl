@@ -26,7 +26,17 @@ include(joinpath(root, "nonzero_sum", "nz_alpha_bnb_dr.jl")); include(joinpath(r
 envf(k, d) = get(ENV, k, d); pf(k, d) = parse(Float64, envf(k, d)); pint(k, d) = parse(Int, envf(k, d))
 strs(k, d) = String.(strip.(split(envf(k, d), ",")))
 
-logdir = joinpath(root, "nonzero_sum", "logs")
+# CF_LOGDIR = "" (기본: nonzero_sum/logs) | logs 아래 하위 폴더 (예 "l6diag")   CF_BNBKW = "" | 예 "range_lp=true,dd=false" (α-B&B 에 더 넘길 인자) — 2026-10-28 L6 인증용, 기본 실행은 그대로
+logdir = joinpath(root, "nonzero_sum", "logs", envf("CF_LOGDIR", ""))
+function _cf_kw(str)
+    kv = Pair{Symbol,Any}[]
+    for t in split(str, ","; keepempty=false)
+        a, b = strip.(split(t, "="))
+        push!(kv, Symbol(a) => (b == "true" ? true : b == "false" ? false : occursin(r"^[0-9]+$", b) ? parse(Int, b) : parse(Float64, b)))
+    end
+    return (; kv...)
+end
+bnbkw = _cf_kw(envf("CF_BNBKW", ""))
 out = envf("CF_OUT", joinpath(logdir, "cert_lambda_free.log"))
 tol = pf("CF_TOL", "5e-3"); tls = parse.(Float64, strs("CF_TLS", "10,120,600")); nw = pint("CF_WORKERS", "12")
 skip = strs("CF_SKIP", "contended")
@@ -74,7 +84,7 @@ open(out, "a") do io
         for x in xs
             w = -Inf; used = 0.0
             for tl in tls
-                r = nz_alpha_bnb_dr(nd, x; nworkers=nw, time_limit=tl, rel_gap=tol / 4, verbose=false, ipopt_time=min(30.0, tl))
+                r = nz_alpha_bnb_dr(nd, x; nworkers=nw, time_limit=tl, rel_gap=tol / 4, verbose=false, ipopt_time=min(30.0, tl), bnbkw...)
                 (r[:α] === nothing || isempty(r[:α])) || (w = max(w, exact_lb(nd, x, r[:α])[1]))
                 used = tl
                 dot(nd.qx, x) + w >= thr && break

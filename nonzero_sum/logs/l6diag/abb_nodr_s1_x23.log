@@ -1,0 +1,87 @@
+Set parameter Username
+Set parameter LicenseID to value 2742039
+Academic license - for non-commercial use only - expires 2026-11-20
+diag_l6: seed=1 S=3 x̄=[2, 3] n_h=10 θ=50.000 (circuit 50.000) λ=2000 TL=600 gap=1e-03 workers=12 프리솔브 끔
+Set parameter Username
+Set parameter LicenseID to value 2742039
+Academic license - for non-commercial use only - expires 2026-11-20
+Set parameter Username
+Set parameter LicenseID to value 2742039
+Academic license - for non-commercial use only - expires 2026-11-20
+Set parameter Username
+Set parameter LicenseID to value 2742039
+Academic license - for non-commercial use only - expires 2026-11-20
+Set parameter Username
+Set parameter LicenseID to value 2742039
+Academic license - for non-commercial use only - expires 2026-11-20
+Set parameter Username
+Set parameter LicenseID to value 2742039
+Academic license - for non-commercial use only - expires 2026-11-20
+Set parameter Username
+Set parameter LicenseID to value 2742039
+Academic license - for non-commercial use only - expires 2026-11-20
+Set parameter Username
+Set parameter LicenseID to value 2742039
+Academic license - for non-commercial use only - expires 2026-11-20
+Set parameter Username
+Set parameter LicenseID to value 2742039
+Academic license - for non-commercial use only - expires 2026-11-20
+Set parameter Username
+Set parameter LicenseID to value 2742039
+Academic license - for non-commercial use only - expires 2026-11-20
+Set parameter Username
+Set parameter LicenseID to value 2742039
+Academic license - for non-commercial use only - expires 2026-11-20
+Set parameter Username
+Set parameter LicenseID to value 2742039
+Academic license - for non-commercial use only - expires 2026-11-20
+Set parameter Username
+Set parameter LicenseID to value 2742039
+Academic license - for non-commercial use only - expires 2026-11-20
+Set parameter Username
+Set parameter LicenseID to value 2742039
+Academic license - for non-commercial use only - expires 2026-11-20
+
+******************************************************************************
+This program contains Ipopt, a library for large-scale nonlinear optimization.
+ Ipopt is released as open source code under the Eclipse Public License (EPL).
+         For more information visit https://github.com/coin-or/Ipopt
+******************************************************************************
+
+    [nz-α-B&B-dr] t=  63.6s nodes=43588 open=18078 LB=-2791.240901 UB=-2740.629998 gap=1.813e-02
+    [nz-α-B&B-dr] t= 124.1s nodes=81572 open=31192 LB=-2791.240901 UB=-2755.039224 gap=1.297e-02
+    [nz-α-B&B-dr] t= 184.2s nodes=109936 open=42100 LB=-2791.232654 UB=-2762.206289 gap=1.040e-02
+    [nz-α-B&B-dr] t= 244.2s nodes=133507 open=47901 LB=-2791.200862 UB=-2767.391495 gap=8.530e-03
+    [nz-α-B&B-dr] t= 304.3s nodes=155069 open=49486 LB=-2791.200862 UB=-2771.818047 gap=6.944e-03
+    [nz-α-B&B-dr] t= 364.3s nodes=175958 open=50051 LB=-2791.200862 UB=-2774.918898 gap=5.833e-03
+    [nz-α-B&B-dr] t= 424.5s nodes=196519 open=51281 LB=-2791.200862 UB=-2777.330556 gap=4.969e-03
+    [nz-α-B&B-dr] t= 484.7s nodes=216755 open=52272 LB=-2791.174579 UB=-2779.579192 gap=4.154e-03
+    [nz-α-B&B-dr] t= 544.8s nodes=237055 open=53826 LB=-2791.174579 UB=-2781.014445 gap=3.640e-03
+RESULT abbdr kw=(dual_range = false,) status=- LB=-2791.1746 UB=-2782.0135 gap=3.29e-03 nodes=255836 time=603.9
+    LB = -2791.1745788911135
+    UB = -2782.0134753116527
+    cbranch = 0
+    fixfrac = 0.0
+    gc_wait = 34.5523177
+    gcsafe = on
+    infeas = 0
+    infeas_recovered = 0
+    ipopt_calls = 153
+    is_exact = false
+    nodes = 255836
+    numerr = 0
+    numerr_fail = 0
+    numerr_fresh = 0
+    presolve_fixed = 3
+    range_fail = 0
+    range_mips = 0
+    resp_hits = 0
+    resumed = false
+    root_UB = -1739.3436761468593
+    solver = nz_alpha_bnb_dr
+    t_eval = 332.53527229999145
+    t_range = 0.0
+    t_recheck = 0.0
+    t_relax = 2543.519962500007
+    time = 600.212000131607
+nz_alpha_bnb_dr: 기본이 아닌 구성으로 실행 — dual_range = false, comp = false, vcut = false, cslift = false, fwd = false, kmc = false, dd = false, cbranch = false

@@ -430,6 +430,43 @@ function _nz_dr_corner_ranges(CL::Vector{_NZCornerLP}, DR::_NZDR, nd::NZData, x�
     return lo, hi
 end
 
+"max{Σ_s d_s v_s : d ≥ 0, Σ d = 1, ‖d − q‖₁ ≤ 2ε} (TV 볼, 질량 ε 를 값이 낮은 시나리오에서 가장 높은 시나리오로)"
+function _nz_tv_max(q, v, ε)
+    d = copy(q); smax = argmax(v); bud = ε
+    for s in sortperm(v)
+        (s == smax || bud <= 0) && break
+        t = min(bud, d[s]); d[s] -= t; d[smax] += t; bud -= t
+    end
+    return dot(d, v)
+end
+
+"""
+follower 최적성에 의한 상자 축소 (resp_fix, range_lp 전용, 2026-10-28 시제품).
+예약 좌표 i 의 follower 한계 이득 g_i(α, d) = c0_i + Σ_s d_s Σ_{k: h(k)=i} hcoef_k σ_ks(α) (follower 는 c0ᵀα + Σ_s d_s z_s(α) 를 최대화).
+[lo, hi] 가 상자 B 의 모든 α 에서 유효한 쌍대 범위이므로
+  max_{d ∈ D̃} [c0_i + Σ_s d_s Σ_k hcoef_k hi_ks] < −τ                        → B 안의 follower 최적 α 는 α_i = l_i (줄이면 개선)
+  min_{d ∈ D̃} [c0_i + Σ_s d_s Σ_k hcoef_k lo_ks] > τ, i 를 늘려도 H 안 (solo[i]) → α_i = u_i
+follower 최적인 α 는 하나도 지우지 않으므로 상한은 그대로 V* 이상 (Corollary conservative bounds 와 같은 논증; λ 정확성 불필요).
+D̃ 는 follower TV 볼 (belief 결합 δ 는 무시 = 더 큰 집합, 유효). 반환: (l, u, 고정한 좌표 수)
+"""
+function _nz_dr_resp_fix(nd::NZData, DR::_NZDR, l, u, lo, hi, solo; τ=1e-6)
+    S = nd.S; q = nd.q_hat; ε = nd.eps_tilde
+    l2 = copy(l); u2 = copy(u); n = 0
+    for i in 1:nz_nh(nd)
+        u[i] - l[i] <= 1e-9 && continue
+        rows = [a for a in eachindex(DR.Hk) if nd.hrow[DR.Hk[a]] == i]
+        isempty(rows) && continue
+        vhi = [sum(nd.hcoef[DR.Hk[a]] * hi[a, s] for a in rows) for s in 1:S]
+        vlo = [sum(nd.hcoef[DR.Hk[a]] * lo[a, s] for a in rows) for s in 1:S]
+        if nd.c0[i] + _nz_tv_max(q, vhi, ε) < -τ
+            u2[i] = l[i]; n += 1
+        elseif solo[i] && nd.c0[i] - _nz_tv_max(q, -vlo, ε) > τ
+            l2[i] = u[i]; n += 1
+        end
+    end
+    return l2, u2, n
+end
+
 """
 노드 LP 의 INFEASIBLE 판정 재확인. 반환: −Inf (재확인에서도 실행 불가능), 유한값 (풀림: 그 목적값), NaN·Inf (시간·수치 문제).
 
@@ -604,7 +641,7 @@ const _NZ_DR_ANNOUNCE_LOCK = ReentrantLock()
 "기본 구성 (2026-10-13). 이 값과 다른 항목이 있으면 _nz_dr_announce 가 stderr 에 알린다"
 const _NZ_DR_DEFAULT = (dual_range=true, comp=true, vcut=true, cslift=true, fwd=true, kmc=true, dd=true, cbranch=true, sticky=true,
                         lp_tol=1e-7, branch_point=:mid, child_rounds=1, resp=false, range_mip=true, range_nodes=typemax(Int), range_time=Inf,
-                        range_lp=false)
+                        range_lp=false, resp_fix=false)
 
 "구성이 기본과 다르면 다른 항목을 stderr 에 한 번 알린다 (같은 구성은 프로세스당 한 번) — 의도하지 않은 구성으로 도는 것을 막기 위해"
 function _nz_dr_announce(config)
@@ -698,6 +735,8 @@ function nz_alpha_bnb_dr(nd::NZData, x̄;
                          # range_lp = true: 범위 MIP 대신 상자 두 꼭짓점의 LP (_nz_dr_corner_ranges, 모든 노드). 전제 = recourse 값함수의 submodularity (시제품, 문서 §10.26).
                          #   값 MIP (φ̄) 와 차이 범위 (dd) 는 풀지 않음 → dd = false 와 함께, range_time·range_nodes 는 범위 MIP 용이라 같이 쓰지 않음
                          range_lp::Bool=false,
+                         # resp_fix = true (range_lp 전용): 꼭짓점 범위로 follower 한계 이득의 부호가 상자에서 정해지는 예약 좌표를 l 또는 u 로 고정 (_nz_dr_resp_fix)
+                         resp_fix::Bool=false,
                          # 이어 풀기: 같은 x̄ 의 이전 호출이 돌려준 r[:state]
                          resume=nothing)
     branch_point in (:alphahat, :mid) || error("branch_point = :alphahat | :mid")
@@ -706,8 +745,9 @@ function nz_alpha_bnb_dr(nd::NZData, x̄;
               sep_maxadd=sep_maxadd, presolve=presolve, heuristic=heuristic,
               fwd=dual_range && cslift && fwd, kmc=dual_range && cslift && kmc, dd=dual_range && dd,
               cbranch=dual_range && comp && cbranch, sticky=sticky, lp_tol=lp_tol, resp=resp, range_mip=range_mip, range_nodes=range_nodes, range_time=range_time,
-              range_lp=range_lp)
-    range_lp && (dd || isfinite(range_time) || range_nodes != typemax(Int) || !range_mip || !dual_range) &&
+              range_lp=range_lp, resp_fix=resp_fix)
+    resp_fix && !range_lp && error("nz_alpha_bnb_dr: resp_fix = true 는 range_lp = true 와 함께")
+    range_lp &&(dd || isfinite(range_time) || range_nodes != typemax(Int) || !range_mip || !dual_range) &&
         error("nz_alpha_bnb_dr: range_lp = true 는 dual_range = true, dd = false 와 함께 쓰고 range_mip·range_time·range_nodes 는 기본값으로")
     _nz_dr_announce(config)
     n_rnode = Threads.Atomic{Int}(0)                                         # 범위 MIP 를 푼 노드 수 (range_nodes)
@@ -732,6 +772,10 @@ function nz_alpha_bnb_dr(nd::NZData, x̄;
     DRs = dual_range ? [_nz_dr_attach!(Ps[i], nd, x̄; optimizer=mk(envs[i]), vcut=vcut, cslift=cslift,
                                        fwd=config.fwd, kmc=config.kmc, dd=config.dd) for i in 1:nworkers] : nothing
     CLs = range_lp ? [[_nz_dr_build_corner(nd, x̄, s; optimizer=mk(envs[i])) for s in 1:nd.S] for i in 1:nworkers] : nothing
+    # solo[i]: α_i 를 늘릴 때 걸리는 W 행이 i 하나만 포함 (거점별 한도) → 상자 안에서 늘려도 H 안 (resp_fix 의 위쪽 고정 조건)
+    solo = [all(all(nd.W[ll, i2] == 0 || i2 == i for i2 in 1:nh) && nd.W[ll, i] * nd.hU[i] <= nd.wvec[ll] + 1e-9
+                for ll in 1:size(nd.W, 1) if nd.W[ll, i] > 0) for i in 1:nh]
+    n_rfix = Threads.Atomic{Int}(0)                                          # resp_fix 로 고정한 좌표 수 (노드 합)
     # 노드 LP 허용오차. build_nz_omega 의 기본은 1e-9 + NumericFocus 2 (θ 항의 상쇄 때문에 조였던 것). lp_tol > 1e-9 이면 그 값 + NumericFocus 0 으로 풀고
     #   노드 상한에 상대 1e-6 의 여유를 더한다 (허용오차만큼 덜 수렴한 목적값을 상한으로 쓰는 것에 대한 여유).
     lp_tol > 1e-9 && for P in Ps
@@ -831,6 +875,16 @@ function nz_alpha_bnb_dr(nd::NZData, x̄;
                 if dual_range && range_lp                     # 꼭짓점 LP 범위 (모든 노드). 값 상한 φ̄ 는 부모 값
                     tg = @elapsed ((lo, hi) = _nz_dr_corner_ranges(CLs[wid], DR, nd, x̄, l, u, lop, hip))
                     Threads.atomic_add!(t_range, tg); tn_rg += tg
+                    if resp_fix                               # 상자를 줄이면 범위는 그대로 유효 (부분 상자). 줄인 상자로 범위를 한 번 더
+                        l, u, nrf = _nz_dr_resp_fix(nd, DR, l, u, lo, hi, solo)
+                        if nrf > 0
+                            Threads.atomic_add!(n_rfix, nrf)
+                            sticky ? _nz_sticky_set_box!(P, l, u) : _nz_sep_set_box!(P, l, u)
+                            _nz_sep_set_wbox!(P, P.Lw, P.Uw)
+                            tg = @elapsed ((lo, hi) = _nz_dr_corner_ranges(CLs[wid], DR, nd, x̄, l, u, lo, hi))
+                            Threads.atomic_add!(t_range, tg); tn_rg += tg
+                        end
+                    end
                     _nz_dr_set!(P, DR, nd, l, u, lo, hi, phib; comp=comp, eq=eqp, dlo=dlo, dhi=dhi)
                     fixfrac = count(hi .- lo .<= 1e-4) / max(1, length(lo))
                 elseif dual_range && !(range_mip && time() - t0 < range_time && Threads.atomic_add!(n_rnode, 1) < range_nodes)   # 범위는 부모 값 그대로, 나머지 강화만 상자에 맞춤
@@ -1049,5 +1103,5 @@ function nz_alpha_bnb_dr(nd::NZData, x̄;
                 :range_mips => dual_range ? sum(D.nmip for D in DRs) : 0, :range_fail => dual_range ? sum(D.nfail for D in DRs) : 0,
                 :fixfrac => nodes[] > 0 ? nfixed_sum[] / nodes[] : NaN, :infeas => n_infeas[], :infeas_recovered => n_infrec[],
                 :numerr => _NZ_NUMERR[] - numerr0, :numerr_fail => _NZ_NUMERR_FAIL[] - numfail0,
-                :cbranch => n_cbranch[], :resp_hits => n_resp[], :gcsafe => _NZ_GCSAFE_STATE[], :gc_wait => (Base.gc_num().total_time_to_safepoint - gcw0) / 1e9)
+                :cbranch => n_cbranch[], :resp_fix => n_rfix[], :resp_hits => n_resp[], :gcsafe => _NZ_GCSAFE_STATE[], :gc_wait => (Base.gc_num().total_time_to_safepoint - gcw0) / 1e9)
 end
