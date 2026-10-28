@@ -814,6 +814,7 @@ function nz_alpha_bnb_dr(nd::NZData, x̄;
     n_fk = Threads.Atomic{Int}(0); n_fkdis = Threads.Atomic{Int}(0)          # Farkas 로 증명된 노드 / (NZ_FARKAS_CHECK) 재확인이 실행가능이라 한 노드
     n_fkto = Threads.Atomic{Int}(0)                                          # (NZ_FARKAS_CHECK) 재확인이 시간 제한으로 판정 못 한 노드
     fkcheck = get(ENV, "NZ_FARKAS_CHECK", "0") == "1"
+    prchk = get(ENV, "NZ_PRUNE_CHECK", "0") == "1"; n_prchk = Threads.Atomic{Int}(0); n_prdis = Threads.Atomic{Int}(0)
     nfix = 0
     if presolve
         hUp, nfix = nz_presolve_hU(nd, x̄)
@@ -973,6 +974,16 @@ function nz_alpha_bnb_dr(nd::NZData, x̄;
                 if !empty_box
                     set_time_limit_sec(P.O.model, max(t_end - time(), 0.1))
                     tr = @elapsed (z = zpad((sticky ? _nz_sticky_solve! : _nz_sep_solve!)(P; maxrounds=(ubp == Inf ? maxrounds : child_rounds), maxadd=sep_maxadd)))
+                    # 진단 (NZ_PRUNE_CHECK=1): LP 값으로 가지칠 노드 (OPTIMAL) 를 기저 없이 처음부터 다시 풀어 기준을 넘으면 출력
+                    #   (이어 푼 dual simplex 의 최적값 검증. 2026-10-29 L6 S3 1,031 개·S20 68 개 불일치 0)
+                    if prchk && isfinite(z) && z <= LB[] + tol(LB[]) && termination_status(P.O.model) == MOI.OPTIMAL
+                        Threads.atomic_add!(n_prchk, 1); cthr = LB[] + tol(LB[])
+                        Gurobi.GRBreset(JuMP.unsafe_backend(P.O.model), 0); zc0 = zpad(_nz_solve_lp!(P.O.model))
+                        if isfinite(zc0) && zc0 > cthr
+                            Threads.atomic_add!(n_prdis, 1)
+                            @printf(stderr, "  [가지치기 불일치] 기준 %.10g, 이어 푼 값 %.10g, 처음부터 %.10g (초과 상대 %.2e)\n", cthr, z, zc0, (zc0 - cthr) / max(1.0, abs(cthr)))
+                        end
+                    end
                     Threads.atomic_add!(t_relax, tr); tn_lp += tr
                     # 실행 불가능 판정 재확인 (_nz_dr_recheck_infeasible!): 그래도 실행 불가능일 때만 가지치기한다. 재확인에서 풀리면
                     #   그 값을 상한으로 쓰고 해는 읽지 않은 채 가장 넓은 좌표를 반으로 나눈다 (수치 오류 노드와 같은 처리).
@@ -1175,5 +1186,5 @@ function nz_alpha_bnb_dr(nd::NZData, x̄;
                 :range_mips => dual_range ? sum(D.nmip for D in DRs) : 0, :range_fail => dual_range ? sum(D.nfail for D in DRs) : 0,
                 :fixfrac => nodes[] > 0 ? nfixed_sum[] / nodes[] : NaN, :infeas => n_infeas[], :infeas_recovered => n_infrec[],
                 :numerr => _NZ_NUMERR[] - numerr0, :numerr_fail => _NZ_NUMERR_FAIL[] - numfail0,
-                :cbranch => n_cbranch[], :resp_fix => n_rfix[], :farkas => n_fk[], :farkas_disagree => n_fkdis[], :farkas_check_timeout => n_fkto[], :resp_hits => n_resp[], :gcsafe => _NZ_GCSAFE_STATE[], :gc_wait => (Base.gc_num().total_time_to_safepoint - gcw0) / 1e9)
+                :cbranch => n_cbranch[], :resp_fix => n_rfix[], :farkas => n_fk[], :farkas_disagree => n_fkdis[], :farkas_check_timeout => n_fkto[], :prune_checked => n_prchk[], :prune_disagree => n_prdis[], :resp_hits => n_resp[], :gcsafe => _NZ_GCSAFE_STATE[], :gc_wait => (Base.gc_num().total_time_to_safepoint - gcw0) / 1e9)
 end

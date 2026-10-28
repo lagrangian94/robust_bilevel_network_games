@@ -1,0 +1,91 @@
+Set parameter Username
+Set parameter LicenseID to value 2742039
+Academic license - for non-commercial use only - expires 2026-11-20
+diag_l6: seed=1 S=3 x̄=[2, 3] n_h=10 θ=50.000 (circuit 50.000) λ=2000 TL=120 gap=1e-03 workers=12 프리솔브 끔
+Set parameter Username
+Set parameter LicenseID to value 2742039
+Academic license - for non-commercial use only - expires 2026-11-20
+Set parameter Username
+Set parameter LicenseID to value 2742039
+Academic license - for non-commercial use only - expires 2026-11-20
+Set parameter Username
+Set parameter LicenseID to value 2742039
+Academic license - for non-commercial use only - expires 2026-11-20
+Set parameter Username
+Set parameter LicenseID to value 2742039
+Academic license - for non-commercial use only - expires 2026-11-20
+Set parameter Username
+Set parameter LicenseID to value 2742039
+Academic license - for non-commercial use only - expires 2026-11-20
+Set parameter Username
+Set parameter LicenseID to value 2742039
+Academic license - for non-commercial use only - expires 2026-11-20
+Set parameter Username
+Set parameter LicenseID to value 2742039
+Academic license - for non-commercial use only - expires 2026-11-20
+Set parameter Username
+Set parameter LicenseID to value 2742039
+Academic license - for non-commercial use only - expires 2026-11-20
+Set parameter Username
+Set parameter LicenseID to value 2742039
+Academic license - for non-commercial use only - expires 2026-11-20
+Set parameter Username
+Set parameter LicenseID to value 2742039
+Academic license - for non-commercial use only - expires 2026-11-20
+Set parameter Username
+Set parameter LicenseID to value 2742039
+Academic license - for non-commercial use only - expires 2026-11-20
+Set parameter Username
+Set parameter LicenseID to value 2742039
+Academic license - for non-commercial use only - expires 2026-11-20
+Set parameter Username
+Set parameter LicenseID to value 2742039
+Academic license - for non-commercial use only - expires 2026-11-20
+
+******************************************************************************
+This program contains Ipopt, a library for large-scale nonlinear optimization.
+ Ipopt is released as open source code under the Eclipse Public License (EPL).
+         For more information visit https://github.com/coin-or/Ipopt
+******************************************************************************
+
+RESULT abbdr kw=(range_lp = true, dd = false, farkas = true, cutoff = true) status=- LB=-2791.2457 UB=-2788.4573 gap=1.00e-03 nodes=3965 time=36.4
+    LB = -2791.245715578093
+    UB = -2788.457258311408
+    cbranch = 4
+    cutoff_disagree = 3
+    cutoff_grb = 1371
+    cutoff_le = 0
+    farkas = 553
+    farkas_check_timeout = 0
+    farkas_disagree = 0
+    fixfrac = 0.44967273163995075
+    gc_wait = 0.4848154
+    gcsafe = on
+    infeas = 557
+    infeas_recovered = 0
+    ipopt_calls = 6
+    is_exact = true
+    nodes = 3965
+    numerr = 0
+    numerr_fail = 0
+    numerr_fresh = 0
+    presolve_fixed = 3
+    range_fail = 0
+    range_mips = 0
+    resp_fix = 0
+    resp_hits = 0
+    resumed = false
+    root_UB = -1779.295652367628
+    solver = nz_alpha_bnb_dr
+    t_eval = 5.786782999999992
+    t_range = 37.39562070000006
+    t_recheck = 7.756653900000009
+    t_relax = 157.27065959999965
+    time = 32.59500002861023
+nz_alpha_bnb_dr: 기본이 아닌 구성으로 실행 — dd = false, range_lp = true, farkas = true, cutoff = true
+  [cutoff 불일치] 기준 -2804.803534, Cutoff -2804.809144, 다시 푼 값 -2668.188613 (기준 초과 상대 4.87e-02), LB 지금 -2807.611146
+  [cutoff 불일치] 기준 -2804.803534, Cutoff -2804.809144, 다시 푼 값 -2780.628654 (기준 초과 상대 8.62e-03), LB 지금 -2796.5
+    처음부터: Cutoff 없음 OPTIMAL -2668.191379 | Cutoff OPTIMAL -2668.191379 | Cutoff+Presolve OPTIMAL -2668.191461
+    처음부터: Cutoff 없음 OPTIMAL -2780.62562 | Cutoff OPTIMAL -2780.62562 | Cutoff+Presolve OPTIMAL -2780.631434
+  [cutoff 불일치] 기준 -2793.7035, Cutoff -2793.709087, 다시 푼 값 -2754.585924 (기준 초과 상대 1.40e-02), LB 지금 -2796.5
+    처음부터: Cutoff 없음 OPTIMAL -2754.588679 | Cutoff OPTIMAL -2754.588679 | Cutoff+Presolve OPTIMAL -2754.589139

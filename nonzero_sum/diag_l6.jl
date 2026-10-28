@@ -50,7 +50,7 @@ function parse_kw(s)
     kv = Pair{Symbol,Any}[]
     for t in split(s, ","; keepempty=false)
         a, b = split(t, "=")
-        v = b == "true" ? true : b == "false" ? false : occursin(r"^[0-9]+$", b) ? parse(Int, b) : parse(Float64, b)
+        v = b == "true" ? true : b == "false" ? false : startswith(b, ":") ? Symbol(b[2:end]) : occursin(r"^[0-9]+$", b) ? parse(Int, b) : parse(Float64, b)
         push!(kv, Symbol(strip(a)) => v)
     end
     return (; kv...)

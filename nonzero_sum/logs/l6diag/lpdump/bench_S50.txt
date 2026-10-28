@@ -1,0 +1,27 @@
+## ok_15.mps
+  Method=1 Presolve=0            2.44 seconds | Optimal objective -1.021189862e+04
+  Method=1 Presolve=-1           1.36 seconds | Optimal objective -1.021189862e+04
+  Method=0 Presolve=-1           0.35 seconds | Optimal objective -1.021189862e+04
+  Method=2 Crossover=0 Threads=1              | Optimal objective -1.02118988e+04
+  Method=2 Crossover=0 Threads=4              | Optimal objective -1.02118987e+04
+  Method=2 Threads=1             1.50 seconds | Optimal objective -1.021189862e+04
+  Method=2 Threads=4             0.81 seconds | Optimal objective -1.021189862e+04
+  Method=2 Threads=12            0.63 seconds | Optimal objective -1.021189862e+04
+## ok_30.mps
+  Method=1 Presolve=0            25.49 seconds | Optimal objective -1.992559261e+03
+  Method=1 Presolve=-1           11.07 seconds | Optimal objective -1.992557582e+03
+  Method=0 Presolve=-1           17.22 seconds | Optimal objective -1.992559556e+03
+  Method=2 Crossover=0 Threads=1 5.62 seconds | Sub-optimal termination - objective -1.99341125e+03
+  Method=2 Crossover=0 Threads=4 2.89 seconds | Sub-optimal termination - objective -1.99348502e+03
+  Method=2 Threads=1             6.69 seconds | Optimal objective -1.992566979e+03
+  Method=2 Threads=4             4.77 seconds | Optimal objective -1.992566979e+03
+  Method=2 Threads=12            5.15 seconds | Optimal objective -1.992566979e+03
+## ok_60.mps
+  Method=1 Presolve=0            17.81 seconds | Optimal objective -2.036997686e+03
+  Method=1 Presolve=-1           17.43 seconds | Optimal objective -2.037001351e+03
+  Method=0 Presolve=-1           26.99 seconds | Optimal objective -2.036999395e+03
+  Method=2 Crossover=0 Threads=1 10.32 seconds | Sub-optimal termination - objective -2.03741277e+03
+  Method=2 Crossover=0 Threads=4 3.14 seconds | Sub-optimal termination - objective -2.03747842e+03
+  Method=2 Threads=1             12.40 seconds | Optimal objective -2.037007930e+03
+  Method=2 Threads=4             4.12 seconds | Optimal objective -2.037007930e+03
+  Method=2 Threads=12            4.33 seconds | Optimal objective -2.037007930e+03
