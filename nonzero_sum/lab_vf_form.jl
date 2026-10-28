@@ -53,9 +53,12 @@ if inst == "sgb"
     ndb = nz_with_delta(make_location_instance(; coords=:sgb128, reservation=res, quota=150.0, wres=300.0, S=S, seed=seed, eps_hat=0.3, eps_tilde=0.3, beta=0.4), 0.1)
     nd0 = nz_with_bounds(ndb; thetaU=nz_theta_circuit_exact(ndb)[1])
 else
-    cap = 150.0 * (nloc - 5) / 2
-    nd0 = nz_with_delta(make_location_instance(; coords=:random, n_loc=nloc, nA=2, nB=3, NB=3, S=S, seed=seed,
-        bA=cap, bB=cap, qB=cap, dlo=50.0, dhi=150.0, reservation=res, wres=300.0, eps_hat=0.3, eps_tilde=0.3, beta=0.4, poolkw...), 0.1)
+    # VF_NA = 2, VF_NB = 3, VF_NBMAX = VF_NB, VF_QB = cap (출점비; 숫자면 그 값) — 2026-10-28 L6 (A 5 / B 5, 출점비 750) 용, 기본값은 그대로
+    vnA = parse(Int, envf("VF_NA", "2")); vnB = parse(Int, envf("VF_NB", "3")); vNB = parse(Int, envf("VF_NBMAX", string(vnB)))
+    cap = 150.0 * (nloc - vnA - vnB) / vnA
+    vqB = envf("VF_QB", "cap") == "cap" ? cap : pf(envf("VF_QB", "cap"))
+    nd0 = nz_with_delta(make_location_instance(; coords=:random, n_loc=nloc, nA=vnA, nB=vnB, NB=vNB, S=S, seed=seed,
+        bA=cap, bB=cap, qB=vqB, dlo=50.0, dhi=150.0, reservation=res, wres=300.0, eps_hat=0.3, eps_tilde=0.3, beta=0.4, poolkw...), 0.1)
     res == :pooled && (nd0 = nz_with_bounds(nd0; thetaU=nz_theta_circuit_exact(nd0)[1]))
 end
 x̄ = zeros(nd0.nx); x̄[xi] .= 1
