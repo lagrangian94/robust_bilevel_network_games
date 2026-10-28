@@ -1,0 +1,88 @@
+Set parameter Username
+Set parameter LicenseID to value 2742039
+Academic license - for non-commercial use only - expires 2026-11-20
+diag_l6: seed=1 S=20 x̄=[2, 3] n_h=10 θ=50.000 (circuit 50.000) λ=2000 TL=600 gap=1e-03 workers=12 프리솔브 끔
+Set parameter Username
+Set parameter LicenseID to value 2742039
+Academic license - for non-commercial use only - expires 2026-11-20
+Set parameter Username
+Set parameter LicenseID to value 2742039
+Academic license - for non-commercial use only - expires 2026-11-20
+Set parameter Username
+Set parameter LicenseID to value 2742039
+Academic license - for non-commercial use only - expires 2026-11-20
+Set parameter Username
+Set parameter LicenseID to value 2742039
+Academic license - for non-commercial use only - expires 2026-11-20
+Set parameter Username
+Set parameter LicenseID to value 2742039
+Academic license - for non-commercial use only - expires 2026-11-20
+Set parameter Username
+Set parameter LicenseID to value 2742039
+Academic license - for non-commercial use only - expires 2026-11-20
+Set parameter Username
+Set parameter LicenseID to value 2742039
+Academic license - for non-commercial use only - expires 2026-11-20
+Set parameter Username
+Set parameter LicenseID to value 2742039
+Academic license - for non-commercial use only - expires 2026-11-20
+Set parameter Username
+Set parameter LicenseID to value 2742039
+Academic license - for non-commercial use only - expires 2026-11-20
+Set parameter Username
+Set parameter LicenseID to value 2742039
+Academic license - for non-commercial use only - expires 2026-11-20
+Set parameter Username
+Set parameter LicenseID to value 2742039
+Academic license - for non-commercial use only - expires 2026-11-20
+Set parameter Username
+Set parameter LicenseID to value 2742039
+Academic license - for non-commercial use only - expires 2026-11-20
+Set parameter Username
+Set parameter LicenseID to value 2742039
+Academic license - for non-commercial use only - expires 2026-11-20
+
+******************************************************************************
+This program contains Ipopt, a library for large-scale nonlinear optimization.
+ Ipopt is released as open source code under the Eclipse Public License (EPL).
+         For more information visit https://github.com/coin-or/Ipopt
+******************************************************************************
+
+    [nz-α-B&B-dr] t=  66.9s nodes=   33 open=    4 LB=-2639.475748 UB=-1885.089088 gap=2.858e-01
+    [nz-α-B&B-dr] t= 127.4s nodes=   96 open=   15 LB=-2639.475722 UB=-2105.819431 gap=2.022e-01
+    [nz-α-B&B-dr] t= 187.6s nodes=  159 open=   28 LB=-2639.475722 UB=-2357.544277 gap=1.068e-01
+    [nz-α-B&B-dr] t= 247.6s nodes=  224 open=   31 LB=-2639.475722 UB=-2410.465072 gap=8.676e-02
+    [nz-α-B&B-dr] t= 307.7s nodes=  293 open=   42 LB=-2639.085858 UB=-2464.319098 gap=6.622e-02
+    [nz-α-B&B-dr] t= 367.9s nodes=  357 open=   52 LB=-2639.085858 UB=-2532.997962 gap=4.020e-02
+    [nz-α-B&B-dr] t= 428.1s nodes=  456 open=   81 LB=-2639.085653 UB=-2555.636147 gap=3.162e-02
+    [nz-α-B&B-dr] t= 488.2s nodes=  534 open=  103 LB=-2639.085653 UB=-2583.381092 gap=2.111e-02
+    [nz-α-B&B-dr] t= 548.3s nodes=  597 open=  108 LB=-2639.085653 UB=-2591.899288 gap=1.788e-02
+RESULT abbdr kw=(range_lp = true, dd = false) status=- LB=-2638.3140 UB=-2601.1210 gap=1.43e-02 nodes=657 time=624.7
+    LB = -2638.3139662575186
+    UB = -2601.120993090394
+    cbranch = 4
+    fixfrac = 0.40045662100456614
+    gc_wait = 1.4631415
+    gcsafe = on
+    infeas = 156
+    infeas_recovered = 1
+    ipopt_calls = 10
+    is_exact = false
+    nodes = 657
+    numerr = 63
+    numerr_fail = 1
+    numerr_fresh = 54
+    presolve_fixed = 3
+    range_fail = 0
+    range_mips = 0
+    resp_fix = 0
+    resp_hits = 0
+    resumed = false
+    root_UB = -1845.3441745101468
+    solver = nz_alpha_bnb_dr
+    t_eval = 18.760524600000004
+    t_range = 45.48935460000001
+    t_recheck = 3032.744282699999
+    t_relax = 3855.4351275999998
+    time = 620.9690001010895
+nz_alpha_bnb_dr: 기본이 아닌 구성으로 실행 — dd = false, range_lp = true
