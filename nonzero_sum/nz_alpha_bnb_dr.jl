@@ -376,6 +376,61 @@ function _nz_dr_ranges(DR::_NZDR, nd::NZData, l, u, lo0, hi0, wit0, phib0; fixto
 end
 
 """
+꼭짓점 LP 범위 (range_lp = true, 2026-10-28 L6, 문서 §10.26): 시나리오 s 의 recourse 쌍대 LP
+    min/max σ_k  s.t.  Aᵀσ ≥ c,  σ ≥ 0 (H 행 ≤ ϖᵁ),  rr(α)ᵀσ ≤ z_s(α)   (= α 에서의 최적 쌍대면)
+전제: recourse 값함수 z_s(α) 가 submodular (H 행의 한계값 σ_k 가 모든 α 좌표에 단조 감소) →
+    max_{α∈B} σ_k = α = l 에서 최적 쌍대면 위의 max,  min_{α∈B} σ_k = α = u 에서 최적 쌍대면 위의 min.
+L6 (seed 7, x̄={4,5}) 의 상자 3 개에서 범위 MIP 와 63/63 성분 일치 (diag_root_l6.jl (6)). 전제의 증명은 아직 — 시제품.
+"""
+struct _NZCornerLP
+    model::Model
+    σ::Vector{VariableRef}
+    opt::ConstraintRef
+end
+
+function _nz_dr_build_corner(nd::NZData, x̄, s; optimizer)
+    m, ny = nz_m(nd), nz_ny(nd)
+    M = Model(optimizer); set_silent(M)
+    @variable(M, σ[1:m] >= 0)
+    for k in 1:m; nd.hrow[k] > 0 && isfinite(nd.varpiU[k]) && set_upper_bound(σ[k], nd.varpiU[k]); end
+    @constraint(M, [j=1:ny], sum(nd.A[k, j] * σ[k] for k in 1:m if nd.A[k, j] != 0) >= nd.c[j])
+    rr = nz_rhs(nd, x̄, zeros(nz_nh(nd)), s)
+    opt = @constraint(M, sum(rr[k] * σ[k] for k in 1:m) + sum(0.0 * σ[k] for k in 1:m if nd.hrow[k] > 0) <= 1e20)
+    return _NZCornerLP(M, σ, opt)
+end
+
+"상자 [l, u] 의 쌍대 범위를 두 꼭짓점의 LP 로 (부모 범위 lo0, hi0 와 교집합). 범위 MIP 의 바깥쪽 여유 1e-6 과 같게."
+function _nz_dr_corner_ranges(CL::Vector{_NZCornerLP}, DR::_NZDR, nd::NZData, x̄, l, u, lo0, hi0; fixtol=1e-4)
+    lo = copy(lo0); hi = copy(hi0); S, m = nd.S, nz_m(nd)
+    for s in 1:S
+        todo = [a for a in eachindex(DR.Hk) if hi[a, s] - lo[a, s] > fixtol]
+        isempty(todo) && continue
+        C = CL[s]
+        for (αc, ismax) in ((u, false), (l, true))
+            rr = nz_rhs(nd, x̄, αc, s)
+            for k in 1:m; nd.hrow[k] > 0 && set_normalized_coefficient(C.opt, C.σ[k], rr[k]); end
+            set_normalized_rhs(C.opt, 1e20)
+            @objective(C.model, Min, sum(rr[k] * C.σ[k] for k in 1:m if rr[k] != 0))
+            optimize!(C.model)
+            termination_status(C.model) == MOI.OPTIMAL || error("nz_alpha_bnb_dr 꼭짓점 LP (s=$s, 최적값): $(termination_status(C.model))")
+            z = objective_value(C.model)
+            set_normalized_rhs(C.opt, z + 1e-7 * max(1.0, abs(z)))
+            for a in todo
+                @objective(C.model, ismax ? MAX_SENSE : MIN_SENSE, C.σ[DR.Hk[a]])
+                optimize!(C.model)
+                termination_status(C.model) == MOI.OPTIMAL || error("nz_alpha_bnb_dr 꼭짓점 LP (s=$s, k=$(DR.Hk[a])): $(termination_status(C.model))")
+                b = objective_value(C.model)
+                ismax ? (hi[a, s] = min(hi[a, s], b + 1e-6)) : (lo[a, s] = max(lo[a, s], b - 1e-6))
+            end
+        end
+        for a in todo
+            hi[a, s] < lo[a, s] && (hi[a, s] = lo[a, s] = 0.5 * (lo[a, s] + hi[a, s]))   # 여유로 생긴 역전 (폭 ≤ 2e-6)
+        end
+    end
+    return lo, hi
+end
+
+"""
 노드 LP 의 INFEASIBLE 판정 재확인. 반환: −Inf (재확인에서도 실행 불가능), 유한값 (풀림: 그 목적값), NaN·Inf (시간·수치 문제).
 
 범위 행을 넣은 노드 LP 는 실행 가능한데도 INFEASIBLE 로 나오는 일이 있다 (test_dr_validity_boxes.jl: 최적 α* 를 품은 상자의
@@ -548,7 +603,8 @@ const _NZ_DR_ANNOUNCE_LOCK = ReentrantLock()
 
 "기본 구성 (2026-10-13). 이 값과 다른 항목이 있으면 _nz_dr_announce 가 stderr 에 알린다"
 const _NZ_DR_DEFAULT = (dual_range=true, comp=true, vcut=true, cslift=true, fwd=true, kmc=true, dd=true, cbranch=true, sticky=true,
-                        lp_tol=1e-7, branch_point=:mid, child_rounds=1, resp=false, range_mip=true, range_nodes=typemax(Int), range_time=Inf)
+                        lp_tol=1e-7, branch_point=:mid, child_rounds=1, resp=false, range_mip=true, range_nodes=typemax(Int), range_time=Inf,
+                        range_lp=false)
 
 "구성이 기본과 다르면 다른 항목을 stderr 에 한 번 알린다 (같은 구성은 프로세스당 한 번) — 의도하지 않은 구성으로 도는 것을 막기 위해"
 function _nz_dr_announce(config)
@@ -639,6 +695,9 @@ function nz_alpha_bnb_dr(nd::NZData, x̄;
                          range_nodes::Int=typemax(Int),
                          # range_time: 호출 시작 뒤 range_time 초까지만 범위 MIP 를 푼다 (그 뒤 노드는 부모 범위). range_nodes 와 함께 쓰면 둘 다 만족할 때만
                          range_time::Float64=Inf,
+                         # range_lp = true: 범위 MIP 대신 상자 두 꼭짓점의 LP (_nz_dr_corner_ranges, 모든 노드). 전제 = recourse 값함수의 submodularity (시제품, 문서 §10.26).
+                         #   값 MIP (φ̄) 와 차이 범위 (dd) 는 풀지 않음 → dd = false 와 함께, range_time·range_nodes 는 범위 MIP 용이라 같이 쓰지 않음
+                         range_lp::Bool=false,
                          # 이어 풀기: 같은 x̄ 의 이전 호출이 돌려준 r[:state]
                          resume=nothing)
     branch_point in (:alphahat, :mid) || error("branch_point = :alphahat | :mid")
@@ -646,7 +705,10 @@ function nz_alpha_bnb_dr(nd::NZData, x̄;
               branch_point=branch_point, child_rounds=child_rounds, maxrounds=maxrounds, dive_max=dive_max,
               sep_maxadd=sep_maxadd, presolve=presolve, heuristic=heuristic,
               fwd=dual_range && cslift && fwd, kmc=dual_range && cslift && kmc, dd=dual_range && dd,
-              cbranch=dual_range && comp && cbranch, sticky=sticky, lp_tol=lp_tol, resp=resp, range_mip=range_mip, range_nodes=range_nodes, range_time=range_time)
+              cbranch=dual_range && comp && cbranch, sticky=sticky, lp_tol=lp_tol, resp=resp, range_mip=range_mip, range_nodes=range_nodes, range_time=range_time,
+              range_lp=range_lp)
+    range_lp && (dd || isfinite(range_time) || range_nodes != typemax(Int) || !range_mip || !dual_range) &&
+        error("nz_alpha_bnb_dr: range_lp = true 는 dual_range = true, dd = false 와 함께 쓰고 range_mip·range_time·range_nodes 는 기본값으로")
     _nz_dr_announce(config)
     n_rnode = Threads.Atomic{Int}(0)                                         # 범위 MIP 를 푼 노드 수 (range_nodes)
     n_cbranch = Threads.Atomic{Int}(0)                                       # 상보성 분기 횟수
@@ -669,6 +731,7 @@ function nz_alpha_bnb_dr(nd::NZData, x̄;
     numerr0 = _NZ_NUMERR[]; numfail0 = _NZ_NUMERR_FAIL[]
     DRs = dual_range ? [_nz_dr_attach!(Ps[i], nd, x̄; optimizer=mk(envs[i]), vcut=vcut, cslift=cslift,
                                        fwd=config.fwd, kmc=config.kmc, dd=config.dd) for i in 1:nworkers] : nothing
+    CLs = range_lp ? [[_nz_dr_build_corner(nd, x̄, s; optimizer=mk(envs[i])) for s in 1:nd.S] for i in 1:nworkers] : nothing
     # 노드 LP 허용오차. build_nz_omega 의 기본은 1e-9 + NumericFocus 2 (θ 항의 상쇄 때문에 조였던 것). lp_tol > 1e-9 이면 그 값 + NumericFocus 0 으로 풀고
     #   노드 상한에 상대 1e-6 의 여유를 더한다 (허용오차만큼 덜 수렴한 목적값을 상한으로 쓰는 것에 대한 여유).
     lp_tol > 1e-9 && for P in Ps
@@ -765,7 +828,12 @@ function nz_alpha_bnb_dr(nd::NZData, x̄;
                 sticky ? _nz_sticky_set_box!(P, l, u) : _nz_sep_set_box!(P, l, u)
                 _nz_sep_set_wbox!(P, P.Lw, P.Uw)
                 empty_box = false
-                if dual_range && !(range_mip && time() - t0 < range_time && Threads.atomic_add!(n_rnode, 1) < range_nodes)   # 범위는 부모 값 그대로, 나머지 강화만 상자에 맞춤
+                if dual_range && range_lp                     # 꼭짓점 LP 범위 (모든 노드). 값 상한 φ̄ 는 부모 값
+                    tg = @elapsed ((lo, hi) = _nz_dr_corner_ranges(CLs[wid], DR, nd, x̄, l, u, lop, hip))
+                    Threads.atomic_add!(t_range, tg); tn_rg += tg
+                    _nz_dr_set!(P, DR, nd, l, u, lo, hi, phib; comp=comp, eq=eqp, dlo=dlo, dhi=dhi)
+                    fixfrac = count(hi .- lo .<= 1e-4) / max(1, length(lo))
+                elseif dual_range && !(range_mip && time() - t0 < range_time && Threads.atomic_add!(n_rnode, 1) < range_nodes)   # 범위는 부모 값 그대로, 나머지 강화만 상자에 맞춤
                     _nz_dr_set!(P, DR, nd, l, u, lo, hi, phib; comp=comp, eq=eqp, dlo=dlo, dhi=dhi)
                     fixfrac = count(hi .- lo .<= 1e-4) / max(1, length(lo))
                 elseif dual_range

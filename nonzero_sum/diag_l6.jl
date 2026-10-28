@@ -66,6 +66,37 @@ if "abbdr" in solvers
     end
     flush(stdout)
 end
+if "grbr" in solvers
+    # Gurobi Ω + 루트 상자 [0, hU] 의 꼭짓점 LP 쌍대 범위 (nz_alpha_bnb_dr 의 range_lp 와 같은 전제: recourse 값함수 submodular):
+    #   σlo r_s ≤ ϖ_ks ≤ σhi r_s,  σlo d_s ≤ π̃_ks ≤ σhi d_s  (H 행, 노드 α-B&B 의 W·F 행과 같음)
+    ndp = presolve_for_grbr = nz_with_hU(nd, nz_presolve_hU(nd, x̄)[1])
+    mk1() = (o = Gurobi.Optimizer(GRB_ENV); MOI.set(o, MOI.Silent(), true); MOI.set(o, MOI.RawOptimizerAttribute("Threads"), 1); o)
+    CL = [_nz_dr_build_corner(ndp, x̄, s; optimizer=mk1) for s in 1:ndp.S]
+    Hk = [k for k in findall(ndp.hrow .> 0) if ndp.hU[ndp.hrow[k]] > 0 && isfinite(ndp.varpiU[k])]
+    function cext(s, αc, k, ismax)
+        C = CL[s]; rr = nz_rhs(ndp, x̄, αc, s)
+        for kk in eachindex(rr); ndp.hrow[kk] > 0 && set_normalized_coefficient(C.opt, C.σ[kk], rr[kk]); end
+        set_normalized_rhs(C.opt, 1e20); @objective(C.model, Min, sum(rr[kk] * C.σ[kk] for kk in eachindex(rr) if rr[kk] != 0)); optimize!(C.model)
+        z = objective_value(C.model); set_normalized_rhs(C.opt, z + 1e-7 * max(1.0, abs(z)))
+        @objective(C.model, ismax ? MAX_SENSE : MIN_SENSE, C.σ[k]); optimize!(C.model)
+        termination_status(C.model) == MOI.OPTIMAL || error("cext $(termination_status(C.model))")
+        return objective_value(C.model)
+    end
+    O = build_nz_omega(ndp; optimizer=GRB)
+    set_optimizer_attribute(O.model, "Threads", nw)
+    nfx = 0; wsum = 0.0
+    for k in Hk, s in 1:ndp.S
+        lo_ = max(cext(s, ndp.hU, k, false) - 1e-6, 0.0); hi_ = min(cext(s, zeros(nz_nh(ndp)), k, true) + 1e-6, ndp.varpiU[k])
+        global wsum += hi_ - lo_; hi_ - lo_ <= 1e-4 && (global nfx += 1)
+        @constraint(O.model, O.v[:ϖ][k, s] <= hi_ * O.v[:r][s]); @constraint(O.model, O.v[:ϖ][k, s] >= lo_ * O.v[:r][s])
+        @constraint(O.model, O.v[:π̃][k, s] <= hi_ * O.v[:d][s]); @constraint(O.model, O.v[:π̃][k, s] >= lo_ * O.v[:d][s])
+    end
+    @printf("  grbr: 루트 꼭짓점 범위 %d 개 (고정 %d, 평균 폭 %.3f)\n", length(Hk) * ndp.S, nfx, wsum / max(1, length(Hk) * ndp.S)); flush(stdout)
+    t = @elapsed res = nz_solve!(O, ndp, x̄; time_limit=TL, gap=GAP)
+    @printf("RESULT grbr status=%s LB=%.4f UB=%.4f gap=%.2e time=%.1f\n", string(termination_status(O.model)), res[:Fval], res[:bound],
+            abs(res[:bound] - res[:Fval]) / max(1.0, abs(res[:bound])), t)
+    flush(stdout)
+end
 if "grb" in solvers
     O = build_nz_omega(nd; optimizer=GRB)
     set_optimizer_attribute(O.model, "Threads", nw)
