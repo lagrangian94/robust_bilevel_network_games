@@ -745,6 +745,52 @@ function _nz_sticky_set_box!(P::_NZSepLP, l, u)
     return
 end
 
+"""
+부모 basis (parent_basis = true, 2026-10-29, 문서 §10.29): 노드 LP 를 푼 직후의 basis 를 자식 노드에 실어 두었다가, 다른 노드를 거친 worker 가
+그 자식을 꺼낼 때 (pop) 노드 LP 의 시작 basis 로 넣는다. dive (같은 worker 가 바로 자식을 푸는 것) 는 모델에 이미 부모 basis 가 있다.
+Gurobi 행 순서 = 노드와 무관한 기본 행 (nr0 개, B&B 중 추가·삭제 없음) + 분리 행 (P.allrows 순서, sticky 는 추가만). 분리 행은 worker 마다
+순서·집합이 달라 (좌표 i, 후보 j, 쪽) 으로 저장한다. basis 는 시작점일 뿐이라 LP 값에는 영향이 없다 (맞지 않으면 Gurobi 가 고치거나 버림).
+"""
+function _nz_dr_get_basis(P::_NZSepLP)
+    o = JuMP.unsafe_backend(P.O.model); ri = Ref{Cint}()
+    Gurobi.GRBgetintattr(o, "NumConstrs", ri); nr = Int(ri[]); Gurobi.GRBgetintattr(o, "NumVars", ri); nc = Int(ri[])
+    nr0 = nr - length(P.allrows)
+    vb = zeros(Cint, nc); cb = zeros(Cint, nr)
+    Gurobi.GRBgetintattrarray(o, "VBasis", 0, nc, vb) == 0 || return nothing
+    Gurobi.GRBgetintattrarray(o, "CBasis", 0, nr, cb) == 0 || return nothing
+    cs = Dict{Tuple{Int,Int,Bool},Int8}()
+    for (n, r) in enumerate(P.allrows); cs[(r[1], r[6], r[2])] = Int8(cb[nr0+n]); end
+    return (vb=Int8.(vb), cb=Int8.(cb[1:nr0]), cs=cs)
+end
+
+"부모 basis 를 지금 모델에 시작 basis 로 넣음. 넣었으면 true (열·기본 행 수가 다르면 false)"
+function _nz_dr_set_basis!(P::_NZSepLP, bas)
+    o = JuMP.unsafe_backend(P.O.model); Gurobi.GRBupdatemodel(o); ri = Ref{Cint}()
+    Gurobi.GRBgetintattr(o, "NumConstrs", ri); nr = Int(ri[]); Gurobi.GRBgetintattr(o, "NumVars", ri); nc = Int(ri[])
+    nr0 = nr - length(P.allrows)
+    (nc == length(bas.vb) && nr0 == length(bas.cb)) || return false
+    vb = Cint.(bas.vb); cb = zeros(Cint, nr); cb[1:nr0] .= bas.cb
+    known = falses(nr)
+    for (n, r) in enumerate(P.allrows)
+        s = get(bas.cs, (r[1], r[6], r[2]), nothing)
+        s === nothing ? (cb[nr0+n] = 0) : (cb[nr0+n] = s; known[nr0+n] = true)   # 부모에 없던 분리 행은 slack 을 기저로
+    end
+    # 기저 수를 행 수에 맞춤: 부모에 없던 분리 행부터 기저 ↔ 비기저를 바꾸고, 그래도 다르면 뒤쪽 분리 행에서
+    nb = count(==(0), vb) + count(==(0), cb)
+    for pass in (false, true), n in nr:-1:(nr0 + 1)
+        nb == nr && break
+        (pass || !known[n]) || continue
+        if nb > nr && cb[n] == 0
+            cb[n] = -1; nb -= 1
+        elseif nb < nr && cb[n] != 0
+            cb[n] = 0; nb += 1
+        end
+    end
+    Gurobi.GRBsetintattrarray(o, "VBasis", 0, nc, vb) == 0 || return false
+    Gurobi.GRBsetintattrarray(o, "CBasis", 0, nr, cb) == 0 || return false
+    return true
+end
+
 "_nz_sep_solve! 의 제자리 갱신판 (같은 종료 규칙)"
 function _nz_sticky_solve!(P::_NZSepLP; maxrounds=30, maxadd=5000, tol=1e-6, stall_tol=1e-6, stall_rounds=2)
     zprev = Inf; nstall = 0
@@ -769,7 +815,7 @@ const _NZ_DR_ANNOUNCE_LOCK = ReentrantLock()
 "기본 구성 (2026-10-13). 이 값과 다른 항목이 있으면 _nz_dr_announce 가 stderr 에 알린다"
 const _NZ_DR_DEFAULT = (dual_range=true, comp=true, vcut=true, cslift=true, fwd=true, kmc=true, dd=true, cbranch=true, sticky=true,
                         lp_tol=1e-7, branch_point=:mid, child_rounds=1, resp=false, range_mip=true, range_nodes=typemax(Int), range_time=Inf,
-                        range_lp=false, resp_fix=false, farkas=false, lp_method=1, lp_presolve=0, lp_crossover=-1, infeas_pre=false)
+                        range_lp=false, resp_fix=false, farkas=false, lp_method=1, lp_presolve=0, lp_crossover=-1, infeas_pre=false, parent_basis=false, share_rows=false)
 
 "구성이 기본과 다르면 다른 항목을 stderr 에 한 번 알린다 (같은 구성은 프로세스당 한 번) — 의도하지 않은 구성으로 도는 것을 막기 위해"
 function _nz_dr_announce(config)
@@ -875,6 +921,11 @@ function nz_alpha_bnb_dr(nd::NZData, x̄;
                          # infeas_pre = true: 루트가 아닌 노드에서 노드 LP 전에 recourse 블록을 뺀 목적 0 부분 LP 로 실행 불가능을 먼저 판정
                          #   (_nz_dr_pre_infeasible, Farkas 증명서 검증). 증명되면 노드 LP 없이 가지치기 (문서 §10.29)
                          infeas_pre::Bool=false,
+                         # parent_basis = true: 노드 LP 를 푼 직후의 basis 를 자식에 실어 두고, 꺼낸 (pop) 노드의 시작 basis 로 넣음 (_nz_dr_get_basis,
+                         #   _nz_dr_set_basis!). dive 는 이미 부모 basis 에서 시작. LP 값에는 영향 없음 (문서 §10.29)
+                         parent_basis::Bool=false,
+                         # share_rows = true: 분리 행 (sticky) 집합을 worker 끼리 맞춤 (한 worker 가 만든 행을 다른 worker 도 추가). LP 가 커짐 (문서 §10.29)
+                         share_rows::Bool=false,
                          # 이어 풀기: 같은 x̄ 의 이전 호출이 돌려준 r[:state]
                          resume=nothing)
     branch_point in (:alphahat, :mid) || error("branch_point = :alphahat | :mid")
@@ -883,7 +934,7 @@ function nz_alpha_bnb_dr(nd::NZData, x̄;
               sep_maxadd=sep_maxadd, presolve=presolve, heuristic=heuristic,
               fwd=dual_range && cslift && fwd, kmc=dual_range && cslift && kmc, dd=dual_range && dd,
               cbranch=dual_range && comp && cbranch, sticky=sticky, lp_tol=lp_tol, resp=resp, range_mip=range_mip, range_nodes=range_nodes, range_time=range_time,
-              range_lp=range_lp, resp_fix=resp_fix, farkas=farkas, lp_method=lp_method, lp_presolve=lp_presolve, lp_crossover=lp_crossover, infeas_pre=infeas_pre)
+              range_lp=range_lp, resp_fix=resp_fix, farkas=farkas, lp_method=lp_method, lp_presolve=lp_presolve, lp_crossover=lp_crossover, infeas_pre=infeas_pre, parent_basis=parent_basis, share_rows=share_rows)
     resp_fix && !range_lp && error("nz_alpha_bnb_dr: resp_fix = true 는 range_lp = true 와 함께")
     range_lp &&(dd || isfinite(range_time) || range_nodes != typemax(Int) || !range_mip || !dual_range) &&
         error("nz_alpha_bnb_dr: range_lp = true 는 dual_range = true, dd = false 와 함께 쓰고 range_mip·range_time·range_nodes 는 기본값으로")
@@ -895,6 +946,8 @@ function nz_alpha_bnb_dr(nd::NZData, x̄;
     n_fkto = Threads.Atomic{Int}(0)                                          # (NZ_FARKAS_CHECK) 재확인이 시간 제한으로 판정 못 한 노드
     n_pre = Threads.Atomic{Int}(0); n_pretry = Threads.Atomic{Int}(0)        # infeas_pre: 부분 LP 로 증명된 노드 / 부분 LP 를 푼 노드
     t_pre = Threads.Atomic{Float64}(0.0)
+    n_bload = Threads.Atomic{Int}(0); n_bfail = Threads.Atomic{Int}(0)       # parent_basis: 부모 basis 를 넣은 노드 / 못 넣은 노드
+    skeys = Tuple{Int,Int,Bool}[]; skset = Set{Tuple{Int,Int,Bool}}(); sk_lk = ReentrantLock()   # parent_basis: worker 공유 분리 행 키
     precheck = get(ENV, "NZ_PRE_CHECK", "0") == "1"; n_predis = Threads.Atomic{Int}(0); n_preto = Threads.Atomic{Int}(0)
     fkcheck = get(ENV, "NZ_FARKAS_CHECK", "0") == "1"
     prchk = get(ENV, "NZ_PRUNE_CHECK", "0") == "1"; n_prchk = Threads.Atomic{Int}(0); n_prdis = Threads.Atomic{Int}(0)
@@ -944,6 +997,25 @@ function nz_alpha_bnb_dr(nd::NZData, x̄;
         Base.open(io -> @printf(io, "# t wid kind nlp simplex_it barrier_it t_lp t_range result t_pre | S=%d nworkers=%d lp_method=%d lp_presolve=%d lp_crossover=%d\n",
                            nd.S, nworkers, lp_method, lp_presolve, lp_crossover), nlog, "a")
     end
+    # parent_basis: Gurobi 모델을 지금 붙인다 (JuMP 는 첫 optimize 때 붙이며 그때까지 쌓인 행을 제약 종류별로 묶어 복사한다). worker 2~12 는 첫 풀이 전에
+    #   루트의 분리 행을 받으므로, 늦게 붙이면 분리 행이 기본 행 사이에 끼어 "기본 행 nr0 개 + 분리 행" 순서가 깨진다 (2026-10-29: 다른 worker 의 부모 basis 무효의 원인)
+    parent_basis && for P in Ps; MOI.Utilities.attach_optimizer(P.O.model); end
+    if get(ENV, "NZ_BASIS_DEBUG", "0") == "1" && nworkers >= 2       # 진단: worker 1·2 모델의 행·열 순서가 같은가 (행 = 감각·rhs·열 번호·계수)
+        sigs = map(Ps[1:2]) do Pk
+            MOI.Utilities.attach_optimizer(Pk.O.model); o = JuMP.unsafe_backend(Pk.O.model); Gurobi.GRBupdatemodel(o); ri = Ref{Cint}()
+            Gurobi.GRBgetintattr(o, "NumConstrs", ri); nr = Int(ri[]); Gurobi.GRBgetintattr(o, "NumVars", ri); nc = Int(ri[])
+            nz = Ref{Cint}(); Gurobi.GRBgetconstrs(o, nz, C_NULL, C_NULL, C_NULL, 0, nr)
+            beg = zeros(Cint, nr); ind = zeros(Cint, nz[]); val = zeros(nz[]); Gurobi.GRBgetconstrs(o, nz, beg, ind, val, 0, nr)
+            sn = zeros(Cchar, nr); Gurobi.GRBgetcharattrarray(o, "Sense", 0, nr, sn)
+            lb = zeros(nc); Gurobi.GRBgetdblattrarray(o, "LB", 0, nc, lb); ub = zeros(nc); Gurobi.GRBgetdblattrarray(o, "UB", 0, nc, ub)
+            rows = [(sn[i], sort(collect(zip(ind[(beg[i]+1):(i < nr ? beg[i+1] : nz[])], round.(val[(beg[i]+1):(i < nr ? beg[i+1] : nz[])]; sigdigits=8))))) for i in 1:nr]
+            (nr, nc, rows, lb, ub)
+        end
+        (a, b) = sigs
+        nrd = count(i -> a[3][i] != b[3][i], 1:min(a[1], b[1])); ncd = count(j -> a[4][j] != b[4][j] || a[5][j] != b[5][j], 1:min(a[2], b[2]))
+        @printf(stderr, "  [basis debug] worker 1·2: 행 %d·%d, 열 %d·%d, 순서가 다른 행 %d, 경계가 다른 열 %d (같은 행 집합: %s)\n",
+                a[1], b[1], a[2], b[2], nrd, ncd, sort(a[3]) == sort(b[3]))
+    end
     fresh0 = _NZ_FRESH_OK[]
     slow = Tuple{Float64,Float64,Float64,Float64}[]               # 20 s 넘게 걸린 노드: (전체, 범위 MIP, 완화 LP, 실행 불가능 재확인) 초
     Fs = [nz_build_fixed_alpha(nd, x̄; optimizer=mk(envs[i])) for i in 1:nworkers]
@@ -984,6 +1056,7 @@ function nz_alpha_bnb_dr(nd::NZData, x̄;
     function worker(wid)
         P = Ps[wid]; F = Fs[wid]; DR = dual_range ? DRs[wid] : nothing
         localnode = nothing; dive_left = 0; synced = false
+        nown = 0; nsk = 0                                   # parent_basis: 공유 목록에 올린 자기 분리 행 수 / 읽은 공유 키 수
         while true
             yield()
             node = nothing; fromdive = false
@@ -1019,11 +1092,29 @@ function nz_alpha_bnb_dr(nd::NZData, x̄;
                 sleep(0.05); continue
             end
             l, u, ubp, lop, hip, witp, phibp = node
+            # 진단 (NZ_BASIS_ROUNDTRIP=1, parent_basis): dive 노드에서 모델의 부모 basis 를 읽어 두었다가 노드 설정 뒤 그대로 다시 넣음 (넣는 경로의 손실 확인)
+            rtbas = (parent_basis && fromdive && get(ENV, "NZ_BASIS_ROUNDTRIP", "0") == "1") ? _nz_dr_get_basis(P) : nothing
             tn0 = time(); tn_rg = 0.0; tn_lp = 0.0; tn_rc = 0.0
             ext = node[8]; eqp = ext.eq; dlo = ext.dlo; dhi = ext.dhi
             if !synced && root_rows[] !== nothing && isempty(P.allrows) && t_end - time() > 30.0
                 for (i, j, islo, b) in root_rows[]; sticky ? _nz_sticky_add!(P, i, j, islo, b) : _nz_sep_add!(P, i, j, islo, b); end
                 synced = true
+            end
+            # share_rows: 분리 행 (sticky) 집합을 worker 끼리 맞춤 — 자기가 새로 만든 행의 키를 공유 목록에 올리고, 남이 올린 키 중 없는 행을 추가.
+            #   행은 어떤 상자에서도 유효한 RLT 행이라 더해도 완화는 조여지기만 한다. parent_basis 와 함께 시험했으나 다른 worker 의 basis 무효의 원인은
+            #   모델을 늦게 붙인 것이었고 (위 attach), 공유는 LP 를 키워 S50 노드 LP 를 느리게 함 (문서 §10.29)
+            if share_rows && sticky && root_rows[] !== nothing
+                lock(sk_lk) do
+                    for n in (nown + 1):length(P.allrows)
+                        r = P.allrows[n]; key = (r[1], r[6], r[2]); key in skset || (push!(skset, key); push!(skeys, key))
+                    end
+                    newk = skeys[(nsk + 1):end]; nsk = length(skeys)
+                    have = get(P.O.model.ext, :sticky, Dict{Tuple{Int,Int,Bool},Int}())
+                    for (i, j, islo) in newk
+                        haskey(have, (i, j, islo)) || _nz_sticky_add!(P, i, j, islo, islo ? l[i] : u[i])
+                    end
+                end
+                nown = length(P.allrows)
             end
             z = -Inf; α̂ = nothing; children = nothing; zE = -Inf; unfinished = false; αE = nothing
             pruned_val = -Inf; lo = lop; hi = hip; wit = witp; phib = phibp; fixfrac = NaN
@@ -1077,10 +1168,15 @@ function nz_alpha_bnb_dr(nd::NZData, x̄;
                         tp = @elapsed ((pre_inf, _) = _nz_dr_pre_infeasible(P.O.model; tlim=min(30.0, t_end - time())))
                         Threads.atomic_add!(t_pre, tp); pre_inf && Threads.atomic_add!(n_pre, 1)
                     end
+                    bload = false                             # parent_basis: 꺼낸 노드에 부모 basis 가 있으면 시작 basis 로
+                    if parent_basis && !pre_inf && !fromdive && get(ext, :bas, nothing) !== nothing
+                        bload = _nz_dr_set_basis!(P, ext.bas); Threads.atomic_add!(bload ? n_bload : n_bfail, 1)
+                    end
+                    rtbas !== nothing && !pre_inf && (bload = _nz_dr_set_basis!(P, rtbas))
                     tr = pre_inf ? 0.0 : @elapsed (z = zpad((sticky ? _nz_sticky_solve! : _nz_sep_solve!)(P; maxrounds=(ubp == Inf ? maxrounds : child_rounds), maxadd=sep_maxadd)))
                     pre_inf && (z = -Inf)
                     if !isempty(nlog)
-                        il = P.O.model.ext[:itlog]; kind = ubp == Inf ? "root" : fromdive ? "dive" : "pop"
+                        il = P.O.model.ext[:itlog]; kind = ubp == Inf ? "root" : fromdive ? (bload ? "diveb" : "dive") : bload ? "popb$(get(ext, :side, 1))$(ext.bas.wid == wid ? "s" : "o")" : "pop"
                         res = pre_inf ? "preinf" : isnan(z) ? "time" : z == -Inf ? "infeas" : z == Inf ? "numerr" : z <= LB[] + tol(LB[]) ? "prune" : "branch"
                         lock(nlog_lk) do
                             Base.open(io -> @printf(io, "%.2f %d %s %d %d %d %.3f %.3f %s %.3f\n", time() - t0, wid, kind, il[1], il[2], il[3], tr, tn_rg, res, tp), nlog, "a")
@@ -1142,6 +1238,8 @@ function nz_alpha_bnb_dr(nd::NZData, x̄;
                     (!unfinished && !numfail && z <= LB[] + tol(LB[])) && (pruned_val = z)
                     if !unfinished && !numfail && z > LB[] + tol(LB[])
                         v = P.O.v
+                        basP = parent_basis ? _nz_dr_get_basis(P) : nothing
+                        basP === nothing || (basP = merge(basP, (wid=wid,)))   # 자식에 실을 부모 basis (값을 읽기만 한 뒤라 모델은 그대로)
                         α̂ = clamp.(value.(v[:α]), l, u)
                         rv = value.(v[:r]); dv = value.(v[:d])
                         ϖv = zeros(size(v[:ϖ]))
@@ -1190,13 +1288,13 @@ function nz_alpha_bnb_dr(nd::NZData, x̄;
                         end
                         if ic > 0
                             u1 = copy(u); u1[ic] = l[ic]; eqB = copy(eqp); eqB[ic] = true
-                            children = ((copy(l), u1, z, lo, hi, wit, phib, (eq=eqp, dlo=dlo, dhi=dhi)), (copy(l), copy(u), z, lo, hi, wit, phib, (eq=eqB, dlo=dlo, dhi=dhi)))
+                            children = ((copy(l), u1, z, lo, hi, wit, phib, (eq=eqp, dlo=dlo, dhi=dhi, bas=basP)), (copy(l), copy(u), z, lo, hi, wit, phib, (eq=eqB, dlo=dlo, dhi=dhi, bas=basP, side=2)))
                             Threads.atomic_add!(n_cbranch, 1)
                         elseif viol[i] > 1e-9
                             width = u[i] - l[i]; t = α̂[i]
                             (branch_point != :alphahat || t - l[i] < 0.1 * width || u[i] - t < 0.1 * width) && (t = 0.5 * (l[i] + u[i]))
                             u1 = copy(u); u1[i] = t; l2 = copy(l); l2[i] = t
-                            children = ((copy(l), u1, z, lo, hi, wit, phib, (eq=eqp, dlo=dlo, dhi=dhi)), (l2, copy(u), z, lo, hi, wit, phib, (eq=eqp, dlo=dlo, dhi=dhi)))
+                            children = ((copy(l), u1, z, lo, hi, wit, phib, (eq=eqp, dlo=dlo, dhi=dhi, bas=basP)), (l2, copy(u), z, lo, hi, wit, phib, (eq=eqp, dlo=dlo, dhi=dhi, bas=basP, side=2)))
                         else
                             z > zE && (zE = z; αE = α̂)     # 곱 위반이 없으면 완화가 정확
                         end
@@ -1303,5 +1401,5 @@ function nz_alpha_bnb_dr(nd::NZData, x̄;
                 :range_mips => dual_range ? sum(D.nmip for D in DRs) : 0, :range_fail => dual_range ? sum(D.nfail for D in DRs) : 0,
                 :fixfrac => nodes[] > 0 ? nfixed_sum[] / nodes[] : NaN, :infeas => n_infeas[], :infeas_recovered => n_infrec[],
                 :numerr => _NZ_NUMERR[] - numerr0, :numerr_fail => _NZ_NUMERR_FAIL[] - numfail0,
-                :cbranch => n_cbranch[], :resp_fix => n_rfix[], :farkas => n_fk[], :farkas_disagree => n_fkdis[], :farkas_check_timeout => n_fkto[], :infeas_pre => n_pre[], :infeas_pre_tried => n_pretry[], :t_pre => t_pre[], :infeas_pre_disagree => n_predis[], :infeas_pre_check_timeout => n_preto[], :prune_checked => n_prchk[], :prune_disagree => n_prdis[], :resp_hits => n_resp[], :gcsafe => _NZ_GCSAFE_STATE[], :gc_wait => (Base.gc_num().total_time_to_safepoint - gcw0) / 1e9)
+                :cbranch => n_cbranch[], :resp_fix => n_rfix[], :farkas => n_fk[], :farkas_disagree => n_fkdis[], :farkas_check_timeout => n_fkto[], :infeas_pre => n_pre[], :infeas_pre_tried => n_pretry[], :t_pre => t_pre[], :infeas_pre_disagree => n_predis[], :infeas_pre_check_timeout => n_preto[], :basis_loaded => n_bload[], :basis_failed => n_bfail[], :prune_checked => n_prchk[], :prune_disagree => n_prdis[], :resp_hits => n_resp[], :gcsafe => _NZ_GCSAFE_STATE[], :gc_wait => (Base.gc_num().total_time_to_safepoint - gcw0) / 1e9)
 end
