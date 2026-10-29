@@ -528,12 +528,15 @@ end
 행 일부만 남긴 완화라 그 Farkas 증명서 λ 에 지운 행 0 을 붙이면 노드 LP 의 증명서다. Gurobi 규칙 (λᵀAx ≤ λᵀb 유효, ≤ 행 λ ≥ 0, ≥ 행 λ ≤ 0)
 의 y = −λ 를 _nz_dr_farkas_certified 와 같은 규칙 (rtol, 경계 없는 쪽 상쇄 잔차) 으로 상자 위에서 검증해 통과하면 true.
 부분 LP 가 실행 가능, 시간 초과, 다른 상태, 검증 실패면 false (호출자는 노드 LP 를 그대로 푼다).
-L6 덤프 25 개 (실행 불가능 19 + 수치 오류 6) 에서 부분 LP 0.02~1.0 s, 검증 25/25 (lp_subfk.jl). 반환 (증명 여부, 부분 LP 상태 코드).
+L6 덤프 25 개 (실행 불가능 19 + 수치 오류 6) 에서 부분 LP 0.02~1.0 s, 검증 25/25 (lp_subfk.jl). 반환 (증명 여부, 부분 LP 상태 코드, 재시도로 증명했는가).
+retry = true (infeas_pre_retry, 2026-10-30, 문서 §10.29): 증명 못 하면 (상태가 INFEASIBLE 이 아니거나 검증 실패) 처음부터 (GRBreset)
+NumericFocus 3, 그래도 못 하면 NumericFocus 0·Seed 2 로 다시 푼다. 부분 LP 는 수치에 취약해서 같은 모델이 Seed 0 에서 NUMERIC 또는
+검증 실패 INFEASIBLE 로 끝나는 일이 있다 (L6 S50 run23 에서 놓친 실행 불가능 노드 8/8, 이 두 재시도로 8/8 증명, lp_miss3.jl).
 """
-function _nz_dr_pre_infeasible(model; rtol=1e-9, tlim=30.0)
+function _nz_dr_pre_infeasible(model; rtol=1e-9, tlim=30.0, retry=false)
     o = JuMP.unsafe_backend(model); Gurobi.GRBupdatemodel(o)
     m = Gurobi.GRBcopymodel(o)
-    m == C_NULL && return false, -1
+    m == C_NULL && return false, -1, false
     try
         ri = Ref{Cint}()
         Gurobi.GRBgetintattr(m, "NumConstrs", ri); nr = Int(ri[]); Gurobi.GRBgetintattr(m, "NumVars", ri); nc = Int(ri[])
@@ -558,38 +561,51 @@ function _nz_dr_pre_infeasible(model; rtol=1e-9, tlim=30.0)
         Gurobi.GRBsetdblattrarray(m, "Obj", 0, nc, zeros(nc))
         e = Gurobi.GRBgetenv(m)
         Gurobi.GRBsetintparam(e, "Method", 1); Gurobi.GRBsetintparam(e, "Presolve", 0); Gurobi.GRBsetintparam(e, "InfUnbdInfo", 1)
-        Gurobi.GRBsetintparam(e, "NumericFocus", 0); Gurobi.GRBsetdblparam(e, "TimeLimit", max(tlim, 0.1))
+        Gurobi.GRBsetintparam(e, "NumericFocus", 0)
         Gurobi.GRBupdatemodel(m)
-        Gurobi.GRBoptimize(m)
-        Gurobi.GRBgetintattr(m, "Status", ri); st = Int(ri[])
-        st == 3 || return false, st                         # 3 = GRB_INFEASIBLE
+        lb = zeros(nc); ub = zeros(nc); Gurobi.GRBgetdblattrarray(m, "LB", 0, nc, lb); Gurobi.GRBgetdblattrarray(m, "UB", 0, nc, ub)
         Gurobi.GRBgetintattr(m, "NumConstrs", ri); n2 = Int(ri[])
-        λ = zeros(n2); Gurobi.GRBgetdblattrarray(m, "FarkasDual", 0, n2, λ) == 0 || return false, st
         sense = zeros(Cchar, n2); Gurobi.GRBgetcharattrarray(m, "Sense", 0, n2, sense)
         rhs = zeros(n2); Gurobi.GRBgetdblattrarray(m, "RHS", 0, n2, rhs)
-        lb = zeros(nc); ub = zeros(nc); Gurobi.GRBgetdblattrarray(m, "LB", 0, nc, lb); Gurobi.GRBgetdblattrarray(m, "UB", 0, nc, ub)
-        g = zeros(nc); ga = zeros(nc); β = 0.0; βa = 0.0
         b1 = zeros(Cint, 1)
-        for i in 1:n2
-            y = -λ[i]; sg = Char(sense[i])
-            y = sg == '<' ? min(y, 0.0) : sg == '>' ? max(y, 0.0) : y
-            y == 0 && continue
-            β += y * rhs[i]; βa += abs(y * rhs[i])
-            Gurobi.GRBgetconstrs(m, nz, C_NULL, C_NULL, C_NULL, i - 1, 1); ki = zeros(Cint, nz[]); kv = zeros(nz[])
-            Gurobi.GRBgetconstrs(m, nz, b1, ki, kv, i - 1, 1)
-            for q in 1:nz[]; j = ki[q] + 1; g[j] += y * kv[q]; ga[j] += abs(y * kv[q]); end
-        end
-        mx = 0.0; slack = 0.0
-        for j in 1:nc
-            g[j] == 0 && continue
-            bj = g[j] > 0 ? ub[j] : lb[j]
-            if abs(bj) < 1e29
-                mx += g[j] * bj; slack += ga[j] * abs(bj)
-            elseif abs(g[j]) > rtol * max(1.0, ga[j])
-                return false, st
+        function certified()                                # 풀린 부분 LP 의 Farkas 쌍대를 상자 위에서 검증
+            λ = zeros(n2); Gurobi.GRBgetdblattrarray(m, "FarkasDual", 0, n2, λ) == 0 || return false
+            g = zeros(nc); ga = zeros(nc); β = 0.0; βa = 0.0
+            for i in 1:n2
+                y = -λ[i]; sg = Char(sense[i])
+                y = sg == '<' ? min(y, 0.0) : sg == '>' ? max(y, 0.0) : y
+                y == 0 && continue
+                β += y * rhs[i]; βa += abs(y * rhs[i])
+                Gurobi.GRBgetconstrs(m, nz, C_NULL, C_NULL, C_NULL, i - 1, 1); ki = zeros(Cint, nz[]); kv = zeros(nz[])
+                Gurobi.GRBgetconstrs(m, nz, b1, ki, kv, i - 1, 1)
+                for q in 1:nz[]; j = ki[q] + 1; g[j] += y * kv[q]; ga[j] += abs(y * kv[q]); end
             end
+            mx = 0.0; slack = 0.0
+            for j in 1:nc
+                g[j] == 0 && continue
+                bj = g[j] > 0 ? ub[j] : lb[j]
+                if abs(bj) < 1e29
+                    mx += g[j] * bj; slack += ga[j] * abs(bj)
+                elseif abs(g[j]) > rtol * max(1.0, ga[j])
+                    return false
+                end
+            end
+            return mx < β - rtol * (1.0 + βa + slack)
         end
-        return mx < β - rtol * (1.0 + βa + slack), st
+        dl = time() + max(tlim, 0.1); st0 = -1
+        # 시도: 기본 (NumericFocus 0, Seed 0) → (retry) NumericFocus 3 → NumericFocus 0·Seed 2. 재시도는 GRBreset 뒤 처음부터
+        for (a, (nf, sd)) in enumerate(retry ? ((0, 0), (3, 0), (0, 2)) : ((0, 0),))
+            r = dl - time(); (a > 1 && r <= 0.1) && break
+            if a > 1
+                Gurobi.GRBreset(m, 0); Gurobi.GRBsetintparam(e, "NumericFocus", nf); Gurobi.GRBsetintparam(e, "Seed", sd)
+            end
+            Gurobi.GRBsetdblparam(e, "TimeLimit", max(r, 0.1))
+            Gurobi.GRBoptimize(m)
+            Gurobi.GRBgetintattr(m, "Status", ri); st = Int(ri[]); a == 1 && (st0 = st)
+            st == 3 && certified() && return true, st, a > 1   # 3 = GRB_INFEASIBLE
+            st == 9 && break                                    # 9 = TIME_LIMIT: 재시도하지 않음
+        end
+        return false, st0, false
     finally
         Gurobi.GRBfreemodel(m)
     end
@@ -823,7 +839,7 @@ const _NZ_DR_ANNOUNCE_LOCK = ReentrantLock()
 "기본 구성 (2026-10-13). 이 값과 다른 항목이 있으면 _nz_dr_announce 가 stderr 에 알린다"
 const _NZ_DR_DEFAULT = (dual_range=true, comp=true, vcut=true, cslift=true, fwd=true, kmc=true, dd=true, cbranch=true, sticky=true,
                         lp_tol=1e-7, branch_point=:mid, child_rounds=1, resp=false, range_mip=true, range_nodes=typemax(Int), range_time=Inf,
-                        range_lp=false, resp_fix=false, farkas=false, lp_method=1, lp_presolve=0, lp_crossover=-1, infeas_pre=false, parent_basis=false, share_rows=false, node_lp_cap=Inf)
+                        range_lp=false, resp_fix=false, farkas=false, lp_method=1, lp_presolve=0, lp_crossover=-1, infeas_pre=false, infeas_pre_retry=false, parent_basis=false, share_rows=false, node_lp_cap=Inf)
 
 "구성이 기본과 다르면 다른 항목을 stderr 에 한 번 알린다 (같은 구성은 프로세스당 한 번) — 의도하지 않은 구성으로 도는 것을 막기 위해"
 function _nz_dr_announce(config)
@@ -929,6 +945,8 @@ function nz_alpha_bnb_dr(nd::NZData, x̄;
                          # infeas_pre = true: 루트가 아닌 노드에서 노드 LP 전에 recourse 블록을 뺀 목적 0 부분 LP 로 실행 불가능을 먼저 판정
                          #   (_nz_dr_pre_infeasible, Farkas 증명서 검증). 증명되면 노드 LP 없이 가지치기 (문서 §10.29)
                          infeas_pre::Bool=false,
+                         # infeas_pre_retry = true (infeas_pre 전용): 부분 LP 가 증명 못 하면 NumericFocus 3, 그다음 Seed 2 로 다시 풂 (부분 LP 의 수치 취약성, 문서 §10.29)
+                         infeas_pre_retry::Bool=false,
                          # parent_basis = true: 노드 LP 를 푼 직후의 basis 를 자식에 실어 두고, 꺼낸 (pop) 노드의 시작 basis 로 넣음 (_nz_dr_get_basis,
                          #   _nz_dr_set_basis!). dive 는 이미 부모 basis 에서 시작. LP 값에는 영향 없음 (문서 §10.29)
                          parent_basis::Bool=false,
@@ -945,7 +963,7 @@ function nz_alpha_bnb_dr(nd::NZData, x̄;
               sep_maxadd=sep_maxadd, presolve=presolve, heuristic=heuristic,
               fwd=dual_range && cslift && fwd, kmc=dual_range && cslift && kmc, dd=dual_range && dd,
               cbranch=dual_range && comp && cbranch, sticky=sticky, lp_tol=lp_tol, resp=resp, range_mip=range_mip, range_nodes=range_nodes, range_time=range_time,
-              range_lp=range_lp, resp_fix=resp_fix, farkas=farkas, lp_method=lp_method, lp_presolve=lp_presolve, lp_crossover=lp_crossover, infeas_pre=infeas_pre, parent_basis=parent_basis, share_rows=share_rows, node_lp_cap=node_lp_cap)
+              range_lp=range_lp, resp_fix=resp_fix, farkas=farkas, lp_method=lp_method, lp_presolve=lp_presolve, lp_crossover=lp_crossover, infeas_pre=infeas_pre, infeas_pre_retry=infeas_pre && infeas_pre_retry, parent_basis=parent_basis, share_rows=share_rows, node_lp_cap=node_lp_cap)
     resp_fix && !range_lp && error("nz_alpha_bnb_dr: resp_fix = true 는 range_lp = true 와 함께")
     range_lp &&(dd || isfinite(range_time) || range_nodes != typemax(Int) || !range_mip || !dual_range) &&
         error("nz_alpha_bnb_dr: range_lp = true 는 dual_range = true, dd = false 와 함께 쓰고 range_mip·range_time·range_nodes 는 기본값으로")
@@ -956,7 +974,7 @@ function nz_alpha_bnb_dr(nd::NZData, x̄;
     n_fk = Threads.Atomic{Int}(0); n_fkdis = Threads.Atomic{Int}(0)          # Farkas 로 증명된 노드 / (NZ_FARKAS_CHECK) 재확인이 실행가능이라 한 노드
     n_fkto = Threads.Atomic{Int}(0)                                          # (NZ_FARKAS_CHECK) 재확인이 시간 제한으로 판정 못 한 노드
     n_pre = Threads.Atomic{Int}(0); n_pretry = Threads.Atomic{Int}(0)        # infeas_pre: 부분 LP 로 증명된 노드 / 부분 LP 를 푼 노드
-    t_pre = Threads.Atomic{Float64}(0.0)
+    t_pre = Threads.Atomic{Float64}(0.0); n_preretry = Threads.Atomic{Int}(0)  # infeas_pre_retry: 재시도에서 증명된 노드
     n_bload = Threads.Atomic{Int}(0); n_bfail = Threads.Atomic{Int}(0)       # parent_basis: 부모 basis 를 넣은 노드 / 못 넣은 노드
     n_cap = Threads.Atomic{Int}(0)                                           # node_lp_cap 에 걸린 노드
     bdive = get(ENV, "NZ_BASIS_DIVE", "0") == "1"           # 진단 (parent_basis): dive 노드에도 실어 둔 부모 basis 를 명시적으로 넣음
@@ -1180,8 +1198,8 @@ function nz_alpha_bnb_dr(nd::NZData, x̄;
                     pre_inf = false; tp = 0.0                 # infeas_pre: 부분 LP 로 실행 불가능이 증명되면 노드 LP 를 풀지 않음
                     if infeas_pre && ubp != Inf
                         Threads.atomic_add!(n_pretry, 1)
-                        tp = @elapsed ((pre_inf, _) = _nz_dr_pre_infeasible(P.O.model; tlim=min(30.0, ndl - time())))
-                        Threads.atomic_add!(t_pre, tp); pre_inf && Threads.atomic_add!(n_pre, 1)
+                        tp = @elapsed ((pre_inf, _, pre_rt) = _nz_dr_pre_infeasible(P.O.model; tlim=min(30.0, ndl - time()), retry=config.infeas_pre_retry))
+                        Threads.atomic_add!(t_pre, tp); pre_inf && Threads.atomic_add!(n_pre, 1); pre_rt && Threads.atomic_add!(n_preretry, 1)
                     end
                     bload = false                             # parent_basis: 꺼낸 노드에 부모 basis 가 있으면 시작 basis 로
                     if parent_basis && !pre_inf && (!fromdive || bdive) && get(ext, :bas, nothing) !== nothing
@@ -1419,5 +1437,5 @@ function nz_alpha_bnb_dr(nd::NZData, x̄;
                 :range_mips => dual_range ? sum(D.nmip for D in DRs) : 0, :range_fail => dual_range ? sum(D.nfail for D in DRs) : 0,
                 :fixfrac => nodes[] > 0 ? nfixed_sum[] / nodes[] : NaN, :infeas => n_infeas[], :infeas_recovered => n_infrec[],
                 :numerr => _NZ_NUMERR[] - numerr0, :numerr_fail => _NZ_NUMERR_FAIL[] - numfail0,
-                :cbranch => n_cbranch[], :resp_fix => n_rfix[], :farkas => n_fk[], :farkas_disagree => n_fkdis[], :farkas_check_timeout => n_fkto[], :infeas_pre => n_pre[], :infeas_pre_tried => n_pretry[], :t_pre => t_pre[], :infeas_pre_disagree => n_predis[], :infeas_pre_check_timeout => n_preto[], :basis_loaded => n_bload[], :node_lp_cap_hits => n_cap[], :basis_failed => n_bfail[], :prune_checked => n_prchk[], :prune_disagree => n_prdis[], :resp_hits => n_resp[], :gcsafe => _NZ_GCSAFE_STATE[], :gc_wait => (Base.gc_num().total_time_to_safepoint - gcw0) / 1e9)
+                :cbranch => n_cbranch[], :resp_fix => n_rfix[], :farkas => n_fk[], :farkas_disagree => n_fkdis[], :farkas_check_timeout => n_fkto[], :infeas_pre => n_pre[], :infeas_pre_tried => n_pretry[], :infeas_pre_retry => n_preretry[], :t_pre => t_pre[], :infeas_pre_disagree => n_predis[], :infeas_pre_check_timeout => n_preto[], :basis_loaded => n_bload[], :node_lp_cap_hits => n_cap[], :basis_failed => n_bfail[], :prune_checked => n_prchk[], :prune_disagree => n_prdis[], :resp_hits => n_resp[], :gcsafe => _NZ_GCSAFE_STATE[], :gc_wait => (Base.gc_num().total_time_to_safepoint - gcw0) / 1e9)
 end

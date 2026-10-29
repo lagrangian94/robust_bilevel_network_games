@@ -1758,3 +1758,30 @@ TimeLimit) 을 정하고 첫 풀이·재시도마다 TimeLimit 을 남은 시간
 
 - 노드 하나가 전역 UB 를 붙잡는 일이 없어져 gap 이 11.7% → 4.8%. cap 120 s 는 조금 더 낫다 (4.49%).
 - 남은 큰 비용: 부분 LP 로 못 잡은 실행 불가능 dive 노드 (run22 마감만: 6 개, 노드당 160~240 s, 7~9 만 반복). 그 외 dive 36 s, pop 15 s.
+
+**S50 1 시간 (run23, 2026-10-30).** run22 의 cap 120 s 구성 (infeas_pre + parent_basis + 재시도 마감 + node_lp_cap 120) 을 3,600 s 로.
+`NZ_INFEAS_DUMP` 로 사전 판정이 놓친 실행 불가능 노드 8 개를 `logs/l6diag/infdump/S50miss` 에 저장 (최적 solve 마다 basis 를 쓰는 비용이 조금 듦).
+**2,121 s 에 gap 0.0998% 로 수렴** (1,362 노드, 로그 `lpm/cap120_1h_S50`).
+
+| 경과 | 612 s | 973 s | 1,694 s | 2,121 s |
+|---|---|---|---|---|
+| 노드 | 300 | 528 | 1,084 | 1,362 (끝) |
+| gap | 3.46% | 0.79% | 0.22% | 0.0998% |
+
+| 노드 결과 (LP 시간 합 21,040 s, worker 12) | 개수 | LP 시간 | 비율 |
+|---|---|---|---|
+| 실행 가능 (가지치기·분기) | 1,157 | 약 15,500 s | 74% |
+| node_lp_cap 120 s 에 걸림 | 44 | 5,076 s | 24% |
+| 실행 불가능, 사전 판정이 놓침 | 13 | 436 s | 2% |
+| 실행 불가능, 사전 판정이 증명 | 148 | 0 (부분 LP 307 s) | — |
+
+**사전 판정이 놓친 원인 = 부분 LP 의 수치 취약성** (`lpstruct/lp_miss.jl`, `lp_miss2.jl`, `lp_miss3.jl`). 덤프 8 개 모두 실행 불가능.
+- 코드와 같은 절차 (모델 복사 → 행 삭제 → dual simplex) 로 다시 풀면 5 개는 NUMERIC (상태 12), 3 개는 INFEASIBLE 이지만 Farkas 검증 실패. B&B 안과 같음.
+- 같은 행으로 새로 만든 모델은 1 s 안에 INFEASIBLE + 검증 통과. 두 모델은 이름만 다르고 Gurobi signature·계수·RHS·상하한이 같다.
+  이름을 바꿔도 결과가 같고, Seed 만 바꾸면 결과가 바뀐다: 풀이 경로의 운이다.
+- 재시도 설정별로 증명된 덤프 수 (8 개 중, 시도당 0.3~5 s): Seed 1 → 5, Seed 2 → 7, NumericFocus 2 → 6, NumericFocus 3 → 7, primal → 7,
+  barrier → 0, Presolve 켬 → 3. **NumericFocus 3, 실패하면 Seed 2** 로 8/8.
+
+**infeas_pre_retry (2026-10-30, 기본 false, infeas_pre 전용).** `_nz_dr_pre_infeasible(...; retry=true)`: 첫 풀이가 증명 못 하면 (INFEASIBLE 이 아니거나
+검증 실패, 시간 초과 제외) GRBreset 뒤 NumericFocus 3, 그래도 못 하면 NumericFocus 0·Seed 2 로 다시 푼다 (부분 LP 마감 안에서). 통계 `:infeas_pre_retry`
+= 재시도로 증명된 노드 수. cap 에 걸린 노드 44 개 (LP 시간 24%) 가 같은 이유로 놓친 실행 불가능 노드인지는 run24 로 본다.

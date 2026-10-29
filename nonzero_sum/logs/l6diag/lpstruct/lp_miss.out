@@ -1,0 +1,61 @@
+Set parameter Username
+Set parameter LicenseID to value 2742039
+Academic license - for non-commercial use only - expires 2026-11-20
+Read MPS format model from file C:\Users\user\robust_bilevel_network_games\nonzero_sum\logs\l6diag\infdump\S50miss\infeas_1.mps
+Reading time = 0.13 seconds
+: 45670 rows, 39192 columns, 282600 nonzeros
+
+#### infeas_1  (B&B 안: wall 40.380 grb 40.374 simplex_it 31867 presolve 0 method 1)
+  A0 (사전 판정과 같음)   12019 행  INF     0.73 s    7806 iter  검증 통과
+Read MPS format model from file C:\Users\user\robust_bilevel_network_games\nonzero_sum\logs\l6diag\infdump\S50miss\infeas_2.mps
+Reading time = 0.14 seconds
+: 46531 rows, 39192 columns, 289583 nonzeros
+
+#### infeas_2  (B&B 안: wall 1.301 grb 1.293 simplex_it 1153 presolve 0 method 1)
+  A0 (사전 판정과 같음)   12880 행  INF     0.80 s    8231 iter  검증 통과
+Read MPS format model from file C:\Users\user\robust_bilevel_network_games\nonzero_sum\logs\l6diag\infdump\S50miss\infeas_3.mps
+Reading time = 0.12 seconds
+: 46477 rows, 39192 columns, 288714 nonzeros
+
+#### infeas_3  (B&B 안: wall 87.604 grb 87.608 simplex_it 47647 presolve 0 method 1)
+  A0 (사전 판정과 같음)   12826 행  INF     0.54 s    6920 iter  검증 통과
+Read MPS format model from file C:\Users\user\robust_bilevel_network_games\nonzero_sum\logs\l6diag\infdump\S50miss\infeas_4.mps
+Reading time = 0.13 seconds
+: 47084 rows, 39192 columns, 289580 nonzeros
+
+#### infeas_4  (B&B 안: wall 4.276 grb 4.265 simplex_it 5818 presolve 0 method 1)
+  A0 (사전 판정과 같음)   13433 행  NUM     3.79 s   22564 iter  
+    + 이름 있는 행 (Ffeas)       28433 행  INF     2.43 s   15869 iter  검증 통과
+    + 이름 있는 행 (N1)          28433 행  INF     0.97 s    7827 iter  검증 통과
+    + 이름 있는 행 (Lflow)       15183 행  INF     0.47 s    6480 iter  검증 통과
+    + 이름 있는 행 (Fflow)       15183 행  INF     1.88 s   18746 iter  검증 통과
+    + WD/FWD/V (블록 강화)       13584 행  INF     1.01 s    9026 iter  검증 통과
+Read MPS format model from file C:\Users\user\robust_bilevel_network_games\nonzero_sum\logs\l6diag\infdump\S50miss\infeas_5.mps
+Reading time = 0.13 seconds
+: 47342 rows, 39192 columns, 290811 nonzeros
+
+#### infeas_5  (B&B 안: wall 22.343 grb 22.336 simplex_it 35723 presolve 0 method 1)
+  A0 (사전 판정과 같음)   13691 행  NUM     2.69 s   19100 iter  
+    + 이름 있는 행 (Ffeas)       28691 행  INF     0.92 s    8029 iter  검증 통과
+    + 이름 있는 행 (N1)          28691 행  INF     0.79 s    8086 iter  검증 통과
+    + 이름 있는 행 (Lflow)       15441 행  INF     0.54 s    7550 iter  검증 실패 (NaN)
+    + 이름 있는 행 (Fflow)       15441 행  NUM     1.80 s   16777 iter  
+    + WD/FWD/V (블록 강화)       13842 행  INF     0.72 s    7872 iter  검증 실패 (-1.6e-06)
+Read MPS format model from file C:\Users\user\robust_bilevel_network_games\nonzero_sum\logs\l6diag\infdump\S50miss\infeas_6.mps
+Reading time = 0.14 seconds
+: 47242 rows, 39192 columns, 290913 nonzeros
+
+#### infeas_6  (B&B 안: wall 62.623 grb 62.630 simplex_it 60041 presolve 0 method 1)
+  A0 (사전 판정과 같음)   13591 행  INF     0.47 s    6424 iter  검증 통과
+Read MPS format model from file C:\Users\user\robust_bilevel_network_games\nonzero_sum\logs\l6diag\infdump\S50miss\infeas_7.mps
+Reading time = 0.13 seconds
+: 48086 rows, 39192 columns, 295767 nonzeros
+
+#### infeas_7  (B&B 안: wall 5.171 grb 5.173 simplex_it 18909 presolve 0 method 1)
+  A0 (사전 판정과 같음)   14435 행  INF     0.94 s    8210 iter  검증 실패 (-1.6e-02)
+Read MPS format model from file C:\Users\user\robust_bilevel_network_games\nonzero_sum\logs\l6diag\infdump\S50miss\infeas_8.mps
+Reading time = 0.14 seconds
+: 48842 rows, 39192 columns, 296406 nonzeros
+
+#### infeas_8  (B&B 안: wall 10.625 grb 10.629 simplex_it 11406 presolve 0 method 1)
+  A0 (사전 판정과 같음)   15191 행  INF     0.45 s    6735 iter  검증 통과
