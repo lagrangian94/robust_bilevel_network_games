@@ -542,7 +542,7 @@ end
 function _nz_dr_recheck_infeasible!(model; method::Symbol=:dual)
     restore!() = (set_optimizer_attribute(model, "FeasibilityTol", get(model.ext, :lp_tol, 1e-9));
                   set_optimizer_attribute(model, "Method", get(model.ext, :lp_method, 1));
-                  set_optimizer_attribute(model, "Presolve", 0); set_optimizer_attribute(model, "DualReductions", 1))
+                  set_optimizer_attribute(model, "Presolve", get(model.ext, :lp_presolve, 0)); set_optimizer_attribute(model, "DualReductions", 1))
     set_optimizer_attribute(model, "FeasibilityTol", 1e-6)
     if method == :primal
         set_optimizer_attribute(model, "Method", 0)
@@ -696,7 +696,7 @@ const _NZ_DR_ANNOUNCE_LOCK = ReentrantLock()
 "기본 구성 (2026-10-13). 이 값과 다른 항목이 있으면 _nz_dr_announce 가 stderr 에 알린다"
 const _NZ_DR_DEFAULT = (dual_range=true, comp=true, vcut=true, cslift=true, fwd=true, kmc=true, dd=true, cbranch=true, sticky=true,
                         lp_tol=1e-7, branch_point=:mid, child_rounds=1, resp=false, range_mip=true, range_nodes=typemax(Int), range_time=Inf,
-                        range_lp=false, resp_fix=false, farkas=false)
+                        range_lp=false, resp_fix=false, farkas=false, lp_method=1, lp_presolve=0, lp_crossover=-1)
 
 "구성이 기본과 다르면 다른 항목을 stderr 에 한 번 알린다 (같은 구성은 프로세스당 한 번) — 의도하지 않은 구성으로 도는 것을 막기 위해"
 function _nz_dr_announce(config)
@@ -795,6 +795,10 @@ function nz_alpha_bnb_dr(nd::NZData, x̄;
                          # farkas = true: 노드 LP 가 실행 불가능이면 Gurobi 의 Farkas 쌍대를 먼저 검증 (_nz_dr_farkas_certified). 증명되면 재풀이 없이 가지치기,
                          #   아니면 기존 재확인. 환경변수 NZ_FARKAS_CHECK=1 이면 증명된 노드도 재확인을 돌려 결과가 다르면 센다 (검증용)
                          farkas::Bool=false,
+                         # 노드 LP 풀이 방법 (기본 = 기존 dual simplex, Presolve 끔): lp_method = 1 dual simplex | 2 barrier | -1 자동, lp_presolve = 0 끔 | -1 자동,
+                         #   lp_crossover = -1 자동 | 0 끔 (내부점 해: _nz_solve_lp! 가 max(primal, dual 목적값) 을 상한으로). L6 S=50 은 B&B 안의 노드 LP 가
+                         #   12 개 동시 cold 와 같은 시간이라 (warm start 가 거의 안 들음) barrier 를 시험하려고 둠 (문서 §10.29)
+                         lp_method::Int=1, lp_presolve::Int=0, lp_crossover::Int=-1,
                          # 이어 풀기: 같은 x̄ 의 이전 호출이 돌려준 r[:state]
                          resume=nothing)
     branch_point in (:alphahat, :mid) || error("branch_point = :alphahat | :mid")
@@ -803,7 +807,7 @@ function nz_alpha_bnb_dr(nd::NZData, x̄;
               sep_maxadd=sep_maxadd, presolve=presolve, heuristic=heuristic,
               fwd=dual_range && cslift && fwd, kmc=dual_range && cslift && kmc, dd=dual_range && dd,
               cbranch=dual_range && comp && cbranch, sticky=sticky, lp_tol=lp_tol, resp=resp, range_mip=range_mip, range_nodes=range_nodes, range_time=range_time,
-              range_lp=range_lp, resp_fix=resp_fix, farkas=farkas)
+              range_lp=range_lp, resp_fix=resp_fix, farkas=farkas, lp_method=lp_method, lp_presolve=lp_presolve, lp_crossover=lp_crossover)
     resp_fix && !range_lp && error("nz_alpha_bnb_dr: resp_fix = true 는 range_lp = true 와 함께")
     range_lp &&(dd || isfinite(range_time) || range_nodes != typemax(Int) || !range_mip || !dual_range) &&
         error("nz_alpha_bnb_dr: range_lp = true 는 dual_range = true, dd = false 와 함께 쓰고 range_mip·range_time·range_nodes 는 기본값으로")
@@ -847,6 +851,20 @@ function nz_alpha_bnb_dr(nd::NZData, x̄;
     zpad(z) = (lp_tol > 1e-9 && isfinite(z)) ? z + 1e-6 * max(1.0, abs(z)) : z
     farkas && for P in Ps; set_optimizer_attribute(P.O.model, "InfUnbdInfo", 1); end   # Farkas 쌍대를 받기 위해
     for P in Ps; P.O.model.ext[:retry_fresh] = true; end          # 노드 LP 수치 오류: NumericFocus 3 전에 처음부터 한 번 (_nz_solve_lp!)
+    for P in Ps                                                   # 노드 LP 풀이 방법. ext 값은 재시도·재확인 뒤 되돌릴 값 (기본이면 기존 설정 그대로)
+        P.O.model.ext[:lp_method] = lp_method; P.O.model.ext[:lp_presolve] = lp_presolve; P.O.model.ext[:lp_crossover] = lp_crossover
+        (lp_method, lp_presolve, lp_crossover) == (1, 0, -1) && continue
+        set_optimizer_attribute(P.O.model, "Method", lp_method); set_optimizer_attribute(P.O.model, "Presolve", lp_presolve)
+        set_optimizer_attribute(P.O.model, "Crossover", lp_crossover)
+    end
+    # 진단 (NZ_NODELP_LOG=<파일>): 노드마다 한 줄 — 시각, worker, 종류 (root / dive = 이 worker 가 직전에 푼 노드의 자식 / pop = 열린 노드에서 꺼냄),
+    #   LP 횟수, simplex 반복, barrier 반복, 완화 LP 시간, 범위 LP 시간, 결과. 부모에서 이어 푼 LP (dive) 와 그렇지 않은 LP (pop) 의 비용 비교용
+    nlog = get(ENV, "NZ_NODELP_LOG", ""); nlog_lk = ReentrantLock()
+    if !isempty(nlog)
+        for P in Ps; P.O.model.ext[:itlog] = zeros(Int, 3); end
+        Base.open(io -> @printf(io, "# t wid kind nlp simplex_it barrier_it t_lp t_range result | S=%d nworkers=%d lp_method=%d lp_presolve=%d lp_crossover=%d\n",
+                           nd.S, nworkers, lp_method, lp_presolve, lp_crossover), nlog, "a")
+    end
     fresh0 = _NZ_FRESH_OK[]
     slow = Tuple{Float64,Float64,Float64,Float64}[]               # 20 s 넘게 걸린 노드: (전체, 범위 MIP, 완화 LP, 실행 불가능 재확인) 초
     Fs = [nz_build_fixed_alpha(nd, x̄; optimizer=mk(envs[i])) for i in 1:nworkers]
@@ -889,7 +907,7 @@ function nz_alpha_bnb_dr(nd::NZData, x̄;
         localnode = nothing; dive_left = 0; synced = false
         while true
             yield()
-            node = nothing
+            node = nothing; fromdive = false
             lock(lk)
             try
                 ub_now = globalUB()
@@ -902,7 +920,7 @@ function nz_alpha_bnb_dr(nd::NZData, x̄;
                     return
                 end
                 if localnode !== nothing && dive_left > 0 && localnode[3] > LB[] + tol(LB[])
-                    node = localnode; dive_left -= 1
+                    node = localnode; dive_left -= 1; fromdive = true
                 else
                     if localnode !== nothing
                         localnode[3] > LB[] + tol(LB[]) ? push!(open, localnode) :
@@ -973,7 +991,15 @@ function nz_alpha_bnb_dr(nd::NZData, x̄;
                 end
                 if !empty_box
                     set_time_limit_sec(P.O.model, max(t_end - time(), 0.1))
+                    isempty(nlog) || (P.O.model.ext[:itlog] .= 0)
                     tr = @elapsed (z = zpad((sticky ? _nz_sticky_solve! : _nz_sep_solve!)(P; maxrounds=(ubp == Inf ? maxrounds : child_rounds), maxadd=sep_maxadd)))
+                    if !isempty(nlog)
+                        il = P.O.model.ext[:itlog]; kind = ubp == Inf ? "root" : fromdive ? "dive" : "pop"
+                        res = isnan(z) ? "time" : z == -Inf ? "infeas" : z == Inf ? "numerr" : z <= LB[] + tol(LB[]) ? "prune" : "branch"
+                        lock(nlog_lk) do
+                            Base.open(io -> @printf(io, "%.2f %d %s %d %d %d %.3f %.3f %s\n", time() - t0, wid, kind, il[1], il[2], il[3], tr, tn_rg, res), nlog, "a")
+                        end
+                    end
                     # 진단 (NZ_PRUNE_CHECK=1): LP 값으로 가지칠 노드 (OPTIMAL) 를 기저 없이 처음부터 다시 풀어 기준을 넘으면 출력
                     #   (이어 푼 dual simplex 의 최적값 검증. 2026-10-29 L6 S3 1,031 개·S20 68 개 불일치 0)
                     if prchk && isfinite(z) && z <= LB[] + tol(LB[]) && termination_status(P.O.model) == MOI.OPTIMAL

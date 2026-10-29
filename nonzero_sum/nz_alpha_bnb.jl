@@ -255,6 +255,7 @@ const _NZ_LPWALL = Threads.Atomic{Float64}(0.0)
 const _NZ_LPGRB = Threads.Atomic{Float64}(0.0)
 const _NZ_RESTORE = IdDict{Any,Bool}()       # 재시도 설정을 다음 optimize 전에 되돌릴 모델
 const _NZ_RESTORE_LOCK = ReentrantLock()
+const _NZ_INFDUMP = Threads.Atomic{Int}(0)              # NZ_INFEAS_DUMP 로 저장한 실행 불가능 LP 수
 
 function _nz_solve_lp!(model)
     # 직전 호출에서 재시도 설정을 바꿨으면 여기서 되돌림. 해를 읽은 뒤에 되돌리면 JuMP 가 해를 무효로 봐서
@@ -262,10 +263,37 @@ function _nz_solve_lp!(model)
     restore = lock(() -> pop!(_NZ_RESTORE, model, false), _NZ_RESTORE_LOCK)
     restore && (set_optimizer_attribute(model, "NumericFocus", 0); set_optimizer_attribute(model, "Method", get(model.ext, :lp_method, 1));
                 set_optimizer_attribute(model, "Crossover", get(model.ext, :lp_crossover, -1)))
-    restore && get(model.ext, :retry_fresh, false) && (set_optimizer_attribute(model, "Presolve", 0); set_optimizer_attribute(model, "DualReductions", 1))
+    restore && get(model.ext, :retry_fresh, false) && (set_optimizer_attribute(model, "Presolve", get(model.ext, :lp_presolve, 0)); set_optimizer_attribute(model, "DualReductions", 1))
+    # 진단: NZ_INFEAS_DUMP=<폴더> 면 이어 푼 (시작 basis 가 있는) LP 가 INFEASIBLE 일 때 처음 NZ_INFEAS_DUMP_MAX (기본 8) 개를
+    #   infeas_k.mps (끝난 뒤 모델 = 그 노드), infeas_k_start.bas (같은 모델의 직전 최적 basis = 이어 푼 시작점), infeas_k.txt (시간·반복) 로 저장.
+    #   (수정된 모델에서는 optimize 전에 basis 를 쓸 수 없어 최적 solve 마다 pre_*.bas 로 덮어 둔다.) 재확인 (GRBreset 뒤) 도 직전 최적 basis 를 쓰므로 같이 저장될 수 있음
+    idump = haskey(ENV, "NZ_INFEAS_DUMP")
+    pre = idump ? joinpath(ENV["NZ_INFEAS_DUMP"], "pre_$(objectid(model)).bas") : ""
     tw = @elapsed optimize!(model)
     tg = try solve_time(model) catch; 0.0 end
+    if idump
+        o = JuMP.unsafe_backend(model); st0 = termination_status(model)
+        if st0 == MOI.INFEASIBLE && isfile(pre) && _NZ_INFDUMP[] < parse(Int, get(ENV, "NZ_INFEAS_DUMP_MAX", "8"))
+            k = Threads.atomic_add!(_NZ_INFDUMP, 1) + 1
+            base = joinpath(ENV["NZ_INFEAS_DUMP"], "infeas_$k")
+            try
+                Gurobi.GRBwrite(o, base * ".mps"); mv(pre, base * "_start.bas"; force=true)
+                si = try Int(MOI.get(model, MOI.SimplexIterations())) catch; -1 end
+                write(base * ".txt", @sprintf("wall %.3f grb %.3f simplex_it %d presolve %d method %d\n", tw, tg, si,
+                                              get_optimizer_attribute(model, "Presolve"), get_optimizer_attribute(model, "Method")))
+            catch e
+                @warn "infeas dump 실패" e
+            end
+        elseif st0 == MOI.OPTIMAL
+            Gurobi.GRBwrite(o, pre) == 0 || rm(pre; force=true)
+        end
+    end
     Threads.atomic_add!(_NZ_LPN, 1); Threads.atomic_add!(_NZ_LPWALL, tw); Threads.atomic_add!(_NZ_LPGRB, tg)
+    if haskey(model.ext, :itlog)                           # 진단 (nz_alpha_bnb_dr 의 NZ_NODELP_LOG): LP 횟수, simplex·barrier 반복 누적
+        il = model.ext[:itlog]; il[1] += 1
+        il[2] += try Int(MOI.get(model, MOI.SimplexIterations())) catch; 0 end
+        il[3] += try Int(MOI.get(model, MOI.BarrierIterations())) catch; 0 end
+    end
     st = termination_status(model)
     lock(_NZ_RESTORE_LOCK) do
         _NZ_LPSTAT[st] = get(_NZ_LPSTAT, st, 0) + 1

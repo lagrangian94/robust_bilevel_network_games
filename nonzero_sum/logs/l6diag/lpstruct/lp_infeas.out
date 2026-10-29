@@ -1,0 +1,212 @@
+Set parameter Username
+Set parameter LicenseID to value 2742039
+Academic license - for non-commercial use only - expires 2026-11-20
+
+#### infeas_1  (B&B 안: wall 2.892 grb 2.891 simplex_it 9324 presolve 0 method 1)
+  dual, 시작 basis           INF     9324 simplex    0 barrier     2.45 s
+  dual, cold                 INF    18520 simplex    0 barrier     4.44 s
+  dual, cold, Presolve 켬    INF_OR_UNBD   15003 simplex    0 barrier     2.98 s
+  barrier, Presolve 켬       INF_OR_UNBD       0 simplex   61 barrier     1.30 s
+  IIS (4.5 s, 최소=1): 행 87 / 18227, 열 상하한 50
+     Z: α×belief (Ze)                                31 /   544
+     쌍대 범위 (ϖ_H, π̃_H)                            18 /   560
+     기타 (belief 등)                                15 /   126
+     RLT: α×쌍대 (ζW, ζΠ)                            10 /  1127
+     McCormick: α×(r,d) (ζL, ζF)                      7 /   421
+     Z: α×belief (Za,Zb)                              2 /   376
+     Z: α×belief (Za)                                 1 /   308
+     sticky RLT                                       1 /   564
+     이름 있는 행 (cpl_ad)                            1 /    20
+     이름 있는 행 (Fh)                                1 /    10
+     열 상하한: d 17, ζF 11, e 10, Ze 5, cpl 2, π̃ 1, b 1, κ 1, Zc 1, Za 1
+
+#### infeas_2  (B&B 안: wall 1.282 grb 1.280 simplex_it 5792 presolve 0 method 1)
+  dual, 시작 basis           INF     5792 simplex    0 barrier     1.00 s
+  dual, cold                 INF    17547 simplex    0 barrier     3.70 s
+  dual, cold, Presolve 켬    INF_OR_UNBD   14820 simplex    0 barrier     2.77 s
+  barrier, Presolve 켬       INF_OR_UNBD       0 simplex   50 barrier     0.95 s
+  IIS (3.7 s, 최소=1): 행 95 / 18288, 열 상하한 20
+     Z: α×belief (Ze)                                37 /   552
+     쌍대 범위 (ϖ_H, π̃_H)                            18 /   560
+     RLT: α×쌍대 (ζW, ζΠ)                            18 /  1127
+     기타 (belief 등)                                16 /   126
+     McCormick: α×(r,d) (ζL, ζF)                      5 /   422
+     이름 있는 행 (Fh)                                1 /    10
+     열 상하한: π̃ 8, Ze 7, e 3, ζF 1, κ 1
+
+#### infeas_3  (B&B 안: wall 1.545 grb 1.543 simplex_it 6680 presolve 0 method 1)
+  dual, 시작 basis           INF     6680 simplex    0 barrier     1.18 s
+  dual, cold                 INF    25973 simplex    0 barrier     6.69 s
+  dual, cold, Presolve 켬    INF_OR_UNBD   17417 simplex    0 barrier     3.47 s
+  barrier, Presolve 켬       INF_OR_UNBD       0 simplex   59 barrier     1.27 s
+  IIS (6.7 s, 최소=1): 행 123 / 18277, 열 상하한 74
+     Z: α×belief (Ze)                                60 /   550
+     RLT: α×쌍대 (ζW, ζΠ)                            30 /  1127
+     기타 (belief 등)                                12 /   126
+     쌍대 범위 (ϖ_H, π̃_H)                            10 /   560
+     McCormick: α×(r,d) (ζL, ζF)                      6 /   422
+     Z: α×belief (Za)                                 1 /   335
+     sticky RLT                                       1 /   564
+     κ RLT (Zκ)                                       1 /    35
+     이름 있는 행 (Fflow)                             1 /   700
+     이름 있는 행 (Fh)                                1 /    10
+     열 상하한: ζF 21, ȳ 15, d 11, e 8, Ze 7, ζΠ 3, π̃ 3, α 3, cpl 1, Zc 1, κ 1
+
+#### infeas_4  (B&B 안: wall 1.822 grb 1.820 simplex_it 5572 presolve 0 method 1)
+  dual, 시작 basis           INF     5572 simplex    0 barrier     1.38 s
+  dual, cold                 INF    12301 simplex    0 barrier     1.40 s
+  dual, cold, Presolve 켬    INF_OR_UNBD   11243 simplex    0 barrier     1.19 s
+  barrier, Presolve 켬       INF_OR_UNBD       0 simplex   48 barrier     0.77 s
+  IIS (1.4 s, 최소=1): 행 58 / 18170, 열 상하한 19
+     Z: α×belief (Ze)                                19 /   518
+     쌍대 범위 (ϖ_H, π̃_H)                            18 /   560
+     기타 (belief 등)                                15 /   126
+     RLT: α×쌍대 (ζW, ζΠ)                             4 /  1128
+     McCormick: α×(r,d) (ζL, ζF)                      1 /   421
+     이름 있는 행 (Fh)                                1 /    10
+     열 상하한: π̃ 12, e 4, Ze 1, ζF 1, κ 1
+
+#### infeas_5  (B&B 안: wall 2.061 grb 2.059 simplex_it 6516 presolve 0 method 1)
+  dual, 시작 basis           INF     6516 simplex    0 barrier     1.47 s
+  dual, cold                 INF    10484 simplex    0 barrier     1.31 s
+  dual, cold, Presolve 켬    INF_OR_UNBD   11843 simplex    0 barrier     1.34 s
+  barrier, Presolve 켬       INF_OR_UNBD       0 simplex   24 barrier     0.54 s
+  IIS (1.3 s, 최소=1): 행 58 / 18312, 열 상하한 42
+     RLT: α×쌍대 (ζW, ζΠ)                            26 /  1127
+     쌍대 범위 (ϖ_H, π̃_H)                            16 /   560
+     기타 (belief 등)                                 7 /   126
+     Z: α×belief (Ze)                                 4 /   565
+     sticky RLT                                       2 /   564
+     McCormick: α×(r,d) (ζL, ζF)                      2 /   421
+     이름 있는 행 (Fh)                                1 /    10
+     열 상하한: ζΠ 12, ζF 9, d 8, e 7, π̃ 2, b 1, κ 1, cpl 1, Za 1
+
+#### infeas_6  (B&B 안: wall 2.702 grb 2.700 simplex_it 8697 presolve 0 method 1)
+  dual, 시작 basis           INF     8697 simplex    0 barrier     1.92 s
+  dual, cold                 INF    32654 simplex    0 barrier    13.40 s
+  dual, cold, Presolve 켬    INF_OR_UNBD   14246 simplex    0 barrier     2.29 s
+  barrier, Presolve 켬       INF_OR_UNBD       0 simplex   29 barrier     0.67 s
+  IIS (14.2 s, 최소=1): 행 70 / 18279, 열 상하한 24
+     기타 (belief 등)                                27 /   126
+     쌍대 범위 (ϖ_H, π̃_H)                            17 /   560
+     이름 있는 행 (cpl_da)                           16 /    20
+     RLT: α×쌍대 (ζW, ζΠ)                             6 /  1127
+     sticky RLT                                       2 /   564
+     이름 있는 행 (cpl_ad)                            1 /    20
+     이름 있는 행 (Fh)                                1 /    10
+     열 상하한: e 13, d 4, cpl 2, a 2, π̃ 1, r 1, κ 1
+
+#### infeas_7  (B&B 안: wall 1.660 grb 1.658 simplex_it 5672 presolve 0 method 1)
+  dual, 시작 basis           INF     5672 simplex    0 barrier     1.14 s
+  dual, cold                 INF    19577 simplex    0 barrier     4.79 s
+  dual, cold, Presolve 켬    INF_OR_UNBD   14110 simplex    0 barrier     2.20 s
+  barrier, Presolve 켬       INF_OR_UNBD       0 simplex   56 barrier     1.00 s
+  IIS (4.8 s, 최소=1): 행 40 / 18238, 열 상하한 31
+     쌍대 범위 (ϖ_H, π̃_H)                            15 /   560
+     RLT: α×쌍대 (ζW, ζΠ)                            10 /  1127
+     McCormick: α×(r,d) (ζL, ζF)                      5 /   422
+     Z: α×belief (Za)                                 2 /   334
+     sticky RLT                                       2 /   564
+     이름 있는 행 (cpl_ad)                            2 /    20
+     Z: α×belief (Ze)                                 2 /   531
+     기타 (belief 등)                                 1 /   126
+     이름 있는 행 (Fh)                                1 /    10
+     열 상하한: π̃ 7, d 7, ζF 6, cpl 4, Za 2, e 1, b 1, α 1, κ 1, a 1
+
+#### infeas_8  (B&B 안: wall 2.043 grb 2.040 simplex_it 6378 presolve 0 method 1)
+  dual, 시작 basis           INF     6378 simplex    0 barrier     1.41 s
+  dual, cold                 INF    18130 simplex    0 barrier     3.99 s
+  dual, cold, Presolve 켬    INF_OR_UNBD   14499 simplex    0 barrier     2.47 s
+  barrier, Presolve 켬       INF_OR_UNBD   29728 simplex   51 barrier    10.30 s
+  IIS (4.0 s, 최소=1): 행 201 / 18276, 열 상하한 120
+     Z: α×belief (Ze)                                41 /   553
+     sticky RLT                                      39 /   564
+     RLT: α×쌍대 (ζW, ζΠ)                            28 /  1127
+     Z: α×belief (Za,Zb)                             27 /   378
+     기타 (belief 등)                                18 /   126
+     쌍대 범위 (ϖ_H, π̃_H)                            15 /   560
+     Z: α×belief (Za)                                 8 /   336
+     Z: α×belief (Zb)                                 7 /   223
+     McCormick: α×(r,d) (ζL, ζF)                      7 /   423
+     이름 있는 행 (cpl_da)                            4 /    20
+     이름 있는 행 (cpl_ad)                            3 /    20
+     Z: α×belief (Za,Zc)                              1 /    22
+     이름 있는 행 (Fflow)                             1 /   700
+     κ RLT (Zκ)                                       1 /    35
+     이름 있는 행 (Fh)                                1 /    10
+     열 상하한: Za 18, ζF 16, ȳ 15, ζΠ 14, d 13, π̃ 12, Zc 10, e 7, Zb 6, Ze 5, b 1, cpl 1, α 1, κ 1
+
+#### infeas_9  (B&B 안: wall 4.160 grb 4.158 simplex_it 12421 presolve 0 method 1)
+  dual, 시작 basis           INF    12421 simplex    0 barrier     2.89 s
+  dual, cold                 INF    25433 simplex    0 barrier     5.59 s
+  dual, cold, Presolve 켬    INF_OR_UNBD    9682 simplex    0 barrier     0.97 s
+  barrier, Presolve 켬       INF_OR_UNBD       0 simplex   57 barrier     0.90 s
+  IIS (5.9 s, 최소=1): 행 66 / 18306, 열 상하한 33
+     Z: α×belief (Ze)                                24 /   558
+     쌍대 범위 (ϖ_H, π̃_H)                            18 /   560
+     기타 (belief 등)                                15 /   126
+     RLT: α×쌍대 (ζW, ζΠ)                             6 /  1128
+     McCormick: α×(r,d) (ζL, ζF)                      1 /   422
+     이름 있는 행 (Fflow)                             1 /   700
+     이름 있는 행 (Fh)                                1 /    10
+     열 상하한: ȳ 15, Ze 7, π̃ 7, e 1, ζF 1, α 1, κ 1
+
+#### infeas_10  (B&B 안: wall 4.175 grb 4.173 simplex_it 9957 presolve 0 method 1)
+  dual, 시작 basis           INF     9957 simplex    0 barrier     2.79 s
+  dual, cold                 INF    38474 simplex    0 barrier    12.86 s
+  dual, cold, Presolve 켬    INF_OR_UNBD   14442 simplex    0 barrier     2.13 s
+  barrier, Presolve 켬       INF_OR_UNBD       0 simplex   57 barrier     1.00 s
+  IIS (14.3 s, 최소=1): 행 74 / 18295, 열 상하한 23
+     Z: α×belief (Ze)                                27 /   560
+     기타 (belief 등)                                24 /   126
+     쌍대 범위 (ϖ_H, π̃_H)                            18 /   560
+     RLT: α×쌍대 (ζW, ζΠ)                             2 /  1127
+     McCormick: α×(r,d) (ζL, ζF)                      1 /   421
+     이름 있는 행 (Fflow)                             1 /   700
+     이름 있는 행 (Fh)                                1 /    10
+     열 상하한: ȳ 15, Ze 3, π̃ 2, e 1, ζF 1, κ 1
+
+#### infeas_11  (B&B 안: wall 10.625 grb 10.622 simplex_it 19748 presolve 0 method 1)
+  dual, 시작 basis           INF    19748 simplex    0 barrier     6.81 s
+  dual, cold                 NUM    29540 simplex    0 barrier     9.65 s
+  dual, cold, Presolve 켬    INF_OR_UNBD   13655 simplex    0 barrier     1.57 s
+  barrier, Presolve 켬       INF_OR_UNBD       0 simplex   57 barrier     1.02 s
+  IIS (13.4 s, 최소=1): 행 263 / 18371, 열 상하한 269
+     Z: α×belief (Ze)                                96 /   579
+     RLT: α×쌍대 (ζW, ζΠ)                            39 /  1129
+     기타 (belief 등)                                30 /   126
+     sticky RLT                                      19 /   564
+     쌍대 범위 (ϖ_H, π̃_H)                            18 /   560
+     Z: α×belief (Za,Zb)                             14 /   388
+     McCormick: α×(r,d) (ζL, ζF)                     13 /   422
+     Z: α×belief (Za,Zc)                              9 /    66
+     Z: α×belief (Zb)                                 7 /   227
+     이름 있는 행 (Fflow)                             6 /   700
+     Z: α×belief (Za)                                 6 /   343
+     κ RLT (Zκ)                                       2 /    35
+     이름 있는 행 (Fh)                                2 /    10
+     이름 있는 행 (Hcon)                              1 /    10
+     Z: α×belief (Zc)                                 1 /     6
+     열 상하한: ȳ 105, Zc 36, ζF 28, ζΠ 22, d 15, e 13, Ze 12, Za 10, π̃ 7, cpl 6, Zb 5, α 4, b 2, r 1, a 1, ζL 1, κ 1
+
+#### infeas_12  (B&B 안: wall 2.157 grb 2.155 simplex_it 6483 presolve 0 method 1)
+  dual, 시작 basis           INF     6483 simplex    0 barrier     1.51 s
+  dual, cold                 INF    20532 simplex    0 barrier     4.38 s
+  dual, cold, Presolve 켬    INF_OR_UNBD   16853 simplex    0 barrier     3.27 s
+  barrier, Presolve 켬       INF_OR_UNBD       0 simplex   62 barrier     1.26 s
+  IIS (4.4 s, 최소=1): 행 184 / 18376, 열 상하한 116
+     sticky RLT                                      38 /   564
+     Z: α×belief (Ze)                                30 /   578
+     Z: α×belief (Za,Zb)                             27 /   398
+     기타 (belief 등)                                22 /   126
+     쌍대 범위 (ϖ_H, π̃_H)                            19 /   560
+     McCormick: α×(r,d) (ζL, ζF)                      9 /   422
+     Z: α×belief (Zb)                                 9 /   231
+     이름 있는 행 (cpl_ad)                            9 /    20
+     Z: α×belief (Za)                                 9 /   339
+     RLT: α×쌍대 (ζW, ζΠ)                             5 /  1128
+     이름 있는 행 (Fflow)                             4 /   700
+     Z: α×belief (Za,Zc)                              1 /    62
+     이름 있는 행 (Fh)                                1 /    10
+     이름 있는 행 (cpl_da)                            1 /    20
+     열 상하한: ȳ 60, ζF 10, Za 7, d 7, Zc 6, π̃ 5, Zb 5, e 4, Ze 4, b 2, r 1, a 1, ζΠ 1, ζL 1, α 1, κ 1

@@ -1,0 +1,75 @@
+Set parameter Username
+Set parameter LicenseID to value 2742039
+Academic license - for non-commercial use only - expires 2026-11-20
+diag_l6: seed=1 S=50 x̄=[2, 3] n_h=10 θ=50.000 (circuit 50.000) λ=2000 TL=600 gap=1e-03 workers=6 프리솔브 끔
+Set parameter Username
+Set parameter LicenseID to value 2742039
+Academic license - for non-commercial use only - expires 2026-11-20
+Set parameter Username
+Set parameter LicenseID to value 2742039
+Academic license - for non-commercial use only - expires 2026-11-20
+Set parameter Username
+Set parameter LicenseID to value 2742039
+Academic license - for non-commercial use only - expires 2026-11-20
+Set parameter Username
+Set parameter LicenseID to value 2742039
+Academic license - for non-commercial use only - expires 2026-11-20
+Set parameter Username
+Set parameter LicenseID to value 2742039
+Academic license - for non-commercial use only - expires 2026-11-20
+Set parameter Username
+Set parameter LicenseID to value 2742039
+Academic license - for non-commercial use only - expires 2026-11-20
+Set parameter Username
+Set parameter LicenseID to value 2742039
+Academic license - for non-commercial use only - expires 2026-11-20
+
+******************************************************************************
+This program contains Ipopt, a library for large-scale nonlinear optimization.
+ Ipopt is released as open source code under the Eclipse Public License (EPL).
+         For more information visit https://github.com/coin-or/Ipopt
+******************************************************************************
+
+    [nz-α-B&B-dr] t=  67.6s nodes=    2 open=    0 LB=-10211.898621 UB=-1722.121339 gap=8.314e-01
+    [nz-α-B&B-dr] t= 128.1s nodes=    6 open=    1 LB=-2386.448870 UB=-1722.130691 gap=2.784e-01
+    [nz-α-B&B-dr] t= 188.2s nodes=   11 open=    2 LB=-2386.379426 UB=-1786.798597 gap=2.513e-01
+    [nz-α-B&B-dr] t= 248.3s nodes=   14 open=    3 LB=-2386.379426 UB=-1790.050851 gap=2.499e-01
+    [nz-α-B&B-dr] t= 308.4s nodes=   16 open=    3 LB=-2386.379401 UB=-1827.950087 gap=2.340e-01
+    [nz-α-B&B-dr] t= 368.6s nodes=   17 open=    4 LB=-2386.379401 UB=-1827.950087 gap=2.340e-01
+    [nz-α-B&B-dr] t= 428.6s nodes=   20 open=    3 LB=-2386.379401 UB=-1827.950087 gap=2.340e-01
+    [nz-α-B&B-dr] t= 488.7s nodes=   23 open=    6 LB=-2386.379401 UB=-1827.950087 gap=2.340e-01
+    [nz-α-B&B-dr] t= 548.8s nodes=   27 open=    6 LB=-2386.379401 UB=-1827.950087 gap=2.340e-01
+RESULT abbdr kw=(range_lp = true, dd = false, farkas = true) status=- LB=-2386.3787 UB=-1827.9501 gap=3.05e-01 nodes=32 time=856.7
+    LB = -2386.3786545379044
+    UB = -1827.9500873186996
+    cbranch = 3
+    farkas = 7
+    farkas_check_timeout = 0
+    farkas_disagree = 0
+    fixfrac = 0.13848214285714286
+    gc_wait = 1.734564
+    gcsafe = on
+    infeas = 7
+    infeas_recovered = 0
+    ipopt_calls = 7
+    is_exact = false
+    nodes = 32
+    numerr = 6
+    numerr_fail = 4
+    numerr_fresh = 1
+    presolve_fixed = 3
+    prune_checked = 0
+    prune_disagree = 0
+    range_fail = 0
+    range_mips = 0
+    resp_fix = 0
+    resp_hits = 0
+    resumed = false
+    root_UB = -1722.121339432122
+    solver = nz_alpha_bnb_dr
+    t_eval = 10.779335599999998
+    t_range = 7.257504000000001
+    t_recheck = 1.5133601
+    t_relax = 3759.3146195
+    time = 852.819000005722
+nz_alpha_bnb_dr: 기본이 아닌 구성으로 실행 — dd = false, range_lp = true, farkas = true
