@@ -823,7 +823,7 @@ const _NZ_DR_ANNOUNCE_LOCK = ReentrantLock()
 "기본 구성 (2026-10-13). 이 값과 다른 항목이 있으면 _nz_dr_announce 가 stderr 에 알린다"
 const _NZ_DR_DEFAULT = (dual_range=true, comp=true, vcut=true, cslift=true, fwd=true, kmc=true, dd=true, cbranch=true, sticky=true,
                         lp_tol=1e-7, branch_point=:mid, child_rounds=1, resp=false, range_mip=true, range_nodes=typemax(Int), range_time=Inf,
-                        range_lp=false, resp_fix=false, farkas=false, lp_method=1, lp_presolve=0, lp_crossover=-1, infeas_pre=false, parent_basis=false, share_rows=false)
+                        range_lp=false, resp_fix=false, farkas=false, lp_method=1, lp_presolve=0, lp_crossover=-1, infeas_pre=false, parent_basis=false, share_rows=false, node_lp_cap=Inf)
 
 "구성이 기본과 다르면 다른 항목을 stderr 에 한 번 알린다 (같은 구성은 프로세스당 한 번) — 의도하지 않은 구성으로 도는 것을 막기 위해"
 function _nz_dr_announce(config)
@@ -934,6 +934,9 @@ function nz_alpha_bnb_dr(nd::NZData, x̄;
                          parent_basis::Bool=false,
                          # share_rows = true: 분리 행 (sticky) 집합을 worker 끼리 맞춤 (한 worker 가 만든 행을 다른 worker 도 추가). LP 가 커짐 (문서 §10.29)
                          share_rows::Bool=false,
+                         # node_lp_cap: 루트가 아닌 노드의 LP 작업 (분리 라운드·수치 오류 재시도·실행 불가능 재확인) 시간 상한 (초). 넘으면 수치 오류 노드처럼
+                         #   부모 상한을 물려 가장 넓은 좌표를 반으로 나눔 (노드 하나가 오래 전역 UB 를 붙잡지 않게, 문서 §10.29). 기본 Inf = 전체 마감까지
+                         node_lp_cap::Float64=Inf,
                          # 이어 풀기: 같은 x̄ 의 이전 호출이 돌려준 r[:state]
                          resume=nothing)
     branch_point in (:alphahat, :mid) || error("branch_point = :alphahat | :mid")
@@ -942,7 +945,7 @@ function nz_alpha_bnb_dr(nd::NZData, x̄;
               sep_maxadd=sep_maxadd, presolve=presolve, heuristic=heuristic,
               fwd=dual_range && cslift && fwd, kmc=dual_range && cslift && kmc, dd=dual_range && dd,
               cbranch=dual_range && comp && cbranch, sticky=sticky, lp_tol=lp_tol, resp=resp, range_mip=range_mip, range_nodes=range_nodes, range_time=range_time,
-              range_lp=range_lp, resp_fix=resp_fix, farkas=farkas, lp_method=lp_method, lp_presolve=lp_presolve, lp_crossover=lp_crossover, infeas_pre=infeas_pre, parent_basis=parent_basis, share_rows=share_rows)
+              range_lp=range_lp, resp_fix=resp_fix, farkas=farkas, lp_method=lp_method, lp_presolve=lp_presolve, lp_crossover=lp_crossover, infeas_pre=infeas_pre, parent_basis=parent_basis, share_rows=share_rows, node_lp_cap=node_lp_cap)
     resp_fix && !range_lp && error("nz_alpha_bnb_dr: resp_fix = true 는 range_lp = true 와 함께")
     range_lp &&(dd || isfinite(range_time) || range_nodes != typemax(Int) || !range_mip || !dual_range) &&
         error("nz_alpha_bnb_dr: range_lp = true 는 dual_range = true, dd = false 와 함께 쓰고 range_mip·range_time·range_nodes 는 기본값으로")
@@ -955,6 +958,7 @@ function nz_alpha_bnb_dr(nd::NZData, x̄;
     n_pre = Threads.Atomic{Int}(0); n_pretry = Threads.Atomic{Int}(0)        # infeas_pre: 부분 LP 로 증명된 노드 / 부분 LP 를 푼 노드
     t_pre = Threads.Atomic{Float64}(0.0)
     n_bload = Threads.Atomic{Int}(0); n_bfail = Threads.Atomic{Int}(0)       # parent_basis: 부모 basis 를 넣은 노드 / 못 넣은 노드
+    n_cap = Threads.Atomic{Int}(0)                                           # node_lp_cap 에 걸린 노드
     bdive = get(ENV, "NZ_BASIS_DIVE", "0") == "1"           # 진단 (parent_basis): dive 노드에도 실어 둔 부모 basis 를 명시적으로 넣음
     skeys = Tuple{Int,Int,Bool}[]; skset = Set{Tuple{Int,Int,Bool}}(); sk_lk = ReentrantLock()   # parent_basis: worker 공유 분리 행 키
     precheck = get(ENV, "NZ_PRE_CHECK", "0") == "1"; n_predis = Threads.Atomic{Int}(0); n_preto = Threads.Atomic{Int}(0)
@@ -1171,10 +1175,12 @@ function nz_alpha_bnb_dr(nd::NZData, x̄;
                 if !empty_box
                     set_time_limit_sec(P.O.model, max(t_end - time(), 0.1))
                     isempty(nlog) || (P.O.model.ext[:itlog] .= 0)
+                    # 이 노드의 LP 작업 마감 (_nz_solve_lp! 가 재시도마다 남은 시간으로 TimeLimit 을 다시 둠). 루트는 전체 마감까지
+                    ndl = ubp == Inf ? t_end : min(t_end, time() + node_lp_cap); P.O.model.ext[:deadline] = ndl
                     pre_inf = false; tp = 0.0                 # infeas_pre: 부분 LP 로 실행 불가능이 증명되면 노드 LP 를 풀지 않음
                     if infeas_pre && ubp != Inf
                         Threads.atomic_add!(n_pretry, 1)
-                        tp = @elapsed ((pre_inf, _) = _nz_dr_pre_infeasible(P.O.model; tlim=min(30.0, t_end - time())))
+                        tp = @elapsed ((pre_inf, _) = _nz_dr_pre_infeasible(P.O.model; tlim=min(30.0, ndl - time())))
                         Threads.atomic_add!(t_pre, tp); pre_inf && Threads.atomic_add!(n_pre, 1)
                     end
                     bload = false                             # parent_basis: 꺼낸 노드에 부모 basis 가 있으면 시작 basis 로
@@ -1184,6 +1190,9 @@ function nz_alpha_bnb_dr(nd::NZData, x̄;
                     rtbas !== nothing && !pre_inf && (bload = _nz_dr_set_basis!(P, rtbas))
                     tr = pre_inf ? 0.0 : @elapsed (z = zpad((sticky ? _nz_sticky_solve! : _nz_sep_solve!)(P; maxrounds=(ubp == Inf ? maxrounds : child_rounds), maxadd=sep_maxadd)))
                     pre_inf && (z = -Inf)
+                    if isnan(z) && ndl < t_end && time() < t_end - 1.0  # node_lp_cap 에 걸림 (전체 마감 전): 수치 오류 노드처럼 나눔
+                        Threads.atomic_add!(n_cap, 1); z = Inf
+                    end
                     if !isempty(nlog)
                         il = P.O.model.ext[:itlog]; kind = ubp == Inf ? "root" : fromdive ? (bload ? "diveb" : "dive") : bload ? "popb$(get(ext, :side, 1))$(ext.bas.wid == wid ? "s" : "o")" : "pop"
                         res = pre_inf ? "preinf" : isnan(z) ? "time" : z == -Inf ? "infeas" : z == Inf ? "numerr" : z <= LB[] + tol(LB[]) ? "prune" : "branch"
@@ -1410,5 +1419,5 @@ function nz_alpha_bnb_dr(nd::NZData, x̄;
                 :range_mips => dual_range ? sum(D.nmip for D in DRs) : 0, :range_fail => dual_range ? sum(D.nfail for D in DRs) : 0,
                 :fixfrac => nodes[] > 0 ? nfixed_sum[] / nodes[] : NaN, :infeas => n_infeas[], :infeas_recovered => n_infrec[],
                 :numerr => _NZ_NUMERR[] - numerr0, :numerr_fail => _NZ_NUMERR_FAIL[] - numfail0,
-                :cbranch => n_cbranch[], :resp_fix => n_rfix[], :farkas => n_fk[], :farkas_disagree => n_fkdis[], :farkas_check_timeout => n_fkto[], :infeas_pre => n_pre[], :infeas_pre_tried => n_pretry[], :t_pre => t_pre[], :infeas_pre_disagree => n_predis[], :infeas_pre_check_timeout => n_preto[], :basis_loaded => n_bload[], :basis_failed => n_bfail[], :prune_checked => n_prchk[], :prune_disagree => n_prdis[], :resp_hits => n_resp[], :gcsafe => _NZ_GCSAFE_STATE[], :gc_wait => (Base.gc_num().total_time_to_safepoint - gcw0) / 1e9)
+                :cbranch => n_cbranch[], :resp_fix => n_rfix[], :farkas => n_fk[], :farkas_disagree => n_fkdis[], :farkas_check_timeout => n_fkto[], :infeas_pre => n_pre[], :infeas_pre_tried => n_pretry[], :t_pre => t_pre[], :infeas_pre_disagree => n_predis[], :infeas_pre_check_timeout => n_preto[], :basis_loaded => n_bload[], :node_lp_cap_hits => n_cap[], :basis_failed => n_bfail[], :prune_checked => n_prchk[], :prune_disagree => n_prdis[], :resp_hits => n_resp[], :gcsafe => _NZ_GCSAFE_STATE[], :gc_wait => (Base.gc_num().total_time_to_safepoint - gcw0) / 1e9)
 end

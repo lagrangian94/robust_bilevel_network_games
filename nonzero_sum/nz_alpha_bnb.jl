@@ -267,6 +267,17 @@ function _nz_solve_lp!(model)
     # 진단: NZ_INFEAS_DUMP=<폴더> 면 이어 푼 (시작 basis 가 있는) LP 가 INFEASIBLE 일 때 처음 NZ_INFEAS_DUMP_MAX (기본 8) 개를
     #   infeas_k.mps (끝난 뒤 모델 = 그 노드), infeas_k_start.bas (같은 모델의 직전 최적 basis = 이어 푼 시작점), infeas_k.txt (시간·반복) 로 저장.
     #   (수정된 모델에서는 optimize 전에 basis 를 쓸 수 없어 최적 solve 마다 pre_*.bas 로 덮어 둔다.) 재확인 (GRBreset 뒤) 도 직전 최적 basis 를 쓰므로 같이 저장될 수 있음
+    # 마감 시각 (2026-10-29, 문서 §10.29): model.ext[:deadline] (nz_alpha_bnb_dr 가 노드마다 둠) 이 있으면 그것, 없으면 들어올 때의 TimeLimit 으로 정하고,
+    #   첫 풀이와 수치 오류 재시도마다 TimeLimit 을 남은 시간으로 다시 둔다. 이전에는 재시도가 같은 TimeLimit 을 매번 새로 써서 노드 하나가
+    #   시간 제한을 수백 초 넘겼다 (L6 S50: LP 788 s 동안 전역 UB 를 붙잡음). 마감이 지나면 TIME_LIMIT 과 같게 NaN.
+    dl = get(model.ext, :deadline, nothing)
+    if dl === nothing
+        dl = time() + get_optimizer_attribute(model, "TimeLimit")
+    else
+        dl - time() <= 0.05 && return NaN
+        set_optimizer_attribute(model, "TimeLimit", dl - time())
+    end
+    settl!() = (r = dl - time(); r > 0.05 && set_optimizer_attribute(model, "TimeLimit", r); r > 0.05)
     idump = haskey(ENV, "NZ_INFEAS_DUMP")
     pre = idump ? joinpath(ENV["NZ_INFEAS_DUMP"], "pre_$(objectid(model)).bas") : ""
     tw = @elapsed optimize!(model)
@@ -325,6 +336,7 @@ function _nz_solve_lp!(model)
         if get(model.ext, :retry_fresh, false)
             set_optimizer_attribute(model, "Presolve", -1); set_optimizer_attribute(model, "DualReductions", 0)
             Gurobi.GRBreset(JuMP.unsafe_backend(model), 0)
+            settl!() || return NaN
             optimize!(model)
             st = termination_status(model)
             st in (MOI.OPTIMAL, MOI.INFEASIBLE, MOI.TIME_LIMIT) && Threads.atomic_add!(_NZ_FRESH_OK, 1)
@@ -332,6 +344,7 @@ function _nz_solve_lp!(model)
         st in (MOI.OPTIMAL, MOI.INFEASIBLE, MOI.TIME_LIMIT) || for (nf, meth) in ((3, 1), (3, 2))
             set_optimizer_attribute(model, "NumericFocus", nf); set_optimizer_attribute(model, "Method", meth)
             set_optimizer_attribute(model, "Crossover", -1)      # 재시도는 crossover 를 켜서 (기저해까지)
+            settl!() || return NaN
             optimize!(model)
             st = termination_status(model)
             st in (MOI.OPTIMAL, MOI.INFEASIBLE, MOI.TIME_LIMIT) && break
