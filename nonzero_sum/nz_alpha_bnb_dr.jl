@@ -523,6 +523,79 @@ function _nz_dr_farkas_certified(model; rtol=1e-9)
 end
 
 """
+실행 불가능 노드의 사전 판정 (infeas_pre = true, 2026-10-29, 문서 §10.29). 노드 LP 를 풀기 전에 Gurobi 모델을 복사해 recourse 블록
+(이름 있는 행 Ffeas, N1, Lflow, Fflow 와 ŷ·ȳ 가 든 이름 없는 행 = WD/FWD/V) 을 지우고 목적을 0 으로 둔 부분 LP 를 푼다. 부분 LP 는 노드 LP 의
+행 일부만 남긴 완화라 그 Farkas 증명서 λ 에 지운 행 0 을 붙이면 노드 LP 의 증명서다. Gurobi 규칙 (λᵀAx ≤ λᵀb 유효, ≤ 행 λ ≥ 0, ≥ 행 λ ≤ 0)
+의 y = −λ 를 _nz_dr_farkas_certified 와 같은 규칙 (rtol, 경계 없는 쪽 상쇄 잔차) 으로 상자 위에서 검증해 통과하면 true.
+부분 LP 가 실행 가능, 시간 초과, 다른 상태, 검증 실패면 false (호출자는 노드 LP 를 그대로 푼다).
+L6 덤프 25 개 (실행 불가능 19 + 수치 오류 6) 에서 부분 LP 0.02~1.0 s, 검증 25/25 (lp_subfk.jl). 반환 (증명 여부, 부분 LP 상태 코드).
+"""
+function _nz_dr_pre_infeasible(model; rtol=1e-9, tlim=30.0)
+    o = JuMP.unsafe_backend(model); Gurobi.GRBupdatemodel(o)
+    m = Gurobi.GRBcopymodel(o)
+    m == C_NULL && return false, -1
+    try
+        ri = Ref{Cint}()
+        Gurobi.GRBgetintattr(m, "NumConstrs", ri); nr = Int(ri[]); Gurobi.GRBgetintattr(m, "NumVars", ri); nc = Int(ri[])
+        sp = Vector{Ptr{Cchar}}(undef, max(nr, nc))
+        Gurobi.GRBgetstrattrarray(m, "VarName", 0, nc, sp)
+        rec = BitVector(undef, nc)
+        for j in 1:nc; s = unsafe_string(sp[j]); rec[j] = startswith(s, "ŷ[") || startswith(s, "ȳ["); end
+        Gurobi.GRBgetstrattrarray(m, "ConstrName", 0, nr, sp)
+        nz = Ref{Cint}(); Gurobi.GRBgetconstrs(m, nz, C_NULL, C_NULL, C_NULL, 0, nr)
+        beg = zeros(Cint, nr); ind = zeros(Cint, nz[]); val = zeros(nz[]); Gurobi.GRBgetconstrs(m, nz, beg, ind, val, 0, nr)
+        drop = Cint[]
+        for i in 1:nr
+            s = unsafe_string(sp[i]); k = findfirst('[', s)
+            if k === nothing                                  # 이름 없는 행: ŷ·ȳ 가 들면 지움 (WD/FWD/V)
+                e = i < nr ? beg[i+1] : nz[]
+                any(rec[ind[q] + 1] for q in (beg[i] + 1):e) && push!(drop, i - 1)
+            elseif s[1:prevind(s, k)] in ("Ffeas", "N1", "Lflow", "Fflow")
+                push!(drop, i - 1)
+            end
+        end
+        Gurobi.GRBdelconstrs(m, length(drop), drop)
+        Gurobi.GRBsetdblattrarray(m, "Obj", 0, nc, zeros(nc))
+        e = Gurobi.GRBgetenv(m)
+        Gurobi.GRBsetintparam(e, "Method", 1); Gurobi.GRBsetintparam(e, "Presolve", 0); Gurobi.GRBsetintparam(e, "InfUnbdInfo", 1)
+        Gurobi.GRBsetintparam(e, "NumericFocus", 0); Gurobi.GRBsetdblparam(e, "TimeLimit", max(tlim, 0.1))
+        Gurobi.GRBupdatemodel(m)
+        Gurobi.GRBoptimize(m)
+        Gurobi.GRBgetintattr(m, "Status", ri); st = Int(ri[])
+        st == 3 || return false, st                         # 3 = GRB_INFEASIBLE
+        Gurobi.GRBgetintattr(m, "NumConstrs", ri); n2 = Int(ri[])
+        λ = zeros(n2); Gurobi.GRBgetdblattrarray(m, "FarkasDual", 0, n2, λ) == 0 || return false, st
+        sense = zeros(Cchar, n2); Gurobi.GRBgetcharattrarray(m, "Sense", 0, n2, sense)
+        rhs = zeros(n2); Gurobi.GRBgetdblattrarray(m, "RHS", 0, n2, rhs)
+        lb = zeros(nc); ub = zeros(nc); Gurobi.GRBgetdblattrarray(m, "LB", 0, nc, lb); Gurobi.GRBgetdblattrarray(m, "UB", 0, nc, ub)
+        g = zeros(nc); ga = zeros(nc); β = 0.0; βa = 0.0
+        b1 = zeros(Cint, 1)
+        for i in 1:n2
+            y = -λ[i]; sg = Char(sense[i])
+            y = sg == '<' ? min(y, 0.0) : sg == '>' ? max(y, 0.0) : y
+            y == 0 && continue
+            β += y * rhs[i]; βa += abs(y * rhs[i])
+            Gurobi.GRBgetconstrs(m, nz, C_NULL, C_NULL, C_NULL, i - 1, 1); ki = zeros(Cint, nz[]); kv = zeros(nz[])
+            Gurobi.GRBgetconstrs(m, nz, b1, ki, kv, i - 1, 1)
+            for q in 1:nz[]; j = ki[q] + 1; g[j] += y * kv[q]; ga[j] += abs(y * kv[q]); end
+        end
+        mx = 0.0; slack = 0.0
+        for j in 1:nc
+            g[j] == 0 && continue
+            bj = g[j] > 0 ? ub[j] : lb[j]
+            if abs(bj) < 1e29
+                mx += g[j] * bj; slack += ga[j] * abs(bj)
+            elseif abs(g[j]) > rtol * max(1.0, ga[j])
+                return false, st
+            end
+        end
+        return mx < β - rtol * (1.0 + βa + slack), st
+    finally
+        Gurobi.GRBfreemodel(m)
+    end
+end
+
+"""
 노드 LP 의 INFEASIBLE 판정 재확인. 반환: −Inf (재확인에서도 실행 불가능), 유한값 (풀림: 그 목적값), NaN·Inf (시간·수치 문제).
 
 범위 행을 넣은 노드 LP 는 실행 가능한데도 INFEASIBLE 로 나오는 일이 있다 (test_dr_validity_boxes.jl: 최적 α* 를 품은 상자의
@@ -696,7 +769,7 @@ const _NZ_DR_ANNOUNCE_LOCK = ReentrantLock()
 "기본 구성 (2026-10-13). 이 값과 다른 항목이 있으면 _nz_dr_announce 가 stderr 에 알린다"
 const _NZ_DR_DEFAULT = (dual_range=true, comp=true, vcut=true, cslift=true, fwd=true, kmc=true, dd=true, cbranch=true, sticky=true,
                         lp_tol=1e-7, branch_point=:mid, child_rounds=1, resp=false, range_mip=true, range_nodes=typemax(Int), range_time=Inf,
-                        range_lp=false, resp_fix=false, farkas=false, lp_method=1, lp_presolve=0, lp_crossover=-1)
+                        range_lp=false, resp_fix=false, farkas=false, lp_method=1, lp_presolve=0, lp_crossover=-1, infeas_pre=false)
 
 "구성이 기본과 다르면 다른 항목을 stderr 에 한 번 알린다 (같은 구성은 프로세스당 한 번) — 의도하지 않은 구성으로 도는 것을 막기 위해"
 function _nz_dr_announce(config)
@@ -799,6 +872,9 @@ function nz_alpha_bnb_dr(nd::NZData, x̄;
                          #   lp_crossover = -1 자동 | 0 끔 (내부점 해: _nz_solve_lp! 가 max(primal, dual 목적값) 을 상한으로). L6 S=50 은 B&B 안의 노드 LP 가
                          #   12 개 동시 cold 와 같은 시간이라 (warm start 가 거의 안 들음) barrier 를 시험하려고 둠 (문서 §10.29)
                          lp_method::Int=1, lp_presolve::Int=0, lp_crossover::Int=-1,
+                         # infeas_pre = true: 루트가 아닌 노드에서 노드 LP 전에 recourse 블록을 뺀 목적 0 부분 LP 로 실행 불가능을 먼저 판정
+                         #   (_nz_dr_pre_infeasible, Farkas 증명서 검증). 증명되면 노드 LP 없이 가지치기 (문서 §10.29)
+                         infeas_pre::Bool=false,
                          # 이어 풀기: 같은 x̄ 의 이전 호출이 돌려준 r[:state]
                          resume=nothing)
     branch_point in (:alphahat, :mid) || error("branch_point = :alphahat | :mid")
@@ -807,7 +883,7 @@ function nz_alpha_bnb_dr(nd::NZData, x̄;
               sep_maxadd=sep_maxadd, presolve=presolve, heuristic=heuristic,
               fwd=dual_range && cslift && fwd, kmc=dual_range && cslift && kmc, dd=dual_range && dd,
               cbranch=dual_range && comp && cbranch, sticky=sticky, lp_tol=lp_tol, resp=resp, range_mip=range_mip, range_nodes=range_nodes, range_time=range_time,
-              range_lp=range_lp, resp_fix=resp_fix, farkas=farkas, lp_method=lp_method, lp_presolve=lp_presolve, lp_crossover=lp_crossover)
+              range_lp=range_lp, resp_fix=resp_fix, farkas=farkas, lp_method=lp_method, lp_presolve=lp_presolve, lp_crossover=lp_crossover, infeas_pre=infeas_pre)
     resp_fix && !range_lp && error("nz_alpha_bnb_dr: resp_fix = true 는 range_lp = true 와 함께")
     range_lp &&(dd || isfinite(range_time) || range_nodes != typemax(Int) || !range_mip || !dual_range) &&
         error("nz_alpha_bnb_dr: range_lp = true 는 dual_range = true, dd = false 와 함께 쓰고 range_mip·range_time·range_nodes 는 기본값으로")
@@ -817,6 +893,9 @@ function nz_alpha_bnb_dr(nd::NZData, x̄;
     n_infeas = Threads.Atomic{Int}(0); n_infrec = Threads.Atomic{Int}(0)     # 실행 불가능 노드 (1e-6 재확인 통과) / 재확인에서 되살아난 노드
     n_fk = Threads.Atomic{Int}(0); n_fkdis = Threads.Atomic{Int}(0)          # Farkas 로 증명된 노드 / (NZ_FARKAS_CHECK) 재확인이 실행가능이라 한 노드
     n_fkto = Threads.Atomic{Int}(0)                                          # (NZ_FARKAS_CHECK) 재확인이 시간 제한으로 판정 못 한 노드
+    n_pre = Threads.Atomic{Int}(0); n_pretry = Threads.Atomic{Int}(0)        # infeas_pre: 부분 LP 로 증명된 노드 / 부분 LP 를 푼 노드
+    t_pre = Threads.Atomic{Float64}(0.0)
+    precheck = get(ENV, "NZ_PRE_CHECK", "0") == "1"; n_predis = Threads.Atomic{Int}(0); n_preto = Threads.Atomic{Int}(0)
     fkcheck = get(ENV, "NZ_FARKAS_CHECK", "0") == "1"
     prchk = get(ENV, "NZ_PRUNE_CHECK", "0") == "1"; n_prchk = Threads.Atomic{Int}(0); n_prdis = Threads.Atomic{Int}(0)
     nfix = 0
@@ -862,7 +941,7 @@ function nz_alpha_bnb_dr(nd::NZData, x̄;
     nlog = get(ENV, "NZ_NODELP_LOG", ""); nlog_lk = ReentrantLock()
     if !isempty(nlog)
         for P in Ps; P.O.model.ext[:itlog] = zeros(Int, 3); end
-        Base.open(io -> @printf(io, "# t wid kind nlp simplex_it barrier_it t_lp t_range result | S=%d nworkers=%d lp_method=%d lp_presolve=%d lp_crossover=%d\n",
+        Base.open(io -> @printf(io, "# t wid kind nlp simplex_it barrier_it t_lp t_range result t_pre | S=%d nworkers=%d lp_method=%d lp_presolve=%d lp_crossover=%d\n",
                            nd.S, nworkers, lp_method, lp_presolve, lp_crossover), nlog, "a")
     end
     fresh0 = _NZ_FRESH_OK[]
@@ -992,12 +1071,19 @@ function nz_alpha_bnb_dr(nd::NZData, x̄;
                 if !empty_box
                     set_time_limit_sec(P.O.model, max(t_end - time(), 0.1))
                     isempty(nlog) || (P.O.model.ext[:itlog] .= 0)
-                    tr = @elapsed (z = zpad((sticky ? _nz_sticky_solve! : _nz_sep_solve!)(P; maxrounds=(ubp == Inf ? maxrounds : child_rounds), maxadd=sep_maxadd)))
+                    pre_inf = false; tp = 0.0                 # infeas_pre: 부분 LP 로 실행 불가능이 증명되면 노드 LP 를 풀지 않음
+                    if infeas_pre && ubp != Inf
+                        Threads.atomic_add!(n_pretry, 1)
+                        tp = @elapsed ((pre_inf, _) = _nz_dr_pre_infeasible(P.O.model; tlim=min(30.0, t_end - time())))
+                        Threads.atomic_add!(t_pre, tp); pre_inf && Threads.atomic_add!(n_pre, 1)
+                    end
+                    tr = pre_inf ? 0.0 : @elapsed (z = zpad((sticky ? _nz_sticky_solve! : _nz_sep_solve!)(P; maxrounds=(ubp == Inf ? maxrounds : child_rounds), maxadd=sep_maxadd)))
+                    pre_inf && (z = -Inf)
                     if !isempty(nlog)
                         il = P.O.model.ext[:itlog]; kind = ubp == Inf ? "root" : fromdive ? "dive" : "pop"
-                        res = isnan(z) ? "time" : z == -Inf ? "infeas" : z == Inf ? "numerr" : z <= LB[] + tol(LB[]) ? "prune" : "branch"
+                        res = pre_inf ? "preinf" : isnan(z) ? "time" : z == -Inf ? "infeas" : z == Inf ? "numerr" : z <= LB[] + tol(LB[]) ? "prune" : "branch"
                         lock(nlog_lk) do
-                            Base.open(io -> @printf(io, "%.2f %d %s %d %d %d %.3f %.3f %s\n", time() - t0, wid, kind, il[1], il[2], il[3], tr, tn_rg, res), nlog, "a")
+                            Base.open(io -> @printf(io, "%.2f %d %s %d %d %d %.3f %.3f %s %.3f\n", time() - t0, wid, kind, il[1], il[2], il[3], tr, tn_rg, res, tp), nlog, "a")
                         end
                     end
                     # 진단 (NZ_PRUNE_CHECK=1): LP 값으로 가지칠 노드 (OPTIMAL) 를 기저 없이 처음부터 다시 풀어 기준을 넘으면 출력
@@ -1015,8 +1101,13 @@ function nz_alpha_bnb_dr(nd::NZData, x̄;
                     #   그 값을 상한으로 쓰고 해는 읽지 않은 채 가장 넓은 좌표를 반으로 나눈다 (수치 오류 노드와 같은 처리).
                     zrec = NaN
                     if z == -Inf && dual_range
-                        fk = false
-                        if farkas
+                        fk = pre_inf                          # 부분 LP 의 Farkas 증명서로 이미 검증됨
+                        if pre_inf && precheck                # 검증용 (NZ_PRE_CHECK=1): 노드 LP 를 처음부터 다시 풀어 대조
+                            tn_rc += @elapsed (zchk = _nz_dr_recheck_infeasible!(P.O.model))
+                            isfinite(zchk) && Threads.atomic_add!(n_predis, 1)         # 재확인이 해를 찾음 = 불일치
+                            isnan(zchk) && Threads.atomic_add!(n_preto, 1)
+                        end
+                        if farkas && !pre_inf
                             tn_rc += @elapsed (fk = _nz_dr_farkas_certified(P.O.model))
                             fk && Threads.atomic_add!(n_fk, 1)
                             if fk && fkcheck
@@ -1212,5 +1303,5 @@ function nz_alpha_bnb_dr(nd::NZData, x̄;
                 :range_mips => dual_range ? sum(D.nmip for D in DRs) : 0, :range_fail => dual_range ? sum(D.nfail for D in DRs) : 0,
                 :fixfrac => nodes[] > 0 ? nfixed_sum[] / nodes[] : NaN, :infeas => n_infeas[], :infeas_recovered => n_infrec[],
                 :numerr => _NZ_NUMERR[] - numerr0, :numerr_fail => _NZ_NUMERR_FAIL[] - numfail0,
-                :cbranch => n_cbranch[], :resp_fix => n_rfix[], :farkas => n_fk[], :farkas_disagree => n_fkdis[], :farkas_check_timeout => n_fkto[], :prune_checked => n_prchk[], :prune_disagree => n_prdis[], :resp_hits => n_resp[], :gcsafe => _NZ_GCSAFE_STATE[], :gc_wait => (Base.gc_num().total_time_to_safepoint - gcw0) / 1e9)
+                :cbranch => n_cbranch[], :resp_fix => n_rfix[], :farkas => n_fk[], :farkas_disagree => n_fkdis[], :farkas_check_timeout => n_fkto[], :infeas_pre => n_pre[], :infeas_pre_tried => n_pretry[], :t_pre => t_pre[], :infeas_pre_disagree => n_predis[], :infeas_pre_check_timeout => n_preto[], :prune_checked => n_prchk[], :prune_disagree => n_prdis[], :resp_hits => n_resp[], :gcsafe => _NZ_GCSAFE_STATE[], :gc_wait => (Base.gc_num().total_time_to_safepoint - gcw0) / 1e9)
 end

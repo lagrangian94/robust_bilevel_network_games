@@ -1,0 +1,91 @@
+Set parameter Username
+Set parameter LicenseID to value 2742039
+Academic license - for non-commercial use only - expires 2026-11-20
+diag_l6: seed=1 S=20 x̄=[2, 3] n_h=10 θ=50.000 (circuit 50.000) λ=2000 TL=150 gap=1e-03 workers=12 프리솔브 끔
+Set parameter Username
+Set parameter LicenseID to value 2742039
+Academic license - for non-commercial use only - expires 2026-11-20
+Set parameter Username
+Set parameter LicenseID to value 2742039
+Academic license - for non-commercial use only - expires 2026-11-20
+Set parameter Username
+Set parameter LicenseID to value 2742039
+Academic license - for non-commercial use only - expires 2026-11-20
+Set parameter Username
+Set parameter LicenseID to value 2742039
+Academic license - for non-commercial use only - expires 2026-11-20
+Set parameter Username
+Set parameter LicenseID to value 2742039
+Academic license - for non-commercial use only - expires 2026-11-20
+Set parameter Username
+Set parameter LicenseID to value 2742039
+Academic license - for non-commercial use only - expires 2026-11-20
+Set parameter Username
+Set parameter LicenseID to value 2742039
+Academic license - for non-commercial use only - expires 2026-11-20
+Set parameter Username
+Set parameter LicenseID to value 2742039
+Academic license - for non-commercial use only - expires 2026-11-20
+Set parameter Username
+Set parameter LicenseID to value 2742039
+Academic license - for non-commercial use only - expires 2026-11-20
+Set parameter Username
+Set parameter LicenseID to value 2742039
+Academic license - for non-commercial use only - expires 2026-11-20
+Set parameter Username
+Set parameter LicenseID to value 2742039
+Academic license - for non-commercial use only - expires 2026-11-20
+Set parameter Username
+Set parameter LicenseID to value 2742039
+Academic license - for non-commercial use only - expires 2026-11-20
+Set parameter Username
+Set parameter LicenseID to value 2742039
+Academic license - for non-commercial use only - expires 2026-11-20
+
+******************************************************************************
+This program contains Ipopt, a library for large-scale nonlinear optimization.
+ Ipopt is released as open source code under the Eclipse Public License (EPL).
+         For more information visit https://github.com/coin-or/Ipopt
+******************************************************************************
+
+    [nz-α-B&B-dr] t=  67.2s nodes=   25 open=    2 LB=-12559.016898 UB=-1885.089088 gap=8.499e-01
+    [nz-α-B&B-dr] t= 127.8s nodes=   77 open=    8 LB=-2639.475722 UB=-2100.304677 gap=2.043e-01
+RESULT abbdr kw=(range_lp = true, dd = false, farkas = true, infeas_pre = true) status=- LB=-2639.4757 UB=-2253.1843 gap=1.71e-01 nodes=102 time=215.1
+    LB = -2639.475721839457
+    UB = -2253.18432289262
+    cbranch = 4
+    farkas = 2
+    farkas_check_timeout = 0
+    farkas_disagree = 0
+    fixfrac = 0.19978991596638665
+    gc_wait = 0.6815511
+    gcsafe = on
+    infeas = 35
+    infeas_pre = 32
+    infeas_pre_check_timeout = 3
+    infeas_pre_disagree = 0
+    infeas_pre_tried = 104
+    infeas_recovered = 0
+    ipopt_calls = 3
+    is_exact = false
+    nodes = 102
+    numerr = 11
+    numerr_fail = 1
+    numerr_fresh = 5
+    presolve_fixed = 3
+    prune_checked = 0
+    prune_disagree = 0
+    range_fail = 0
+    range_mips = 0
+    resp_fix = 0
+    resp_hits = 0
+    resumed = false
+    root_UB = -1845.3441745101468
+    solver = nz_alpha_bnb_dr
+    t_eval = 6.305384199999999
+    t_pre = 14.797091899999996
+    t_range = 8.5956043
+    t_recheck = 1268.9081486
+    t_relax = 368.98708849999997
+    time = 211.2539999485016
+nz_alpha_bnb_dr: 기본이 아닌 구성으로 실행 — dd = false, range_lp = true, farkas = true, infeas_pre = true
