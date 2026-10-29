@@ -765,6 +765,14 @@ end
 
 "부모 basis 를 지금 모델에 시작 basis 로 넣음. 넣었으면 true (열·기본 행 수가 다르면 false)"
 function _nz_dr_set_basis!(P::_NZSepLP, bas)
+    # 부모에서 비기저 (묶인) 분리 행인데 이 worker 에 없는 행만 지금 상자로 추가 (P.l, P.u = 이 노드 상자). 부모에서 기저였던 행은 빠져도
+    #   행 수와 기저 수가 같이 줄어 basis 가 그대로 맞는다. 공유 (share_rows) 와 달리 LP 는 실제로 묶인 행만큼만 커짐 (문서 §10.29)
+    have = get(P.O.model.ext, :sticky, nothing)
+    for ((i, j, islo), s) in bas.cs
+        s == 0 && continue
+        (have !== nothing && haskey(have, (i, j, islo))) && continue
+        _nz_sticky_add!(P, i, j, islo, islo ? P.l[i] : P.u[i]); have = P.O.model.ext[:sticky]
+    end
     o = JuMP.unsafe_backend(P.O.model); Gurobi.GRBupdatemodel(o); ri = Ref{Cint}()
     Gurobi.GRBgetintattr(o, "NumConstrs", ri); nr = Int(ri[]); Gurobi.GRBgetintattr(o, "NumVars", ri); nc = Int(ri[])
     nr0 = nr - length(P.allrows)
@@ -947,6 +955,7 @@ function nz_alpha_bnb_dr(nd::NZData, x̄;
     n_pre = Threads.Atomic{Int}(0); n_pretry = Threads.Atomic{Int}(0)        # infeas_pre: 부분 LP 로 증명된 노드 / 부분 LP 를 푼 노드
     t_pre = Threads.Atomic{Float64}(0.0)
     n_bload = Threads.Atomic{Int}(0); n_bfail = Threads.Atomic{Int}(0)       # parent_basis: 부모 basis 를 넣은 노드 / 못 넣은 노드
+    bdive = get(ENV, "NZ_BASIS_DIVE", "0") == "1"           # 진단 (parent_basis): dive 노드에도 실어 둔 부모 basis 를 명시적으로 넣음
     skeys = Tuple{Int,Int,Bool}[]; skset = Set{Tuple{Int,Int,Bool}}(); sk_lk = ReentrantLock()   # parent_basis: worker 공유 분리 행 키
     precheck = get(ENV, "NZ_PRE_CHECK", "0") == "1"; n_predis = Threads.Atomic{Int}(0); n_preto = Threads.Atomic{Int}(0)
     fkcheck = get(ENV, "NZ_FARKAS_CHECK", "0") == "1"
@@ -1169,7 +1178,7 @@ function nz_alpha_bnb_dr(nd::NZData, x̄;
                         Threads.atomic_add!(t_pre, tp); pre_inf && Threads.atomic_add!(n_pre, 1)
                     end
                     bload = false                             # parent_basis: 꺼낸 노드에 부모 basis 가 있으면 시작 basis 로
-                    if parent_basis && !pre_inf && !fromdive && get(ext, :bas, nothing) !== nothing
+                    if parent_basis && !pre_inf && (!fromdive || bdive) && get(ext, :bas, nothing) !== nothing
                         bload = _nz_dr_set_basis!(P, ext.bas); Threads.atomic_add!(bload ? n_bload : n_bfail, 1)
                     end
                     rtbas !== nothing && !pre_inf && (bload = _nz_dr_set_basis!(P, rtbas))
