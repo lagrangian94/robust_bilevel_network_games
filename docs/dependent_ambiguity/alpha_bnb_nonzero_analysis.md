@@ -1815,3 +1815,24 @@ TimeLimit) 을 정하고 첫 풀이·재시도마다 TimeLimit 을 남은 시간
 
 - 부분 LP 비용은 재시도 전 수준으로 돌아오고 cap 노드 감소는 유지: 수렴 2,121 → 1,924 s (−9%). 노드가 141 개 많아 노드 LP 합은 run24 보다 크다
   (병렬 B&B 라 실행마다 트리가 다름, 한 번씩만 돌린 비교).
+
+**run26 (2026-10-30): 작은 S 오버헤드** — L6 x̄={2,3}, 시드 1~3, 600 s, gap 0.1%. A = `range_lp, dd=false, farkas` (run22 이전 L6 구성),
+B = A + `infeas_pre, infeas_pre_retry, parent_basis, node_lp_cap=120` (로그 `lpm/ov{A,B}_S{3,10}_s{1,2,3}`).
+
+| | A 시간 (gap) | B 시간 (gap) | B 노드 / A 노드 |
+|---|---|---|---|
+| S3 seed 1 | 37.7 s | **29.7 s** | 4,039 / 4,018 |
+| S3 seed 2 | TL (2.41%) | TL (**1.71%**) | 165,108 / 110,051 |
+| S3 seed 3 | 44.6 s | **33.8 s** | 4,945 / 5,233 |
+| S10 seed 1 | 204.2 s | **110.6 s** | 3,124 / 3,060 |
+| S10 seed 2 | TL (7.47%) | TL (**2.42%**) | 16,458 / 5,849 |
+| S10 seed 3 | TL (2.46%) | TL (**0.18%**) | 18,150 / 8,892 |
+
+- 여섯 경우 모두 B 가 같거나 낫다 (작은 S 에서도 오버헤드 없음). 시간 안에 같은 노드를 더 많이 처리한다 (노드당 시간 감소).
+  `t_pre` 는 worker 12 개의 합이라 벽시계보다 클 수 있다 (S3 seed 2 에서 1,667 s). 사전 판정 불일치 0.
+
+**기본값 변경 (2026-10-30, 사용자 결정)**: `nz_alpha_bnb_dr` 의 기본 = B (`range_lp=true, dd=false, farkas=true, infeas_pre=true,
+infeas_pre_retry=true, parent_basis=true, node_lp_cap=120.0`). `_NZ_DR_DEFAULT`·인자 기본값·docstring 표를 함께 바꿈.
+`dual_range=false` 나 범위 MIP 옵션 (`range_time` 등) 을 쓰는 호출은 `range_lp=false` 를 같이 넘겨야 한다 (diag_root_l6.jl, diag_root_gap.jl 수정).
+- 주의: range_lp 의 전제 (recourse 값함수의 submodularity) 는 증명되지 않았다 (L6 상자 3 개에서 범위 MIP 와 63/63 일치만 확인).
+  L1~L5 는 이 구성으로 돌린 적이 없으므로 재실험 (`run_pooled_store_queue_v2.sh`) 의 Z 를 예전 Optimal 결과와 대조해 확인한다.

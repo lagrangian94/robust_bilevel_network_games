@@ -93,7 +93,7 @@ for (nm, fr, fd) in (("r = r̂, ζL=αr̂", true, false), ("d = d̂, ζF=αd̂",
 end
 
 # ---- 최적해 α* ----
-r = nz_alpha_bnb_dr(nd, x̄; nworkers=12, time_limit=90.0, rel_gap=1e-3, verbose=false, ipopt_time=60.0, presolve=false, range_time=30.0, dd=false)
+r = nz_alpha_bnb_dr(nd, x̄; nworkers=12, time_limit=90.0, rel_gap=1e-3, verbose=false, ipopt_time=60.0, presolve=false, range_time=30.0, dd=false, range_lp=false)
 @printf("\nα-B&B 90 s: LB=%.4f UB=%.4f\n", r[:LB], r[:UB])
 zs = nz_eval_alpha!(F, nd, r[:α])
 show_dec("α* 고정 (최적 근처)", decompose(F.v, value))

@@ -45,7 +45,7 @@ if isfile(incfile)
     inc = deserialize(incfile)
 else
     r = nz_alpha_bnb_dr(nd0, x̄; nworkers=NT, time_limit=pf(envf("DG_INC_TL", "60")), rel_gap=1e-3, verbose=false, ipopt_time=120.0,
-                        dual_range=false)
+                        dual_range=false, range_lp=false)
     inc = (LB=r[:LB], α=r[:α]); serialize(incfile, inc)
 end
 LB = inc.LB; α° = inc.α; sc = max(1.0, abs(LB))

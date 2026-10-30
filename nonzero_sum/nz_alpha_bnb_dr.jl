@@ -837,10 +837,10 @@ end
 const _NZ_DR_ANNOUNCED = Set{Any}()
 const _NZ_DR_ANNOUNCE_LOCK = ReentrantLock()
 
-"기본 구성 (2026-10-13). 이 값과 다른 항목이 있으면 _nz_dr_announce 가 stderr 에 알린다"
-const _NZ_DR_DEFAULT = (dual_range=true, comp=true, vcut=true, cslift=true, fwd=true, kmc=true, dd=true, cbranch=true, sticky=true,
+"기본 구성 (2026-10-13, 2026-10-30 갱신: 꼭짓점 LP 범위·Farkas·사전 판정·부모 basis·노드 LP 상한, 문서 §10.29). 이 값과 다른 항목이 있으면 _nz_dr_announce 가 stderr 에 알린다"
+const _NZ_DR_DEFAULT = (dual_range=true, comp=true, vcut=true, cslift=true, fwd=true, kmc=true, dd=false, cbranch=true, sticky=true,
                         lp_tol=1e-7, branch_point=:mid, child_rounds=1, resp=false, range_mip=true, range_nodes=typemax(Int), range_time=Inf,
-                        range_lp=false, resp_fix=false, farkas=false, lp_method=1, lp_presolve=0, lp_crossover=-1, infeas_pre=false, infeas_pre_retry=false, parent_basis=false, share_rows=false, node_lp_cap=Inf)
+                        range_lp=true, resp_fix=false, farkas=true, lp_method=1, lp_presolve=0, lp_crossover=-1, infeas_pre=true, infeas_pre_retry=true, parent_basis=true, share_rows=false, node_lp_cap=120.0)
 
 "구성이 기본과 다르면 다른 항목을 stderr 에 한 번 알린다 (같은 구성은 프로세스당 한 번) — 의도하지 않은 구성으로 도는 것을 막기 위해"
 function _nz_dr_announce(config)
@@ -861,7 +861,7 @@ end
 nz_alpha_bnb (기존, `bnb = :legacy`) 의 탐색 — worker 병렬, best-first + diving, 위반 RLT 행 분리, Ipopt 휴리스틱 — 에
 노드마다 상자별 쌍대 범위 조임을 더한 것. 노드 LP 는 dual simplex 전용.
 
-인자 (기본값 = 2026-10-13 측정에 쓴 구성 `_NZ_DR_DEFAULT`. 기본값 밖의 조합은 측정·검증하지 않았다)
+인자 (기본값 = `_NZ_DR_DEFAULT`: 2026-10-13 측정 구성에 2026-10-30 L6 개선 (꼭짓점 LP 범위 등, 문서 §10.29) 을 더한 것. 기본값 밖의 조합은 측정·검증하지 않았다)
 
 | 묶음 | 인자 | 기본 | 뜻 |
 |---|---|---|---|
@@ -886,7 +886,13 @@ nz_alpha_bnb (기존, `bnb = :legacy`) 의 탐색 — worker 병렬, best-first 
 | | `cslift` | true | follower 1 단계 상보성의 RLT (X) |
 | | `fwd` | true | follower 블록의 시나리오별 약쌍대 (FWD). X 가 필요 |
 | | `kmc` | true | κ 상한과 Zκ 의 위쪽 McCormick (KMC). X 가 필요 |
-| | `dd` | true | 쌍대 차이 범위 (DD). 노드당 범위 MIP 가 늘지만 (S = 20 에서 37 → 69 개) 노드 수가 1/10 로 준다 |
+| | `dd` | false | 쌍대 차이 범위 (DD, 범위 MIP 전용). 2026-10-13 기본은 true (노드당 범위 MIP 37 → 69 개, 노드 1/10). range_lp = true 와 함께 쓸 수 없음 |
+| 범위·LP (2026-10-30) | `range_lp` | true | 범위 MIP 대신 상자 두 꼭짓점의 LP 로 쌍대 범위 (전제 = recourse 값함수의 submodularity, 문서 §10.26). dd = false 필요. `dual_range = false` ablation 은 `range_lp = false` 와 함께 |
+| | `farkas` | true | 실행 불가능 노드 LP 의 Farkas 쌍대를 검증해 재확인 없이 가지치기 |
+| | `infeas_pre` | true | 노드 LP 전에 recourse 블록을 뺀 부분 LP 로 실행 불가능을 먼저 판정 (Farkas 검증) |
+| | `infeas_pre_retry` | true | 부분 LP 가 NUMERIC 이거나 검증 실패면 NumericFocus 3 → Seed 2 로 다시 풂 |
+| | `parent_basis` | true | 꺼낸 노드의 시작 basis = 부모 basis |
+| | `node_lp_cap` | 120.0 | 루트가 아닌 노드의 LP 작업 시간 상한 (초). 넘으면 수치 오류 노드처럼 나눔 |
 | 탐색·LP (2026-10-13) | `cbranch` | true | 상보성 분기. 끄면 중점 분할만 |
 | | `sticky` | true | 분리 행을 (좌표, 후보 행, 쪽) 마다 하나만 두고 상자 경계를 제자리 갱신. false 면 행을 쌓는 기존 방식 |
 | | `lp_tol` | 1e-7 | 노드 LP 의 Feasibility/OptimalityTol (+ NumericFocus 0). 상한에 상대 1e-6 여유를 더함. 1e-9 면 build_nz_omega 의 설정 그대로 |
@@ -918,7 +924,7 @@ function nz_alpha_bnb_dr(nd::NZData, x̄;
                          min_width=1e-7, presolve::Bool=true,
                          # 강화 스위치 (ablation 전용, 기본 모두 켬)
                          dual_range::Bool=true, comp::Bool=true, vcut::Bool=true, cslift::Bool=true,
-                         fwd::Bool=true, kmc::Bool=true, dd::Bool=true,
+                         fwd::Bool=true, kmc::Bool=true, dd::Bool=false,
                          # 탐색·LP 구성 (ablation 전용, 기본 켬)
                          cbranch::Bool=true, sticky::Bool=true, lp_tol::Float64=1e-7,
                          # primal 휴리스틱: 노드 완화의 belief 에서 follower 의 최적 반응을 평가 (nz_resp_heuristic.jl)
@@ -933,29 +939,29 @@ function nz_alpha_bnb_dr(nd::NZData, x̄;
                          range_time::Float64=Inf,
                          # range_lp = true: 범위 MIP 대신 상자 두 꼭짓점의 LP (_nz_dr_corner_ranges, 모든 노드). 전제 = recourse 값함수의 submodularity (시제품, 문서 §10.26).
                          #   값 MIP (φ̄) 와 차이 범위 (dd) 는 풀지 않음 → dd = false 와 함께, range_time·range_nodes 는 범위 MIP 용이라 같이 쓰지 않음
-                         range_lp::Bool=false,
+                         range_lp::Bool=true,
                          # resp_fix = true (range_lp 전용): 꼭짓점 범위로 follower 한계 이득의 부호가 상자에서 정해지는 예약 좌표를 l 또는 u 로 고정 (_nz_dr_resp_fix)
                          resp_fix::Bool=false,
                          # farkas = true: 노드 LP 가 실행 불가능이면 Gurobi 의 Farkas 쌍대를 먼저 검증 (_nz_dr_farkas_certified). 증명되면 재풀이 없이 가지치기,
                          #   아니면 기존 재확인. 환경변수 NZ_FARKAS_CHECK=1 이면 증명된 노드도 재확인을 돌려 결과가 다르면 센다 (검증용)
-                         farkas::Bool=false,
+                         farkas::Bool=true,
                          # 노드 LP 풀이 방법 (기본 = 기존 dual simplex, Presolve 끔): lp_method = 1 dual simplex | 2 barrier | -1 자동, lp_presolve = 0 끔 | -1 자동,
                          #   lp_crossover = -1 자동 | 0 끔 (내부점 해: _nz_solve_lp! 가 max(primal, dual 목적값) 을 상한으로). L6 S=50 은 B&B 안의 노드 LP 가
                          #   12 개 동시 cold 와 같은 시간이라 (warm start 가 거의 안 들음) barrier 를 시험하려고 둠 (문서 §10.29)
                          lp_method::Int=1, lp_presolve::Int=0, lp_crossover::Int=-1,
                          # infeas_pre = true: 루트가 아닌 노드에서 노드 LP 전에 recourse 블록을 뺀 목적 0 부분 LP 로 실행 불가능을 먼저 판정
                          #   (_nz_dr_pre_infeasible, Farkas 증명서 검증). 증명되면 노드 LP 없이 가지치기 (문서 §10.29)
-                         infeas_pre::Bool=false,
+                         infeas_pre::Bool=true,
                          # infeas_pre_retry = true (infeas_pre 전용): 부분 LP 가 NUMERIC 이거나 검증 실패 INFEASIBLE 이면 NumericFocus 3, 그다음 Seed 2 로 다시 풂 (부분 LP 의 수치 취약성, 문서 §10.29)
-                         infeas_pre_retry::Bool=false,
+                         infeas_pre_retry::Bool=true,
                          # parent_basis = true: 노드 LP 를 푼 직후의 basis 를 자식에 실어 두고, 꺼낸 (pop) 노드의 시작 basis 로 넣음 (_nz_dr_get_basis,
                          #   _nz_dr_set_basis!). dive 는 이미 부모 basis 에서 시작. LP 값에는 영향 없음 (문서 §10.29)
-                         parent_basis::Bool=false,
+                         parent_basis::Bool=true,
                          # share_rows = true: 분리 행 (sticky) 집합을 worker 끼리 맞춤 (한 worker 가 만든 행을 다른 worker 도 추가). LP 가 커짐 (문서 §10.29)
                          share_rows::Bool=false,
                          # node_lp_cap: 루트가 아닌 노드의 LP 작업 (분리 라운드·수치 오류 재시도·실행 불가능 재확인) 시간 상한 (초). 넘으면 수치 오류 노드처럼
-                         #   부모 상한을 물려 가장 넓은 좌표를 반으로 나눔 (노드 하나가 오래 전역 UB 를 붙잡지 않게, 문서 §10.29). 기본 Inf = 전체 마감까지
-                         node_lp_cap::Float64=Inf,
+                         #   부모 상한을 물려 가장 넓은 좌표를 반으로 나눔 (노드 하나가 오래 전역 UB 를 붙잡지 않게, 문서 §10.29). Inf = 전체 마감까지
+                         node_lp_cap::Float64=120.0,
                          # 이어 풀기: 같은 x̄ 의 이전 호출이 돌려준 r[:state]
                          resume=nothing)
     branch_point in (:alphahat, :mid) || error("branch_point = :alphahat | :mid")
