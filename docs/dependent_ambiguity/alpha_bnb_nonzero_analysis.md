@@ -1836,3 +1836,17 @@ infeas_pre_retry=true, parent_basis=true, node_lp_cap=120.0`). `_NZ_DR_DEFAULT`�
 `dual_range=false` 나 범위 MIP 옵션 (`range_time` 등) 을 쓰는 호출은 `range_lp=false` 를 같이 넘겨야 한다 (diag_root_l6.jl, diag_root_gap.jl 수정).
 - 주의: range_lp 의 전제 (recourse 값함수의 submodularity) 는 증명되지 않았다 (L6 상자 3 개에서 범위 MIP 와 63/63 일치만 확인).
   L1~L5 는 이 구성으로 돌린 적이 없으므로 재실험 (`run_pooled_store_queue_v2.sh`) 의 Z 를 예전 Optimal 결과와 대조해 확인한다.
+
+**재실험 v2 중간 결과 (2026-10-30 19:30, 새 기본값, `run_pooled_store_queue_v2.sh`, 로그 `logs/main2_list_*`)** — 예전 결과 (`main_list_*`, L1 = `main_pooled_store_A2_d15_*`) 와 시드별 대조.
+
+| | S10 Optimal | S10 시간 합 (예전 → 새) | S20 Optimal | S20 시간 합 (예전 → 새) |
+|---|---|---|---|---|
+| L1 | 10/10 | 868 → 302 s | 10/10 | 4,248 → 1,923 s |
+| L2 | 10/10 | 1,909 → 402 s | 10/10 | 4,632 → 808 s |
+| L3 | 10/10 | 1,027 → 304 s | 10/10 | 1,989 → 709 s |
+| L4 | 10/10 | 3,190 → 584 s | 10/10 | 6,997 → 1,256 s |
+| L5 | 10/10 | 1,038 → 539 s | 10/10 | 2,919 → 1,036 s |
+| L6 | 7/10 | (예전 seed 1~3 만: 356/3,178/640 → 155/1,086/342 s) | 진행 중 | seed 1: 1,571 → 328 s, seed 2: TL 210% → TL 30.9% |
+
+- L1~L5 의 100 개 모두 x* 가 예전과 같고 LB 차는 상대 1.4e-3 이하 (허용오차 0.5% 안). range_lp 전제가 깨진 징후 없음 (증명은 아님).
+- L6 S10 TL: seed 5·6·10 (gap 3.4/2.9/3.2%). 셋 다 마지막 x* 의 전역 oracle 한 번이 3,400~3,570 s 를 쓰고 상한을 못 닫음 — L6 병목 (마지막 x* 의 상한 증명) 은 그대로.
