@@ -529,9 +529,10 @@ end
 의 y = −λ 를 _nz_dr_farkas_certified 와 같은 규칙 (rtol, 경계 없는 쪽 상쇄 잔차) 으로 상자 위에서 검증해 통과하면 true.
 부분 LP 가 실행 가능, 시간 초과, 다른 상태, 검증 실패면 false (호출자는 노드 LP 를 그대로 푼다).
 L6 덤프 25 개 (실행 불가능 19 + 수치 오류 6) 에서 부분 LP 0.02~1.0 s, 검증 25/25 (lp_subfk.jl). 반환 (증명 여부, 부분 LP 상태 코드, 재시도로 증명했는가).
-retry = true (infeas_pre_retry, 2026-10-30, 문서 §10.29): 증명 못 하면 (상태가 INFEASIBLE 이 아니거나 검증 실패) 처음부터 (GRBreset)
+retry = true (infeas_pre_retry, 2026-10-30, 문서 §10.29): 첫 풀이가 NUMERIC 이거나 INFEASIBLE 인데 검증 실패면 처음부터 (GRBreset)
 NumericFocus 3, 그래도 못 하면 NumericFocus 0·Seed 2 로 다시 푼다. 부분 LP 는 수치에 취약해서 같은 모델이 Seed 0 에서 NUMERIC 또는
 검증 실패 INFEASIBLE 로 끝나는 일이 있다 (L6 S50 run23 에서 놓친 실행 불가능 노드 8/8, 이 두 재시도로 8/8 증명, lp_miss3.jl).
+실행 가능 (OPTIMAL) 이면 재시도하지 않는다 (run24 는 OPTIMAL 에서도 재시도해 노드당 부분 LP 1.2 → 4.1 s).
 """
 function _nz_dr_pre_infeasible(model; rtol=1e-9, tlim=30.0, retry=false)
     o = JuMP.unsafe_backend(model); Gurobi.GRBupdatemodel(o)
@@ -603,7 +604,7 @@ function _nz_dr_pre_infeasible(model; rtol=1e-9, tlim=30.0, retry=false)
             Gurobi.GRBoptimize(m)
             Gurobi.GRBgetintattr(m, "Status", ri); st = Int(ri[]); a == 1 && (st0 = st)
             st == 3 && certified() && return true, st, a > 1   # 3 = GRB_INFEASIBLE
-            st == 9 && break                                    # 9 = TIME_LIMIT: 재시도하지 않음
+            st in (3, 12) || break                              # 재시도는 NUMERIC (12) 이거나 검증 실패 INFEASIBLE 일 때만 (OPTIMAL·시간 초과 등은 그대로)
         end
         return false, st0, false
     finally
@@ -945,7 +946,7 @@ function nz_alpha_bnb_dr(nd::NZData, x̄;
                          # infeas_pre = true: 루트가 아닌 노드에서 노드 LP 전에 recourse 블록을 뺀 목적 0 부분 LP 로 실행 불가능을 먼저 판정
                          #   (_nz_dr_pre_infeasible, Farkas 증명서 검증). 증명되면 노드 LP 없이 가지치기 (문서 §10.29)
                          infeas_pre::Bool=false,
-                         # infeas_pre_retry = true (infeas_pre 전용): 부분 LP 가 증명 못 하면 NumericFocus 3, 그다음 Seed 2 로 다시 풂 (부분 LP 의 수치 취약성, 문서 §10.29)
+                         # infeas_pre_retry = true (infeas_pre 전용): 부분 LP 가 NUMERIC 이거나 검증 실패 INFEASIBLE 이면 NumericFocus 3, 그다음 Seed 2 로 다시 풂 (부분 LP 의 수치 취약성, 문서 §10.29)
                          infeas_pre_retry::Bool=false,
                          # parent_basis = true: 노드 LP 를 푼 직후의 basis 를 자식에 실어 두고, 꺼낸 (pop) 노드의 시작 basis 로 넣음 (_nz_dr_get_basis,
                          #   _nz_dr_set_basis!). dive 는 이미 부모 basis 에서 시작. LP 값에는 영향 없음 (문서 §10.29)
