@@ -10,6 +10,7 @@ pilot_pooled_store.jl — retailer + pooled 예약 (거점별 한도 h_i ≤ w_i
           PP_QB = cap 이면 출점비 = 거점 용량 (Goyal 설정 1 의 비율 750/750)
           PP_F = 0.1 (예약비)   PP_P = 0.3 (현장 프리미엄)   PP_TL = 1800   PP_WORKERS = 12   PP_PRE = 1 (반응 정의역 프리솔브)   PP_EPS = 0.3   PP_DELTA = 0.1
           PP_ORACLE = alpha_bnb (기본, α-B&B) | omega_grb (2×2 ablation: 전역 단계를 BD-G 와 같게 — Gurobi Ω, 스레드 PP_WORKERS. belief cut 은 그대로)
+          PP_BELIEF = 1 (기본, belief cut 켬) | 0 (2×2 ablation 의 네 번째 칸: belief cut 끔, 나머지 그대로. RESULT 끝에 belief=0)
 실행: julia -t 14,1 nonzero_sum/pilot_pooled_store.jl
 """
 root = dirname(@__DIR__)
@@ -23,6 +24,7 @@ isdefined(Main, :nz_alpha_bnb_dr) || include(joinpath(root, "nonzero_sum", "nz_a
 include(joinpath(root, "nonzero_sum", "nz_root_tighten.jl"))
 ORC = Symbol(get(ENV, "PP_ORACLE", "alpha_bnb")); ORC in (:alpha_bnb, :omega_grb) || error("PP_ORACLE = alpha_bnb | omega_grb")
 ORC == :omega_grb && include(joinpath(root, "nonzero_sum", "nz_bd_kkt.jl"))      # _nz_omega_global! (BD-G 의 전역 단계)
+BEL = get(ENV, "PP_BELIEF", "1"); BEL in ("0", "1") || error("PP_BELIEF = 1 | 0"); BEL = BEL == "1"
 envf(k, d) = get(ENV, k, d); pf(k, d) = parse(Float64, envf(k, d)); pint(k, d) = parse(Int, envf(k, d))
 strs(k, d) = String.(strip.(split(envf(k, d), ",")))
 nloc = pint("PP_NLOC", "15"); nA = pint("PP_NA", "2"); nB = pint("PP_NB", "3"); NB = pint("PP_NBMAX", string(nB))
@@ -67,11 +69,11 @@ for seed in seeds, S in sort(Ss)
     flush(stdout)
     t0 = time()
     r = nz_belief_menu_benders(nd; optimizer=GRB, tol=5e-3, oracle=ORC, bnb=:dr, oracle_gap=1e-3, nworkers=nw, time_limit=TL,
-                               local_first=true, local_time=60.0, bnb_kw=kw, verbose=true, global_optimizer=GRBK)
+                               local_first=true, local_time=60.0, bnb_kw=kw, verbose=true, global_optimizer=GRBK, belief_cuts=BEL)
     gap = abs(r[:UB] - r[:LB]) / max(1.0, abs(r[:UB]))
     @printf("RESULT pooled-store λ=%.0f qB=%.0f d=%d m=%d nA=%d nB=%d seed=%d S=%d nh=%d status=%s x=%s LB=%.6f UB=%.6f gap=%.2e iters=%d global=%d local=%s menu=%s time=%.1f%s\n",
             lam, qB, nloc, m, nA, nB, seed, S, nz_nh(nd), r[:status], xstr(r[:x]), r[:LB], r[:UB], gap, r[:iters], r[:oracle_calls],
             string(get(r, :local_cuts, "-")), string(get(r, :menu_size, "-")), time() - t0,
-            (ORC == :omega_grb ? " oracle=omega_grb" : "") * (isempty(envf("PP_BNBKW", "")) ? "" : " bnbkw=" * replace(envf("PP_BNBKW", ""), " " => "")) * (PRE ? "" : " pre=0"))      # ablation 실행 표시 (기본 실행의 RESULT 형식은 그대로)
+            (ORC == :omega_grb ? " oracle=omega_grb" : "") * (BEL ? "" : " belief=0") * (isempty(envf("PP_BNBKW", "")) ? "" : " bnbkw=" * replace(envf("PP_BNBKW", ""), " " => "")) * (PRE ? "" : " pre=0"))      # ablation 실행 표시 (기본 실행의 RESULT 형식은 그대로)
     flush(stdout)
 end

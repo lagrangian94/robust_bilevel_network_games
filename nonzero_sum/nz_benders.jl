@@ -22,6 +22,9 @@ nz_benders.jl — 비제로섬 Ω 위의 Benders 두 가지.
       recourse 쌍대해: cert = :recompute (html (b): (x̄, α̂) 에서 follower LP simplex dual, 기본)
                    | :solution  (html (a): ϖ̂ˢ / r̂_s)
       검증 기록: 새 원소를 넣을 때 그 LP 를 x̄ 에서 풀어 Ω(x̄) 와 같은지 (exactness) :exact_gap 에 남김.
+      belief_cuts = true (기본) | false (2026-11-01 2×2 ablation 의 네 번째 칸: menu 에 원소를 넣지 않아 menu 단계가 비고,
+          local cut·전역 oracle·목표값 조기 종료·남은 시간 전체는 그대로. oracle = :alpha_bnb 면 기본 구성과는 belief cut 유무만,
+          BD-G (nz_bd_kkt.jl) 와는 전역 oracle 만 다르다)
 OMP: min q_xᵀx + t₀, 1ᵀx ≤ γ, t₀ ≥ intercept + slopeᵀx.
 """
 
@@ -360,7 +363,7 @@ function nz_belief_menu_benders(nd::NZData; optimizer, lp_optimizer=optimizer, c
                                 target_stop::Bool=(oracle in (:alpha_bnb, :omega_grb)), mw::Bool=true, vi::Bool=false,
                                 verbose=true, time_limit=Inf, local_first::Bool=false, local_time=60.0,
                                 oracle_resume::Bool=true, global_optimizer=optimizer,
-                                oracle_remaining::Bool=(target_stop && isfinite(time_limit)))
+                                oracle_remaining::Bool=(target_stop && isfinite(time_limit)), belief_cuts::Bool=true)
     # oracle_remaining (기본: 목표값 조기 종료를 쓰고 전체 시간 제한이 유한하면 켬): 전역 oracle 에 남은 시간 전체를 준다.
     #   목표값 조기 종료가 있으면 oracle 이 오래 도는 것은 "위반 값이 없어 상한을 증명해야 하는" 경우뿐이고, 그때 호출을 끊어도
     #   새 cut 이 없어 OMP 가 같은 x̄ 를 다시 내놓는다 → 600 s / 2,400 s 로 쪼개는 것은 재시작 비용만 든다
@@ -382,7 +385,8 @@ function nz_belief_menu_benders(nd::NZData; optimizer, lp_optimizer=optimizer, c
     oracle == :alpha_bnb && _nz_bnb_solver(bnb)
     verbose && (println(_nz_oracle_banner(oracle, bnb, nworkers, oracle_gap, bnb_kw, bnb_cache !== nothing));
                 println("  [설정] oracle 시간: ", oracle_remaining ? "남은 시간 전체 (끊지 않음)" : "$(oracle_time) s, 재방문 시 최대 $(boost_time) s",
-                        ", 목표값 조기 종료 ", target_stop ? "켬" : "끔", ", local cut ", local_first ? "켬" : "끔"); flush(stdout))
+                        ", 목표값 조기 종료 ", target_stop ? "켬" : "끔", ", local cut ", local_first ? "켬" : "끔",
+                        ", belief cut ", belief_cuts ? "켬" : "끔 (ablation)"); flush(stdout))
     x_core = nz_core_point(nd); n_mw = 0
     target_stop && oracle == :gurobi && error("target_stop 은 oracle=:alpha_bnb | :omega_grb 에서만")
     omp, x, t0 = _nz_omp(nd; optimizer=optimizer)
@@ -442,14 +446,16 @@ function nz_belief_menu_benders(nd::NZData; optimizer, lp_optimizer=optimizer, c
                 cval = cut[:intercept] + dot(cut[:slope], x̄)
                 if cval > t0v + tol * max(1.0, abs(t0v))
                     _add_cut!(omp, x, t0, cut); _log_cut!(cuts, :local, iter, x̄, cut, ok); n_local += 1; n_mw += ok
-                    bel = nz_clean_belief(bel_loc, nd)
-                    σ = cert == :recompute ? nz_follower_duals(nd, x̄, bel_loc[:α]; lp_optimizer=lp_optimizer)[1] :
-                        nz_repair_cert(nd, bel_loc[:ϖ] ./ reshape(max.(bel_loc[:r], 1e-12), 1, nd.S); lp_optimizer=lp_optimizer)
-                    push!(menu, (bel, σ))
+                    if belief_cuts
+                        bel = nz_clean_belief(bel_loc, nd)
+                        σ = cert == :recompute ? nz_follower_duals(nd, x̄, bel_loc[:α]; lp_optimizer=lp_optimizer)[1] :
+                            nz_repair_cert(nd, bel_loc[:ϖ] ./ reshape(max.(bel_loc[:r], 1e-12), 1, nd.S); lp_optimizer=lp_optimizer)
+                        push!(menu, (bel, σ))
+                    end
                     push!(hist, (iter=iter, LB=LB, UB=UB, x=findall(x̄ .> 0.5), kind=:local, n=length(menu), w=w_LB))
-                    verbose && @printf("  [loc]  it %3d LB=%11.4f UB=%11.4f x=%-10s Ω_loc=%11.4f (%.1fs) menu=%d (+belief)
+                    verbose && @printf("  [loc]  it %3d LB=%11.4f UB=%11.4f x=%-10s Ω_loc=%11.4f (%.1fs) menu=%d%s
 ",
-                                       iter, LB, UB, string(findall(x̄ .> 0.5)), rl[:Fval], t_l, length(menu))
+                                       iter, LB, UB, string(findall(x̄ .> 0.5)), rl[:Fval], t_l, length(menu), belief_cuts ? " (+belief)" : "")
                     verbose && flush(stdout)
                     continue
                 end
@@ -499,7 +505,7 @@ function nz_belief_menu_benders(nd::NZData; optimizer, lp_optimizer=optimizer, c
         end
         _add_cut!(omp, x, t0, cut)
         ub_here < UB && (UB = ub_here; best_x = copy(x̄))
-        new_b = res[:Fval] > V_menu + 1e-6 * max(1.0, abs(res[:Fval]))
+        new_b = belief_cuts && res[:Fval] > V_menu + 1e-6 * max(1.0, abs(res[:Fval]))
         if new_b
             bel = nz_clean_belief(bel_raw, nd)
             σ = if cert == :recompute
@@ -523,5 +529,5 @@ function nz_belief_menu_benders(nd::NZData; optimizer, lp_optimizer=optimizer, c
                 :oracle_calls => oracle_calls, :menu_cuts => menu_cuts, :mw_cuts => n_mw, :menu => menu, :menu_size => length(menu),
                 :local_cuts => n_local,
                 :exact_log => exact_log, :wall => time() - wall, :hist => hist, :cuts => cuts,
-                :oracle => oracle, :bnb => (oracle == :alpha_bnb ? bnb : nothing))
+                :oracle => oracle, :bnb => (oracle == :alpha_bnb ? bnb : nothing), :belief_cuts => belief_cuts)
 end
