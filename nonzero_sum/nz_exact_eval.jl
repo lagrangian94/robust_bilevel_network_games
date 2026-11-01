@@ -50,6 +50,10 @@ function nz_exact_value(nd::NZData, x̄, α; tolF=1e-7)
                                                           - tolF * (1 + abs(lhs) + maximum(abs, Q)))
     @objective(M, Max, sum(φ[s] * r[s] for s in 1:S)); optimize!(M)
     st = termination_status(M)
+    if st == MOI.NUMERICAL_ERROR      # 2026-11-01: L1 S20 seed 9 에서 기본 설정이 NUMERICAL_ERROR → 수치 강조 + dual simplex 로 한 번만 다시 (그래도 안 되면 아래 error)
+        set_optimizer_attribute(M, "NumericFocus", 3); set_optimizer_attribute(M, "Method", 1); optimize!(M)
+        st = termination_status(M)
+    end
     st in (MOI.INFEASIBLE, MOI.INFEASIBLE_OR_UNBOUNDED) && return -Inf
     st == MOI.OPTIMAL || error("exact value LP: $st")
     return objective_value(M), value.(d)
