@@ -50,8 +50,12 @@ function nz_exact_value(nd::NZData, x̄, α; tolF=1e-7)
                                                           - tolF * (1 + abs(lhs) + maximum(abs, Q)))
     @objective(M, Max, sum(φ[s] * r[s] for s in 1:S)); optimize!(M)
     st = termination_status(M)
-    if st == MOI.NUMERICAL_ERROR      # 2026-11-01: L1 S20 seed 9 에서 기본 설정이 NUMERICAL_ERROR → 수치 강조 + dual simplex 로 한 번만 다시 (그래도 안 되면 아래 error)
-        set_optimizer_attribute(M, "NumericFocus", 3); set_optimizer_attribute(M, "Method", 1); optimize!(M)
+    # 2026-11-01: 기본 설정이 NUMERICAL_ERROR 이면 (i) 수치 강조 + dual simplex (L1 S20 seed 9 해결), (ii) barrier (L1 S50 seed 7 x={2,3}: simplex 는
+    # 모두 NUMERICAL_ERROR, barrier 는 INFEASIBLE — 경계에서 겨우 실행가능/불가능한 LP) 차례로 다시. INFEASIBLE 은 −Inf (witness 없음) 라 하한이 약해질 뿐 타당하다.
+    # 그래도 OPTIMAL·INFEASIBLE 이 아니면 아래 error.
+    for (nf, meth) in ((3, 1), (0, 2))
+        st == MOI.NUMERICAL_ERROR || break
+        set_optimizer_attribute(M, "NumericFocus", nf); set_optimizer_attribute(M, "Method", meth); optimize!(M)
         st = termination_status(M)
     end
     st in (MOI.INFEASIBLE, MOI.INFEASIBLE_OR_UNBOUNDED) && return -Inf
