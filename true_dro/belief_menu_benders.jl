@@ -191,7 +191,10 @@ function belief_menu_benders_optimize!(td::TrueDROData;
         valid_inequality::Symbol=:mincut, source_sink_cut=nothing, wall_time_limit=7200.0,
         # 종속 ambiguity set (belief 결합) 반경. Inf = 기존 rectangular. bnb_envs/bnb_heuristic 은 α-B&B 로 그대로 전달
         # (학술 WLS 처럼 세션이 적은 곳에서 Env 를 재사용할 때).
-        delta_couple::Real=Inf, bnb_envs=nothing, bnb_heuristic::Bool=true)
+        delta_couple::Real=Inf, bnb_envs=nothing, bnb_heuristic::Bool=true,
+        # belief_cuts=false (2026-11-03, ablation): oracle 해의 belief 를 menu 에 넣지 않음 → menu 가 비어 매 반복 local → α-B&B.
+        # 나머지 (local cut, α-B&B, VI, 목표값 조기 종료) 는 그대로 (비제로섬 nz_belief_menu_benders 의 belief_cuts 와 같은 방식)
+        belief_cuts::Bool=true)
     oracle in (:gurobi, :alpha_bnb) || error("oracle must be :gurobi or :alpha_bnb (got $oracle)")
     if oracle == :alpha_bnb
         isdefined(Main, :global_bilinear_solve) || error("oracle=:alpha_bnb: global_bilinear_solver.jl 을 먼저 include 하세요")
@@ -350,7 +353,7 @@ function belief_menu_benders_optimize!(td::TrueDROData;
             UB = Zbd; best_x = copy(x̄)
         end
         add_cut!(info, x̄)
-        new_belief = Zinc > V_menu + 1e-6 * max(1.0, abs(Zinc))
+        new_belief = belief_cuts && Zinc > V_menu + 1e-6 * max(1.0, abs(Zinc))
         if new_belief
             b_clean = _clean_belief(b_star, td; delta_couple=δc)
             if !(_belief_key(b_clean) in menu_keys)
@@ -374,6 +377,7 @@ function belief_menu_benders_optimize!(td::TrueDROData;
         push!(hist[:LB], LB); push!(hist[:UB], UB); push!(hist[:menu], length(menu)); push!(hist[:t], time() - wall_start)
     end
     wall = time() - wall_start
+    verbose && !belief_cuts && println("(belief_cuts=false: menu 사용 안 함)")
     verbose && @printf("Belief-menu Benders %s: LB=%.6f UB=%.6f gap=%.2e iters=%d oracle=%d (local %d / %.1fs, α-B&B %d / %.1fs) menu=%d mw=%d/%d wall=%.1fs\n",
                        status, LB, UB, rel(LB, UB), iter, oracle_calls, local_hits, local_t, bnb_calls, bnb_t, length(menu),
                        mw_ok, mw_ok + mw_fail, wall)

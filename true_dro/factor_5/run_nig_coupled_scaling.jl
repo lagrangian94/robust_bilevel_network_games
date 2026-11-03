@@ -8,6 +8,7 @@ grid5x5·polska·sioux_falls 0.1, abilene·nobel_us 0.2, generate_oos_summary_ta
   mb_only = Enhanced BD       (mini_benders = true,  valid_inequality = :none)
   full    = Enhanced BD + VIs (mini_benders = true,  valid_inequality = :mincut)
   menu    = Algorithm 2 의 zero-sum 판 (belief_menu_benders_optimize!: α-B&B oracle, local cut, belief menu + MW, min-cut VI) — 2026-10-20 추가
+  nob     = menu 에서 belief cut 만 끔 (belief_cuts=false, 나머지 그대로) — 2026-11-03 ablation
 기본은 menu 만 S = 10·20·50 (2026-10-20 사용자 결정: 벤치마크는 나중에). 벤치마크는 NS_VARIANTS_S10=naive,mb_only,full 로 따로.
 인스턴스 생성은 run_coupling_batch.jl 과 같음 (factor_additive k=5, seed 42, w = 0.5γ·median, v ~ Bernoulli(0.75), λᵁ = 10, γ = 2).
 boost (전역 subproblem) 는 true_dro_benders_optimize! 의 기본값 = zero-sum α-B&B (global_bilinear_solver.jl, worker NS_NWORKERS).
@@ -17,6 +18,7 @@ boost (전역 subproblem) 는 true_dro_benders_optimize! 의 기본값 = zero-su
   NS_NETS = grid5x5,polska,abilene,nobel_us,sioux_falls   NS_S = 10,20,50   NS_DELTA = 0.1   NS_BETA = 0.4
   NS_VARIANTS_S10 = menu   NS_VARIANTS_LARGE = menu   NS_NWORKERS = 12   NS_WALL = 3600   NS_TOL = 5e-3
   NS_LOGROOT = logs/nig_coupled   (factor_5 기준)
+  NS_SEEDS = 42   (2026-11-03: 용량 시나리오·v 의 seed, 쉼표 구분. 네트워크 구조는 그대로. 42 가 아니면 로그 이름에 _s<seed>, RESULT 끝에 seed=)
 로그: <NS_LOGROOT>/S_<S>/<net>_<variant>.log, 끝까지 간 로그 (RESULT 줄) 는 건너뜀.
 실행: julia -t 14,1 run_nig_coupled_scaling.jl   (α-B&B 에 interactive 스레드 필요)
 =#
@@ -99,7 +101,7 @@ log_done(p) = isfile(p) && any(startswith(l, "RESULT ") for l in eachline(p))
 
 const NETWORK_EPS = Dict("grid5x5" => 0.1, "polska" => 0.1, "sioux_falls" => 0.1, "abilene" => 0.2, "nobel_us" => 0.2)
 # (mini_benders, valid_inequality). menu 는 belief_menu_benders_optimize! (mini-Benders 대신 belief menu, min-cut VI)
-const VARIANTS = Dict("naive" => (false, :none), "mb_only" => (true, :none), "full" => (true, :mincut), "menu" => (false, :mincut))
+const VARIANTS = Dict("naive" => (false, :none), "mb_only" => (true, :none), "full" => (true, :mincut), "menu" => (false, :mincut), "nob" => (false, :mincut))
 
 networks   = String.(envlist("NS_NETS", "grid5x5,polska,abilene,nobel_us,sioux_falls"))
 S_list     = parse.(Int, envlist("NS_S", "10,20,50"))
@@ -110,6 +112,7 @@ var_large  = String.(envlist("NS_VARIANTS_LARGE", "menu"))
 nworkers   = parse(Int, get(ENV, "NS_NWORKERS", "12"))
 wall       = parse(Float64, get(ENV, "NS_WALL", "3600"))
 tol        = parse(Float64, get(ENV, "NS_TOL", "5e-3"))
+seeds      = parse.(Int, envlist("NS_SEEDS", "42"))
 log_root   = joinpath(@__DIR__, get(ENV, "NS_LOGROOT", joinpath("logs", "nig_coupled")))
 λU = 10.0
 all(v -> haskey(VARIANTS, v), vcat(var_s10, var_large)) || error("알 수 없는 변형: $(vcat(var_s10, var_large))")
@@ -128,31 +131,32 @@ for S in S_list
     log_dir = joinpath(log_root, "S_$(S)")
     mkpath(log_dir)
     variants = S == 10 ? var_s10 : var_large
-    for network_name in networks
+    for seed in seeds, network_name in networks
         eps = NETWORK_EPS[network_name]
         net, γ, intd_arcs = make_network(network_name)
         num_arcs = length(net.arcs) - 1
         caps, _ = NG.generate_capacity_scenarios_factor_additive(length(net.arcs), S;
-            interdictable_arcs=intd_arcs, seed=42, num_factors=5)
+            interdictable_arcs=intd_arcs, seed=seed, num_factors=5)
         intd_idx = findall(intd_arcs[1:num_arcs])
         w = round(0.5 * γ * median(caps[intd_idx, :]); digits=4)
         q_hat = fill(1.0/S, S)
         ss_cut = make_ss_cut(net, num_arcs, network_name)
-        Random.seed!(42)
+        Random.seed!(seed)
         v_rand = zeros(num_arcs, S)
         for k in 1:num_arcs, s in 1:S
             v_rand[k, s] = intd_arcs[k] ? (rand() < 0.75 ? 1.0 : 0.0) : 0.0
         end
         for variant in variants
             mb, vi = VARIANTS[variant]
-            log_path = joinpath(log_dir, "$(network_name)_$(variant).log")
+            log_path = joinpath(log_dir, "$(network_name)_$(variant)" * (seed == 42 ? "" : "_s$(seed)") * ".log")
             if log_done(log_path)
                 @printf("  [skip] %s\n", log_path); flush(stdout); continue
             end
             run_with_tee(log_path) do
                 println("=" ^ 60)
-                @printf("%s — %s: S=%d, ε̂=ε̃=%.2f, β=%.2f, δ=%.3f (%s)\n", network_name, variant, S, eps, β_risk, δ,
+                @printf("%s — %s: S=%d, seed=%d, ε̂=ε̃=%.2f, β=%.2f, δ=%.3f (%s)\n", network_name, variant, S, seed, eps, β_risk, δ,
                         variant == "menu" ? "belief_menu_benders_optimize!, oracle α-B&B, local_first, menu MW, VI=mincut" :
+                        variant == "nob"  ? "belief_menu_benders_optimize!, belief_cuts=false, oracle α-B&B, local_first, VI=mincut" :
                                             "true_dro_benders_optimize!, mini_benders=$(mb), VI=$(vi), boost α-B&B")
                 @printf("arcs=%d, intd=%d, γ=%d, w=%.4f, started %s\n", num_arcs, length(intd_idx), γ, w, string(now()))
                 println("=" ^ 60)
@@ -160,11 +164,12 @@ for S in S_list
                 td = make_true_dro_data(net, caps, q_hat, eps, eps;
                     w=w, lambda_U=λU, gamma=γ, beta=β_risk, v_scenarios=v_rand)
                 t0 = time()
-                res = if variant == "menu"
+                res = if variant in ("menu", "nob")
                     belief_menu_benders_optimize!(td;
                         mip_optimizer=Gurobi.Optimizer, nlp_optimizer=Gurobi.Optimizer, lp_optimizer=Gurobi.Optimizer,
                         nworkers=nworkers, max_iter=1000, tol=tol, verbose=true,
-                        valid_inequality=:mincut, source_sink_cut=ss_cut, wall_time_limit=wall, delta_couple=δ)
+                        valid_inequality=:mincut, source_sink_cut=ss_cut, wall_time_limit=wall, delta_couple=δ,
+                        belief_cuts=(variant == "menu"))
                 else
                     true_dro_benders_optimize!(td;
                         mip_optimizer=Gurobi.Optimizer, nlp_optimizer=Gurobi.Optimizer, lp_optimizer=Gurobi.Optimizer,
@@ -179,9 +184,9 @@ for S in S_list
                 xs = findall(round.(Int, res[:x]) .> 0)
                 @printf("\nResult (%s, S=%d): Z₀=%.6f, iters=%d, time=%.1fs\n", variant, S, res[:Z0], res[:iters], wt)
                 println("x arcs = $(xs)")
-                @printf("RESULT net=%s variant=%s S=%d beta=%.2f eps=%.2f delta=%.3f status=%s Z0=%.8f LB=%.8f UB=%.8f iters=%d time=%.2f x=%s\n",
+                @printf("RESULT net=%s variant=%s S=%d beta=%.2f eps=%.2f delta=%.3f status=%s Z0=%.8f LB=%.8f UB=%.8f iters=%d time=%.2f x=%s%s\n",
                         network_name, variant, S, β_risk, eps, δ, string(res[:status]), res[:Z0],
-                        res[:lower_bound], res[:upper_bound], res[:iters], wt, join(xs, ";"))
+                        res[:lower_bound], res[:upper_bound], res[:iters], wt, join(xs, ";"), seed == 42 ? "" : " seed=$(seed)")
                 flush(stdout)
             end
             @printf("  [done] %s\n", log_path); flush(stdout)
