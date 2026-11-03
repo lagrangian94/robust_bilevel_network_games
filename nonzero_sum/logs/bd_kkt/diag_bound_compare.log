@@ -1,0 +1,35 @@
+Set parameter Username
+Set parameter LicenseID to value 2742039
+Academic license - for non-commercial use only - expires 2026-11-20
+상계 비교: 방법당 300 s, 스레드 2
+
+=== L1 seed 1 x=[1] (n_h=5)
+Set parameter Username
+Set parameter LicenseID to value 2742039
+Academic license - for non-commercial use only - expires 2026-11-20
+Set parameter Username
+Set parameter LicenseID to value 2742039
+Academic license - for non-commercial use only - expires 2026-11-20
+Set parameter Username
+Set parameter LicenseID to value 2742039
+Academic license - for non-commercial use only - expires 2026-11-20
+
+******************************************************************************
+This program contains Ipopt, a library for large-scale nonlinear optimization.
+ Ipopt is released as open source code under the Eclipse Public License (EPL).
+         For more information visit https://github.com/coin-or/Ipopt
+******************************************************************************
+
+  Ω-BnB : 하계   -1387.7364  상계   -1386.8432  (루트 상계    -881.3041)    31.2 s  노드 29
+  Ω-GRB : 하계   -1387.3591  상계   -1386.2785    26.8 s  OPTIMAL
+  KKT   : 하계   -1470.3333  상계       0.0000   304.7 s  TIME_LIMIT (시작값 -1470.3333)
+
+=== L1 seed 2 x=[3] (n_h=5)
+  Ω-BnB : 하계   -1713.9403  상계   -1713.8391  (루트 상계   -1401.1271)    15.9 s  노드 19
+  Ω-GRB : 하계   -1713.9167  상계   -1713.8721    15.7 s  OPTIMAL
+  KKT   : 하계   -2026.1667  상계    -517.1956   300.1 s  TIME_LIMIT (시작값 -2026.1667)
+
+=== L2 seed 2 x=[2] (n_h=5)
+  Ω-BnB : 하계   -1185.5844  상계   -1185.5817  (루트 상계    -806.6651)   215.9 s  노드 111
+  Ω-GRB : 하계   -1185.5833  상계   -1184.4813    80.5 s  OPTIMAL
+  KKT   : 하계   -1339.7500  상계    -344.1305   300.1 s  TIME_LIMIT (시작값 -1339.7500)

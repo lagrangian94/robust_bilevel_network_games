@@ -1,0 +1,6 @@
+Set parameter Username
+Set parameter LicenseID to value 2742039
+Academic license - for non-commercial use only - expires 2026-11-20
+  [done] C:\Users\user\robust_bilevel_network_games\true_dro\factor_5\logs/nig_coupled_bdkkt_test\S_10\polska_bdkkt.log: ["RESULT net=polska variant=bdkkt S=10 beta=0.40 eps=0.10 delta=0.100 status=WallTimeLimit Z0=18.71295726 LB=16.18866440 UB=18.71295726 iters=116 time=611.88 x=13;34"]
+┌ Warning: The addition operator has been used on JuMP expressions a large number of times. This warning is safe to ignore but may indicate that model generation is slower than necessary. For performance reasons, you should not add expressions in a loop. Instead of x += y, use add_to_expression!(x,y) to modify x in place. If y is a single variable, you may also use add_to_expression!(x, coef, y) for x += coef*y.
+└ @ JuMP C:\Users\user\.julia\packages\JuMP\i68GU\src\operators.jl:282

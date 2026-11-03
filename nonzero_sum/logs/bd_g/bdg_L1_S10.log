@@ -1,0 +1,48 @@
+Set parameter Username
+Set parameter LicenseID to value 2742039
+Academic license - for non-commercial use only - expires 2026-11-20
+
+--- BD-G pooled(거점별 300) d=15 A=2 B=3 (N_B≤3) seed=1 S=10: n_h=5, |X|=8, 용량 750, 출점비 750, θᵁ=50.0 λᵁ=2000.0, TL=3600s, Gurobi 스레드 12
+  [설정] BD-G: 전역 = Ω (Gurobi NonConvex), 남은 시간 전체, 목표값 조기 종료, local cut 켬, belief cut 없음
+  [loc]  it   1 LB=-10000000.0000 UB=        Inf x=Int64[]    Ω_loc=    -0.0007 (0.1s)
+  [loc]  it   2 LB=-1820250.0002 UB=        Inf x=[1, 2, 3]  Ω_loc= -1629.3345 (0.3s)
+  [loc]  it   3 LB=-1230129.3333 UB=        Inf x=[2, 3]     Ω_loc= -1263.5009 (0.2s)
+  [loc]  it   4 LB=-742534.7979 UB=        Inf x=[1, 2]     Ω_loc= -1629.3345 (0.3s)
+  [loc]  it   5 LB=-418321.3334 UB=        Inf x=[1, 3]     Ω_loc= -1629.3345 (0.2s)
+  [loc]  it   6 LB=-367659.7978 UB=        Inf x=[2]        Ω_loc= -1269.8341 (0.1s)
+  [loc]  it   7 LB=-320105.2257 UB=        Inf x=[3]        Ω_loc= -1200.0008 (0.2s)
+  [loc]  it   8 LB=-269071.3334 UB=        Inf x=[1]        Ω_loc= -1424.0008 (0.1s)
+  [omg]  it   9 LB=  -674.0001 UB=  -136.9835 x=[1]        KKT= -1408.4453 bd=  -886.9835 start=NaN OBJECTIVE_LIMIT (2.8s)
+  [omg]  it  10 LB=  -651.4417 UB=  -166.8646 x=[1]        KKT= -1387.3333 bd=  -916.8646 start=NaN OBJECTIVE_LIMIT (1.2s)
+  [omg]  it  11 LB=  -637.3333 UB=  -634.3935 x=[1]        KKT= -1387.3333 bd= -1384.3935 start=NaN OBJECTIVE_LIMIT (8.1s)
+RESULT method=BD-G λ=2000 qB=750 d=15 m=5 nA=2 nB=3 seed=1 S=10 nh=5 status=Optimal x={1} LB=-637.333335 UB=-634.393467 gap=4.63e-03 iters=12 global=3 local=8 time=23.4
+
+--- BD-G pooled(거점별 300) d=15 A=2 B=3 (N_B≤3) seed=2 S=10: n_h=5, |X|=8, 용량 750, 출점비 750, θᵁ=50.0 λᵁ=2000.0, TL=3600s, Gurobi 스레드 12
+  [설정] BD-G: 전역 = Ω (Gurobi NonConvex), 남은 시간 전체, 목표값 조기 종료, local cut 켬, belief cut 없음
+  [loc]  it   1 LB=-10000000.0000 UB=        Inf x=Int64[]    Ω_loc=    -0.0007 (0.1s)
+  [loc]  it   2 LB=-3162749.9987 UB=        Inf x=[1, 2, 3]  Ω_loc= -2418.7512 (0.5s)
+  [loc]  it   3 LB=-1538418.7500 UB=        Inf x=[1, 2]     Ω_loc= -2407.9178 (0.2s)
+  [loc]  it   4 LB=-1412999.9996 UB=        Inf x=[3]        Ω_loc= -1737.8343 (0.1s)
+  [loc]  it   5 LB=-613589.6670 UB=        Inf x=[2]        Ω_loc= -1705.5010 (0.3s)
+  [loc]  it   6 LB=-497737.8334 UB=        Inf x=[1, 3]     Ω_loc= -2350.7512 (0.2s)
+  [loc]  it   7 LB=-380952.9166 UB=        Inf x=[1]        Ω_loc= -1636.6677 (0.4s)
+  [loc]  it   8 LB=-300862.8334 UB=        Inf x=[2, 3]     Ω_loc= -2418.7511 (0.2s)
+  [omg]  it   9 LB=  -987.8334 UB=  -689.4911 x=[3]        KKT= -1731.0366 bd= -1439.4911 start=NaN OBJECTIVE_LIMIT (0.7s)
+  [omg]  it  10 LB=  -968.9167 UB=  -958.0340 x=[3]        KKT= -1713.9169 bd= -1708.0340 start=NaN OBJECTIVE_LIMIT (4.9s)
+  [omg]  it  11 LB=  -963.9167 UB=  -960.6953 x=[3]        KKT= -1713.9169 bd= -1710.6953 start=NaN OBJECTIVE_LIMIT (3.5s)
+RESULT method=BD-G λ=2000 qB=750 d=15 m=5 nA=2 nB=3 seed=2 S=10 nh=5 status=Optimal x={3} LB=-963.916667 UB=-960.695293 gap=3.35e-03 iters=12 global=3 local=8 time=13.7
+
+--- BD-G pooled(거점별 300) d=15 A=2 B=3 (N_B≤3) seed=3 S=10: n_h=5, |X|=8, 용량 750, 출점비 750, θᵁ=50.0 λᵁ=2000.0, TL=3600s, Gurobi 스레드 12
+  [설정] BD-G: 전역 = Ω (Gurobi NonConvex), 남은 시간 전체, 목표값 조기 종료, local cut 켬, belief cut 없음
+  [loc]  it   1 LB=-10000000.0000 UB=        Inf x=Int64[]    Ω_loc=    -0.0007 (0.1s)
+  [loc]  it   2 LB=-2127750.0002 UB=        Inf x=[1, 2, 3]  Ω_loc= -1128.0846 (0.3s)
+  [loc]  it   3 LB=-299250.0001 UB=        Inf x=[2]        Ω_loc=  -955.6675 (0.1s)
+  [loc]  it   4 LB=-255833.5828 UB=        Inf x=[1]        Ω_loc= -1120.5008 (0.1s)
+  [loc]  it   5 LB=-216261.2495 UB=        Inf x=[3]        Ω_loc=  -569.0009 (0.3s)
+  [loc]  it   6 LB=-189896.9167 UB=        Inf x=[1, 2]     Ω_loc= -1128.0845 (0.5s)
+  [loc]  it   7 LB=-150324.5834 UB=        Inf x=[2, 3]     Ω_loc= -1087.1677 (0.4s)
+  [loc]  it   8 LB=-64814.7494 UB=        Inf x=[1, 3]     Ω_loc= -1120.0011 (0.7s)
+  [omg]  it   9 LB=  -370.5000 UB=  -203.0290 x=[1]        KKT= -1043.5000 bd=  -953.0290 start=NaN OBJECTIVE_LIMIT (0.9s)
+  [omg]  it  10 LB=  -285.1667 UB=  -270.8453 x=[1]        KKT= -1031.6287 bd= -1020.8453 start=NaN OBJECTIVE_LIMIT (1.8s)
+  [omg]  it  11 LB=  -281.4018 UB=  -280.9891 x=[1]        KKT= -1031.0000 bd= -1030.9891 start=NaN OPTIMAL (1.8s)
+RESULT method=BD-G λ=2000 qB=750 d=15 m=5 nA=2 nB=3 seed=3 S=10 nh=5 status=Optimal x={1} LB=-281.000001 UB=-280.989085 gap=3.88e-05 iters=12 global=3 local=8 time=9.9

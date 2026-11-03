@@ -1867,3 +1867,44 @@ infeas_pre_retry=true, parent_basis=true, node_lp_cap=120.0`). `_NZ_DR_DEFAULT`�
 - L6 S20 TL: seed 2·5·6·10 (30.9/7.8/15.5/10.9%). L6 S50 Optimal: seed 1 (1,975 s), seed 9 (2,813 s). TL 8 개의 gap: seed 8 0.93%, seed 5 10.0%, seed 3·4 29.7·33.8%, seed 2·6·10·7 127~445%.
   TL 은 모두 전역 호출 1~2 번 (seed 5 만 6 번) 이 시간을 다 씀 — L6 병목 (마지막 x* 의 상한 증명) 은 S50 에서 더 심함.
 - 이 재실험에 들어가지 않은 것: 보충자료 |A| = 3·4, λ 무관 인증. range_lp 전제 (submodularity) 는 여전히 미증명.
+
+### 10.30 2×2 ablation 과 최종 실험 목록 (큐 v5) (2026-11-01~03)
+
+**2×2 ablation** (비제로섬, 시드 10, 1 시간, 허용오차 0.5%, λᵁ = 2,000). 행 = 전역 oracle, 열 = belief cut. Optimal 수 (시간 합).
+
+| 인스턴스 | Ours (belief + α-B&B) | nob (α-B&B) | grb (belief + Gurobi Ω) | BD-G (Gurobi Ω) |
+|---|---|---|---|---|
+| L4 S20 | 10/10 (1,256 s) | 10/10 (1,250 s) | 5/10 (19,123 s) | 5/10 (19,144 s) |
+| L2 S50 | 9/10 (7,314 s) | 9/10 (7,800 s) | 5/10 (19,603 s) | 5/10 (19,751 s) |
+| L4 S50 | 10/10 (4,137 s) | 10/10 (4,123 s) | 5/10 (18,957 s) | 5/10 (18,929 s) |
+| L6 S10 | 7/10 | 진행 (v4 마지막 칸) | 안 돌림 | 0/10 (10 개 모두 TL) |
+
+- 비제로섬에서 차이는 전역 oracle (α-B&B) 이 만든다. belief cut 효과는 0~6%. Gurobi Ω 칸의 TL 시드는 두 칸에서 같다 (x* = {1}·{1,2}, 마지막 x* 의 상한 증명).
+- zero-sum S10 (seed 42, 결합 δ = 0.1): BD-G 는 116~745 반복, 시간의 90~99% 가 매 반복의 local 비볼록 풀이 (polska 는 380 반복에서 WallTimeLimit).
+  Ours 는 반복의 90% 이상을 belief LP 로 닫고 local 3~6 번, 전역 1 번만 불러 6~35 배 빠르다.
+- 서사 (원고 6 절): belief cut = x 후보가 많을 때의 반복 병목 (zero-sum), α-B&B = 전역 인증 병목 (비제로섬).
+
+**결정 (사용자, 2026-11-03)**
+- 목록을 잠근다. 원고 표나 리뷰어 지적을 채우지 않는 실험은 넣지 않는다 (넣을 때는 어느 표를 채우는지 말하고 허락).
+- ε: 계산 표는 ε̂ = ε̃ = 0.3 고정 (S 효과를 따로 보기 위해). 근거 문장은 Weissman 반경 ε(S, N) = √((S ln 2 + ln(1/α)) / (2N)) 로 0.3 ≈ N 55~200.
+  Sadana·Delage (2023) 식의 S 의존 ε 표는 쓰지 않는다. ε 민감도 대신 δ·β 민감도를 넣는다.
+- "follower belief 를 안다고 가정하면 손해" 는 zero-sum OOS 로만 보인다. 비제로섬은 기본 인스턴스에서 product 의 과보수와 결합의 보정을 보이고, 독립 수요에서 follower 모호성 효과가 드묾을 그대로 적는다.
+- zero-sum 시드 5 개 (42, 1, 2, 3, 4), belief cut 끈 변형 (nob) 포함.
+- L6 S10 뒤의 grb L6 S10 과 L6 S20 세 칸은 돌리지 않는다 (2×2 결론이 세 인스턴스에서 같음).
+
+**큐 v5** (`nonzero_sum/run_queue_v5.sh`, 진행 `logs/queue_v5.out`, 22f685b) — v4 의 nob L6 S10 이 끝나면 v4 를 멈추고 시작.
+
+| 단계 | 내용 | 스크립트 | 채우는 것 |
+|---|---|---|---|
+| V1 | 기본 인스턴스 (SGB128 거점별 예약 w = 150, S = 3) 모든 x, 4 모형, δ sweep, w = 0 대조, KKT 전수 | `loc_insample.jl` (LI_RES = pooled_store) | tab:loc-insample, fig:loc-delta |
+| V2 | 기본 인스턴스 OOS (truth–belief TV 로 Close ≤ 0.1 / Moderate ≤ 0.3 / Misspecified) | `loc_oos.jl` | tab:loc-oos |
+| E | 열거 + α-B&B (목표값 가지치기) L1~L5 S10 × 10 | `run_enum_E.jl` | tab:loc-comp 의 벤치마크 |
+| zero-sum | S10 시드 42, 1~4 × {Ours, nob} | `run_nig_coupled_scaling.jl` (NS_SEEDS) | zero-sum 계산 표 |
+| δ·β | L2·L4 S20 × 10, δ ∈ {0, 0.3, 0.6} (β 0.4), β ∈ {0, 0.8} (δ 0.1) | `pilot_pooled_store.jl` (PP_DELTA, PP_BETA) | 민감도 표 |
+| BD-G | 나머지 칸 시드 1~10 (L1·L3·L5 전부, L2 S10·20, L4 S10) | `run_bd_kkt_pooled.jl` (PP_METHOD = omega) | tab:loc-comp |
+| 인증 | δ·β 실행의 λ 무관 인증 (v5 끝난 뒤) | `run_queue_v5_cert.sh` → `cert_lambda_free.jl` (RESULT 의 beta=·delta= 를 읽음, f1aa9c3) | 민감도 표의 인증 |
+
+**리뷰어 검토 (서브에이전트) 중 남은 원고 작업**
+- λ 무관 인증은 모든 x 에서 witness 하한을 계산하므로 x* 의 최적성까지 인증한다 (CERT 의 xs= 필드). 원고 문구만 고친다.
+- range_lp 의 전제 (단조성·submodularity) 는 Assumption 으로 두고 범위 MIP 와의 일치 (v1, L1~L5 재실험의 x*·LB 일치) 를 증거로 든다. 보충자료의 follower block 증명을 써야 한다.
+- zero-sum 절은 옛 상태 (φ-divergence, 7,200 s, NonConvex = 2, Plain/Enhanced BD) 라 다시 쓴다. SGM·performance profile, 스레드 수 명시, BD-G 가 쉬운 인스턴스에서 빠른 것도 그대로 보고.

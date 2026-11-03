@@ -1,0 +1,45 @@
+Set parameter Username
+Set parameter LicenseID to value 2742039
+Academic license - for non-commercial use only - expires 2026-11-20
+
+--- BD-G pooled(거점별 300) d=15 A=2 B=3 (N_B≤3) seed=1 S=50: n_h=5, |X|=8, 용량 750, 출점비 750, θᵁ=50.0 λᵁ=2000.0, TL=3600s, Gurobi 스레드 12
+  [설정] BD-G: 전역 = Ω (Gurobi NonConvex), 남은 시간 전체, 목표값 조기 종료, local cut 켬, belief cut 없음
+  [loc]  it   1 LB=-10000000.0000 UB=        Inf x=Int64[]    Ω_loc=    -0.0034 (0.4s)
+  [loc]  it   2 LB=-2304000.0004 UB=        Inf x=[1, 2, 3]  Ω_loc= -1518.1206 (6.6s)
+  [loc]  it   3 LB=-1536000.0004 UB=        Inf x=[1, 3]     Ω_loc= -1557.1225 (1.9s)
+  [loc]  it   4 LB=-706926.7683 UB=        Inf x=[2]        Ω_loc= -1323.7873 (1.8s)
+  [loc]  it   5 LB=-404958.2722 UB=        Inf x=[3]        Ω_loc= -1272.5040 (0.7s)
+  [loc]  it   6 LB=-305073.7836 UB=        Inf x=[2, 3]     Ω_loc= -1329.5211 (2.2s)
+  [loc]  it   7 LB=-302775.6128 UB=        Inf x=[1]        Ω_loc= -1392.0208 (0.4s)
+  [loc]  it   8 LB=-302025.6128 UB=        Inf x=[1, 2]     Ω_loc= -1558.3225 (1.8s)
+  [omg]  it   9 LB=  -642.0170 UB=  -640.2353 x=[1]        KKT= -1392.0167 bd= -1390.2353 start=NaN OBJECTIVE_LIMIT (108.9s)
+RESULT method=BD-G λ=2000 qB=750 d=15 m=5 nA=2 nB=3 seed=1 S=50 nh=5 status=Optimal x={1} LB=-642.016679 UB=-640.235281 gap=2.78e-03 iters=10 global=1 local=8 time=167.7
+
+--- BD-G pooled(거점별 300) d=15 A=2 B=3 (N_B≤3) seed=2 S=50: n_h=5, |X|=8, 용량 750, 출점비 750, θᵁ=50.0 λᵁ=2000.0, TL=3600s, Gurobi 스레드 12
+  [설정] BD-G: 전역 = Ω (Gurobi NonConvex), 남은 시간 전체, 목표값 조기 종료, local cut 켬, belief cut 없음
+  [loc]  it   1 LB=-10000000.0000 UB=        Inf x=Int64[]    Ω_loc=    -0.0037 (0.4s)
+  [loc]  it   2 LB=-3118500.0008 UB=        Inf x=[1, 2, 3]  Ω_loc= -2602.0062 (4.0s)
+  [loc]  it   3 LB=-1538602.0001 UB=        Inf x=[1, 2]     Ω_loc= -2592.9561 (1.3s)
+  [loc]  it   4 LB=-1398250.0003 UB=        Inf x=[3]        Ω_loc= -1666.9885 (0.9s)
+  [loc]  it   5 LB=-615621.5019 UB=        Inf x=[2]        Ω_loc= -1612.2883 (1.1s)
+  [loc]  it   6 LB=-575015.7648 UB=        Inf x=[1, 3]     Ω_loc= -2424.6397 (2.3s)
+  [loc]  it   7 LB=-377827.4168 UB=        Inf x=[1]        Ω_loc= -1551.0884 (2.9s)
+  [loc]  it   8 LB=-336666.9835 UB=        Inf x=[2, 3]     Ω_loc= -2586.0892 (1.7s)
+  [omg]  it   9 LB= -1092.9501 UB= -1063.5466 x=[1, 2]     KKT= -2587.3023 bd= -2563.5466 start=NaN OBJECTIVE_LIMIT (64.1s)
+  [omg]  it  10 LB= -1087.0721 UB= -1083.3161 x=[1, 2]     KKT= -2586.2667 bd= -2583.3161 start=NaN OBJECTIVE_LIMIT (1675.6s)
+RESULT method=BD-G λ=2000 qB=750 d=15 m=5 nA=2 nB=3 seed=2 S=50 nh=5 status=Optimal x={1,2} LB=-1086.266670 UB=-1083.316101 gap=2.72e-03 iters=11 global=2 local=8 time=1783.3
+
+--- BD-G pooled(거점별 300) d=15 A=2 B=3 (N_B≤3) seed=3 S=50: n_h=5, |X|=8, 용량 750, 출점비 750, θᵁ=50.0 λᵁ=2000.0, TL=3600s, Gurobi 스레드 12
+  [설정] BD-G: 전역 = Ω (Gurobi NonConvex), 남은 시간 전체, 목표값 조기 종료, local cut 켬, belief cut 없음
+  [loc]  it   1 LB=-10000000.0000 UB=        Inf x=Int64[]    Ω_loc=    -0.0036 (0.3s)
+  [loc]  it   2 LB=-2611500.0000 UB=        Inf x=[1, 2, 3]  Ω_loc= -1236.7229 (5.0s)
+  [loc]  it   3 LB=-388978.2309 UB=        Inf x=[2]        Ω_loc= -1060.4875 (1.8s)
+  [loc]  it   4 LB=-282880.9932 UB=        Inf x=[1]        Ω_loc= -1142.5208 (0.5s)
+  [loc]  it   5 LB=-265207.6331 UB=        Inf x=[3]        Ω_loc=  -624.9711 (1.8s)
+  [loc]  it   6 LB=-202819.1538 UB=        Inf x=[1, 2]     Ω_loc= -1208.1725 (4.5s)
+  [loc]  it   7 LB=-185145.7937 UB=        Inf x=[2, 3]     Ω_loc= -1097.9381 (2.5s)
+  [loc]  it   8 LB=-79048.5560 UB=        Inf x=[1, 3]     Ω_loc= -1162.6224 (3.6s)
+  [omg]  it   9 LB=  -392.5167 UB=  -259.0915 x=[1]        KKT= -1090.4420 bd= -1009.0915 start=NaN OBJECTIVE_LIMIT (16.2s)
+  [omg]  it  10 LB=  -340.4381 UB=  -336.8338 x=[1]        KKT= -1088.6610 bd= -1086.8338 start=NaN OBJECTIVE_LIMIT (110.8s)
+  [omg]  it  11 LB=  -338.6610 UB=  -336.8338 x=[1]        KKT= -1087.5167 bd= -1086.6858 start=NaN OPTIMAL (34.9s)
+RESULT method=BD-G λ=2000 qB=750 d=15 m=5 nA=2 nB=3 seed=3 S=50 nh=5 status=Optimal x={1} LB=-337.516668 UB=-336.833770 gap=2.03e-03 iters=12 global=3 local=8 time=216.2

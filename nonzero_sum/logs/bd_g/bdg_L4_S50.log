@@ -1,0 +1,30 @@
+Set parameter Username
+Set parameter LicenseID to value 2742039
+Academic license - for non-commercial use only - expires 2026-11-20
+
+--- BD-G pooled(거점별 300) d=20 A=3 B=2 (N_B≤2) seed=1 S=50: n_h=5, |X|=4, 용량 750, 출점비 750, θᵁ=50.0 λᵁ=2000.0, TL=3600s, Gurobi 스레드 12
+  [설정] BD-G: 전역 = Ω (Gurobi NonConvex), 남은 시간 전체, 목표값 조기 종료, local cut 켬, belief cut 없음
+  [loc]  it   1 LB=-10000000.0000 UB=        Inf x=Int64[]    Ω_loc=    -0.0060 (0.7s)
+  [loc]  it   2 LB=-1213500.0015 UB=        Inf x=[1, 2]     Ω_loc= -1888.1067 (3.3s)
+  [loc]  it   3 LB=-527216.8587 UB=        Inf x=[2]        Ω_loc= -1500.0075 (0.9s)
+  [loc]  it   4 LB=-417779.5098 UB=        Inf x=[1]        Ω_loc= -1500.0075 (0.9s)
+  [omg]  it   5 LB=  -750.0002 UB=  -594.1082 x=[1]        KKT= -1500.0000 bd= -1344.1082 start=NaN TIME_LIMIT (3576.1s)
+RESULT method=BD-G λ=2000 qB=750 d=20 m=5 nA=3 nB=2 seed=1 S=50 nh=5 status=TimeLimit x={1} LB=-750.000157 UB=-594.108220 gap=2.62e-01 iters=6 global=1 local=4 time=3607.1
+
+--- BD-G pooled(거점별 300) d=20 A=3 B=2 (N_B≤2) seed=2 S=50: n_h=5, |X|=4, 용량 750, 출점비 750, θᵁ=50.0 λᵁ=2000.0, TL=3600s, Gurobi 스레드 12
+  [설정] BD-G: 전역 = Ω (Gurobi NonConvex), 남은 시간 전체, 목표값 조기 종료, local cut 켬, belief cut 없음
+  [loc]  it   1 LB=-10000000.0000 UB=        Inf x=Int64[]    Ω_loc=    -0.0060 (0.7s)
+  [loc]  it   2 LB=-1843500.0005 UB=        Inf x=[1, 2]     Ω_loc= -1837.6258 (1.3s)
+  [loc]  it   3 LB=-554587.6167 UB=        Inf x=[2]        Ω_loc=  -921.5082 (1.5s)
+  [loc]  it   4 LB=-206261.1187 UB=        Inf x=[1]        Ω_loc= -1500.0066 (0.7s)
+  [omg]  it   5 LB=  -750.0000 UB=  -749.0874 x=[1]        KKT= -1500.0000 bd= -1499.0874 start=NaN OPTIMAL (12.8s)
+RESULT method=BD-G λ=2000 qB=750 d=20 m=5 nA=3 nB=2 seed=2 S=50 nh=5 status=Optimal x={1} LB=-750.000000 UB=-749.087420 gap=1.22e-03 iters=6 global=1 local=4 time=36.5
+
+--- BD-G pooled(거점별 300) d=20 A=3 B=2 (N_B≤2) seed=3 S=50: n_h=5, |X|=4, 용량 750, 출점비 750, θᵁ=50.0 λᵁ=2000.0, TL=3600s, Gurobi 스레드 12
+  [설정] BD-G: 전역 = Ω (Gurobi NonConvex), 남은 시간 전체, 목표값 조기 종료, local cut 켬, belief cut 없음
+  [loc]  it   1 LB=-10000000.0000 UB=        Inf x=Int64[]    Ω_loc=    -0.0060 (0.6s)
+  [loc]  it   2 LB=-2772249.9978 UB=        Inf x=[1, 2]     Ω_loc= -1976.1234 (5.5s)
+  [loc]  it   3 LB=-546901.7830 UB=        Inf x=[1]        Ω_loc= -1012.4084 (4.0s)
+  [loc]  it   4 LB=-333874.6166 UB=        Inf x=[2]        Ω_loc= -1497.6065 (0.8s)
+  [omg]  it   5 LB=  -747.6003 UB=  -744.9920 x=[2]        KKT= -1497.6000 bd= -1494.9920 start=NaN OBJECTIVE_LIMIT (500.8s)
+RESULT method=BD-G λ=2000 qB=750 d=20 m=5 nA=3 nB=2 seed=3 S=50 nh=5 status=Optimal x={2} LB=-747.600001 UB=-744.992039 gap=3.50e-03 iters=6 global=1 local=4 time=542.2

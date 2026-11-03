@@ -1,0 +1,42 @@
+Set parameter Username
+Set parameter LicenseID to value 2742039
+Academic license - for non-commercial use only - expires 2026-11-20
+
+--- BD-G pooled(거점별 300) d=20 A=2 B=3 (N_B≤3) seed=1 S=50: n_h=5, |X|=8, 용량 1125, 출점비 750, θᵁ=50.0 λᵁ=2000.0, TL=3600s, Gurobi 스레드 12
+  [설정] BD-G: 전역 = Ω (Gurobi NonConvex), 남은 시간 전체, 목표값 조기 종료, local cut 켬, belief cut 없음
+  [loc]  it   1 LB=-10000000.0000 UB=        Inf x=Int64[]    Ω_loc=    -0.0078 (0.6s)
+  [loc]  it   2 LB=-3457687.5000 UB=        Inf x=[1, 2, 3]  Ω_loc= -3152.4266 (3.4s)
+  [loc]  it   3 LB=-966831.6324 UB=        Inf x=[1]        Ω_loc= -1466.5090 (0.6s)
+  [loc]  it   4 LB=-868849.0236 UB=        Inf x=[3]        Ω_loc= -1500.0100 (0.8s)
+  [loc]  it   5 LB=-752387.1943 UB=        Inf x=[2]        Ω_loc= -1500.0100 (0.8s)
+  [loc]  it   6 LB=-542097.9392 UB=        Inf x=[1, 3]     Ω_loc= -2763.5114 (2.1s)
+  [loc]  it   7 LB=-425636.1099 UB=        Inf x=[1, 2]     Ω_loc= -2763.5114 (2.3s)
+  [loc]  it   8 LB=-327653.5011 UB=        Inf x=[2, 3]     Ω_loc= -2829.6765 (1.0s)
+  [omg]  it   9 LB= -1329.6671 UB= -1329.6455 x=[2, 3]     KKT= -2829.6667 bd= -2829.6455 start=NaN OPTIMAL (247.2s)
+RESULT method=BD-G λ=2000 qB=750 d=20 m=5 nA=2 nB=3 seed=1 S=50 nh=5 status=Optimal x={2,3} LB=-1329.667104 UB=-1329.645523 gap=1.62e-05 iters=10 global=1 local=8 time=324.8
+
+--- BD-G pooled(거점별 300) d=20 A=2 B=3 (N_B≤3) seed=2 S=50: n_h=5, |X|=8, 용량 1125, 출점비 750, θᵁ=50.0 λᵁ=2000.0, TL=3600s, Gurobi 스레드 12
+  [설정] BD-G: 전역 = Ω (Gurobi NonConvex), 남은 시간 전체, 목표값 조기 종료, local cut 켬, belief cut 없음
+  [loc]  it   1 LB=-10000000.0000 UB=        Inf x=Int64[]    Ω_loc=    -0.0080 (0.5s)
+  [loc]  it   2 LB=-4149000.0000 UB=        Inf x=[1, 2, 3]  Ω_loc= -3337.0469 (1.5s)
+  [loc]  it   3 LB=-921750.0000 UB=        Inf x=[3]        Ω_loc= -1500.0091 (0.5s)
+  [loc]  it   4 LB=-765419.0346 UB=        Inf x=[1]        Ω_loc= -1500.0103 (0.9s)
+  [loc]  it   5 LB=-715103.0348 UB=        Inf x=[2]        Ω_loc= -1500.0092 (0.5s)
+  [loc]  it   6 LB=-555337.0333 UB=        Inf x=[1, 3]     Ω_loc= -2421.5125 (1.7s)
+  [loc]  it   7 LB=-505021.0336 UB=        Inf x=[2, 3]     Ω_loc= -2745.2600 (1.4s)
+  [loc]  it   8 LB=-211169.0346 UB=        Inf x=[1, 2]     Ω_loc= -3000.0114 (1.1s)
+  [omg]  it   9 LB= -1500.0000 UB= -1496.5960 x=[1, 2]     KKT= -3000.0083 bd= -2996.5960 start=NaN OBJECTIVE_LIMIT (58.6s)
+RESULT method=BD-G λ=2000 qB=750 d=20 m=5 nA=2 nB=3 seed=2 S=50 nh=5 status=Optimal x={1,2} LB=-1500.000000 UB=-1496.595979 gap=2.27e-03 iters=10 global=1 local=8 time=109.4
+
+--- BD-G pooled(거점별 300) d=20 A=2 B=3 (N_B≤3) seed=3 S=50: n_h=5, |X|=8, 용량 1125, 출점비 750, θᵁ=50.0 λᵁ=2000.0, TL=3600s, Gurobi 스레드 12
+  [설정] BD-G: 전역 = Ω (Gurobi NonConvex), 남은 시간 전체, 목표값 조기 종료, local cut 켬, belief cut 없음
+  [loc]  it   1 LB=-10000000.0000 UB=        Inf x=Int64[]    Ω_loc=    -0.0079 (0.5s)
+  [loc]  it   2 LB=-5994000.0000 UB=        Inf x=[1, 2, 3]  Ω_loc= -3202.7770 (3.3s)
+  [loc]  it   3 LB=-2307952.7667 UB=        Inf x=[1, 2]     Ω_loc= -2352.4460 (1.9s)
+  [loc]  it   4 LB=-2307952.7667 UB=        Inf x=[2, 3]     Ω_loc= -2770.4291 (1.3s)
+  [loc]  it   5 LB=-2307952.7667 UB=        Inf x=[1, 3]     Ω_loc= -2966.4766 (1.0s)
+  [loc]  it   6 LB=-2074875.0000 UB=        Inf x=[2]        Ω_loc= -1491.7438 (0.9s)
+  [loc]  it   7 LB=-1844250.0000 UB=        Inf x=[1]        Ω_loc= -1500.0106 (0.9s)
+  [loc]  it   8 LB=-1169391.7269 UB=        Inf x=[3]        Ω_loc= -1500.0103 (0.8s)
+  [omg]  it   9 LB= -1466.4671 UB= -1463.6185 x=[1, 3]     KKT= -2966.4755 bd= -2963.6185 start=NaN OPTIMAL (167.6s)
+RESULT method=BD-G λ=2000 qB=750 d=20 m=5 nA=2 nB=3 seed=3 S=50 nh=5 status=Optimal x={1,3} LB=-1466.467068 UB=-1463.618540 gap=1.95e-03 iters=10 global=1 local=8 time=223.7

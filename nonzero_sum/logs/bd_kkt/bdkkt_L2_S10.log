@@ -1,0 +1,50 @@
+Set parameter Username
+Set parameter LicenseID to value 2742039
+Academic license - for non-commercial use only - expires 2026-11-20
+
+--- BD-KKT pooled(거점별 300) d=15 A=3 B=2 (N_B≤2) seed=1 S=10: n_h=5, |X|=4, 용량 500, 출점비 750, θᵁ=50.0 λᵁ=2000.0, TL=3600s, Gurobi 스레드 12
+  [설정] BD-KKT: 전역 = monolithic KKT (Gurobi NonConvex), 남은 시간 전체, 목표값 조기 종료, local cut 켬, belief cut 없음
+  [loc]  it   1 LB=-10000000.0000 UB=        Inf x=Int64[]    Ω_loc=    -0.0005 (0.1s)
+  [loc]  it   2 LB=-1225166.6694 UB=        Inf x=[1, 2]     Ω_loc=  -414.3342 (0.3s)
+  [loc]  it   3 LB=-663833.3347 UB=        Inf x=[2]        Ω_loc=  -414.3341 (0.2s)
+  [loc]  it   4 LB=-284386.0072 UB=        Inf x=[1]        Ω_loc=  -414.3341 (0.3s)
+  [kkt]  it   5 LB=     0.0000 UB=     0.0000 x=Int64[]    KKT=    -0.0000 bd=    -0.0000 start=-0.0000 OPTIMAL (4.0s)
+RESULT method=BD-KKT λ=2000 qB=750 d=15 m=5 nA=3 nB=2 seed=1 S=10 nh=5 status=Optimal x={} LB=0.000000 UB=0.000000 gap=1.65e-12 iters=6 global=1 local=4 time=12.9
+
+--- BD-KKT pooled(거점별 300) d=15 A=3 B=2 (N_B≤2) seed=2 S=10: n_h=5, |X|=4, 용량 500, 출점비 750, θᵁ=50.0 λᵁ=2000.0, TL=3600s, Gurobi 스레드 12
+  [설정] BD-KKT: 전역 = monolithic KKT (Gurobi NonConvex), 남은 시간 전체, 목표값 조기 종료, local cut 켬, belief cut 없음
+  [loc]  it   1 LB=-10000000.0000 UB=        Inf x=Int64[]    Ω_loc=    -0.0006 (0.1s)
+  [loc]  it   2 LB=-929750.0000 UB=        Inf x=[1, 2]     Ω_loc= -1706.3342 (0.7s)
+  [loc]  it   3 LB=-305916.6667 UB=        Inf x=[1]        Ω_loc= -1115.0006 (0.2s)
+  [loc]  it   4 LB=-169956.7536 UB=        Inf x=[2]        Ω_loc= -1187.5842 (0.2s)
+  [kkt]  it   5 LB=  -437.5833 UB=   402.2160 x=[2]        KKT=       -Inf bd=  -347.7840 start=-1187.5834 TIME_LIMIT (3598.3s)
+RESULT method=BD-KKT λ=2000 qB=750 d=15 m=5 nA=3 nB=2 seed=2 S=10 nh=5 status=TimeLimit x={2} LB=-437.583335 UB=402.216049 gap=2.09e+00 iters=6 global=1 local=4 time=3600.2
+
+--- BD-KKT pooled(거점별 300) d=15 A=3 B=2 (N_B≤2) seed=3 S=10: n_h=5, |X|=4, 용량 500, 출점비 750, θᵁ=50.0 λᵁ=2000.0, TL=3600s, Gurobi 스레드 12
+  [설정] BD-KKT: 전역 = monolithic KKT (Gurobi NonConvex), 남은 시간 전체, 목표값 조기 종료, local cut 켬, belief cut 없음
+  [loc]  it   1 LB=-10000000.0000 UB=        Inf x=Int64[]    Ω_loc=    -0.0006 (0.1s)
+  [loc]  it   2 LB=-1189749.9998 UB=        Inf x=[1, 2]     Ω_loc=  -545.5842 (0.4s)
+  [loc]  it   3 LB=-193145.1976 UB=        Inf x=[1]        Ω_loc=  -234.9174 (0.2s)
+  [loc]  it   4 LB=-100173.5834 UB=        Inf x=[2]        Ω_loc=  -318.5007 (0.4s)
+  [kkt]  it   5 LB=    -0.0000 UB=     0.0000 x=Int64[]    KKT=       -Inf bd=    -0.0000 start=-0.0000 OBJECTIVE_LIMIT (0.2s)
+RESULT method=BD-KKT λ=2000 qB=750 d=15 m=5 nA=3 nB=2 seed=3 S=10 nh=5 status=Optimal x={} LB=-0.000000 UB=0.000000 gap=5.46e-12 iters=6 global=1 local=4 time=2.4
+Set parameter Username
+Set parameter LicenseID to value 2742039
+Academic license - for non-commercial use only - expires 2026-11-20
+
+--- BD-KKT pooled(거점별 300) d=15 A=3 B=2 (N_B≤2) seed=4 S=10: n_h=5, |X|=4, 용량 500, 출점비 750, θᵁ=50.0 λᵁ=2000.0, TL=3600s, Gurobi 스레드 12
+  [설정] BD-KKT: 전역 = monolithic KKT (Gurobi NonConvex), 남은 시간 전체, 목표값 조기 종료, local cut 켬, belief cut 없음
+  [loc]  it   1 LB=-10000000.0000 UB=        Inf x=Int64[]    Ω_loc=    -0.0005 (0.1s)
+  [loc]  it   2 LB=-440166.6668 UB=        Inf x=[1, 2]     Ω_loc= -1705.3342 (0.3s)
+  [loc]  it   3 LB=-220083.3334 UB=        Inf x=[2]        Ω_loc=  -617.5008 (0.1s)
+  [loc]  it   4 LB=-198978.9167 UB=        Inf x=[1]        Ω_loc= -1034.4174 (0.2s)
+  [kkt]  it   5 LB=  -284.4167 UB=   750.0000 x=[1]        KKT=       -Inf bd=     0.0000 start=-1181.3333 TIME_LIMIT (3601.4s)
+RESULT method=BD-KKT λ=2000 qB=750 d=15 m=5 nA=3 nB=2 seed=4 S=10 nh=5 status=TimeLimit x={1} LB=-284.416669 UB=750.000007 gap=1.38e+00 iters=6 global=1 local=4 time=3609.9
+
+--- BD-KKT pooled(거점별 300) d=15 A=3 B=2 (N_B≤2) seed=5 S=10: n_h=5, |X|=4, 용량 500, 출점비 750, θᵁ=50.0 λᵁ=2000.0, TL=3600s, Gurobi 스레드 12
+  [설정] BD-KKT: 전역 = monolithic KKT (Gurobi NonConvex), 남은 시간 전체, 목표값 조기 종료, local cut 켬, belief cut 없음
+  [loc]  it   1 LB=-10000000.0000 UB=        Inf x=Int64[]    Ω_loc=    -0.0006 (0.1s)
+  [loc]  it   2 LB=-308916.6670 UB=        Inf x=[1, 2]     Ω_loc= -1781.5009 (0.1s)
+  [loc]  it   3 LB=-199666.6670 UB=        Inf x=[2]        Ω_loc=  -376.4175 (0.2s)
+  [loc]  it   4 LB=-109250.0000 UB=        Inf x=[1]        Ω_loc= -1309.2506 (0.2s)
+  [kkt]  it   5 LB=  -559.2500 UB=   750.0000 x=[1]        KKT= -1302.2500 bd=     0.0000 start=-1309.2500 OBJECTIVE_LIMIT (8.2s)
