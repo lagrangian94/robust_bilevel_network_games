@@ -11,6 +11,7 @@ c_Lᵀx + w(x) ≥ UB − tol·max(1,|UB|) 가 될 때까지 제한을 늘린다
 
 입력: 로그의 RESULT 줄 (pilot_pooled_store.jl 형식). 인스턴스는 pilot_pooled_store.jl 의 mk 와 같은 방식으로 다시 만든다
   (N_B = nB, 거점별 한도 300, f 0.1, p 0.3, ε̂ = ε̃ = 0.3, δ 0.1, β 0.4, θᵁ = circuit 정확값, λᵁ 는 RESULT 의 값).
+  RESULT 끝에 beta=·delta= 가 있으면 (2026-11-03 δ·β 민감도 실행) 그 β·δ 로 만든다. 없으면 β 0.4, δ 0.1.
   같은 (로그, seed, S) 의 CERT 줄이 출력 파일에 이미 있으면 건너뛴다 (중간에 끊어도 이어서).
 환경변수: CF_LOGS = "main_list_L*_S*.log,main_pooled_store_A*_S*.log" (logs/ 안의 glob, 쉼표)   CF_OUT = logs/cert_lambda_free.log
           CF_TOL = 5e-3   CF_TLS = "10,120,600" (x 하나에 쓰는 α-B&B 제한, 차례로)   CF_WORKERS = 12   CF_SKIP = "contended"
@@ -47,6 +48,7 @@ files = sort(unique(vcat([filter(f -> occursin(globre(p), f), readdir(logdir)) f
 files = filter(f -> !any(occursin(s, f) for s in skip if !isempty(s)), files)
 
 field(line, k) = (m = match(Regex("(?:^|\\s)" * k * "=(\\S+)"), line); m === nothing ? error("RESULT 에 $k 없음: $line") : m.captures[1])
+ofield(line, k, d) = (m = match(Regex("(?:^|\\s)" * k * "=(\\S+)"), line); m === nothing ? d : m.captures[1])   # 없으면 기본값 d
 done = Set{Tuple{String,Int,Int}}()
 if isfile(out)
     for l in eachline(out)
@@ -55,11 +57,11 @@ if isfile(out)
     end
 end
 
-function mk(nloc, nA, nB, NB, S, seed, qB, λ)
+function mk(nloc, nA, nB, NB, S, seed, qB, λ, β, δ)
     capv = 150.0 * (nloc - nA - nB) / nA
     nd = nz_with_delta(make_location_instance(; coords=:random, n_loc=nloc, nA=nA, nB=nB, NB=NB, S=S, seed=seed,
         bA=capv, bB=capv, qB=qB, dlo=50.0, dhi=150.0, p=0.3, f=0.1, reservation=:pooled, pool_limit=:store, quota=300.0,
-        eps_hat=0.3, eps_tilde=0.3, beta=0.4), 0.1)
+        eps_hat=0.3, eps_tilde=0.3, beta=β), δ)
     return nz_with_bounds(nd; thetaU=nz_theta_circuit_exact(nd)[1], lambdaU=λ)
 end
 xstr(x) = "{" * join(findall(x .> 0.5), ",") * "}"
@@ -74,9 +76,10 @@ open(out, "a") do io
         nloc = parse(Int, field(line, "d")); nA = parse(Int, field(line, "nA")); nB = parse(Int, field(line, "nB"))
         λ = parse(Float64, field(line, "λ")); qB = parse(Float64, field(line, "qB"))
         UB = parse(Float64, field(line, "UB")); st = field(line, "status"); xhat = field(line, "x")
+        β = parse(Float64, ofield(line, "beta", "0.4")); δ = parse(Float64, ofield(line, "delta", "0.1"))
         isfinite(UB) || (@printf(io, "CERT file=%s seed=%d S=%d status=%s certified=no reason=UB_not_finite\n", f, seed, S, st); flush(io); continue)
         t0 = time()
-        nd = mk(nloc, nA, nB, nB, S, seed, qB, λ)
+        nd = mk(nloc, nA, nB, nB, S, seed, qB, λ, β, δ)
         thr = UB - tol * max(1.0, abs(UB))
         xs = [Float64.(collect(bb)) for bb in Iterators.product(fill(0:1, nd.nx)...)
               if sum(bb) <= nd.gamma && all(nd.x_allowed[i] || bb[i] == 0 for i in 1:nd.nx)]
@@ -95,9 +98,9 @@ open(out, "a") do io
             push!(detail, @sprintf("%s:%.4f@%.0f", xstr(x), v, used))
         end
         gapf = (UB - LBf) / max(1.0, abs(UB))
-        @printf(io, "CERT file=%s seed=%d S=%d status=%s x=%s UB=%.6f LBfree=%.6f gapfree=%.2e certified=%s argminLB=%s uncert=%s time=%.1f xs=%s\n",
+        @printf(io, "CERT file=%s seed=%d S=%d status=%s x=%s UB=%.6f LBfree=%.6f gapfree=%.2e certified=%s argminLB=%s uncert=%s time=%.1f xs=%s%s\n",
                 f, seed, S, st, xhat, UB, LBf, gapf, gapf <= tol ? "yes" : "no", argx, isempty(bad) ? "-" : join(bad, ";"),
-                time() - t0, join(detail, ";"))
+                time() - t0, join(detail, ";"), β == 0.4 && δ == 0.1 ? "" : @sprintf(" beta=%.2f delta=%.3f", β, δ))
         flush(io)
     end
     @printf(io, "# cert_lambda_free 끝 %s\n", string(Base.Libc.strftime(time())))
