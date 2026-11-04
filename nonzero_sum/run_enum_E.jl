@@ -62,6 +62,7 @@ all_x(nd) = [Float64.(collect(bits)) for bits in Iterators.product(fill(0:1, nd.
              if sum(bits) <= nd.gamma && all(nd.x_allowed[i] || bits[i] == 0 for i in 1:nd.nx)]
 tol = 5e-3; gap = 1e-3
 relg(lb, ub) = (ub - lb) / max(1.0, abs(ub))
+agap(r) = (r[:UB] - r[:LB]) / max(1.0, abs(r[:LB]))      # α-B&B 의 종료 기준과 같은 gap (|LB| 기준)
 
 for seed in seeds, S in sort(Ss)
     nd = mk(S, seed); X = all_x(nd)
@@ -78,17 +79,23 @@ for seed in seeds, S in sort(Ss)
         ti = time()
         r = nz_alpha_bnb_dr(nd, x; nworkers=nw, time_limit=rem, rel_gap=gap, verbose=false, target=tgt, kw...); calls += 1
         how = "끝"
-        if tgt !== nothing && r[:LB] >= tgt && relg(r[:LB], r[:UB]) > gap
+        if tgt !== nothing && r[:LB] >= tgt && agap(r) > gap
             how = "가지침 (incumbent ≥ 목표)"; npruned += 1
         else
             # Benders 의 oracle 과 같은 gap 조임 (_oracle_gap_eff): 전체 목적값 |qᵀx + V| 가 |V| 보다 작으면 V 기준 gap 을 줄여
             # 전체 기준 0.5% 를 맞춘다. 목표값으로 멈췄거나 (상한 ≤ 목표) gap 이 모자라면 같은 탐색 상태에서 목표값 없이 이어 푼다.
+            # ge 는 새 UB 로 다시 계산 (2026-11-04 수정: 이어 풀기 전 UB 로 고정해 두어 시간이 남았는데도 "시간 한도" 로 표시되던 것).
             ge = _oracle_gap_eff(gap, tol, cx + r[:UB], r[:UB])
-            if relg(r[:LB], r[:UB]) > ge && TL - (time() - t0) > 1.0
+            nres = 0
+            while agap(r) > ge && TL - (time() - t0) > 1.0 && nres < 5
                 r = nz_alpha_bnb_dr(nd, x; nworkers=nw, time_limit=TL - (time() - t0), rel_gap=ge, verbose=false, resume=r[:state], kw...)
-                calls += 1; how = tgt !== nothing ? "최선 갱신 → 이어 풂" : "gap 조여 이어 풂"
+                calls += 1; nres += 1; how = tgt !== nothing ? "최선 갱신 → 이어 풂" : "gap 조여 이어 풂"
+                ge = _oracle_gap_eff(gap, tol, cx + r[:UB], r[:UB])
             end
-            relg(r[:LB], r[:UB]) > ge && (how *= " (시간 한도)"; nunfin += 1)
+            if agap(r) > ge
+                nunfin += 1
+                how *= TL - (time() - t0) <= 1.0 ? " (시간 한도)" : @sprintf(" (gap %.1e > %.1e)", agap(r), ge)
+            end
         end
         lbs[i] = cx + r[:LB]
         if cx + r[:UB] < best_ub && !(how == "가지침 (incumbent ≥ 목표)")

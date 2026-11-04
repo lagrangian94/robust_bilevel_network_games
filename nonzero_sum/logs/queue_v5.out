@@ -2,3 +2,38 @@
 === v4 멈춤 (v5) 11-04 02:44: grb L6 S10, L6 S20 세 칸은 돌리지 않음
 === v5 시작 11-04 02:44
 === 시작 11-04 02:44: V1 nonzero_sum/logs/loc_insample_sgb128_pooled_store.log
+=== 끝 11-04 02:45: V1 (시간 제한 x: 0)
+=== 시작 11-04 02:45: V2 nonzero_sum/logs/loc_oos_sgb128_pooled_store.log
+=== 끝 11-04 02:45: V2
+=== 시작 11-04 02:45: E nonzero_sum/logs/enumE/E_L1_S10.log
+=== 끝 11-04 03:07: E nonzero_sum/logs/enumE/E_L1_S10.log  Optimal 10/10
+=== 시작 11-04 03:07: E nonzero_sum/logs/enumE/E_L2_S10.log
+=== 끝 11-04 03:26: E nonzero_sum/logs/enumE/E_L2_S10.log  Optimal 10/10
+=== 시작 11-04 03:26: E nonzero_sum/logs/enumE/E_L3_S10.log
+=== 끝 11-04 03:48: E nonzero_sum/logs/enumE/E_L3_S10.log  Optimal 10/10
+=== 시작 11-04 03:48: E nonzero_sum/logs/enumE/E_L4_S10.log
+=== 끝 11-04 04:11: E nonzero_sum/logs/enumE/E_L4_S10.log  Optimal 10/10
+=== 시작 11-04 04:11: E nonzero_sum/logs/enumE/E_L5_S10.log
+=== 끝 11-04 04:34: E nonzero_sum/logs/enumE/E_L5_S10.log  Optimal 10/10
+=== 시작 11-04 04:34: zero-sum S10 시드 42,1,2,3,4 × menu,nob (true_dro/factor_5/logs/nig_coupled_seeds.stdout)
+=== v5 멈춤 11-04 11:09: V1·V2 pair 끼워 넣음, E 는 고친 run_enum_E.jl 로 L1 부터 (예전 L1 = E_L1_S10.v0.log)
+=== 시작 11-04 11:09: V1 pair nonzero_sum/logs/loc_insample_sgb128_pair_q150.log
+=== (11:10 정정) E L1~L5 는 04:34 에 이미 끝남 (옛 run_enum_E.jl, 50/50 Optimal) → 로그 이름 되돌림, E 는 다시 안 돌림. 멈춘 zero-sum 칸 sioux_falls nob s2 는 .aborted.log
+=== 끝 11-04 11:21: V1 pair (시간 제한 x: 0)
+=== 시작 11-04 11:21: V2 pair nonzero_sum/logs/loc_oos_sgb128_pair.log
+=== 끝 11-04 11:21: V2 pair
+=== v5 시작 11-04 11:22
+건너뜀 (이미 끝남): nonzero_sum/logs/enumE/E_L1_S10.log
+건너뜀 (이미 끝남): nonzero_sum/logs/enumE/E_L2_S10.log
+건너뜀 (이미 끝남): nonzero_sum/logs/enumE/E_L3_S10.log
+건너뜀 (이미 끝남): nonzero_sum/logs/enumE/E_L4_S10.log
+건너뜀 (이미 끝남): nonzero_sum/logs/enumE/E_L5_S10.log
+=== 시작 11-04 11:22: zero-sum S10 시드 42,1,2,3,4 × menu,nob (true_dro/factor_5/logs/nig_coupled_seeds.stdout)
+=== 끝 11-04 16:55: zero-sum (45 Optimal)
+=== 시작 11-04 16:55: sens nonzero_sum/logs/sens/sens_L2_S20_d0.log (δ=0 β=0.4)
+=== 끝 11-04 17:09: sens nonzero_sum/logs/sens/sens_L2_S20_d0.log  Optimal 10/10
+=== 시작 11-04 17:09: sens nonzero_sum/logs/sens/sens_L2_S20_d0.3.log (δ=0.3 β=0.4)
+=== 끝 11-04 17:25: sens nonzero_sum/logs/sens/sens_L2_S20_d0.3.log  Optimal 10/10
+=== 시작 11-04 17:25: sens nonzero_sum/logs/sens/sens_L2_S20_d0.6.log (δ=0.6 β=0.4)
+=== 끝 11-04 17:43: sens nonzero_sum/logs/sens/sens_L2_S20_d0.6.log  Optimal 10/10
+=== 시작 11-04 17:43: sens nonzero_sum/logs/sens/sens_L2_S20_b0.log (δ=0.1 β=0)

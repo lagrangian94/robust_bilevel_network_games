@@ -1,0 +1,159 @@
+Set parameter Username
+Set parameter LicenseID to value 2742039
+Academic license - for non-commercial use only - expires 2026-11-20
+
+--- E (열거, 가지치기) pooled(거점별 300) d=15 A=3 B=2 (N_B≤2) seed=1 S=10: n_h=5, |X|=4, θᵁ=50.0 λᵁ=2000.0, TL=3600s, 프리솔브 켬
+Set parameter Username
+Set parameter LicenseID to value 2742039
+Academic license - for non-commercial use only - expires 2026-11-20
+    [반응 프리솔브] x=Int64[]: 활성 3 중 0 개를 0 으로 고정 (9.3s)
+Set parameter Username
+Set parameter LicenseID to value 2742039
+Academic license - for non-commercial use only - expires 2026-11-20
+Set parameter Username
+Set parameter LicenseID to value 2742039
+Academic license - for non-commercial use only - expires 2026-11-20
+Set parameter Username
+Set parameter LicenseID to value 2742039
+Academic license - for non-commercial use only - expires 2026-11-20
+Set parameter Username
+Set parameter LicenseID to value 2742039
+Academic license - for non-commercial use only - expires 2026-11-20
+Set parameter Username
+Set parameter LicenseID to value 2742039
+Academic license - for non-commercial use only - expires 2026-11-20
+Set parameter Username
+Set parameter LicenseID to value 2742039
+Academic license - for non-commercial use only - expires 2026-11-20
+Set parameter Username
+Set parameter LicenseID to value 2742039
+Academic license - for non-commercial use only - expires 2026-11-20
+Set parameter Username
+Set parameter LicenseID to value 2742039
+Academic license - for non-commercial use only - expires 2026-11-20
+Set parameter Username
+Set parameter LicenseID to value 2742039
+Academic license - for non-commercial use only - expires 2026-11-20
+Set parameter Username
+Set parameter LicenseID to value 2742039
+Academic license - for non-commercial use only - expires 2026-11-20
+Set parameter Username
+Set parameter LicenseID to value 2742039
+Academic license - for non-commercial use only - expires 2026-11-20
+Set parameter Username
+Set parameter LicenseID to value 2742039
+Academic license - for non-commercial use only - expires 2026-11-20
+
+******************************************************************************
+This program contains Ipopt, a library for large-scale nonlinear optimization.
+ Ipopt is released as open source code under the Eclipse Public License (EPL).
+         For more information visit https://github.com/coin-or/Ipopt
+******************************************************************************
+
+  x={}       qx=     0.0 LB=      0.0000 UB=      0.0000  끝                         24.9s (전체 25s)
+    [반응 프리솔브] x=[1]: 활성 4 중 0 개를 0 으로 고정 (11.9s)
+  x={1}      qx=   750.0 LB=    335.2501 UB=    466.1376  가지침 (incumbent ≥ 목표)  16.0s (전체 41s)
+    [반응 프리솔브] x=[2]: 활성 4 중 0 개를 0 으로 고정 (10.9s)
+  x={2}      qx=   750.0 LB=    330.6667 UB=    412.7519  가지침 (incumbent ≥ 목표)  13.4s (전체 55s)
+    [반응 프리솔브] x=[1, 2]: 활성 5 중 0 개를 0 으로 고정 (35.2s)
+  x={1,2}    qx=  1500.0 LB=   1085.1548 UB=   1355.5237  가지침 (incumbent ≥ 목표)  38.4s (전체 93s)
+RESULT E pooled-store λ=2000 qB=750 d=15 m=5 nA=3 nB=2 seed=1 S=10 nh=5 status=Optimal x={} LB=0.000000 UB=0.000001 gap=1.00e-06 calls=4 pruned=3 unfinished=0 nx=4 time=92.9
+
+--- E (열거, 가지치기) pooled(거점별 300) d=15 A=3 B=2 (N_B≤2) seed=2 S=10: n_h=5, |X|=4, θᵁ=50.0 λᵁ=2000.0, TL=3600s, 프리솔브 켬
+    [반응 프리솔브] x=Int64[]: 활성 3 중 0 개를 0 으로 고정 (7.1s)
+  x={}       qx=     0.0 LB=     -0.0000 UB=      0.0000  끝                         8.6s (전체 9s)
+    [반응 프리솔브] x=[1]: 활성 4 중 0 개를 0 으로 고정 (22.9s)
+  x={1}      qx=   750.0 LB=   -365.0000 UB=   -364.5342  최선 갱신 → 이어 풂        28.4s (전체 37s)
+    [반응 프리솔브] x=[2]: 활성 4 중 0 개를 0 으로 고정 (18.0s)
+  x={2}      qx=   750.0 LB=   -436.4259 UB=   -435.5820  최선 갱신 → 이어 풂        23.8s (전체 61s)
+    [반응 프리솔브] x=[1, 2]: 활성 5 중 0 개를 0 으로 고정 (31.4s)
+  x={1,2}    qx=  1500.0 LB=   -182.0855 UB=     70.6469  가지침 (incumbent ≥ 목표)  42.2s (전체 103s)
+RESULT E pooled-store λ=2000 qB=750 d=15 m=5 nA=3 nB=2 seed=2 S=10 nh=5 status=Optimal x={2} LB=-436.425897 UB=-435.582048 gap=1.94e-03 calls=6 pruned=1 unfinished=0 nx=4 time=103.0
+
+--- E (열거, 가지치기) pooled(거점별 300) d=15 A=3 B=2 (N_B≤2) seed=3 S=10: n_h=5, |X|=4, θᵁ=50.0 λᵁ=2000.0, TL=3600s, 프리솔브 켬
+    [반응 프리솔브] x=Int64[]: 활성 3 중 0 개를 0 으로 고정 (4.8s)
+  x={}       qx=     0.0 LB=     -0.0000 UB=      0.0000  끝                         6.3s (전체 6s)
+    [반응 프리솔브] x=[1]: 활성 4 중 0 개를 0 으로 고정 (17.6s)
+  x={1}      qx=   750.0 LB=    515.0828 UB=    750.0000  가지침 (incumbent ≥ 목표)  20.6s (전체 27s)
+    [반응 프리솔브] x=[2]: 활성 4 중 0 개를 0 으로 고정 (10.2s)
+  x={2}      qx=   750.0 LB=    431.0838 UB=    458.2657  가지침 (incumbent ≥ 목표)  13.3s (전체 40s)
+    [반응 프리솔브] x=[1, 2]: 활성 5 중 0 개를 0 으로 고정 (17.7s)
+  x={1,2}    qx=  1500.0 LB=    967.3747 UB=   1247.1434  가지침 (incumbent ≥ 목표)  20.5s (전체 61s)
+RESULT E pooled-store λ=2000 qB=750 d=15 m=5 nA=3 nB=2 seed=3 S=10 nh=5 status=Optimal x={} LB=-0.000000 UB=0.000001 gap=1.00e-06 calls=4 pruned=3 unfinished=0 nx=4 time=60.7
+
+--- E (열거, 가지치기) pooled(거점별 300) d=15 A=3 B=2 (N_B≤2) seed=4 S=10: n_h=5, |X|=4, θᵁ=50.0 λᵁ=2000.0, TL=3600s, 프리솔브 켬
+    [반응 프리솔브] x=Int64[]: 활성 3 중 0 개를 0 으로 고정 (3.6s)
+  x={}       qx=     0.0 LB=      0.0000 UB=      0.0000  끝                         4.5s (전체 5s)
+    [반응 프리솔브] x=[1]: 활성 4 중 0 개를 0 으로 고정 (11.6s)
+  x={1}      qx=   750.0 LB=     11.7499 UB=    240.1133  가지침 (incumbent ≥ 목표)  14.3s (전체 19s)
+    [반응 프리솔브] x=[2]: 활성 4 중 0 개를 0 으로 고정 (10.2s)
+  x={2}      qx=   750.0 LB=    215.8330 UB=    278.8059  가지침 (incumbent ≥ 목표)  12.4s (전체 31s)
+    [반응 프리솔브] x=[1, 2]: 활성 5 중 0 개를 0 으로 고정 (25.4s)
+  x={1,2}    qx=  1500.0 LB=    115.2206 UB=    329.8932  가지침 (incumbent ≥ 목표)  36.5s (전체 68s)
+RESULT E pooled-store λ=2000 qB=750 d=15 m=5 nA=3 nB=2 seed=4 S=10 nh=5 status=Optimal x={} LB=0.000000 UB=0.000001 gap=1.00e-06 calls=4 pruned=3 unfinished=0 nx=4 time=67.8
+
+--- E (열거, 가지치기) pooled(거점별 300) d=15 A=3 B=2 (N_B≤2) seed=5 S=10: n_h=5, |X|=4, θᵁ=50.0 λᵁ=2000.0, TL=3600s, 프리솔브 켬
+    [반응 프리솔브] x=Int64[]: 활성 3 중 0 개를 0 으로 고정 (7.8s)
+  x={}       qx=     0.0 LB=      0.0000 UB=      0.0000  끝                         8.9s (전체 9s)
+    [반응 프리솔브] x=[1]: 활성 4 중 0 개를 0 으로 고정 (42.6s)
+  x={1}      qx=   750.0 LB=   -549.4679 UB=   -549.0255  최선 갱신 → 이어 풂        63.3s (전체 72s)
+    [반응 프리솔브] x=[2]: 활성 4 중 0 개를 0 으로 고정 (40.6s)
+  x={2}      qx=   750.0 LB=    384.7547 UB=    728.3853  가지침 (incumbent ≥ 목표)  42.8s (전체 115s)
+    [반응 프리솔브] x=[1, 2]: 활성 5 중 0 개를 0 으로 고정 (104.8s)
+  x={1,2}    qx=  1500.0 LB=   -205.4893 UB=     90.3365  가지침 (incumbent ≥ 목표)  111.1s (전체 226s)
+RESULT E pooled-store λ=2000 qB=750 d=15 m=5 nA=3 nB=2 seed=5 S=10 nh=5 status=Optimal x={1} LB=-549.467885 UB=-549.025529 gap=8.06e-04 calls=5 pruned=2 unfinished=0 nx=4 time=226.1
+
+--- E (열거, 가지치기) pooled(거점별 300) d=15 A=3 B=2 (N_B≤2) seed=6 S=10: n_h=5, |X|=4, θᵁ=50.0 λᵁ=2000.0, TL=3600s, 프리솔브 켬
+    [반응 프리솔브] x=Int64[]: 활성 3 중 0 개를 0 으로 고정 (6.7s)
+  x={}       qx=     0.0 LB=      0.0000 UB=      0.0000  끝                         7.9s (전체 8s)
+    [반응 프리솔브] x=[1]: 활성 4 중 1 개를 0 으로 고정 (13.5s)
+  x={1}      qx=   750.0 LB=   -662.9986 UB=   -662.9986  끝                         15.6s (전체 24s)
+    [반응 프리솔브] x=[2]: 활성 4 중 0 개를 0 으로 고정 (12.5s)
+  x={2}      qx=   750.0 LB=    -30.0165 UB=    330.1120  가지침 (incumbent ≥ 목표)  17.8s (전체 41s)
+    [반응 프리솔브] x=[1, 2]: 활성 5 중 1 개를 0 으로 고정 (17.4s)
+  x={1,2}    qx=  1500.0 LB=   -612.0970 UB=   -560.7157  가지침 (incumbent ≥ 목표)  21.1s (전체 62s)
+RESULT E pooled-store λ=2000 qB=750 d=15 m=5 nA=3 nB=2 seed=6 S=10 nh=5 status=Optimal x={1} LB=-662.998587 UB=-662.998587 gap=0.00e+00 calls=4 pruned=2 unfinished=0 nx=4 time=62.5
+
+--- E (열거, 가지치기) pooled(거점별 300) d=15 A=3 B=2 (N_B≤2) seed=7 S=10: n_h=5, |X|=4, θᵁ=50.0 λᵁ=2000.0, TL=3600s, 프리솔브 켬
+    [반응 프리솔브] x=Int64[]: 활성 3 중 0 개를 0 으로 고정 (6.6s)
+  x={}       qx=     0.0 LB=      0.0000 UB=      0.0000  끝                         7.6s (전체 8s)
+    [반응 프리솔브] x=[1]: 활성 4 중 0 개를 0 으로 고정 (53.3s)
+  x={1}      qx=   750.0 LB=   -490.4775 UB=   -489.8388  최선 갱신 → 이어 풂        58.9s (전체 66s)
+    [반응 프리솔브] x=[2]: 활성 4 중 0 개를 0 으로 고정 (8.2s)
+  x={2}      qx=   750.0 LB=   -750.0000 UB=   -748.5984  최선 갱신 → 이어 풂        13.4s (전체 80s)
+    [반응 프리솔브] x=[1, 2]: 활성 5 중 0 개를 0 으로 고정 (48.3s)
+  x={1,2}    qx=  1500.0 LB=   -924.4076 UB=   -922.3477  최선 갱신 → 이어 풂        56.9s (전체 137s)
+RESULT E pooled-store λ=2000 qB=750 d=15 m=5 nA=3 nB=2 seed=7 S=10 nh=5 status=Optimal x={1,2} LB=-924.407616 UB=-922.347674 gap=2.23e-03 calls=7 pruned=0 unfinished=0 nx=4 time=136.7
+
+--- E (열거, 가지치기) pooled(거점별 300) d=15 A=3 B=2 (N_B≤2) seed=8 S=10: n_h=5, |X|=4, θᵁ=50.0 λᵁ=2000.0, TL=3600s, 프리솔브 켬
+    [반응 프리솔브] x=Int64[]: 활성 3 중 0 개를 0 으로 고정 (4.1s)
+  x={}       qx=     0.0 LB=      0.0000 UB=      0.0000  끝                         5.3s (전체 5s)
+    [반응 프리솔브] x=[1]: 활성 4 중 0 개를 0 으로 고정 (31.9s)
+  x={1}      qx=   750.0 LB=    749.9994 UB=    750.0000  끝                         33.7s (전체 39s)
+    [반응 프리솔브] x=[2]: 활성 4 중 0 개를 0 으로 고정 (13.9s)
+  x={2}      qx=   750.0 LB=   -577.8080 UB=   -577.6230  최선 갱신 → 이어 풂        38.2s (전체 77s)
+    [반응 프리솔브] x=[1, 2]: 활성 5 중 0 개를 0 으로 고정 (55.2s)
+  x={1,2}    qx=  1500.0 LB=    171.7505 UB=    438.9329  가지침 (incumbent ≥ 목표)  66.2s (전체 143s)
+RESULT E pooled-store λ=2000 qB=750 d=15 m=5 nA=3 nB=2 seed=8 S=10 nh=5 status=Optimal x={2} LB=-577.807977 UB=-577.623015 gap=3.20e-04 calls=5 pruned=1 unfinished=0 nx=4 time=143.4
+
+--- E (열거, 가지치기) pooled(거점별 300) d=15 A=3 B=2 (N_B≤2) seed=9 S=10: n_h=5, |X|=4, θᵁ=50.0 λᵁ=2000.0, TL=3600s, 프리솔브 켬
+    [반응 프리솔브] x=Int64[]: 활성 3 중 0 개를 0 으로 고정 (3.9s)
+  x={}       qx=     0.0 LB=      0.0000 UB=      0.0000  끝                         4.8s (전체 5s)
+    [반응 프리솔브] x=[1]: 활성 4 중 0 개를 0 으로 고정 (16.3s)
+  x={1}      qx=   750.0 LB=    105.8294 UB=    196.8532  가지침 (incumbent ≥ 목표)  20.3s (전체 25s)
+    [반응 프리솔브] x=[2]: 활성 4 중 0 개를 0 으로 고정 (17.4s)
+  x={2}      qx=   750.0 LB=    149.5000 UB=    323.0873  가지침 (incumbent ≥ 목표)  20.4s (전체 46s)
+    [반응 프리솔브] x=[1, 2]: 활성 5 중 0 개를 0 으로 고정 (33.1s)
+  x={1,2}    qx=  1500.0 LB=    432.1539 UB=    695.1720  가지침 (incumbent ≥ 목표)  43.7s (전체 89s)
+RESULT E pooled-store λ=2000 qB=750 d=15 m=5 nA=3 nB=2 seed=9 S=10 nh=5 status=Optimal x={} LB=0.000000 UB=0.000001 gap=1.00e-06 calls=4 pruned=3 unfinished=0 nx=4 time=89.3
+
+--- E (열거, 가지치기) pooled(거점별 300) d=15 A=3 B=2 (N_B≤2) seed=10 S=10: n_h=5, |X|=4, θᵁ=50.0 λᵁ=2000.0, TL=3600s, 프리솔브 켬
+    [반응 프리솔브] x=Int64[]: 활성 3 중 0 개를 0 으로 고정 (3.6s)
+  x={}       qx=     0.0 LB=      0.0000 UB=      0.0000  끝                         4.4s (전체 4s)
+    [반응 프리솔브] x=[1]: 활성 4 중 0 개를 0 으로 고정 (23.8s)
+  x={1}      qx=   750.0 LB=    -88.3344 UB=    -88.3278  최선 갱신 → 이어 풂        39.5s (전체 44s)
+    [반응 프리솔브] x=[2]: 활성 4 중 0 개를 0 으로 고정 (14.5s)
+  x={2}      qx=   750.0 LB=     61.7585 UB=    155.0159  가지침 (incumbent ≥ 목표)  18.1s (전체 62s)
+    [반응 프리솔브] x=[1, 2]: 활성 5 중 0 개를 0 으로 고정 (31.7s)
+  x={1,2}    qx=  1500.0 LB=   -146.7897 UB=   -146.5594  최선 갱신 → 이어 풂        102.2s (전체 164s)
+RESULT E pooled-store λ=2000 qB=750 d=15 m=5 nA=3 nB=2 seed=10 S=10 nh=5 status=Optimal x={1,2} LB=-146.789714 UB=-146.559439 gap=1.57e-03 calls=6 pruned=1 unfinished=0 nx=4 time=164.2

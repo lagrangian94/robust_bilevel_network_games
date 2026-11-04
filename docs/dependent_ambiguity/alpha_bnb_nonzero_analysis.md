@@ -1908,3 +1908,47 @@ infeas_pre_retry=true, parent_basis=true, node_lp_cap=120.0`). `_NZ_DR_DEFAULT`�
 - λ 무관 인증은 모든 x 에서 witness 하한을 계산하므로 x* 의 최적성까지 인증한다 (CERT 의 xs= 필드). 원고 문구만 고친다.
 - range_lp 의 전제 (단조성·submodularity) 는 Assumption 으로 두고 범위 MIP 와의 일치 (v1, L1~L5 재실험의 x*·LB 일치) 를 증거로 든다. 보충자료의 follower block 증명을 써야 한다.
 - zero-sum 절은 옛 상태 (φ-divergence, 7,200 s, NonConvex = 2, Plain/Enhanced BD) 라 다시 쓴다. SGM·performance profile, 스레드 수 명시, BD-G 가 쉬운 인스턴스에서 빠른 것도 그대로 보고.
+
+### 10.31 큐 v5 진행: E, pair 인스턴스 V1·V2, zero-sum 시드 5 개 (2026-11-03~04)
+
+**E (열거 + α-B&B, 목표값 가지치기)** L1~L5 S10 × 10: 50/50 Optimal, x* 모두 Ours 와 같음. 시간 합 (E vs Ours): L1 1,288 vs 302 s, L2 1,147 vs 402, L3 1,294 vs 304, L4 1,330 vs 584, L5 1,398 vs 539.
+- `run_enum_E.jl` 수정 (보고한 결과에는 영향 없음, 다시 안 돌림): α-B&B 는 |LB| 기준 gap, E 는 |UB| 기준이라 이어 풀기 판정이 어긋났고 `ge` 를 이어 풀기 전 UB 로 고정해 두어 시간이 남았는데도 "시간 한도" 로 표시됨 (L1 시드 5·10 의 표시만). `agap` (|LB| 기준) 과 `ge` 재계산으로 고침.
+
+**V1 기본 인스턴스 = pair (사용자 결정 2026-11-04)**. pooled_store 기본 인스턴스는 모든 모형이 x* = {1,2}, −889.50 으로 같아 (영 결과) 모형 가치 표에 pair (SGB128, w = 150, S = 3) 를 쓴다. 값은 KKT 평가 (`nz_kkt_value`, MIPGap 1e-6) — 모형 차이 (0.5% 안팎) 가 Benders 허용오차와 같은 크기라 고정 x 값을 gap 1e-6 으로 낸다.
+
+| 모형 | x* | 값 |
+|---|---|---|
+| Nominal | {1,2} | −873.39 |
+| Data-DR | {1,2} | −860.50 |
+| Coupled δ = 0.1 | {1,2} | −860.50 |
+| Coupled δ = 0 | {1,2} | −865.08 |
+| Product | {2} | −836.00 |
+
+- fig:loc-delta (ε̃ = 0.3): δ = 0, 0.05, …, 0.3 에서 −865.08, −861.42, −860.50, −860.03, −854.82, −849.62, −844.41, δ ≥ 0.4 에서 {2} −836. ε̃ = 0.1·0.2 는 δ ≈ 0.2 에서 −860.50 으로 포화.
+- 재실행 로그 `logs/loc_insample_sgb128_pair_q150.log` (10-11 판은 `.oct11.*` 로 보관). `loc_oos.jl` 에 `LO_RES` (기본 pooled_store, pair 가능) 추가.
+
+**V2 OOS (pair)** — 평균 / CVaR / 5% 분위수
+
+| truth–belief | {1,2} (Coupled·Data-DR·Nominal) | {2} (Product) |
+|---|---|---|
+| Close | 1280.39 / 1063.78 / 1094.26 | 1072.39 / 942.23 / 963.02 |
+| Moderate | 1302.41 / 1037.30 / 1075.27 | 1080.33 / 944.73 / 965.43 |
+| Misspecified | 1337.18 / 1003.27 / 1032.12 | 1077.81 / 935.46 / 952.44 |
+
+- 서사 (사용자 결정): 비제로섬 = "product 는 과보수 (OOS 평균 16% 손해), 결합은 비용 없이 이를 없앤다". "belief 를 안다고 가정하면 손해" 는 zero-sum 에서 보인다.
+- 원고 6 절 순서를 바꿈 (zero-sum = 6.1, 비제로섬 = 6.2, SGM 정의는 6 절 머리). `paper/` 는 Overleaf clone 이라 이 커밋에 없음.
+
+**zero-sum S10 시드 42, 1~4 × {Ours, nob}** (결합 δ = 0.1, ε = 0.1, β = 0.4, 1 시간). 45/50 Optimal. Optimal 수, SGM (shift 10 s):
+
+| 네트워크 | Ours | nob |
+|---|---|---|
+| abilene | 5/5, 25 s | 5/5, 649 s |
+| grid5x5 | 5/5, 51 s | 5/5, 1,137 s |
+| nobel_us | 5/5, 53 s | 5/5, 1,527 s |
+| polska | 5/5, 37 s | 5/5, 494 s |
+| sioux_falls | 5/5, 235 s | 0/5 (모두 TL) |
+
+- zero-sum 에서는 belief cut 이 13~29 배 (sioux_falls 는 belief cut 이 있어야 풀림). 비제로섬 2×2 (belief cut 효과 0~6%) 와 대비 → 10.30 의 서사 그대로.
+- 11-04 오전에 큐 상태를 잘못 읽어 zero-sum 단계를 한 번 멈춤 → sioux_falls_nob_s2 만 잃음 (`.aborted.log`), 다시 돌림.
+
+**δ·β (진행 중)** L2 S20: δ = 0 / 0.3 / 0.6 (β 0.4) 각 10/10 Optimal, SGM 68 / 72 / 74 s, x* 분포 같음 ({} 4, {1} 2, {2} 2, {1,2} 2). β = 0 진행 중.
