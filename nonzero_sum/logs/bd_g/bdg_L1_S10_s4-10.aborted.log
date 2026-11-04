@@ -1,0 +1,29 @@
+Set parameter Username
+Set parameter LicenseID to value 2742039
+Academic license - for non-commercial use only - expires 2026-11-20
+
+--- BD-G pooled(거점별 300) d=15 A=2 B=3 (N_B≤3) seed=4 S=10: n_h=5, |X|=8, 용량 750, 출점비 750, θᵁ=50.0 λᵁ=2000.0, TL=3600s, Gurobi 스레드 12
+  [설정] BD-G: 전역 = Ω (Gurobi NonConvex), 남은 시간 전체, 목표값 조기 종료, local cut 켬, belief cut 없음
+  [loc]  it   1 LB=-10000000.0000 UB=        Inf x=Int64[]    Ω_loc=    -0.0007 (0.1s)
+  [loc]  it   2 LB=-2457749.9996 UB=        Inf x=[1, 2, 3]  Ω_loc= -3066.3346 (0.2s)
+  [loc]  it   3 LB=-767999.9996 UB=        Inf x=[3]        Ω_loc= -1432.3342 (0.1s)
+  [loc]  it   4 LB=-614250.0000 UB=        Inf x=[2]        Ω_loc= -1432.3342 (0.1s)
+  [loc]  it   5 LB=-536013.8335 UB=        Inf x=[1]        Ω_loc= -1432.3343 (0.2s)
+  [loc]  it   6 LB=-402432.3334 UB=        Inf x=[2, 3]     Ω_loc= -1886.8345 (0.2s)
+  [loc]  it   7 LB=-345899.2502 UB=        Inf x=[1, 3]     Ω_loc= -1955.5012 (0.2s)
+  [loc]  it   8 LB=-190930.9167 UB=        Inf x=[1, 2]     Ω_loc= -2395.4178 (0.5s)
+  [omg]  it   9 LB=  -895.4167 UB=   -33.5373 x=[1, 2]     KKT= -2352.3903 bd= -1533.5373 start=NaN OBJECTIVE_LIMIT (1.8s)
+  [omg]  it  10 LB=  -816.3333 UB=   -33.5373 x=[1, 2, 3]  KKT= -2715.4180 bd=  -920.8430 start=NaN OBJECTIVE_LIMIT (0.9s)
+  [omg]  it  11 LB=  -682.3334 UB=  -682.3332 x=[3]        KKT= -1432.3333 bd= -1432.3332 start=NaN OPTIMAL (10.4s)
+RESULT method=BD-G λ=2000 qB=750 d=15 m=5 nA=2 nB=3 seed=4 S=10 nh=5 status=Optimal x={3} LB=-682.333372 UB=-682.333163 gap=3.06e-07 iters=12 global=3 local=8 time=25.4
+
+--- BD-G pooled(거점별 300) d=15 A=2 B=3 (N_B≤3) seed=5 S=10: n_h=5, |X|=8, 용량 750, 출점비 750, θᵁ=50.0 λᵁ=2000.0, TL=3600s, Gurobi 스레드 12
+  [설정] BD-G: 전역 = Ω (Gurobi NonConvex), 남은 시간 전체, 목표값 조기 종료, local cut 켬, belief cut 없음
+  [loc]  it   1 LB=-10000000.0000 UB=        Inf x=Int64[]    Ω_loc=    -0.0008 (0.1s)
+  [loc]  it   2 LB=-2150250.0001 UB=        Inf x=[1, 2, 3]  Ω_loc= -3281.5014 (0.2s)
+  [loc]  it   3 LB=-703764.8316 UB=        Inf x=[3]        Ω_loc= -1300.0009 (0.1s)
+  [loc]  it   4 LB=-575073.0821 UB=        Inf x=[2]        Ω_loc= -1500.0009 (0.4s)
+  [loc]  it   5 LB=-463906.4172 UB=        Inf x=[1]        Ω_loc= -1500.0010 (0.2s)
+  [loc]  it   6 LB=-380425.0001 UB=        Inf x=[2, 3]     Ω_loc= -1875.0845 (0.3s)
+  [loc]  it   7 LB=-296814.8334 UB=        Inf x=[1, 3]     Ω_loc= -1876.4179 (0.2s)
+  [loc]  it   8 LB=-168123.0839 UB=        Inf x=[1, 2]     Ω_loc= -2809.2510 (0.2s)
