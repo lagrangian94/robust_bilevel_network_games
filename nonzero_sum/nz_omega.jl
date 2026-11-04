@@ -345,7 +345,12 @@ function nz_clean_belief(bel, nd::NZData)
     if sr > 1
         r ./= sr
     elseif sr < 1
-        slack = cap .- r; r .+= slack .* ((1 - sr) / sum(slack))
+        slack = cap .- r; ss = sum(slack)
+        if ss > 0
+            r .+= slack .* ((1 - sr) / ss)
+        else    # β = 0 이면 cap = a 라 r = a 로 고정됨, Σa 의 반올림 오차만큼만 모자랄 수 있음 (2026-11-04: 0/0 = NaN 이던 것)
+            1 - sr <= 1e-12 || error("nz_clean_belief: Σr = $sr < 1 인데 cap 에 여유가 없음")
+        end
     end
     out[:r] = r
     return out
