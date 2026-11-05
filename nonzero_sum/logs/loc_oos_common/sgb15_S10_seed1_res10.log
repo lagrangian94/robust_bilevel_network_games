@@ -1,0 +1,20 @@
+Set parameter Username
+Set parameter LicenseID to value 2742039
+Academic license - for non-commercial use only - expires 2026-11-20
+  Nominal              (ε̂=0.00 ε̃=0.00 δ=Inf): x* = {4,12,13} (San_Francisco;Wichita;Toledo), UB -1542.25, gap 1.8e-03
+  Data-DR              (ε̂=0.30 ε̃=0.00 δ=Inf): x* = {6,10,12} (Washington;Sacramento;Wichita), UB -1163.25, gap 2.3e-03
+  Coupled (product)    (ε̂=0.30 ε̃=0.30 δ=Inf): x* = {1,4,12} (Toronto;San_Francisco;Wichita), UB -1105.99, gap 4.9e-03
+  Coupled δ=0.1        (ε̂=0.30 ε̃=0.30 δ=0.1): x* = {10,12,13} (Sacramento;Wichita;Toledo), UB -1146.61, gap 4.5e-03
+loc_oos: SGB128 sgb15 quota=300 S=10 seed=1, ε̃=0.30 δ₀=0.10, Dir(γ·S·q̂) γ ∈ 0.1,0.3,1.0,5.0, (γ, 수준) 마다 1000 쌍, β=0.40
+  γ=0.1 (추출 7037 번)
+  γ=0.3 (추출 13296 번)
+  γ=1.0 (추출 100222 번)
+  γ=5.0 (추출 2980136 번)
+
+리더 목적 (낮을수록 좋음), γ 전체: 평균 / 가장 나쁜 5%
+model                x*         | Close             mean     worst | Moderate          mean     worst | Misspecified      mean     worst
+Nominal              {4,12,13}  |               -1620.58  -1094.71 |               -1610.40  -1074.29 |               -1616.86   -991.57
+Data-DR              {6,10,12}  |               -1518.86  -1099.02 |               -1514.32  -1084.56 |               -1522.59  -1017.05
+Coupled (product)    {1,4,12}   |               -1611.54  -1093.17 |               -1602.30  -1073.01 |               -1605.35   -990.98
+Coupled δ=0.1        {10,12,13} |               -1554.46  -1107.96 |               -1553.16  -1092.71 |               -1563.62  -1018.66
+LOC_OOS_DONE C:\Users\user\robust_bilevel_network_games\nonzero_sum\logs\loc_oos_common\sgb15_S10_seed1_res10 (φ 캐시 8864)

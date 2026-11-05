@@ -11,7 +11,7 @@ Figure: ε̂ = LI_EPS 고정, ε̃ ∈ LI_FIG_EPST, δ ∈ LI_FIG_DELTAS 에서 
   LI_TAB_DELTAS = "0.1,0"                         (표의 Coupled 행)
   LI_FIG_EPST = "0.1,0.2,0.3"   LI_FIG_DELTAS = "0,0.05,0.1,0.15,0.2,0.25,0.3,0.4,0.5,0.6"   (그림, quota = LI_FIG_QUOTA = 150)
   LI_TL = 300 (KKT 한 번의 시간 제한. 제한에 걸리면 incumbent 값, 표에 * 표시)
-  NZ_SEED (1) NZ_S (3)
+  NZ_SEED (1) NZ_S (3)   NZ_DEMAND = iid (기본) | factor (2026-11-05: 지역 요인 수요, nz_data.jl 의 demand=:factor. factor 면 CSV 이름에 _factor)
   LI_RES = pair (기본, 시장별 예약 h_ij, 한도 wres=300 + quota) | pooled_store (2026-11-03: 원고 6.1 의 기본 인스턴스 = 거점별 풀 예약 h_i ≤ quota, n_h = 5)
 출력: 로그 (표준출력) + CSV logs/loc_insample_<tag>.csv (모든 x 의 값)
 """
@@ -29,17 +29,18 @@ TL = parse(Float64, envf("LI_TL", "300"))
 ε = parse(Float64, envf("LI_EPS", "0.3"))
 β = parse(Float64, envf("LI_BETA", "0.4"))
 S = parse(Int, envf("NZ_S", "3")); seed = parse(Int, envf("NZ_SEED", "1"))
+DEM = Symbol(envf("NZ_DEMAND", "iid")); DEM in (:iid, :factor) || error("NZ_DEMAND = iid | factor")
 all_x(nd) = [Float64.(collect(bits)) for bits in Iterators.product(fill(0:1, nd.nx)...)
              if sum(bits) <= nd.gamma && all(nd.x_allowed[i] || bits[i] == 0 for i in 1:nd.nx)]
 RES = envf("LI_RES", "pair"); RES in ("pair", "pooled_store") || error("LI_RES = pair | pooled_store")
 mk(quota, eh, et) = RES == "pair" ?
     make_location_instance(; coords=:sgb128, reservation=:pair, quota=quota, wres=300.0,
-                           S=S, seed=seed, eps_hat=eh, eps_tilde=et, beta=β) :
+                           S=S, seed=seed, eps_hat=eh, eps_tilde=et, beta=β, demand=DEM) :
     make_location_instance(; coords=:sgb128, reservation=:pooled, pool_limit=:store, quota=quota,
-                           S=S, seed=seed, eps_hat=eh, eps_tilde=et, beta=β)
+                           S=S, seed=seed, eps_hat=eh, eps_tilde=et, beta=β, demand=DEM)
 xstr(x) = "{" * join(findall(x .> 0.5), ",") * "}"
 
-tag = @sprintf("sgb128_%s_S%d_seed%d_eps%.2f_beta%.2f", RES, S, seed, ε, β)
+tag = @sprintf("sgb128_%s%s_S%d_seed%d_eps%.2f_beta%.2f", RES, DEM == :factor ? "_factor" : "", S, seed, ε, β)
 csv = open(joinpath(@__DIR__, "logs", "loc_insample_$(tag).csv"), "w")
 println(csv, "quota,eps_hat,eps_tilde,delta,x,value,status,time")
 

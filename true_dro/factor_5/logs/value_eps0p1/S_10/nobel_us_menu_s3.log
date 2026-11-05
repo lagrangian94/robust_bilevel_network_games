@@ -1,0 +1,215 @@
+============================================================
+nobel_us — menu (coupled): S=10, seed=3, ε̂=0.10, ε̃=0.10, β=0.40, δ=0.100 (belief_menu_benders_optimize!, oracle α-B&B, local_first, menu MW, VI=mincut)
+arcs=38, intd=38, γ=2, w=10.4013, started 2026-11-05T00:26:04.726
+============================================================
+Set parameter Username
+Set parameter LicenseID to value 2742039
+Academic license - for non-commercial use only - expires 2026-11-20
+Set parameter Username
+Set parameter LicenseID to value 2742039
+Academic license - for non-commercial use only - expires 2026-11-20
+Set parameter Username
+Set parameter LicenseID to value 2742039
+Academic license - for non-commercial use only - expires 2026-11-20
+Set parameter Username
+Set parameter LicenseID to value 2742039
+Academic license - for non-commercial use only - expires 2026-11-20
+  Iter 1: LB=2.212992 UB=Inf  oracle[local 15s] inc=11.522683 bd=Inf (2.9s) menu=1 (+belief) x=[7, 25]
+  Iter 2: LB=2.352383 UB=Inf  menu cut 1/1 (V_menu=11.329127) [OMP 0.1s, LP 0.1s, MW 0.1s]
+  Iter 3: LB=2.447625 UB=Inf  menu cut 1/1 (V_menu=8.708358) [OMP 0.1s, LP 0.0s, MW 0.0s]
+  Iter 4: LB=2.523603 UB=Inf  menu cut 1/1 (V_menu=8.389078) [OMP 0.0s, LP 0.1s, MW 0.0s]
+  Iter 5: LB=2.523603 UB=Inf  menu cut 1/1 (V_menu=8.389078) [OMP 0.0s, LP 0.0s, MW 0.0s]
+  Iter 6: LB=2.574048 UB=Inf  menu cut 1/1 (V_menu=10.691482) [OMP 0.1s, LP 0.0s, MW 0.0s]
+  Iter 7: LB=2.673249 UB=Inf  menu cut 1/1 (V_menu=12.048813) [OMP 0.1s, LP 0.1s, MW 0.0s]
+  Iter 8: LB=2.812639 UB=Inf  menu cut 1/1 (V_menu=11.521336) [OMP 0.1s, LP 0.0s, MW 0.0s]
+  Iter 9: LB=3.024594 UB=Inf  menu cut 1/1 (V_menu=7.441438) [OMP 0.1s, LP 0.0s, MW 0.0s]
+  Iter 10: LB=3.034304 UB=Inf  menu cut 1/1 (V_menu=11.941701) [OMP 0.1s, LP 0.0s, MW 0.0s]
+  Iter 11: LB=3.260179 UB=Inf  menu cut 1/1 (V_menu=11.827268) [OMP 0.1s, LP 0.0s, MW 0.0s]
+  Iter 12: LB=3.298411 UB=Inf  menu cut 1/1 (V_menu=10.635712) [OMP 0.1s, LP 0.0s, MW 0.0s]
+  Iter 13: LB=3.792178 UB=Inf  menu cut 1/1 (V_menu=11.826784) [OMP 0.1s, LP 0.0s, MW 0.0s]
+  Iter 14: LB=3.981428 UB=Inf  menu cut 1/1 (V_menu=11.872327) [OMP 0.1s, LP 0.1s, MW 0.0s]
+  Iter 15: LB=4.128191 UB=Inf  menu cut 1/1 (V_menu=12.477059) [OMP 0.1s, LP 0.0s, MW 0.0s]
+  Iter 16: LB=4.128191 UB=Inf  menu cut 1/1 (V_menu=12.299712) [OMP 0.1s, LP 0.0s, MW 0.0s]
+  Iter 17: LB=4.128191 UB=Inf  menu cut 1/1 (V_menu=12.477059) [OMP 0.1s, LP 0.0s, MW 0.0s]
+  Iter 18: LB=4.128191 UB=Inf  menu cut 1/1 (V_menu=12.189646) [OMP 0.1s, LP 0.0s, MW 0.0s]
+  Iter 19: LB=4.128191 UB=Inf  menu cut 1/1 (V_menu=12.477059) [OMP 0.1s, LP 0.0s, MW 0.0s]
+  Iter 20: LB=4.128191 UB=Inf  menu cut 1/1 (V_menu=11.870205) [OMP 0.1s, LP 0.0s, MW 0.0s]
+  Iter 21: LB=4.128191 UB=Inf  menu cut 1/1 (V_menu=12.477059) [OMP 0.1s, LP 0.0s, MW 0.0s]
+  Iter 22: LB=4.128191 UB=Inf  menu cut 1/1 (V_menu=12.477059) [OMP 0.1s, LP 0.0s, MW 0.0s]
+  Iter 23: LB=4.163442 UB=Inf  menu cut 1/1 (V_menu=11.806282) [OMP 0.2s, LP 0.0s, MW 0.0s]
+  Iter 24: LB=4.212049 UB=Inf  menu cut 1/1 (V_menu=8.267817) [OMP 0.2s, LP 0.1s, MW 0.0s]
+  Iter 25: LB=4.252434 UB=Inf  menu cut 1/1 (V_menu=13.328713) [OMP 0.2s, LP 0.0s, MW 0.0s]
+  Iter 26: LB=4.302833 UB=Inf  menu cut 1/1 (V_menu=11.816013) [OMP 0.2s, LP 0.0s, MW 0.0s]
+  Iter 27: LB=4.402066 UB=Inf  menu cut 1/1 (V_menu=13.704120) [OMP 0.2s, LP 0.1s, MW 0.0s]
+  Iter 28: LB=4.524498 UB=Inf  menu cut 1/1 (V_menu=10.982453) [OMP 0.2s, LP 0.0s, MW 0.0s]
+  Iter 29: LB=4.588447 UB=Inf  menu cut 1/1 (V_menu=13.697181) [OMP 0.1s, LP 0.0s, MW 0.0s]
+  Iter 30: LB=4.588447 UB=Inf  menu cut 1/1 (V_menu=13.704120) [OMP 0.2s, LP 0.0s, MW 0.0s]
+  Iter 31: LB=4.588447 UB=Inf  menu cut 1/1 (V_menu=13.704120) [OMP 0.2s, LP 0.0s, MW 0.0s]
+  Iter 32: LB=4.588447 UB=Inf  menu cut 1/1 (V_menu=13.638373) [OMP 0.2s, LP 0.0s, MW 0.0s]
+  Iter 33: LB=4.588447 UB=Inf  menu cut 1/1 (V_menu=13.239852) [OMP 0.2s, LP 0.0s, MW 0.0s]
+  Iter 34: LB=4.588447 UB=Inf  menu cut 1/1 (V_menu=12.982626) [OMP 0.2s, LP 0.1s, MW 0.0s]
+  Iter 35: LB=4.588447 UB=Inf  menu cut 1/1 (V_menu=13.571570) [OMP 0.2s, LP 0.0s, MW 0.0s]
+  Iter 36: LB=4.588447 UB=Inf  menu cut 1/1 (V_menu=13.620975) [OMP 0.2s, LP 0.0s, MW 0.0s]
+  Iter 37: LB=4.863030 UB=Inf  menu cut 1/1 (V_menu=10.386970) [OMP 0.2s, LP 0.1s, MW 0.0s]
+  Iter 38: LB=4.916190 UB=Inf  menu cut 1/1 (V_menu=11.361759) [OMP 0.2s, LP 0.0s, MW 0.0s]
+  Iter 39: LB=5.055339 UB=Inf  menu cut 1/1 (V_menu=10.521741) [OMP 0.2s, LP 0.0s, MW 0.0s]
+  Iter 40: LB=5.204157 UB=Inf  menu cut 1/1 (V_menu=13.321356) [OMP 0.2s, LP 0.0s, MW 0.0s]
+  Iter 41: LB=5.416395 UB=Inf  menu cut 1/1 (V_menu=10.882272) [OMP 0.2s, LP 0.0s, MW 0.1s]
+  Iter 42: LB=5.742628 UB=Inf  menu cut 1/1 (V_menu=12.034883) [OMP 0.2s, LP 0.0s, MW 0.0s]
+  Iter 43: LB=5.874425 UB=Inf  menu cut 1/1 (V_menu=12.165716) [OMP 0.2s, LP 0.1s, MW 0.0s]
+  Iter 44: LB=5.885767 UB=Inf  menu cut 1/1 (V_menu=12.090916) [OMP 0.2s, LP 0.0s, MW 0.1s]
+  Iter 45: LB=5.944596 UB=Inf  menu cut 1/1 (V_menu=12.030340) [OMP 0.2s, LP 0.0s, MW 0.0s]
+  Iter 46: LB=6.078641 UB=Inf  menu cut 1/1 (V_menu=12.770679) [OMP 0.2s, LP 0.0s, MW 0.0s]
+  Iter 47: LB=6.078641 UB=Inf  menu cut 1/1 (V_menu=13.061205) [OMP 0.2s, LP 0.1s, MW 0.0s]
+  Iter 48: LB=6.078641 UB=Inf  menu cut 1/1 (V_menu=12.770679) [OMP 0.2s, LP 0.0s, MW 0.0s]
+  Iter 49: LB=6.078641 UB=Inf  menu cut 1/1 (V_menu=12.770679) [OMP 0.2s, LP 0.0s, MW 0.0s]
+  Iter 50: LB=6.078641 UB=Inf  menu cut 1/1 (V_menu=12.736293) [OMP 0.2s, LP 0.0s, MW 0.0s]
+  Iter 51: LB=6.388310 UB=Inf  menu cut 1/1 (V_menu=14.328888) [OMP 0.1s, LP 0.0s, MW 0.0s]
+  Iter 52: LB=6.483491 UB=Inf  menu cut 1/1 (V_menu=12.770679) [OMP 0.2s, LP 0.0s, MW 0.0s]
+  Iter 53: LB=6.504793 UB=Inf  menu cut 1/1 (V_menu=11.482242) [OMP 0.2s, LP 0.0s, MW 0.0s]
+  Iter 54: LB=6.582135 UB=Inf  menu cut 1/1 (V_menu=13.020555) [OMP 0.2s, LP 0.0s, MW 0.0s]
+  Iter 55: LB=6.610350 UB=Inf  menu cut 1/1 (V_menu=13.532018) [OMP 0.2s, LP 0.0s, MW 0.0s]
+  Iter 56: LB=6.611628 UB=Inf  menu cut 1/1 (V_menu=12.477059) [OMP 0.1s, LP 0.0s, MW 0.0s]
+  Iter 57: LB=6.638838 UB=Inf  menu cut 1/1 (V_menu=12.089624) [OMP 0.1s, LP 0.1s, MW 0.0s]
+  Iter 58: LB=6.638838 UB=Inf  menu cut 1/1 (V_menu=12.088849) [OMP 0.2s, LP 0.0s, MW 0.0s]
+  Iter 59: LB=6.638838 UB=Inf  menu cut 1/1 (V_menu=12.089636) [OMP 0.1s, LP 0.0s, MW 0.0s]
+  Iter 60: LB=6.638838 UB=Inf  menu cut 1/1 (V_menu=11.896459) [OMP 0.2s, LP 0.1s, MW 0.0s]
+  Iter 61: LB=6.638838 UB=Inf  menu cut 1/1 (V_menu=12.089638) [OMP 0.2s, LP 0.0s, MW 0.0s]
+  Iter 62: LB=6.638838 UB=Inf  menu cut 1/1 (V_menu=12.089635) [OMP 0.2s, LP 0.0s, MW 0.0s]
+  Iter 63: LB=6.638838 UB=Inf  menu cut 1/1 (V_menu=11.967517) [OMP 0.2s, LP 0.0s, MW 0.0s]
+  Iter 64: LB=6.638838 UB=Inf  menu cut 1/1 (V_menu=12.089638) [OMP 0.2s, LP 0.0s, MW 0.1s]
+  Iter 65: LB=6.943190 UB=Inf  menu cut 1/1 (V_menu=12.577596) [OMP 0.3s, LP 0.0s, MW 0.1s]
+  Iter 66: LB=7.441437 UB=Inf  oracle[local 15s] inc=12.009536 bd=Inf (2.8s) menu=2 (+belief) x=[20, 33]
+  Iter 67: LB=7.810053 UB=Inf  menu cut 2/2 (V_menu=13.437723) [OMP 0.4s, LP 0.1s, MW 0.1s]
+  Iter 68: LB=7.816208 UB=Inf  menu cut 2/2 (V_menu=14.063254) [OMP 0.3s, LP 0.1s, MW 0.1s]
+  Iter 69: LB=7.925948 UB=Inf  menu cut 2/2 (V_menu=13.666945) [OMP 0.3s, LP 0.1s, MW 0.1s]
+  Iter 70: LB=7.942012 UB=Inf  menu cut 2/2 (V_menu=13.405815) [OMP 0.3s, LP 0.1s, MW 0.1s]
+  Iter 71: LB=8.073810 UB=Inf  menu cut 2/2 (V_menu=13.422950) [OMP 0.3s, LP 0.1s, MW 0.1s]
+  Iter 72: LB=8.179455 UB=Inf  menu cut 2/2 (V_menu=14.243894) [OMP 0.3s, LP 0.1s, MW 0.1s]
+  Iter 73: LB=8.267816 UB=Inf  menu cut 1/2 (V_menu=11.260244) [OMP 0.3s, LP 0.1s, MW 0.0s]
+  Iter 74: LB=8.278025 UB=Inf  menu cut 2/2 (V_menu=14.063254) [OMP 0.4s, LP 0.1s, MW 0.1s]
+  Iter 75: LB=8.278025 UB=Inf  menu cut 2/2 (V_menu=14.063254) [OMP 0.3s, LP 0.1s, MW 0.1s]
+  Iter 76: LB=8.278025 UB=Inf  menu cut 2/2 (V_menu=13.798882) [OMP 0.3s, LP 0.1s, MW 0.1s]
+  Iter 77: LB=8.389077 UB=Inf  menu cut 1/2 (V_menu=9.161593) [OMP 0.3s, LP 0.1s, MW 0.0s]
+  Iter 78: LB=8.389077 UB=Inf  menu cut 1/2 (V_menu=9.161589) [OMP 0.3s, LP 0.1s, MW 0.0s]
+  Iter 79: LB=8.417646 UB=Inf  menu cut 2/2 (V_menu=15.711813) [OMP 0.3s, LP 0.1s, MW 0.1s]
+  Iter 80: LB=8.708357 UB=Inf  menu cut 1/2 (V_menu=10.816018) [OMP 0.3s, LP 0.1s, MW 0.0s]
+  Iter 81: LB=8.879073 UB=Inf  menu cut 2/2 (V_menu=12.687613) [OMP 0.4s, LP 0.1s, MW 0.1s]
+  Iter 82: LB=9.061338 UB=Inf  menu cut 2/2 (V_menu=12.770679) [OMP 0.4s, LP 0.1s, MW 0.1s]
+  Iter 83: LB=9.068741 UB=Inf  menu cut 2/2 (V_menu=14.622906) [OMP 0.3s, LP 0.1s, MW 0.1s]
+  Iter 84: LB=9.161588 UB=Inf  oracle[local 15s] inc=10.103070 bd=Inf (2.6s) menu=3 (+belief) x=[20, 25]
+  Iter 85: LB=9.161591 UB=Inf  menu cut 1/3 (V_menu=10.103070) [OMP 0.2s, LP 0.1s, MW 0.1s]
+  Iter 86: LB=9.223229 UB=Inf  menu cut 3/3 (V_menu=13.854824) [OMP 0.2s, LP 0.1s, MW 0.1s]
+  Iter 87: LB=9.223229 UB=Inf  menu cut 3/3 (V_menu=14.197951) [OMP 0.2s, LP 0.1s, MW 0.1s]
+  Iter 88: LB=9.233229 UB=Inf  menu cut 3/3 (V_menu=14.188157) [OMP 0.2s, LP 0.1s, MW 0.1s]
+  Iter 89: LB=9.340092 UB=Inf  menu cut 3/3 (V_menu=16.864694) [OMP 0.1s, LP 0.1s, MW 0.1s]
+  Iter 90: LB=9.363284 UB=Inf  menu cut 3/3 (V_menu=15.414368) [OMP 0.2s, LP 0.1s, MW 0.1s]
+  Iter 91: LB=9.365703 UB=Inf  menu cut 3/3 (V_menu=14.609021) [OMP 0.2s, LP 0.1s, MW 0.1s]
+  Iter 92: LB=9.429797 UB=Inf  menu cut 3/3 (V_menu=14.622419) [OMP 0.1s, LP 0.1s, MW 0.1s]
+  Iter 93: LB=9.489724 UB=Inf  menu cut 3/3 (V_menu=17.546272) [OMP 0.1s, LP 0.1s, MW 0.1s]
+  Iter 94: LB=9.495094 UB=Inf  menu cut 3/3 (V_menu=16.439372) [OMP 0.2s, LP 0.1s, MW 0.1s]
+  Iter 95: LB=9.522401 UB=Inf  menu cut 3/3 (V_menu=14.838686) [OMP 0.2s, LP 0.1s, MW 0.1s]
+  Iter 96: LB=9.536714 UB=Inf  menu cut 3/3 (V_menu=15.418400) [OMP 0.2s, LP 0.1s, MW 0.1s]
+  Iter 97: LB=9.536714 UB=Inf  menu cut 3/3 (V_menu=15.288390) [OMP 0.2s, LP 0.1s, MW 0.1s]
+  Iter 98: LB=9.536714 UB=Inf  menu cut 3/3 (V_menu=15.117409) [OMP 0.1s, LP 0.1s, MW 0.1s]
+  Iter 99: LB=9.536714 UB=Inf  menu cut 3/3 (V_menu=15.233424) [OMP 0.1s, LP 0.1s, MW 0.1s]
+  Iter 100: LB=9.536714 UB=Inf  menu cut 3/3 (V_menu=15.418400) [OMP 0.1s, LP 0.1s, MW 0.1s]
+  Iter 101: LB=9.582715 UB=Inf  menu cut 3/3 (V_menu=14.189997) [OMP 0.2s, LP 0.1s, MW 0.1s]
+  Iter 102: LB=9.676105 UB=Inf  menu cut 3/3 (V_menu=17.416262) [OMP 0.1s, LP 0.1s, MW 0.1s]
+  Iter 103: LB=9.676105 UB=Inf  menu cut 3/3 (V_menu=16.593525) [OMP 0.1s, LP 0.1s, MW 0.1s]
+  Iter 104: LB=9.676105 UB=Inf  menu cut 3/3 (V_menu=17.546272) [OMP 0.2s, LP 0.1s, MW 0.1s]
+  Iter 105: LB=9.676105 UB=Inf  menu cut 3/3 (V_menu=16.837643) [OMP 0.2s, LP 0.1s, MW 0.1s]
+  Iter 106: LB=9.693554 UB=Inf  menu cut 3/3 (V_menu=14.301844) [OMP 0.2s, LP 0.1s, MW 0.1s]
+  Iter 107: LB=9.724340 UB=Inf  menu cut 3/3 (V_menu=14.956102) [OMP 0.2s, LP 0.1s, MW 0.1s]
+  Iter 108: LB=9.883457 UB=Inf  menu cut 3/3 (V_menu=14.732402) [OMP 0.2s, LP 0.1s, MW 0.1s]
+  Iter 109: LB=9.891394 UB=Inf  menu cut 3/3 (V_menu=15.682258) [OMP 0.2s, LP 0.1s, MW 0.1s]
+  Iter 110: LB=9.897770 UB=Inf  menu cut 3/3 (V_menu=15.090759) [OMP 0.2s, LP 0.1s, MW 0.1s]
+  Iter 111: LB=9.897770 UB=Inf  menu cut 3/3 (V_menu=14.855538) [OMP 0.2s, LP 0.1s, MW 0.1s]
+  Iter 112: LB=9.897770 UB=Inf  menu cut 3/3 (V_menu=15.090760) [OMP 0.2s, LP 0.1s, MW 0.1s]
+  Iter 113: LB=9.897770 UB=Inf  menu cut 3/3 (V_menu=15.090759) [OMP 0.2s, LP 0.1s, MW 0.1s]
+  Iter 114: LB=9.897770 UB=Inf  menu cut 3/3 (V_menu=14.856129) [OMP 0.2s, LP 0.1s, MW 0.1s]
+Set parameter Username
+Set parameter LicenseID to value 2742039
+Academic license - for non-commercial use only - expires 2026-11-20
+Set parameter Username
+Set parameter LicenseID to value 2742039
+Academic license - for non-commercial use only - expires 2026-11-20
+Set parameter Username
+Set parameter LicenseID to value 2742039
+Academic license - for non-commercial use only - expires 2026-11-20
+Set parameter Username
+Set parameter LicenseID to value 2742039
+Academic license - for non-commercial use only - expires 2026-11-20
+Set parameter Username
+Set parameter LicenseID to value 2742039
+Academic license - for non-commercial use only - expires 2026-11-20
+Set parameter Username
+Set parameter LicenseID to value 2742039
+Academic license - for non-commercial use only - expires 2026-11-20
+Set parameter Username
+Set parameter LicenseID to value 2742039
+Academic license - for non-commercial use only - expires 2026-11-20
+Set parameter Username
+Set parameter LicenseID to value 2742039
+Academic license - for non-commercial use only - expires 2026-11-20
+Set parameter Username
+Set parameter LicenseID to value 2742039
+Academic license - for non-commercial use only - expires 2026-11-20
+Set parameter Username
+Set parameter LicenseID to value 2742039
+Academic license - for non-commercial use only - expires 2026-11-20
+Set parameter Username
+Set parameter LicenseID to value 2742039
+Academic license - for non-commercial use only - expires 2026-11-20
+Set parameter Username
+Set parameter LicenseID to value 2742039
+Academic license - for non-commercial use only - expires 2026-11-20
+Set parameter Username
+Set parameter LicenseID to value 2742039
+Academic license - for non-commercial use only - expires 2026-11-20
+  Iter 115: LB=10.103069 UB=11.246876  oracle[alpha_bnb 15s] inc=10.731295 bd=11.246876 (8.1s) menu=4 (+belief) x=[9, 20]
+Set parameter Username
+Set parameter LicenseID to value 2742039
+Academic license - for non-commercial use only - expires 2026-11-20
+Set parameter Username
+Set parameter LicenseID to value 2742039
+Academic license - for non-commercial use only - expires 2026-11-20
+Set parameter Username
+Set parameter LicenseID to value 2742039
+Academic license - for non-commercial use only - expires 2026-11-20
+Set parameter Username
+Set parameter LicenseID to value 2742039
+Academic license - for non-commercial use only - expires 2026-11-20
+Set parameter Username
+Set parameter LicenseID to value 2742039
+Academic license - for non-commercial use only - expires 2026-11-20
+Set parameter Username
+Set parameter LicenseID to value 2742039
+Academic license - for non-commercial use only - expires 2026-11-20
+Set parameter Username
+Set parameter LicenseID to value 2742039
+Academic license - for non-commercial use only - expires 2026-11-20
+Set parameter Username
+Set parameter LicenseID to value 2742039
+Academic license - for non-commercial use only - expires 2026-11-20
+Set parameter Username
+Set parameter LicenseID to value 2742039
+Academic license - for non-commercial use only - expires 2026-11-20
+Set parameter Username
+Set parameter LicenseID to value 2742039
+Academic license - for non-commercial use only - expires 2026-11-20
+Set parameter Username
+Set parameter LicenseID to value 2742039
+Academic license - for non-commercial use only - expires 2026-11-20
+Set parameter Username
+Set parameter LicenseID to value 2742039
+Academic license - for non-commercial use only - expires 2026-11-20
+Set parameter Username
+Set parameter LicenseID to value 2742039
+Academic license - for non-commercial use only - expires 2026-11-20
+  Iter 116: oracle 이 x̄ 에서 boost 후에도 진전 없음 → 종료 (gap 2.25e-03)
+Belief-menu Benders Stalled: LB=10.103070 UB=10.125807 gap=2.25e-03 iters=116 oracle=5 (local 3 / 21.7s, α-B&B 2 / 7.3s) menu=4 mw=178/182 wall=64.6s
+
+Result (menu, S=10): Z₀=10.125807, iters=116, time=64.6s
+x arcs = [20, 25]
+RESULT net=nobel_us variant=menu S=10 beta=0.40 eps=0.10 delta=0.100 status=Stalled Z0=10.12580690 LB=10.10306950 UB=10.12580690 iters=116 time=64.55 x=20;25 seed=3

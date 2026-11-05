@@ -281,6 +281,35 @@ sgb128_xy() = permutedims(hcat([parse.(Float64, split(l)) for l in _sgb_lines("s
 "128 개 도시 이름"
 sgb128_names() = strip.(_sgb_lines("sgb128_name.txt"))
 
+# =====================================================================
+# SGB15 (Yanıkoğlu & Kuhn 2018, SIAM J. Optim. §7 의 예): SGB128 의 인구 상위 15 개 도시, data/sgb15/
+# =====================================================================
+const _SGB15_FILE = joinpath(@__DIR__, "data", "sgb15", "sgb15_kuhn.txt")
+"""
+    sgb15_kuhn() -> (; names, abbr, pop, road, idx)
+
+Yanıkoğlu–Kuhn Table 7.1 의 도시 이름·약어·인구·도로 거리 (마일, 표의 순서) 와 각 도시의 SGB128 번호.
+표의 (Toronto, San Francisco) = 480 은 SGB128 좌표의 직선거리 약 3,000 과 맞지 않지만 표대로 둔다 (data 파일 주석).
+"""
+function sgb15_kuhn()
+    L = [split(l, "|") for l in eachline(_SGB15_FILE) if !isempty(strip(l)) && !startswith(l, "#")]
+    names = String.(strip.(getindex.(L, 1))); abbr = String.(strip.(getindex.(L, 2)))
+    pop = parse.(Float64, strip.(getindex.(L, 3)))
+    road = permutedims(hcat([parse.(Float64, split(strip(l[4]))) for l in L]...))
+    n = length(names)
+    (n == 15 && size(road) == (15, 15) && road == road' && all(road[i, i] == 0 for i in 1:n)) ||
+        error("sgb15_kuhn: 도시 15 개, 대칭·대각 0 인 거리표가 아님 ($_SGB15_FILE)")
+    base = [String(strip(first(split(s, ",")))) for s in sgb128_names()]
+    idx = map(names) do nm
+        k = findall(==(nm), base)
+        length(k) == 1 || error("sgb15_kuhn: SGB128 에서 '$nm' 이 $(length(k)) 번 나옴")
+        k[1]
+    end
+    return (; names, abbr, pop, road, idx)
+end
+"기대 수요 μ_i: 인구에 대해 affine, 가장 작은 도시 50, 가장 큰 도시 100 (Yanıkoğlu–Kuhn §7)"
+sgb15_mu(pop) = 50 .+ 50 .* (pop .- minimum(pop)) ./ (maximum(pop) - minimum(pop))
+
 
 # =====================================================================
 # 사전예약 location (html "적용 예", Goyal et al. 2023 JOC §7.1 기본 사례 규모)
@@ -302,6 +331,7 @@ Goyal et al. (2023) §7.1 기본 사례를 따른다 (SGB128 좌표 대신 [0,1]
                                 (aggregate LP 가 개별 고객 선주문의 가격 균형과 같아지는 형태, test_nz_equilibrium.jl)
 RCR: A 총용량 > 최대 총수요 (assert).
 demand = :iid (기본, 시장마다 독립 U[dlo, dhi]) | :factor (지역 요인 모형, nfac 개 요인, 적재 범위 fac_a; 아래 주석)
+coords = :sgb15 (2026-11-05) 은 Yanıkoğlu–Kuhn 의 SGB15 예 — make_sgb15_instance 로 부른다 (점포 노드 15 + 고객 노드 15).
 """
 function make_location_instance(; coords::Symbol=:sgb128, n_loc=8, nA=1, nB=4, NB=4, S=5, seed=1,
         bA=720.0, bB=360.0, qB=305.0, dlo=30.0, dhi=240.0, v=5.0,
@@ -309,19 +339,20 @@ function make_location_instance(; coords::Symbol=:sgb128, n_loc=8, nA=1, nB=4, N
         reservation::Symbol=:pooled, quota=wres, pool_limit::Symbol=:total,
         eps_hat=0.2, eps_tilde=0.2, beta=0.4,
         thetaU=:circuit, lambdaU=nothing, bigm::Symbol=:tight,
-        demand::Symbol=:iid, nfac::Int=2, fac_a=nothing)
+        demand::Symbol=:iid, nfac::Int=2, fac_a=nothing, sgb15_dist::Symbol=:euclid)
     reservation in (:pooled, :pair) || error("reservation = :pooled | :pair")
     pool_limit in (:total, :store) || error("pool_limit = :total | :store")
     reservation == :pair && pool_limit != :total && error("pool_limit 는 reservation = :pooled 전용")
-    coords in (:sgb128, :random) || error("coords = :sgb128 | :random")
+    coords in (:sgb128, :sgb15, :random) || error("coords = :sgb128 | :sgb15 | :random")
     demand in (:iid, :factor) || error("demand = :iid | :factor")
+    sgb15_dist in (:euclid, :road) || error("sgb15_dist = :euclid | :road")
     # λᵁ (follower exact penalty) 는 비용 단위에 묶인 상수. follower McCormick 상한이 λᵁ·(c^max + p) 라
     # 척도를 따라가야 한다. random 에서 경계가 v/해상도 = 50 → λᵁ = 1000. sgb128 (해상도 1) 은 경계 ~5 로 보고 100.
-    lambdaU = lambdaU === nothing ? (coords == :sgb128 ? 100.0 : 1000.0) : Float64(lambdaU)
+    sgb = coords in (:sgb128, :sgb15)
+    lambdaU = lambdaU === nothing ? (sgb ? 100.0 : 1000.0) : Float64(lambdaU)
     # 거리 척도가 좌표에 따라 다르므로 p, f, 해상도의 기본값도 다름
-    #   :sgb128 — XY 좌표가 마일 척도 (점포-고객 거리 217~2,971, 평균 1,162) → 정수 반올림, p = 200, f = 50
+    #   :sgb128, :sgb15 — XY 좌표 (또는 도로 거리) 가 마일 척도 (sgb128 점포-고객 거리 217~2,971, 평균 1,162) → 정수 반올림, p = 200, f = 50
     #   :random — [0,1]² → 0.1 단위 반올림, p = 0.3, f = 0.1 (2026-10-06~07 의 초기 실험)
-    sgb = coords == :sgb128
     p = p === nothing ? (sgb ? 200.0 : 0.3) : Float64(p)
     f = f === nothing ? (sgb ? 50.0 : 0.1) : Float64(f)
     dist_res = dist_res === nothing ? (sgb ? 1.0 : 0.1) : Float64(dist_res)
@@ -331,7 +362,7 @@ function make_location_instance(; coords::Symbol=:sgb128, n_loc=8, nA=1, nB=4, N
     @assert ncu >= 1
     st = 1:nst                      # 1..nA = A, nA+1..nst = B 후보
     cu = nst+1:n_loc
-    if sgb
+    if coords == :sgb128
         # Goyal et al. (2023) §7.1 기본 사례: SGB128 (Burkardt) 의 처음 8 개 도시, 적격 위치 1,2,3,4,6 중 A 는 6,
         # 나머지 5,7,8 이 고객. c_ij = 좌표 Euclidean 거리. 여기서는 점포 (A 먼저) → 고객 순으로 재배열
         @assert (n_loc, nA, nB) == (8, 1, 4) "coords=:sgb128 은 Goyal 기본 사례 (n_loc=8, nA=1, nB=4) 전용"
@@ -339,12 +370,30 @@ function make_location_instance(; coords::Symbol=:sgb128, n_loc=8, nA=1, nB=4, N
         order = [6, 1, 2, 3, 4, 5, 7, 8]
         coord = xy[order, :]
         cities = sgb128_names()[order]
+    elseif coords == :sgb15
+        # Yanıkoğlu–Kuhn §7: 15 개 도시 모두 고객이고 출점 가능, A 는 Saint Louis·San Jose. 같은 도시에 점포 노드와 고객 노드를
+        # 둔다 (점포 노드 = A 2 + B 후보 13, 고객 노드 = 표 순서 15). 같은 도시의 수송비는 0.
+        @assert (n_loc, nA, nB) == (30, 2, 13) "coords=:sgb15 은 점포 노드 15 (A 2 + B 13) + 고객 노드 15 (n_loc = 30) 전용"
+        kd = sgb15_kuhn()
+        ia = [findfirst(==("Saint Louis"), kd.names), findfirst(==("San Jose"), kd.names)]
+        order = vcat(ia, setdiff(1:15, ia))
+        xy = sgb128_xy()
+        coord = vcat(xy[kd.idx[order], :], xy[kd.idx, :])
+        cities = vcat(kd.names[order], kd.names)
     else
         coord = rand(rng, n_loc, 2)
         cities = String[]
     end
     dist = [round(norm(coord[i, :] .- coord[j, :]) / dist_res) * dist_res for i in st, j in cu]
-    if demand == :iid
+    if coords == :sgb15 && sgb15_dist == :road
+        dist = [kd.road[order[i], j] for i in 1:nst, j in 1:ncu]
+    end
+    if coords == :sgb15
+        # Yanıkoğlu–Kuhn §7: ξ_i ~ U[μ_i/2, 3μ_i/2] 도시마다 독립, μ_i 는 인구에 따라 50~100
+        demand == :iid || error("coords=:sgb15 은 demand = :iid (Yanıkoğlu–Kuhn 의 독립 균등 수요) 전용")
+        μ = sgb15_mu(kd.pop)
+        ξ = round.(μ .* (0.5 .+ rand(rng, ncu, S)); digits=1)
+    elseif demand == :iid
         ξ = round.(dlo .+ (dhi - dlo) .* rand(rng, ncu, S); digits=1)
     else
         # 지역 요인 수요 (2026-10-21): zero-sum 요인 용량 모형 (network_generator.jl generate_capacity_scenarios_factor_additive)
@@ -451,11 +500,27 @@ function make_location_instance(; coords::Symbol=:sgb128, n_loc=8, nA=1, nB=4, N
         :bA => bA, :bB => bB, :cmax => cmax, :D => D, :piLU_fn => piLU_fn,
         :iyR => iyR, :iyS => iyS, :reservation => reservation, :pool_limit => pool_limit, :nst => nst,
         :rdem => rdem, :rres => rres, :rcap => rcap, :hidx => hidx, :isB => isB, :gapB => gapB, :bigm => bigm)
-    return NZData((sgb ? "location_sgb128" : "location_n$(n_loc)_A$(nA)_B$(nB)") * "_S$(S)_seed$(seed)" * (pair ? "_pair" : pool_limit == :store ? "_poolstore" : ""),
+    return NZData((coords == :sgb128 ? "location_sgb128" : coords == :sgb15 ? "location_sgb15_$(sgb15_dist)" : "location_n$(n_loc)_A$(nA)_B$(nB)") *
+                  "_S$(S)_seed$(seed)" * (pair ? "_pair" : pool_limit == :store ? "_poolstore" : ""),
         A, c, ell, u, hrow, hcoef, xrow, g, W, wvec, c0, hU,
         nx, fill(true, nx), NB, fill(qB, nx),
         S, fill(1.0 / S, S), eps_hat, eps_tilde, beta,
         θU, piLU_fn(θU), piFU, lambdaU, varpiU, meta)
+end
+
+"""
+    make_sgb15_instance(; S=10, seed=1, dist=:euclid, quota=300.0, kwargs...)
+
+Yanıkoğlu–Kuhn (2018) §7 의 SGB15 예에 사전예약을 얹은 인스턴스 (2026-11-05, 원고 6.1 모형 가치 인스턴스 후보).
+  15 개 도시 모두 고객이고 출점 가능. A 점포 = Saint Louis, San Jose (용량 3/4 Σμ), B 후보 = 나머지 13 곳 (용량 1/2 Σμ),
+  출점 ≤ 3 (|𝒳| = 378), 출점비 500, 단위 수익 v = 5. 수요 ξ_i ~ U[μ_i/2, 3μ_i/2] 독립, S 개 시나리오, q̂ 균등.
+  dist = :euclid (SGB128 좌표의 직선거리, Goyal 기본 사례와 같은 규칙) | :road (Table 7.1 도로 거리)
+  예약은 점포별 풀 (pool_limit = :store, 한도 quota, L1~L6 과 같은 형태). p, f, eps_hat, eps_tilde, beta 등은 make_location_instance 로 넘긴다.
+"""
+function make_sgb15_instance(; S=10, seed=1, dist::Symbol=:euclid, quota=300.0, kwargs...)
+    μ = sgb15_mu(sgb15_kuhn().pop)
+    return make_location_instance(; coords=:sgb15, sgb15_dist=dist, n_loc=30, nA=2, nB=13, NB=3, S=S, seed=seed,
+        bA=0.75 * sum(μ), bB=0.5 * sum(μ), qB=500.0, v=5.0, reservation=:pooled, pool_limit=:store, quota=quota, kwargs...)
 end
 
 

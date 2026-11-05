@@ -1,0 +1,21 @@
+# SGB15: Yanikoglu & Kuhn (2018), "Decision rule bounds for two-stage stochastic bilevel programs",
+# SIAM J. Optim. 28(1):198-222, Table 7.1 (Optimization Online preprint, p. 17): the 15 most populous cities of SGB128,
+# their populations and road distances in miles. Transcribed 2026-11-05 in the order of the table.
+# Note: the (Toronto, San Francisco) entry is 480 in both rows of the table, against a straight-line distance of about
+# 3,000 miles in the SGB128 coordinates; it is kept as printed.
+# format: name | abbreviation | population | road distances to Tor S.A S.D S.J S.F Win Was Van Sea Tuc Sac Tul Wic S.L Tol
+Toronto       | Tor | 2615000 | 0 1686 2581 2668 480 1387 480 2723 2587 2207 2549 1151 1198 758 288
+San Antonio   | S.A | 1409000 | 1686 0 1286 1692 1746 1555 1609 2281 2171 867 1736 531 630 910 1399
+San Diego     | S.D | 1356000 | 2581 1286 0 460 505 2017 2703 1397 1265 467 504 1416 1410 1858 2306
+San Jose      | S.J | 998537  | 2668 1692 460 0 48 1916 2846 982 840 827 120 1690 1637 2082 2393
+San Francisco | S.F | 837442  | 480 1746 505 48 0 1561 2838 950 810 869 87 1732 1785 2073 2361
+Winnipeg      | Win | 663615  | 1387 1555 2017 1916 1561 0 1916 1438 1419 1945 1797 1020 940 1015 1114
+Washington    | Was | 658893  | 480 1609 2703 2846 2838 1916 0 2897 2784 2278 2730 1211 1279 878 470
+Vancouver     | Van | 603500  | 2723 2281 1397 982 950 1438 2897 0 143 1664 588 2126 1952 2219 2427
+Seattle       | Sea | 652405  | 2587 2171 1265 840 810 1419 2784 143 0 1529 752 1990 1830 2118 2292
+Tucson        | Tuc | 526116  | 2207 867 467 827 869 1945 2278 1664 1529 0 871 1057 1003 1449 1919
+Sacramento    | Sac | 479686  | 2549 1736 504 120 87 1797 2730 588 752 871 0 1726 1637 1971 2273
+Tulsa         | Tul | 398121  | 1151 531 1416 1690 1732 1020 1211 2126 1990 1057 1726 0 176 394 864
+Wichita       | Wic | 386552  | 1198 630 1410 1637 1785 940 1279 1952 1830 1003 1637 176 0 636 904
+Saint Louis   | S.L | 318416  | 758 910 1858 2082 2073 1015 878 2219 2118 1449 1971 394 636 0 470
+Toledo        | Tol | 282313  | 288 1399 2306 2393 2361 1114 470 2427 2292 1919 2273 864 904 470 0

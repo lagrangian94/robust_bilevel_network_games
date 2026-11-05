@@ -19,6 +19,9 @@ boost (전역 subproblem) 는 true_dro_benders_optimize! 의 기본값 = zero-su
   NS_VARIANTS_S10 = menu   NS_VARIANTS_LARGE = menu   NS_NWORKERS = 12   NS_WALL = 3600   NS_TOL = 5e-3
   NS_LOGROOT = logs/nig_coupled   (factor_5 기준)
   NS_SEEDS = 42   (2026-11-03: 용량 시나리오·v 의 seed, 쉼표 구분. 네트워크 구조는 그대로. 42 가 아니면 로그 이름에 _s<seed>, RESULT 끝에 seed=)
+  NS_EPS          (2026-11-05: 주면 모든 네트워크에 이 ε, 없으면 NETWORK_EPS. docs/robustness_value_todo.md 0 절의 ε = 0.1 통일)
+  NS_MODEL = coupled   (2026-11-05: coupled (ε̂ = ε̃ = ε, δ = NS_DELTA) | product (δ = Inf) | datadr (ε̃ = 0) | nominal (ε̂ = ε̃ = 0).
+                        coupled 가 아니면 로그 이름에 _<model>, RESULT 끝에 model= eps_tilde=)
 로그: <NS_LOGROOT>/S_<S>/<net>_<variant>.log, 끝까지 간 로그 (RESULT 줄) 는 건너뜀.
 실행: julia -t 14,1 run_nig_coupled_scaling.jl   (α-B&B 에 interactive 스레드 필요)
 =#
@@ -114,15 +117,20 @@ wall       = parse(Float64, get(ENV, "NS_WALL", "3600"))
 tol        = parse(Float64, get(ENV, "NS_TOL", "5e-3"))
 seeds      = parse.(Int, envlist("NS_SEEDS", "42"))
 log_root   = joinpath(@__DIR__, get(ENV, "NS_LOGROOT", joinpath("logs", "nig_coupled")))
+eps_all    = haskey(ENV, "NS_EPS") ? parse(Float64, ENV["NS_EPS"]) : nothing
+model_kind = get(ENV, "NS_MODEL", "coupled")
 λU = 10.0
 all(v -> haskey(VARIANTS, v), vcat(var_s10, var_large)) || error("알 수 없는 변형: $(vcat(var_s10, var_large))")
-all(n -> haskey(NETWORK_EPS, n), networks) || error("ε* 가 정해지지 않은 네트워크: $networks")
+eps_all !== nothing || all(n -> haskey(NETWORK_EPS, n), networks) || error("ε* 가 정해지지 않은 네트워크: $networks")
+model_kind in ("coupled", "product", "datadr", "nominal") || error("NS_MODEL = coupled | product | datadr | nominal ($model_kind)")
+model_kind == "coupled" || all(v -> v == "menu", vcat(var_s10, var_large)) ||
+    error("NS_MODEL=$model_kind 는 menu 변형으로만 (x* 계산용)")
 Threads.nthreads() >= nworkers + 2 ||
     error("α-B&B boost: Julia 스레드 $(Threads.nthreads()) < NS_NWORKERS+2 = $(nworkers + 2) (julia -t $(nworkers + 2) 로 실행)")
 
 println("=" ^ 70)
-@printf("NIG coupled scaling: δ=%.3f, β=%.2f, ε̂=ε̃=ε*(net), λU=%.1f, S ∈ %s, wall=%.0fs, tol=%.0e, boost workers=%d\n",
-        δ, β_risk, λU, string(S_list), wall, tol, nworkers)
+@printf("NIG coupled scaling: model=%s, δ=%.3f, β=%.2f, ε=%s, λU=%.1f, S ∈ %s, wall=%.0fs, tol=%.0e, boost workers=%d\n",
+        model_kind, δ, β_risk, eps_all === nothing ? "ε*(net)" : @sprintf("%.2f", eps_all), λU, string(S_list), wall, tol, nworkers)
 @printf("Networks: %s | S=10 변형: %s | S>10 변형: %s\n", join(networks, ", "), join(var_s10, ","), join(var_large, ","))
 println("=" ^ 70)
 flush(stdout)
@@ -132,7 +140,9 @@ for S in S_list
     mkpath(log_dir)
     variants = S == 10 ? var_s10 : var_large
     for seed in seeds, network_name in networks
-        eps = NETWORK_EPS[network_name]
+        eps = eps_all === nothing ? NETWORK_EPS[network_name] : eps_all
+        eh, et, δm = model_kind == "coupled" ? (eps, eps, δ) : model_kind == "product" ? (eps, eps, Inf) :
+                     model_kind == "datadr" ? (eps, 0.0, Inf) : (0.0, 0.0, Inf)
         net, γ, intd_arcs = make_network(network_name)
         num_arcs = length(net.arcs) - 1
         caps, _ = NG.generate_capacity_scenarios_factor_additive(length(net.arcs), S;
@@ -148,27 +158,28 @@ for S in S_list
         end
         for variant in variants
             mb, vi = VARIANTS[variant]
-            log_path = joinpath(log_dir, "$(network_name)_$(variant)" * (seed == 42 ? "" : "_s$(seed)") * ".log")
+            log_path = joinpath(log_dir, "$(network_name)_$(variant)" * (model_kind == "coupled" ? "" : "_$(model_kind)") *
+                                         (seed == 42 ? "" : "_s$(seed)") * ".log")
             if log_done(log_path)
                 @printf("  [skip] %s\n", log_path); flush(stdout); continue
             end
             run_with_tee(log_path) do
                 println("=" ^ 60)
-                @printf("%s — %s: S=%d, seed=%d, ε̂=ε̃=%.2f, β=%.2f, δ=%.3f (%s)\n", network_name, variant, S, seed, eps, β_risk, δ,
+                @printf("%s — %s (%s): S=%d, seed=%d, ε̂=%.2f, ε̃=%.2f, β=%.2f, δ=%.3f (%s)\n", network_name, variant, model_kind, S, seed, eh, et, β_risk, δm,
                         variant == "menu" ? "belief_menu_benders_optimize!, oracle α-B&B, local_first, menu MW, VI=mincut" :
                         variant == "nob"  ? "belief_menu_benders_optimize!, belief_cuts=false, oracle α-B&B, local_first, VI=mincut" :
                                             "true_dro_benders_optimize!, mini_benders=$(mb), VI=$(vi), boost α-B&B")
                 @printf("arcs=%d, intd=%d, γ=%d, w=%.4f, started %s\n", num_arcs, length(intd_idx), γ, w, string(now()))
                 println("=" ^ 60)
                 flush(stdout)
-                td = make_true_dro_data(net, caps, q_hat, eps, eps;
+                td = make_true_dro_data(net, caps, q_hat, eh, et;
                     w=w, lambda_U=λU, gamma=γ, beta=β_risk, v_scenarios=v_rand)
                 t0 = time()
                 res = if variant in ("menu", "nob")
                     belief_menu_benders_optimize!(td;
                         mip_optimizer=Gurobi.Optimizer, nlp_optimizer=Gurobi.Optimizer, lp_optimizer=Gurobi.Optimizer,
                         nworkers=nworkers, max_iter=1000, tol=tol, verbose=true,
-                        valid_inequality=:mincut, source_sink_cut=ss_cut, wall_time_limit=wall, delta_couple=δ,
+                        valid_inequality=:mincut, source_sink_cut=ss_cut, wall_time_limit=wall, delta_couple=δm,
                         belief_cuts=(variant == "menu"))
                 else
                     true_dro_benders_optimize!(td;
@@ -184,9 +195,11 @@ for S in S_list
                 xs = findall(round.(Int, res[:x]) .> 0)
                 @printf("\nResult (%s, S=%d): Z₀=%.6f, iters=%d, time=%.1fs\n", variant, S, res[:Z0], res[:iters], wt)
                 println("x arcs = $(xs)")
-                @printf("RESULT net=%s variant=%s S=%d beta=%.2f eps=%.2f delta=%.3f status=%s Z0=%.8f LB=%.8f UB=%.8f iters=%d time=%.2f x=%s%s\n",
-                        network_name, variant, S, β_risk, eps, δ, string(res[:status]), res[:Z0],
-                        res[:lower_bound], res[:upper_bound], res[:iters], wt, join(xs, ";"), seed == 42 ? "" : " seed=$(seed)")
+                # coupled 가 아니면 줄 끝에 model·ε̃ (eps= 는 ε̂, delta= 는 실제 δ). coupled 줄은 예전 형식 그대로
+                @printf("RESULT net=%s variant=%s S=%d beta=%.2f eps=%.2f delta=%.3f status=%s Z0=%.8f LB=%.8f UB=%.8f iters=%d time=%.2f x=%s%s%s\n",
+                        network_name, variant, S, β_risk, eh, δm, string(res[:status]), res[:Z0],
+                        res[:lower_bound], res[:upper_bound], res[:iters], wt, join(xs, ";"), seed == 42 ? "" : " seed=$(seed)",
+                        model_kind == "coupled" ? "" : @sprintf(" model=%s eps_tilde=%.2f", model_kind, et))
                 flush(stdout)
             end
             @printf("  [done] %s\n", log_path); flush(stdout)
