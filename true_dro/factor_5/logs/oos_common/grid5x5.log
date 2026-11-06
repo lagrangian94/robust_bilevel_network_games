@@ -1,0 +1,44 @@
+Set parameter Username
+Set parameter LicenseID to value 2742039
+Academic license - for non-commercial use only - expires 2026-11-20
+grid5x5 seed=42 w=10.2492: Nominal={28;37}  Data-DR={28;31}  Product={28;33}  Coupled={28;33}
+  γ=0.1 (추출 1221 번)
+  γ=0.3 (추출 2493 번)
+  γ=1.0 (추출 20624 번)
+  γ=5.0 (추출 594316 번)
+grid5x5 seed=1 w=9.2021: Nominal={24;30}  Data-DR={24;30}  Product={24;30}  Coupled={24;30}
+  γ=0.1 (추출 1436 번)
+  γ=0.3 (추출 2546 번)
+  γ=1.0 (추출 16799 번)
+  γ=5.0 (추출 576089 번)
+grid5x5 seed=2 w=9.8066: Nominal={25;37}  Data-DR={25;28}  Product={25;37}  Coupled={25;37}
+  γ=0.1 (추출 1530 번)
+  γ=0.3 (추출 2845 번)
+  γ=1.0 (추출 20318 번)
+  γ=5.0 (추출 610648 번)
+grid5x5 seed=3 w=12.0077: Nominal={23;31}  Data-DR={29;33}  Product={33;36}  Coupled={33;36}
+  γ=0.1 (추출 1456 번)
+  γ=0.3 (추출 2637 번)
+  γ=1.0 (추출 19273 번)
+  γ=5.0 (추출 550172 번)
+grid5x5 seed=4 w=11.8564: Nominal={30;32}  Data-DR={30;32}  Product={30;32}  Coupled={30;32}
+  γ=0.1 (추출 1306 번)
+  γ=0.3 (추출 2719 번)
+  γ=1.0 (추출 21254 번)
+  γ=5.0 (추출 612152 번)
+
+grid5x5 (ε=0.30 δ=0.10 β=0.40, γ = 0.1,0.3,1.0,5.0, seed 5 개): Nominal 대비 % (seed 평균, 비용이라 음수가 좋음)
+level         model        평균   나쁜5%
+Close         Nominal      +0.0     +0.0
+Close         Data-DR      +3.4     -0.1
+Close         Product      +1.1     -3.8
+Close         Coupled      +1.1     -3.8
+Moderate      Nominal      +0.0     +0.0
+Moderate      Data-DR      +3.5     -0.2
+Moderate      Product      +1.6     -2.9
+Moderate      Coupled      +1.6     -2.9
+Misspecified  Nominal      +0.0     +0.0
+Misspecified  Data-DR      +3.1     -2.3
+Misspecified  Product      +2.3     -1.9
+Misspecified  Coupled      +2.3     -1.9
+OOS_COUPLED_DONE grid5x5

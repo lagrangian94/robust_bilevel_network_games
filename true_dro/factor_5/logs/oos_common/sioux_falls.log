@@ -1,0 +1,39 @@
+Set parameter Username
+Set parameter LicenseID to value 2742039
+Academic license - for non-commercial use only - expires 2026-11-20
+sioux_falls seed=42 w=10.4427: Nominal={35;73}  Data-DR={54;72}  Product={35;72}  Coupled={35;72}
+  γ=0.1 (추출 1402 번)
+  γ=0.3 (추출 2611 번)
+  γ=1.0 (추출 17729 번)
+  γ=5.0 (추출 606765 번)
+sioux_falls seed=1 w=10.8307: Nominal={52;73}  Data-DR={52;73}  Product={35;73}  Coupled={35;73}
+  γ=0.1 (추출 1422 번)
+  γ=0.3 (추출 2492 번)
+  γ=1.0 (추출 17304 번)
+  γ=5.0 (추출 590178 번)
+sioux_falls seed=2 w=10.1268: Nominal={11;73}  Data-DR={11;35}  Product={11;35}  Coupled={11;35}
+  γ=0.1 (추출 1433 번)
+  γ=0.3 (추출 2734 번)
+  γ=1.0 (추출 18238 번)
+  γ=5.0 (추출 622953 번)
+sioux_falls seed=3 w=11.4198: Nominal={51;73}  Data-DR={51;73}  Product={51;73}  Coupled={51;73}
+  γ=0.1 (추출 1428 번)
+  γ=0.3 (추출 2480 번)
+  γ=1.0 (추출 17573 번)
+  γ=5.0 (추출 618771 번)
+
+sioux_falls (ε=0.30 δ=0.10 β=0.40, γ = 0.1,0.3,1.0,5.0, seed 4 개): Nominal 대비 % (seed 평균, 비용이라 음수가 좋음)
+level         model        평균   나쁜5%
+Close         Nominal      +0.0     +0.0
+Close         Data-DR      +2.6     -3.0
+Close         Product      +6.0     -8.7
+Close         Coupled      +6.0     -8.7
+Moderate      Nominal      +0.0     +0.0
+Moderate      Data-DR      +3.1     -2.5
+Moderate      Product      +6.7     -7.3
+Moderate      Coupled      +6.7     -7.3
+Misspecified  Nominal      +0.0     +0.0
+Misspecified  Data-DR      +2.8     -5.7
+Misspecified  Product      +8.4     -6.9
+Misspecified  Coupled      +8.4     -6.9
+OOS_COUPLED_DONE sioux_falls

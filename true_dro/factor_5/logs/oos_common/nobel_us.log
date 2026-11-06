@@ -1,0 +1,44 @@
+Set parameter Username
+Set parameter LicenseID to value 2742039
+Academic license - for non-commercial use only - expires 2026-11-20
+nobel_us seed=42 w=10.7025: Nominal={6;9}  Data-DR={6;9}  Product={22;25}  Coupled={22;25}
+  γ=0.1 (추출 1450 번)
+  γ=0.3 (추출 2748 번)
+  γ=1.0 (추출 16994 번)
+  γ=5.0 (추출 587094 번)
+nobel_us seed=1 w=10.3593: Nominal={7;9}  Data-DR={7;9}  Product={9;15}  Coupled={9;15}
+  γ=0.1 (추출 1484 번)
+  γ=0.3 (추출 2729 번)
+  γ=1.0 (추출 18622 번)
+  γ=5.0 (추출 525718 번)
+nobel_us seed=2 w=10.8050: Nominal={20;22}  Data-DR={20;22}  Product={20;22}  Coupled={20;22}
+  γ=0.1 (추출 1359 번)
+  γ=0.3 (추출 2627 번)
+  γ=1.0 (추출 17643 번)
+  γ=5.0 (추출 561924 번)
+nobel_us seed=3 w=10.4013: Nominal={20;25}  Data-DR={9;20}  Product={20;25}  Coupled={20;25}
+  γ=0.1 (추출 1373 번)
+  γ=0.3 (추출 2580 번)
+  γ=1.0 (추출 17554 번)
+  γ=5.0 (추출 696418 번)
+nobel_us seed=4 w=11.2666: Nominal={15;33}  Data-DR={15;33}  Product={20;33}  Coupled={20;33}
+  γ=0.1 (추출 1340 번)
+  γ=0.3 (추출 3059 번)
+  γ=1.0 (추출 16418 번)
+  γ=5.0 (추출 622609 번)
+
+nobel_us (ε=0.30 δ=0.10 β=0.40, γ = 0.1,0.3,1.0,5.0, seed 5 개): Nominal 대비 % (seed 평균, 비용이라 음수가 좋음)
+level         model        평균   나쁜5%
+Close         Nominal      +0.0     +0.0
+Close         Data-DR      +0.8     +1.6
+Close         Product      +9.0     -2.2
+Close         Coupled      +9.0     -2.2
+Moderate      Nominal      +0.0     +0.0
+Moderate      Data-DR      +0.6     +2.0
+Moderate      Product     +10.9     -3.0
+Moderate      Coupled     +10.9     -3.0
+Misspecified  Nominal      +0.0     +0.0
+Misspecified  Data-DR      +0.2     +1.8
+Misspecified  Product     +14.0     +0.3
+Misspecified  Coupled     +14.0     +0.3
+OOS_COUPLED_DONE nobel_us

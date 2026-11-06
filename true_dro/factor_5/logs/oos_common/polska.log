@@ -1,0 +1,39 @@
+Set parameter Username
+Set parameter LicenseID to value 2742039
+Academic license - for non-commercial use only - expires 2026-11-20
+polska seed=42 w=9.9444: Nominal={3;33}  Data-DR={13;34}  Product={6;33}  Coupled={6;33}
+  γ=0.1 (추출 1260 번)
+  γ=0.3 (추출 2782 번)
+  γ=1.0 (추출 22201 번)
+  γ=5.0 (추출 539509 번)
+polska seed=1 w=10.5520: Nominal={13;34}  Data-DR={18;33}  Product={3;34}  Coupled={3;34}
+  γ=0.1 (추출 1463 번)
+  γ=0.3 (추출 2596 번)
+  γ=1.0 (추출 20185 번)
+  γ=5.0 (추출 625445 번)
+polska seed=3 w=10.0640: Nominal={14;18}  Data-DR={6;14}  Product={3;14}  Coupled={3;14}
+  γ=0.1 (추출 1403 번)
+  γ=0.3 (추출 2346 번)
+  γ=1.0 (추출 19176 번)
+  γ=5.0 (추출 531130 번)
+polska seed=4 w=11.3805: Nominal={18;34}  Data-DR={28;34}  Product={22;33}  Coupled={22;33}
+  γ=0.1 (추출 1383 번)
+  γ=0.3 (추출 2277 번)
+  γ=1.0 (추출 21297 번)
+  γ=5.0 (추출 607276 번)
+
+polska (ε=0.30 δ=0.10 β=0.40, γ = 0.1,0.3,1.0,5.0, seed 4 개): Nominal 대비 % (seed 평균, 비용이라 음수가 좋음)
+level         model        평균   나쁜5%
+Close         Nominal      +0.0     +0.0
+Close         Data-DR      +5.9     +3.8
+Close         Product      +6.4     -8.9
+Close         Coupled      +6.4     -8.9
+Moderate      Nominal      +0.0     +0.0
+Moderate      Data-DR      +6.6     -2.9
+Moderate      Product      +7.5     -8.8
+Moderate      Coupled      +7.5     -8.8
+Misspecified  Nominal      +0.0     +0.0
+Misspecified  Data-DR      +7.4     -8.5
+Misspecified  Product      +7.9     -8.5
+Misspecified  Coupled      +7.9     -8.5
+OOS_COUPLED_DONE polska

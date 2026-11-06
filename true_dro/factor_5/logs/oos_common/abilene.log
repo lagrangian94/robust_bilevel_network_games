@@ -1,0 +1,39 @@
+Set parameter Username
+Set parameter LicenseID to value 2742039
+Academic license - for non-commercial use only - expires 2026-11-20
+abilene seed=1 w=10.2067: Nominal={8;23}  Data-DR={15;26}  Product={15;26}  Coupled={15;26}
+  γ=0.1 (추출 1384 번)
+  γ=0.3 (추출 2351 번)
+  γ=1.0 (추출 20410 번)
+  γ=5.0 (추출 627457 번)
+abilene seed=2 w=9.7726: Nominal={15;26}  Data-DR={26;28}  Product={19;26}  Coupled={19;26}
+  γ=0.1 (추출 1600 번)
+  γ=0.3 (추출 2743 번)
+  γ=1.0 (추출 18989 번)
+  γ=5.0 (추출 553553 번)
+abilene seed=3 w=9.8400: Nominal={5;8}  Data-DR={8;20}  Product={8;26}  Coupled={8;26}
+  γ=0.1 (추출 1390 번)
+  γ=0.3 (추출 2650 번)
+  γ=1.0 (추출 17056 번)
+  γ=5.0 (추출 636340 번)
+abilene seed=4 w=11.5743: Nominal={8;20}  Data-DR={8;26}  Product={8;26}  Coupled={8;26}
+  γ=0.1 (추출 1354 번)
+  γ=0.3 (추출 2522 번)
+  γ=1.0 (추출 19217 번)
+  γ=5.0 (추출 591759 번)
+
+abilene (ε=0.30 δ=0.10 β=0.40, γ = 0.1,0.3,1.0,5.0, seed 4 개): Nominal 대비 % (seed 평균, 비용이라 음수가 좋음)
+level         model        평균   나쁜5%
+Close         Nominal      +0.0     +0.0
+Close         Data-DR      +1.5    -12.8
+Close         Product      -0.3    -14.9
+Close         Coupled      -0.3    -14.9
+Moderate      Nominal      +0.0     +0.0
+Moderate      Data-DR      +1.7    -16.6
+Moderate      Product      +0.4    -15.8
+Moderate      Coupled      +0.4    -15.8
+Misspecified  Nominal      +0.0     +0.0
+Misspecified  Data-DR      +2.8    -21.7
+Misspecified  Product      +2.2    -17.4
+Misspecified  Coupled      +2.2    -17.4
+OOS_COUPLED_DONE abilene
