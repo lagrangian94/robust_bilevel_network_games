@@ -1,0 +1,141 @@
+Set parameter Username
+Set parameter LicenseID to value 2742039
+
+--------------------------------------------
+Warning: your license will expire in 14 days
+--------------------------------------------
+
+Academic license - for non-commercial use only - expires 2026-11-20
+FE seed=2 dem=region 상위 3 개, TL=1200s, workers=12
+Set parameter Username
+Set parameter LicenseID to value 2742039
+
+--------------------------------------------
+Warning: your license will expire in 14 days
+--------------------------------------------
+
+Academic license - for non-commercial use only - expires 2026-11-20
+Set parameter Username
+Set parameter LicenseID to value 2742039
+
+--------------------------------------------
+Warning: your license will expire in 14 days
+--------------------------------------------
+
+Academic license - for non-commercial use only - expires 2026-11-20
+Set parameter Username
+Set parameter LicenseID to value 2742039
+
+--------------------------------------------
+Warning: your license will expire in 14 days
+--------------------------------------------
+
+Academic license - for non-commercial use only - expires 2026-11-20
+Set parameter Username
+Set parameter LicenseID to value 2742039
+
+--------------------------------------------
+Warning: your license will expire in 14 days
+--------------------------------------------
+
+Academic license - for non-commercial use only - expires 2026-11-20
+Set parameter Username
+Set parameter LicenseID to value 2742039
+
+--------------------------------------------
+Warning: your license will expire in 14 days
+--------------------------------------------
+
+Academic license - for non-commercial use only - expires 2026-11-20
+Set parameter Username
+Set parameter LicenseID to value 2742039
+
+--------------------------------------------
+Warning: your license will expire in 14 days
+--------------------------------------------
+
+Academic license - for non-commercial use only - expires 2026-11-20
+Set parameter Username
+Set parameter LicenseID to value 2742039
+
+--------------------------------------------
+Warning: your license will expire in 14 days
+--------------------------------------------
+
+Academic license - for non-commercial use only - expires 2026-11-20
+Set parameter Username
+Set parameter LicenseID to value 2742039
+
+--------------------------------------------
+Warning: your license will expire in 14 days
+--------------------------------------------
+
+Academic license - for non-commercial use only - expires 2026-11-20
+Set parameter Username
+Set parameter LicenseID to value 2742039
+
+--------------------------------------------
+Warning: your license will expire in 14 days
+--------------------------------------------
+
+Academic license - for non-commercial use only - expires 2026-11-20
+Set parameter Username
+Set parameter LicenseID to value 2742039
+
+--------------------------------------------
+Warning: your license will expire in 14 days
+--------------------------------------------
+
+Academic license - for non-commercial use only - expires 2026-11-20
+Set parameter Username
+Set parameter LicenseID to value 2742039
+
+--------------------------------------------
+Warning: your license will expire in 14 days
+--------------------------------------------
+
+Academic license - for non-commercial use only - expires 2026-11-20
+Set parameter Username
+Set parameter LicenseID to value 2742039
+
+--------------------------------------------
+Warning: your license will expire in 14 days
+--------------------------------------------
+
+Academic license - for non-commercial use only - expires 2026-11-20
+Set parameter Username
+Set parameter LicenseID to value 2742039
+
+--------------------------------------------
+Warning: your license will expire in 14 days
+--------------------------------------------
+
+Academic license - for non-commercial use only - expires 2026-11-20
+
+******************************************************************************
+This program contains Ipopt, a library for large-scale nonlinear optimization.
+ Ipopt is released as open source code under the Eclipse Public License (EPL).
+         For more information visit https://github.com/coin-or/Ipopt
+******************************************************************************
+
+  [1] {4;12;13}  N: [-1215.67, -1213.05] exact=true 36s
+  [1] {4;12;13}  D: [-805.50, -803.87] exact=true 13s
+  [1] {4;12;13}  C: [-792.27, -789.99] exact=true 182s  a의 큰 성분 s4:0.4 s1:0.1 s2:0.1
+  [1] {4;12;13}  진짜 헤지 (D−N) +33.7%, belief 몫 (C−D) +1.1%  (표본 L0 -1215.7)
+  [2] {1;4;12}   N: [-1212.25, -1209.55] exact=true 15s
+  [2] {1;4;12}   D: [-802.08, -800.45] exact=true 22s
+  [2] {1;4;12}   C: [-777.89, -775.62] exact=true 194s  a의 큰 성분 s4:0.4 s1:0.1 s2:0.1
+  [2] {1;4;12}   진짜 헤지 (D−N) +33.8%, belief 몫 (C−D) +2.1%  (표본 L0 -1212.2)
+  [3] {4;6;12}   N: [-1188.42, -1185.78] exact=true 19s
+  [3] {4;6;12}   D: [-792.00, -791.02] exact=true 20s
+ERROR: LoadError: exact LP: INFEASIBLE
+Stacktrace:
+ [1] error(s::String)
+   @ Base .\error.jl:35
+ [2] exact_ad(nd::NZData, x̄::Vector{Float64}, α::Vector{Float64}; tolF::Float64)
+   @ Main C:\Users\user\AppData\Local\Temp\claude\C--Users-user-robust-bilevel-network-games\52fc5b93-ef5c-4aee-815c-8f3e7523e9c7\scratchpad\sgb15_fac_exact.jl:46
+ [3] exact_ad(nd::NZData, x̄::Vector{Float64}, α::Vector{Float64})
+   @ Main C:\Users\user\AppData\Local\Temp\claude\C--Users-user-robust-bilevel-network-games\52fc5b93-ef5c-4aee-815c-8f3e7523e9c7\scratchpad\sgb15_fac_exact.jl:25
+ [4] top-level scope
+   @ C:\Users\user\AppData\Local\Temp\claude\C--Users-user-robust-bilevel-network-games\52fc5b93-ef5c-4aee-815c-8f3e7523e9c7\scratchpad\sgb15_fac_exact.jl:63
+in expression starting at C:\Users\user\AppData\Local\Temp\claude\C--Users-user-robust-bilevel-network-games\52fc5b93-ef5c-4aee-815c-8f3e7523e9c7\scratchpad\sgb15_fac_exact.jl:57
