@@ -730,11 +730,11 @@ s1 의 ε 별 결정:
     | 72 | Utica·Winnipeg·Swainsboro | Salisbury·Winnipeg | 5.0 (0.3%) | [−1882.2, −1874.8] | [−1924.6, −1921.7] | ≥ 39.5 (2.0%) | 인증 |
     | 16 | Rock Springs·Springfield·Sedalia | Rock Springs·Sedalia | 26.8 (2.5%) | [−983.6, −976.5] | [−997.4, −997.1] | ≥ 13.5 (1.4%) | 인증 |
     | 57 | Sumter·Sheridan | Sumter·Sheridan·Tulsa | 26.3 (2.2%) | [−1124.1, −1118.5] | [−1137.4, −1134.8] | ≥ 10.6 (0.9%) | 인증 |
-    | 64 | Wisconsin Dells·Roswell·Texarkana | Wausau·Texarkana·Winnipeg | 36.8 (2.7%) | [−1257.7, −1252.2] | [−1292.0, −1071.6] | — | 미결 (y 구간이 시간 안에 안 좁혀짐, witness 는 y 우세) |
-    | 39 | Trenton·San Bernardino | Springfield·Trenton·Weed | 14.8 (0.9%) | [−1568.0, −1566.8] | [−1598.3, −1561.8] | — | 미결 (같은 이유) |
+    | 39 | Trenton·San Bernardino | Springfield·Trenton·Weed | 14.8 (0.9%) | [−1568.0, −1566.8] | [−1598.3, −1596.0] (TL 2400 s 로 다시) | ≥ 28.0 (1.7%) | 인증 |
+    | 64 | Wisconsin Dells·Roswell·Texarkana | Wausau·Texarkana·Winnipeg | 36.8 (2.7%) | [−1257.7, −1252.2] | [−1292.0, −1151.9] (TL 2400 s 로 다시) | — | 미결 (40 분에도 y 구간이 안 좁혀짐, witness 는 y 우세) |
     | 54 | Valdosta·Roswell·Reading | Tallahassee·Rockford | 6.0 (0.3%) | [−1833.7, −1830.5] | [−1835.7, −1832.9] | ≤ 5 | 갈림 아님 (결합 기준도 거의 같음, 선별 하한 오차) |
 
-    (% 는 |Data-DR 값| 대비.) 확인한 9 개 중 6 개 인증, 2 개 미결, 1 개 아님. 인증된 6 개 모두 Data-DR 기준으로는 0.3~2.5% 차이인 두 결정이 결합 기준으로는 0.9~6.4% 갈림.
+    (% 는 |Data-DR 값| 대비.) 확인한 9 개 중 **7 개 인증**, 1 개 미결, 1 개 아님. 인증된 7 개 모두 Data-DR 기준으로는 0.3~2.5% 차이인 두 결정이 결합 기준으로는 0.9~6.4% 갈림.
   - **g82 in-sample:** Nominal {1,6,11} Optimal (= Data-DR), 결합 {1,4,11} Uniontown·Tulsa·Seattle Optimal ([−1551.97, −1544.37]) = 선별기의 대안 y. 결합만 Tuscaloosa 대신 Tulsa.
   - **g82 OOS (scratchpad `geo/geo_oos.jl` = `nz_oos_designs_fac.jl` 의 지리 사본, 소매상 응답 = p̃ 아래 아무 최적 꼭짓점; 집계 `geo/oos_agg.py`): 결합이 진다.**
     - tiltm (38 방향 × r = 0.1~0.5, belief = 진짜 (learn) 또는 q̂ (fixed)): 방향 평균 −1.9 ~ −2.8%, 가장 나쁜 방향 −2.7 ~ +1.4% (+ 는 r ≥ 0.4 learn 만).
