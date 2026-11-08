@@ -735,7 +735,12 @@ s1 의 ε 별 결정:
     | 54 | Valdosta·Roswell·Reading | Tallahassee·Rockford | 6.0 (0.3%) | [−1833.7, −1830.5] | [−1835.7, −1832.9] | ≤ 5 | 갈림 아님 (결합 기준도 거의 같음, 선별 하한 오차) |
 
     (% 는 |Data-DR 값| 대비.) 확인한 9 개 중 6 개 인증, 2 개 미결, 1 개 아님. 인증된 6 개 모두 Data-DR 기준으로는 0.3~2.5% 차이인 두 결정이 결합 기준으로는 0.9~6.4% 갈림.
-  - 다음: 인증된 g82·g60 의 Nominal·결합 in-sample (결합의 실제 최적 결정) → OOS (tiltm, common). 그 뒤 미결 g64·g39 를 긴 시간 한도로, p = 600 선별.
+  - **g82 in-sample:** Nominal {1,6,11} Optimal (= Data-DR), 결합 {1,4,11} Uniontown·Tulsa·Seattle Optimal ([−1551.97, −1544.37]) = 선별기의 대안 y. 결합만 Tuscaloosa 대신 Tulsa.
+  - **g82 OOS (scratchpad `geo/geo_oos.jl` = `nz_oos_designs_fac.jl` 의 지리 사본, 소매상 응답 = p̃ 아래 아무 최적 꼭짓점; 집계 `geo/oos_agg.py`): 결합이 진다.**
+    - tiltm (38 방향 × r = 0.1~0.5, belief = 진짜 (learn) 또는 q̂ (fixed)): 방향 평균 −1.9 ~ −2.8%, 가장 나쁜 방향 −2.7 ~ +1.4% (+ 는 r ≥ 0.4 learn 만).
+    - common (γ = 0.1·0.3·1·5 × Close·Moderate·Misspecified, 300 쌍씩): 평균 −1.9 ~ −2.7%, 가장 나쁜 5% −3.5 ~ +0.1%.
+    - 모형 안 격차 (결합 기준 6.4%) 가 OOS 로 이어지지 않음. 점검할 것: in-sample 은 소매상 응답이 pessimistic (리더에게 불리한 최적 예약) 인데 OOS 는 아무 꼭짓점 → pessimistic 응답 OOS 사본 (`geo/geo_oos_pess.jl`) 으로 다시 (큐 q3).
+  - 다음: g60 in-sample·OOS, pessimistic OOS (g82·g60), 미결 g64·g39 긴 시간 한도, p = 600 선별.
 - **정리 (상자 파일럿).** 상자 (Sadana 식) 를 넣어도 이 인스턴스에서는 결정이 그대로임. 증폭 메커니즘은 상자에서도 살아 있음 ({9}·{3} 은 더 커짐). 동률은 β 와 수요 구조에서 나오는 것이라 상자로 안 풀림. 상자를 넣을지는 결정 차이가 아니라 통계적 타당성 (N ≈ 55 에서 한 시나리오 0.4 는 데이터와 안 맞음) 으로만 판단해야 함.
 
 ### 6.5 그림 (`docs/figs/value_night/`)
