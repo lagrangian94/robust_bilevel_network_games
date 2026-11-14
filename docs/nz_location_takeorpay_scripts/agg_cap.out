@@ -1,0 +1,78 @@
+
+===== N_F = 5 : 30 runs
+-- qfix  750 c 0.0 (c/v 0.0) | N: 30 runs open (nothing 0), level {275: 1, 300: 12, 483: 17}, stores 2.80, cost scale 1716, q90 damage 21.8%
+   location only d=0.1   mean +0.51 +- 0.45 | q90 +0.85 +- 0.69 [geo 6/4] | less total capacity 0% (capacity 1118 vs N 1118)
+   loc + capacity d=0.1  mean +0.21 +- 0.43 | q90 +0.65 +- 0.68 [geo 5/5] | less total capacity 17% (capacity 1100 vs N 1118)
+   location only calib   mean -0.13 +- 0.29 | q90 -0.51 +- 0.39 [geo 8/3] | less total capacity 0% (capacity 1118 vs N 1118)
+   loc + capacity calib  mean -0.15 +- 0.39 | q90 -0.82 +- 0.43 [geo 10/2] | less total capacity 20% (capacity 1118 vs N 1118)
+   tail oracle           mean -0.28 +- 0.60 | q90 -1.67 +- 0.41 [geo 14/0] | less total capacity 27% (capacity 1139 vs N 1118)
+-- qfix  450 c 1.0 (c/v 0.2) | N: 30 runs open (nothing 0), level {250: 4, 275: 4, 300: 22}, stores 2.93, cost scale 1709, q90 damage 25.1%
+   location only d=0.1   mean +0.06 +- 0.38 | q90 +0.42 +- 0.50 [geo 9/4] | less total capacity 0% (capacity 852 vs N 852)
+   loc + capacity d=0.1  mean +0.40 +- 0.75 | q90 -0.77 +- 1.29 [geo 9/5] | less total capacity 33% (capacity 832 vs N 852)
+   location only calib   mean -0.53 +- 0.24 | q90 -0.73 +- 0.78 [geo 7/4] | less total capacity 0% (capacity 852 vs N 852)
+   loc + capacity calib  mean +1.25 +- 0.82 | q90 -2.82 +- 1.55 [geo 9/5] | less total capacity 50% (capacity 812 vs N 852)
+   tail oracle           mean -0.18 +- 0.65 | q90 -4.23 +- 1.38 [geo 15/0] | less total capacity 30% (capacity 828 vs N 852)
+-- qfix  150 c 2.0 (c/v 0.4) | N: 30 runs open (nothing 0), level {225: 2, 250: 7, 275: 9, 300: 12}, stores 2.97, cost scale 1762, q90 damage 23.6%
+   location only d=0.1   mean +0.22 +- 0.40 | q90 +0.31 +- 0.58 [geo 7/5] | less total capacity 0% (capacity 818 vs N 818)
+   loc + capacity d=0.1  mean +1.05 +- 0.64 | q90 -1.79 +- 0.76 [geo 10/4] | less total capacity 60% (capacity 768 vs N 818)
+   location only calib   mean -0.45 +- 0.34 | q90 -0.94 +- 0.60 [geo 8/3] | less total capacity 3% (capacity 809 vs N 818)
+   loc + capacity calib  mean +1.33 +- 0.73 | q90 -3.77 +- 1.16 [geo 13/2] | less total capacity 80% (capacity 740 vs N 818)
+   tail oracle           mean +1.63 +- 0.85 | q90 -5.22 +- 1.02 [geo 15/0] | less total capacity 80% (capacity 742 vs N 818)
+-- qfix    0 c 2.5 (c/v 0.5) | N: 30 runs open (nothing 0), level {200: 1, 225: 5, 250: 7, 275: 9, 300: 8}, stores 3.00, cost scale 1808, q90 damage 22.6%
+   location only d=0.1   mean +0.33 +- 0.41 | q90 +0.47 +- 0.52 [geo 5/6] | less total capacity 0% (capacity 795 vs N 795)
+   loc + capacity d=0.1  mean -0.09 +- 0.58 | q90 -3.69 +- 1.11 [geo 11/3] | less total capacity 60% (capacity 738 vs N 795)
+   location only calib   mean -0.24 +- 0.38 | q90 -0.97 +- 0.56 [geo 8/3] | less total capacity 3% (capacity 787 vs N 795)
+   loc + capacity calib  mean +0.26 +- 0.76 | q90 -5.20 +- 1.31 [geo 13/1] | less total capacity 77% (capacity 720 vs N 795)
+   tail oracle           mean +0.49 +- 0.65 | q90 -6.50 +- 1.27 [geo 14/0] | less total capacity 73% (capacity 715 vs N 795)
+-- qfix  500 c 1.5 (c/v 0.3) | N: 30 runs open (nothing 0), level {250: 7, 275: 5, 300: 18}, stores 2.93, cost scale 1143, q90 damage 37.3%
+   location only d=0.1   mean -0.08 +- 0.65 | q90 +0.74 +- 0.81 [geo 8/4] | less total capacity 0% (capacity 834 vs N 834)
+   loc + capacity d=0.1  mean +0.78 +- 0.74 | q90 -2.29 +- 1.83 [geo 9/5] | less total capacity 37% (capacity 812 vs N 834)
+   location only calib   mean -0.92 +- 0.53 | q90 -0.89 +- 0.90 [geo 6/4] | less total capacity 0% (capacity 834 vs N 834)
+   loc + capacity calib  mean +0.64 +- 0.94 | q90 -5.31 +- 2.05 [geo 11/3] | less total capacity 53% (capacity 795 vs N 834)
+   tail oracle           mean -0.47 +- 0.77 | q90 -6.87 +- 1.90 [geo 14/0] | less total capacity 40% (capacity 805 vs N 834)
+-- qfix  500 c 2.5 (c/v 0.5) | N: 30 runs open (nothing 0), level {225: 5, 250: 7, 275: 9, 300: 9}, stores 2.93, cost scale 337, q90 damage 418.5%
+   location only d=0.1   mean -22.52 +- 29.28 | q90 -28.90 +- 26.66 [geo 4/7] | less total capacity 0% (capacity 787 vs N 787)
+   loc + capacity d=0.1  mean -75.97 +- 73.12 | q90 -325.24 +- 186.64 [geo 12/2] | less total capacity 67% (capacity 555 vs N 787)
+   location only calib   mean -40.84 +- 43.40 | q90 -43.40 +- 30.87 [geo 9/2] | less total capacity 0% (capacity 787 vs N 787)
+   loc + capacity calib  mean -67.97 +- 73.67 | q90 -334.38 +- 185.35 [geo 14/0] | less total capacity 80% (capacity 445 vs N 787)
+   tail oracle           mean -67.49 +- 73.78 | q90 -340.59 +- 185.40 [geo 14/0] | less total capacity 83% (capacity 418 vs N 787)
+-- qfix 500 c 3.5 : N opens nothing in all runs
+
+===== N_F = 20 : 30 runs
+-- qfix  750 c 0.0 (c/v 0.0) | N: 30 runs open (nothing 0), level {275: 1, 300: 16, 483: 13}, stores 2.80, cost scale 1716, q90 damage 12.3%
+   location only d=0.1   mean +0.34 +- 0.29 | q90 +0.20 +- 0.58 [geo 6/4] | less total capacity 0% (capacity 1051 vs N 1051)
+   loc + capacity d=0.1  mean +0.25 +- 0.27 | q90 -0.02 +- 0.57 [geo 7/3] | less total capacity 7% (capacity 1100 vs N 1051)
+   location only calib   mean +0.16 +- 0.38 | q90 -0.11 +- 0.69 [geo 8/3] | less total capacity 0% (capacity 1051 vs N 1051)
+   loc + capacity calib  mean -0.16 +- 0.41 | q90 -0.33 +- 0.67 [geo 9/2] | less total capacity 7% (capacity 1108 vs N 1051)
+   tail oracle           mean -0.50 +- 0.29 | q90 -1.42 +- 0.39 [geo 10/0] | less total capacity 7% (capacity 1088 vs N 1051)
+-- qfix  450 c 1.0 (c/v 0.2) | N: 30 runs open (nothing 0), level {250: 4, 275: 4, 300: 22}, stores 2.93, cost scale 1709, q90 damage 14.5%
+   location only d=0.1   mean +0.16 +- 0.28 | q90 -0.43 +- 0.43 [geo 8/4] | less total capacity 0% (capacity 852 vs N 852)
+   loc + capacity d=0.1  mean +0.68 +- 0.61 | q90 -1.08 +- 1.05 [geo 8/5] | less total capacity 33% (capacity 832 vs N 852)
+   location only calib   mean +0.12 +- 0.44 | q90 -0.47 +- 0.51 [geo 9/3] | less total capacity 0% (capacity 852 vs N 852)
+   loc + capacity calib  mean +0.96 +- 0.82 | q90 -1.80 +- 0.91 [geo 12/3] | less total capacity 37% (capacity 829 vs N 852)
+   tail oracle           mean +0.21 +- 0.66 | q90 -2.92 +- 0.88 [geo 15/0] | less total capacity 27% (capacity 837 vs N 852)
+-- qfix  150 c 2.0 (c/v 0.4) | N: 30 runs open (nothing 0), level {225: 2, 250: 7, 275: 9, 300: 12}, stores 2.97, cost scale 1762, q90 damage 13.4%
+   location only d=0.1   mean +0.12 +- 0.29 | q90 -0.06 +- 0.60 [geo 7/6] | less total capacity 0% (capacity 818 vs N 818)
+   loc + capacity d=0.1  mean +1.31 +- 0.56 | q90 -2.01 +- 0.74 [geo 11/3] | less total capacity 60% (capacity 768 vs N 818)
+   location only calib   mean -0.10 +- 0.35 | q90 -0.09 +- 0.53 [geo 6/5] | less total capacity 0% (capacity 818 vs N 818)
+   loc + capacity calib  mean +2.52 +- 0.93 | q90 -2.53 +- 0.73 [geo 13/2] | less total capacity 60% (capacity 768 vs N 818)
+   tail oracle           mean +1.60 +- 0.51 | q90 -3.31 +- 0.52 [geo 15/0] | less total capacity 67% (capacity 773 vs N 818)
+-- qfix    0 c 2.5 (c/v 0.5) | N: 30 runs open (nothing 0), level {200: 1, 225: 5, 250: 7, 275: 9, 300: 8}, stores 3.00, cost scale 1808, q90 damage 12.6%
+   location only d=0.1   mean +0.20 +- 0.28 | q90 -0.13 +- 0.55 [geo 6/6] | less total capacity 0% (capacity 795 vs N 795)
+   loc + capacity d=0.1  mean +0.64 +- 0.51 | q90 -3.44 +- 0.91 [geo 13/1] | less total capacity 60% (capacity 738 vs N 795)
+   location only calib   mean -0.03 +- 0.30 | q90 -0.15 +- 0.52 [geo 7/5] | less total capacity 0% (capacity 795 vs N 795)
+   loc + capacity calib  mean +1.80 +- 0.79 | q90 -3.53 +- 0.76 [geo 15/0] | less total capacity 70% (capacity 722 vs N 795)
+   tail oracle           mean +0.63 +- 0.60 | q90 -4.29 +- 0.75 [geo 15/0] | less total capacity 63% (capacity 738 vs N 795)
+-- qfix  500 c 1.5 (c/v 0.3) | N: 30 runs open (nothing 0), level {250: 7, 275: 5, 300: 18}, stores 2.93, cost scale 1143, q90 damage 21.4%
+   location only d=0.1   mean +0.06 +- 0.50 | q90 -0.46 +- 1.02 [geo 8/4] | less total capacity 0% (capacity 834 vs N 834)
+   loc + capacity d=0.1  mean +1.26 +- 0.76 | q90 -2.48 +- 1.56 [geo 11/2] | less total capacity 37% (capacity 812 vs N 834)
+   location only calib   mean -0.33 +- 0.58 | q90 -0.63 +- 0.96 [geo 8/3] | less total capacity 0% (capacity 834 vs N 834)
+   loc + capacity calib  mean +1.57 +- 0.99 | q90 -3.54 +- 1.13 [geo 14/0] | less total capacity 37% (capacity 812 vs N 834)
+   tail oracle           mean +0.92 +- 0.81 | q90 -4.54 +- 1.19 [geo 15/0] | less total capacity 37% (capacity 815 vs N 834)
+-- qfix  500 c 2.5 (c/v 0.5) | N: 30 runs open (nothing 0), level {225: 5, 250: 7, 275: 9, 300: 9}, stores 2.93, cost scale 337, q90 damage 296.7%
+   location only d=0.1   mean -31.22 +- 33.00 | q90 -69.97 +- 61.64 [geo 7/5] | less total capacity 0% (capacity 787 vs N 787)
+   loc + capacity d=0.1  mean -34.55 +- 55.37 | q90 -241.94 +- 149.53 [geo 13/1] | less total capacity 67% (capacity 555 vs N 787)
+   location only calib   mean -32.53 +- 32.92 | q90 -69.68 +- 61.63 [geo 8/5] | less total capacity 0% (capacity 787 vs N 787)
+   loc + capacity calib  mean -28.19 +- 55.98 | q90 -241.95 +- 149.10 [geo 14/1] | less total capacity 80% (capacity 512 vs N 787)
+   tail oracle           mean -35.51 +- 55.33 | q90 -245.64 +- 149.12 [geo 15/0] | less total capacity 70% (capacity 575 vs N 787)
+-- qfix 500 c 3.5 : N opens nothing in all runs

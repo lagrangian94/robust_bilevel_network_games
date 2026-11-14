@@ -1,0 +1,114 @@
+
+===== N_F = 5 : 75 runs, max mismatch of shared decisions 0.000, candidates 23.5
+-- q = 500 | N opens 2.91 stores (3: 68, 2: 7, 1: 0) | N cost scale 2452 | N q90 damage 17.3% | ties 6
+   Belief-only d=0.1 mean -0.53 +- 0.20 | q90 -1.52 +- 0.59 [geo 12/2] (abs -37) | truth price +1.33 | changed 53% fewer stores 7% (opens 2.85)
+   Belief-only d=0.2 mean -0.41 +- 0.18 | q90 -2.24 +- 0.63 [geo 12/3] (abs -54) | truth price +1.79 | changed 67% fewer stores 11% (opens 2.81)
+   Belief-only calib  mean +0.27 +- 0.33 | q90 -2.29 +- 0.63 [geo 12/3] (abs -55) | truth price +2.92 | changed 73% fewer stores 16% (opens 2.76)
+   tail oracle        mean -0.06 +- 0.22 | q90 -3.27 +- 0.78 [geo 15/0] (abs -79) | truth price +2.67 | changed 69% fewer stores 16% (opens 2.75)
+   clairvoyant        mean -2.67 | q90 -4.45
+-- q = 600 | N opens 2.87 stores (3: 65, 2: 10, 1: 0) | N cost scale 2163 | N q90 damage 19.0% | ties 7
+   Belief-only d=0.1 mean -0.33 +- 0.24 | q90 -1.78 +- 0.61 [geo 12/2] (abs -38) | truth price +1.53 | changed 53% fewer stores 9% (opens 2.79)
+   Belief-only d=0.2 mean -0.07 +- 0.30 | q90 -3.03 +- 0.77 [geo 13/2] (abs -63) | truth price +2.27 | changed 65% fewer stores 20% (opens 2.68)
+   Belief-only calib  mean +0.60 +- 0.56 | q90 -3.34 +- 0.85 [geo 13/2] (abs -70) | truth price +3.53 | changed 75% fewer stores 24% (opens 2.64)
+   tail oracle        mean +0.15 +- 0.48 | q90 -4.23 +- 0.95 [geo 15/0] (abs -89) | truth price +3.11 | changed 69% fewer stores 24% (opens 2.63)
+   clairvoyant        mean -3.07 | q90 -5.52
+-- q = 700 | N opens 2.73 stores (3: 55, 2: 20, 1: 0) | N cost scale 1881 | N q90 damage 20.8% | ties 8
+   Belief-only d=0.1 mean -0.58 +- 0.31 | q90 -2.99 +- 0.76 [geo 14/0] (abs -54) | truth price +1.64 | changed 56% fewer stores 16% (opens 2.57)
+   Belief-only d=0.2 mean -0.36 +- 0.50 | q90 -4.22 +- 0.99 [geo 13/2] (abs -76) | truth price +2.35 | changed 63% fewer stores 20% (opens 2.53)
+   Belief-only calib  mean +0.12 +- 0.69 | q90 -4.27 +- 0.96 [geo 14/1] (abs -77) | truth price +3.31 | changed 72% fewer stores 21% (opens 2.52)
+   tail oracle        mean +0.13 +- 0.61 | q90 -5.15 +- 0.94 [geo 15/0] (abs -94) | truth price +3.77 | changed 69% fewer stores 25% (opens 2.48)
+   clairvoyant        mean -3.75 | q90 -6.71
+-- q = 800 | N opens 2.61 stores (3: 46, 2: 29, 1: 0) | N cost scale 1615 | N q90 damage 21.9% | ties 8
+   Belief-only d=0.1 mean -0.57 +- 0.36 | q90 -3.15 +- 1.09 [geo 13/1] (abs -49) | truth price +1.76 | changed 55% fewer stores 16% (opens 2.47)
+   Belief-only d=0.2 mean -0.48 +- 0.33 | q90 -4.02 +- 0.97 [geo 13/2] (abs -62) | truth price +1.98 | changed 60% fewer stores 17% (opens 2.45)
+   Belief-only calib  mean +0.58 +- 0.62 | q90 -4.20 +- 0.98 [geo 14/1] (abs -65) | truth price +3.70 | changed 69% fewer stores 20% (opens 2.41)
+   tail oracle        mean +0.21 +- 0.48 | q90 -5.04 +- 0.93 [geo 15/0] (abs -79) | truth price +3.76 | changed 67% fewer stores 23% (opens 2.40)
+   clairvoyant        mean -3.99 | q90 -7.03
+-- q = 900 | N opens 2.52 stores (3: 39, 2: 36, 1: 0) | N cost scale 1360 | N q90 damage 24.7% | ties 12
+   Belief-only d=0.1 mean -0.31 +- 0.44 | q90 -3.80 +- 1.19 [geo 13/1] (abs -51) | truth price +2.43 | changed 52% fewer stores 16% (opens 2.37)
+   Belief-only d=0.2 mean +0.20 +- 0.58 | q90 -4.79 +- 1.28 [geo 13/2] (abs -62) | truth price +2.84 | changed 60% fewer stores 23% (opens 2.29)
+   Belief-only calib  mean +0.90 +- 0.73 | q90 -4.76 +- 1.24 [geo 13/2] (abs -62) | truth price +4.15 | changed 67% fewer stores 25% (opens 2.27)
+   tail oracle        mean +0.07 +- 0.58 | q90 -6.08 +- 1.15 [geo 15/0] (abs -81) | truth price +3.56 | changed 57% fewer stores 20% (opens 2.32)
+   clairvoyant        mean -4.67 | q90 -8.84
+-- q = 1000 | N opens 2.40 stores (3: 32, 2: 41, 1: 2) | N cost scale 1115 | N q90 damage 27.4% | ties 15
+   Belief-only d=0.1 mean -0.21 +- 0.49 | q90 -3.93 +- 1.74 [geo 12/2] (abs -43) | truth price +2.36 | changed 52% fewer stores 20% (opens 2.20)
+   Belief-only d=0.2 mean +0.69 +- 0.53 | q90 -5.39 +- 1.78 [geo 13/1] (abs -60) | truth price +3.99 | changed 60% fewer stores 31% (opens 2.08)
+   Belief-only calib  mean +1.95 +- 0.88 | q90 -6.04 +- 1.86 [geo 12/2] (abs -67) | truth price +6.60 | changed 71% fewer stores 37% (opens 2.01)
+   tail oracle        mean +1.90 +- 0.77 | q90 -7.43 +- 1.81 [geo 14/0] (abs -83) | truth price +7.07 | changed 64% fewer stores 36% (opens 2.01)
+   clairvoyant        mean -5.74 | q90 -10.76
+
+===== N_F = 10 : 75 runs, max mismatch of shared decisions 0.000, candidates 23.5
+-- q = 500 | N opens 2.91 stores (3: 68, 2: 7, 1: 0) | N cost scale 2452 | N q90 damage 12.5% | ties 6
+   Belief-only d=0.1 mean -0.30 +- 0.18 | q90 -1.60 +- 0.46 [geo 12/2] (abs -39) | truth price +1.33 | changed 55% fewer stores 7% (opens 2.85)
+   Belief-only d=0.2 mean -0.06 +- 0.20 | q90 -2.21 +- 0.53 [geo 12/3] (abs -53) | truth price +1.79 | changed 67% fewer stores 11% (opens 2.81)
+   Belief-only calib  mean +0.12 +- 0.20 | q90 -2.19 +- 0.54 [geo 12/3] (abs -53) | truth price +2.17 | changed 75% fewer stores 12% (opens 2.80)
+   tail oracle        mean -0.15 +- 0.29 | q90 -2.57 +- 0.55 [geo 13/0] (abs -62) | truth price +1.91 | changed 67% fewer stores 11% (opens 2.81)
+   clairvoyant        mean -2.11 | q90 -3.51
+-- q = 600 | N opens 2.87 stores (3: 65, 2: 10, 1: 0) | N cost scale 2163 | N q90 damage 13.7% | ties 7
+   Belief-only d=0.1 mean -0.02 +- 0.19 | q90 -1.74 +- 0.44 [geo 13/1] (abs -38) | truth price +1.53 | changed 53% fewer stores 9% (opens 2.79)
+   Belief-only d=0.2 mean +0.44 +- 0.29 | q90 -2.57 +- 0.68 [geo 12/3] (abs -54) | truth price +2.27 | changed 65% fewer stores 20% (opens 2.68)
+   Belief-only calib  mean +0.86 +- 0.38 | q90 -2.57 +- 0.76 [geo 12/3] (abs -54) | truth price +2.92 | changed 76% fewer stores 21% (opens 2.67)
+   tail oracle        mean +0.02 +- 0.23 | q90 -3.06 +- 0.71 [geo 14/0] (abs -65) | truth price +2.10 | changed 64% fewer stores 16% (opens 2.72)
+   clairvoyant        mean -2.29 | q90 -4.16
+-- q = 700 | N opens 2.73 stores (3: 55, 2: 20, 1: 0) | N cost scale 1881 | N q90 damage 15.1% | ties 8
+   Belief-only d=0.1 mean -0.13 +- 0.27 | q90 -2.82 +- 0.61 [geo 14/0] (abs -52) | truth price +1.64 | changed 57% fewer stores 16% (opens 2.57)
+   Belief-only d=0.2 mean +0.26 +- 0.48 | q90 -3.64 +- 0.83 [geo 13/2] (abs -66) | truth price +2.35 | changed 64% fewer stores 20% (opens 2.53)
+   Belief-only calib  mean +0.92 +- 0.60 | q90 -3.45 +- 0.89 [geo 12/3] (abs -62) | truth price +3.31 | changed 72% fewer stores 23% (opens 2.51)
+   tail oracle        mean -0.20 +- 0.33 | q90 -4.06 +- 0.81 [geo 15/0] (abs -74) | truth price +2.02 | changed 63% fewer stores 17% (opens 2.56)
+   clairvoyant        mean -2.77 | q90 -5.22
+-- q = 800 | N opens 2.61 stores (3: 46, 2: 29, 1: 0) | N cost scale 1615 | N q90 damage 15.7% | ties 8
+   Belief-only d=0.1 mean -0.09 +- 0.30 | q90 -2.95 +- 0.86 [geo 13/1] (abs -46) | truth price +1.76 | changed 56% fewer stores 16% (opens 2.47)
+   Belief-only d=0.2 mean +0.09 +- 0.35 | q90 -3.68 +- 0.79 [geo 13/2] (abs -57) | truth price +1.98 | changed 61% fewer stores 17% (opens 2.45)
+   Belief-only calib  mean +0.91 +- 0.46 | q90 -3.20 +- 0.95 [geo 12/3] (abs -49) | truth price +2.94 | changed 68% fewer stores 20% (opens 2.43)
+   tail oracle        mean +0.01 +- 0.30 | q90 -3.97 +- 0.80 [geo 15/0] (abs -62) | truth price +2.04 | changed 59% fewer stores 19% (opens 2.44)
+   clairvoyant        mean -2.86 | q90 -5.18
+-- q = 900 | N opens 2.52 stores (3: 39, 2: 36, 1: 0) | N cost scale 1360 | N q90 damage 17.3% | ties 12
+   Belief-only d=0.1 mean +0.36 +- 0.40 | q90 -3.16 +- 0.92 [geo 13/1] (abs -42) | truth price +2.43 | changed 52% fewer stores 16% (opens 2.37)
+   Belief-only d=0.2 mean +0.93 +- 0.55 | q90 -4.31 +- 0.93 [geo 12/3] (abs -57) | truth price +2.84 | changed 61% fewer stores 23% (opens 2.29)
+   Belief-only calib  mean +1.65 +- 0.70 | q90 -3.78 +- 1.13 [geo 12/3] (abs -50) | truth price +3.67 | changed 67% fewer stores 24% (opens 2.28)
+   tail oracle        mean +0.04 +- 0.44 | q90 -4.67 +- 0.89 [geo 15/0] (abs -62) | truth price +2.22 | changed 53% fewer stores 17% (opens 2.35)
+   clairvoyant        mean -3.26 | q90 -6.17
+-- q = 1000 | N opens 2.40 stores (3: 32, 2: 41, 1: 2) | N cost scale 1115 | N q90 damage 19.0% | ties 15
+   Belief-only d=0.1 mean +0.35 +- 0.38 | q90 -3.66 +- 1.44 [geo 13/2] (abs -41) | truth price +2.36 | changed 52% fewer stores 20% (opens 2.20)
+   Belief-only d=0.2 mean +1.62 +- 0.55 | q90 -4.81 +- 1.31 [geo 14/1] (abs -53) | truth price +3.99 | changed 61% fewer stores 31% (opens 2.08)
+   Belief-only calib  mean +2.92 +- 0.76 | q90 -4.22 +- 1.50 [geo 13/2] (abs -46) | truth price +5.87 | changed 65% fewer stores 36% (opens 2.03)
+   tail oracle        mean +0.76 +- 0.46 | q90 -5.30 +- 1.33 [geo 15/0] (abs -59) | truth price +3.61 | changed 52% fewer stores 24% (opens 2.15)
+   clairvoyant        mean -3.93 | q90 -7.31
+
+===== N_F = 20 : 75 runs, max mismatch of shared decisions 0.000, candidates 23.5
+-- q = 500 | N opens 2.91 stores (3: 68, 2: 7, 1: 0) | N cost scale 2452 | N q90 damage 9.6% | ties 6
+   Belief-only d=0.1 mean -0.14 +- 0.18 | q90 -1.60 +- 0.39 [geo 12/1] (abs -39) | truth price +1.33 | changed 55% fewer stores 7% (opens 2.85)
+   Belief-only d=0.2 mean +0.27 +- 0.24 | q90 -1.70 +- 0.46 [geo 11/2] (abs -41) | truth price +1.79 | changed 67% fewer stores 11% (opens 2.81)
+   Belief-only calib  mean +0.15 +- 0.29 | q90 -1.59 +- 0.45 [geo 11/2] (abs -38) | truth price +1.70 | changed 61% fewer stores 11% (opens 2.81)
+   tail oracle        mean -0.27 +- 0.18 | q90 -2.06 +- 0.48 [geo 12/0] (abs -50) | truth price +1.48 | changed 61% fewer stores 5% (opens 2.87)
+   clairvoyant        mean -1.68 | q90 -2.67
+-- q = 600 | N opens 2.87 stores (3: 65, 2: 10, 1: 0) | N cost scale 2163 | N q90 damage 10.4% | ties 7
+   Belief-only d=0.1 mean +0.15 +- 0.18 | q90 -1.65 +- 0.40 [geo 12/2] (abs -35) | truth price +1.53 | changed 53% fewer stores 9% (opens 2.79)
+   Belief-only d=0.2 mean +0.81 +- 0.28 | q90 -1.84 +- 0.53 [geo 11/3] (abs -39) | truth price +2.27 | changed 65% fewer stores 20% (opens 2.68)
+   Belief-only calib  mean +0.49 +- 0.28 | q90 -1.81 +- 0.52 [geo 11/3] (abs -39) | truth price +2.01 | changed 63% fewer stores 16% (opens 2.72)
+   tail oracle        mean +0.27 +- 0.21 | q90 -2.20 +- 0.51 [geo 13/0] (abs -47) | truth price +1.94 | changed 59% fewer stores 15% (opens 2.72)
+   clairvoyant        mean -1.76 | q90 -2.90
+-- q = 700 | N opens 2.73 stores (3: 55, 2: 20, 1: 0) | N cost scale 1881 | N q90 damage 11.5% | ties 8
+   Belief-only d=0.1 mean +0.08 +- 0.25 | q90 -2.52 +- 0.60 [geo 13/1] (abs -46) | truth price +1.64 | changed 57% fewer stores 16% (opens 2.57)
+   Belief-only d=0.2 mean +0.72 +- 0.47 | q90 -2.45 +- 0.71 [geo 12/3] (abs -44) | truth price +2.35 | changed 64% fewer stores 20% (opens 2.53)
+   Belief-only calib  mean +0.19 +- 0.26 | q90 -2.61 +- 0.70 [geo 12/3] (abs -47) | truth price +1.92 | changed 60% fewer stores 16% (opens 2.57)
+   tail oracle        mean -0.20 +- 0.27 | q90 -3.04 +- 0.63 [geo 14/0] (abs -55) | truth price +1.58 | changed 59% fewer stores 15% (opens 2.60)
+   clairvoyant        mean -2.14 | q90 -3.64
+-- q = 800 | N opens 2.61 stores (3: 46, 2: 29, 1: 0) | N cost scale 1615 | N q90 damage 12.1% | ties 8
+   Belief-only d=0.1 mean +0.12 +- 0.33 | q90 -2.59 +- 0.62 [geo 12/2] (abs -40) | truth price +1.76 | changed 56% fewer stores 16% (opens 2.47)
+   Belief-only d=0.2 mean +0.47 +- 0.37 | q90 -2.82 +- 0.62 [geo 13/2] (abs -43) | truth price +1.98 | changed 61% fewer stores 17% (opens 2.45)
+   Belief-only calib  mean +0.33 +- 0.35 | q90 -2.74 +- 0.66 [geo 12/3] (abs -42) | truth price +1.84 | changed 57% fewer stores 17% (opens 2.45)
+   tail oracle        mean -0.19 +- 0.22 | q90 -3.10 +- 0.60 [geo 14/0] (abs -48) | truth price +1.51 | changed 53% fewer stores 12% (opens 2.51)
+   clairvoyant        mean -2.21 | q90 -3.78
+-- q = 900 | N opens 2.52 stores (3: 39, 2: 36, 1: 0) | N cost scale 1360 | N q90 damage 13.1% | ties 12
+   Belief-only d=0.1 mean +0.64 +- 0.38 | q90 -2.81 +- 0.64 [geo 12/2] (abs -37) | truth price +2.43 | changed 52% fewer stores 16% (opens 2.37)
+   Belief-only d=0.2 mean +1.40 +- 0.53 | q90 -2.68 +- 0.74 [geo 12/3] (abs -35) | truth price +2.84 | changed 61% fewer stores 23% (opens 2.29)
+   Belief-only calib  mean +1.15 +- 0.49 | q90 -2.65 +- 0.78 [geo 11/4] (abs -35) | truth price +2.66 | changed 56% fewer stores 20% (opens 2.33)
+   tail oracle        mean +0.31 +- 0.42 | q90 -3.26 +- 0.65 [geo 14/0] (abs -43) | truth price +2.13 | changed 48% fewer stores 15% (opens 2.39)
+   clairvoyant        mean -2.35 | q90 -4.04
+-- q = 1000 | N opens 2.40 stores (3: 32, 2: 41, 1: 2) | N cost scale 1115 | N q90 damage 14.4% | ties 15
+   Belief-only d=0.1 mean +0.53 +- 0.38 | q90 -2.98 +- 0.96 [geo 11/4] (abs -33) | truth price +2.36 | changed 52% fewer stores 20% (opens 2.20)
+   Belief-only d=0.2 mean +2.11 +- 0.61 | q90 -2.97 +- 0.88 [geo 12/2] (abs -32) | truth price +3.99 | changed 61% fewer stores 31% (opens 2.08)
+   Belief-only calib  mean +1.75 +- 0.58 | q90 -3.01 +- 0.92 [geo 11/3] (abs -33) | truth price +3.62 | changed 55% fewer stores 28% (opens 2.11)
+   tail oracle        mean +0.32 +- 0.38 | q90 -3.74 +- 0.90 [geo 14/0] (abs -41) | truth price +2.35 | changed 47% fewer stores 19% (opens 2.20)
+   clairvoyant        mean -2.80 | q90 -4.71

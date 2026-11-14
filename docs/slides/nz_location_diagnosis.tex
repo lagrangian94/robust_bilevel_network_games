@@ -1,0 +1,565 @@
+% 입지 게임에서 belief hedging 의 가치가 작은 이유 (진단 슬라이드, 2026-11-13)
+% 컴파일: xelatex nz_location_diagnosis.tex (두 번)
+\documentclass[aspectratio=169,11pt]{beamer}
+\usetheme{Madrid}
+\definecolor{navy}{RGB}{22,50,92}
+\setbeamercolor{structure}{fg=navy}
+\setbeamertemplate{navigation symbols}{}
+\usefonttheme[onlymath]{serif}
+\usepackage{kotex}
+\setmainhangulfont{Malgun Gothic}
+\setsanshangulfont{Malgun Gothic}
+\usepackage{amsmath,amssymb,booktabs}
+\newcommand{\heps}{\hat{\epsilon}}
+\newcommand{\teps}{\tilde{\epsilon}}
+\newcommand{\CVaR}{\mathrm{CVaR}}
+\setlength{\leftmargini}{1.4em}
+\setlength{\leftmarginii}{1.3em}
+
+\title[입지 게임의 belief hedging]{입지 게임에서 belief hedging 의 가치가 작은 이유}
+\subtitle{식 (loc-Q), (loc-$\phi$) 와 인스턴스 구조에 의한 진단}
+\date{2026 년 11 월 14 일}
+
+\begin{document}
+
+\begin{frame}
+\titlepage
+\end{frame}
+
+% ---------------------------------------------------------------------------
+\begin{frame}{요약}
+\begin{itemize}
+  \item \textbf{질문.} 소매상의 belief 모호성을 hedging 하면 표본 밖 비용이 Nominal 보다 낮아지는가.
+  \item \textbf{가장 유리한 조건} (리더가 진짜 수요 분포를 알고, 소매상만 표본 5 개로 예측) 에서의 결과.
+  \begin{itemize}
+    \item 평균 비용 차 (Belief-only $-$ Nominal): $+0.02\% \pm 0.03$. 비긴다.
+    \item 소매상 belief 에 대한 꼬리 (q90) 비용 차: $-0.18\% \pm 0.04$.
+    \item 소매상 belief 의 분포를 아는 오라클의 꼬리 상한: $0.41\%$.
+  \end{itemize}
+  \item \textbf{리더가 $\hat q$ 를 추정하는 조건} 에서는 Data-DR 과 Coupled 가 Nominal 보다 나쁘다 (평균 손해 $2.7$--$2.8\%$ 대 $0.84\%$).
+  \item \textbf{원인.} 알고리즘이 아니라 모형 구조다. B 의 손실 $\phi$ 가 소매상의 예약 $h$ 에 거의 반응하지 않는다.
+  \begin{itemize}
+    \item 식에서 오는 원인 둘, 인스턴스에서 오는 원인 하나.
+    \item 파라미터 손잡이로는 넘지 못했다.
+  \end{itemize}
+  \item \textbf{채택 방향 (11 월 14 일). 약정 물량 방식.} 예약을 확정 주문으로 본다.
+  \begin{itemize}
+    \item 진짜를 아는 조건의 꼬리 우위가 $-0.26\%$ 에서 $-1.82\% \pm 0.62$ 가 된다.
+    \item 리더가 $\hat q$ 를 추정해도 Belief-only 가 Nominal 을 평균 $-1.07\%$, 꼬리 $-1.48\%$ 로 이긴다.
+  \end{itemize}
+\end{itemize}
+\vfill
+{\footnotesize 단위는 리더 비용 대비 \%, $\pm$ 는 도시 조합 군집 표준오차. 평균과 꼬리는 도시 조합 85 개 $\times$ 시드 5, 상한은 15 개 $\times$ 시드 10.}
+\end{frame}
+
+% ---------------------------------------------------------------------------
+\begin{frame}{모형 (원고 6.2 절)}
+\begin{itemize}
+  \item A 는 기존 점포 ($t_i$), 리더 B 는 후보지에 출점 ($x_i$, $\mathbf{1}^\top x \le N_B$).
+  \item 소매상은 수요 실현 전에 거점 $i$ 에 $h_i \le w_i$ 를 단위당 $f$ 로 예약한다.
+\end{itemize}
+\begin{equation*}
+\begin{aligned}
+Q(x,h,\xi) \;=\; \min_{y^{R},\,y^{S}\ge 0}\;& \textstyle\sum_{i,j}\big[c_{ij}\,y^{R}_{ij} + (c_{ij}+p)\,y^{S}_{ij}\big]\\
+\text{s.t.}\;\;& \textstyle\sum_{i}(y^{R}_{ij}+y^{S}_{ij}) \ge \xi_j,\quad
+\sum_{j}(y^{R}_{ij}+y^{S}_{ij}) \le b_i(t_i+x_i),\quad
+\sum_{j} y^{R}_{ij} \le h_i
+\end{aligned}
+\end{equation*}
+\begin{equation*}
+\phi(x,h,\xi) \;=\; \max\Big\{-v\textstyle\sum_{i\in I_B}\sum_{j}\big(y^{R}_{ij}+y^{S}_{ij}\big) \;:\; (y^{R},y^{S}) \text{ 가 } Q(x,h,\xi) \text{ 의 최적해}\Big\}
+\end{equation*}
+\begin{itemize}
+  \item 소매상: $\min_{h}\; f\,\mathbf{1}^\top h + \mathbb{E}^{\tilde P}[Q(x,h,\xi)]$. \quad 리더: $\min_{x}\; q^\top x + \CVaR_\beta[\phi(x,h,\xi)]$.
+  \item 예약 단위는 $c_{ij}$, 비예약 단위는 $c_{ij}+p$. B 는 두 단위 모두에서 $v$ 를 번다.
+\end{itemize}
+\end{frame}
+
+% ---------------------------------------------------------------------------
+\begin{frame}{인스턴스와 평가 방법}
+\begin{itemize}
+  \item \textbf{인스턴스.} Yan{\i}ko\u{g}lu--Kuhn 의 15 도시, $|I_A| = 2$, $|I_B| = 13$, $N_B = 3$ ($|\mathcal{X}| = 377$). 도시 조합 100 개.
+  \begin{itemize}
+    \item $S = 10$, $\beta = 0.4$, $p = 800$, $f = 200$, $w_i = 300$, $v = 5$, $q_i = 500$.
+    \item 수요는 서부, 중부, 동부의 지역 요인을 공유한다. $\xi_j \in [0.5\mu_j,\,1.5\mu_j]$.
+    \item 원고의 무작위 인스턴스는 $|\mathcal{X}| \le 32$ 라서 모형 사이에 결정이 잘 갈리지 않는다.
+  \end{itemize}
+  \item \textbf{표본 밖 평가.}
+  \begin{itemize}
+    \item 결정 $x$ 를 고정한다.
+    \item 소매상은 자기 표본 $N_F$ 개의 경험분포 $\tilde P$ 로 $h$ 를 정한다.
+    \item 리더 비용 $q^\top x + \CVaR_\beta[\phi(x,h,\xi)]$ 를 진짜 분포에서 계산한다.
+  \end{itemize}
+  \item \textbf{비교 모형.} Nominal, Data-DR ($\heps > 0$, $\teps = 0$), Coupled ($\heps,\teps > 0$), Belief-only ($\heps = 0$, $\teps > 0$).
+  \begin{itemize}
+    \item Belief-only 의 반지름은 소매상 표본 잡음이 Nominal 결정에 주는 피해의 q90 에 맞췄다.
+  \end{itemize}
+\end{itemize}
+\end{frame}
+
+% ---------------------------------------------------------------------------
+\begin{frame}{원인 0. Coupled 의 보수성은 대부분 데이터 쪽에서 온다}
+\begin{columns}[T]
+\begin{column}{0.56\textwidth}
+\begin{itemize}
+  \item Nominal 결정에서 $V_{\text{Coupled}} - V_{\text{Nominal}}$ 의 분해.
+  \begin{itemize}
+    \item 데이터 쪽 ($\heps$): $18.7\%$
+    \item belief 쪽 ($\teps$, $\delta$): $1.9\%$
+  \end{itemize}
+  \item $\phi = -v \times (\text{B 판매})$ 는 수요에 단조다.
+  \begin{itemize}
+    \item 최악 분포는 저수요 시나리오에 가중을 몬다.
+    \item Data-DR 은 Nominal 에 더 깊은 꼬리 위험척도를 씌운 것과 같다.
+    \item 결과는 거점을 하나 덜 여는 것이다.
+  \end{itemize}
+  \item 이하에서는 belief 쪽만 본다 (리더가 진짜 분포를 아는 조건, $\heps = 0$).
+\end{itemize}
+\end{column}
+\begin{column}{0.40\textwidth}
+\centering
+\small
+\begin{tabular}{lr}
+\toprule
+모형 & 평균 손해\\
+\midrule
+Nominal & $0.84\%$\\
+Belief-only & $0.89\%$\\
+Data-DR & $2.69\%$\\
+Coupled & 약 $2.8\%$\\
+\bottomrule
+\end{tabular}
+
+\vspace{0.6em}
+{\footnotesize 리더가 표본 10 개로 $\hat q$ 를 추정.\\ 진짜 분포의 최선 결정 대비 손해.\\ 도시 조합 100 $\times$ 시드 10, $\heps = 0.3$.\\ Coupled 는 도시 조합 20 개.}
+\end{column}
+\end{columns}
+\end{frame}
+
+% ---------------------------------------------------------------------------
+\begin{frame}{belief 가 리더의 손실에 닿는 경로}
+\begin{equation*}
+\tilde P \;\longrightarrow\; h(\tilde P) \;\longrightarrow\; \big(y^{R},y^{S}\big)(h,\xi) \;\longrightarrow\; \phi(x,h,\xi)
+\end{equation*}
+\begin{itemize}
+  \item 예약의 최적성 조건은 $f = \mathbb{E}^{\tilde P}[\varpi_i(\xi)]$ 이다 ($\varpi_i$ 는 예약 제약의 recourse dual solution).
+  \begin{itemize}
+    \item 예약 한 단위는 제약이 묶이는 시나리오에서 $p$ 를 아낀다.
+    \item 따라서 $h_i = \min\{w_i,\ \text{거점 } i \text{ 사용량의 } (1 - f/p) \text{ 분위}\}$.
+  \end{itemize}
+  \item belief hedging 이 값지려면 세 조건이 모두 필요하다.
+  \begin{enumerate}
+    \item[(C1)] $h$ 가 변하면 B 의 판매가 크게 변한다.
+    \item[(C2)] 그 변화가 $\CVaR_\beta$ 가 보는 시나리오에서 일어난다.
+    \item[(C3)] 변화의 크기가 결정 $x$ 마다 다르다.
+  \end{enumerate}
+  \item 가치의 상한은 다음과 같다.
+  \begin{equation*}
+  \text{여지} \;=\; \Pr(\text{더 안전한 결정이 있다}) \times (\text{보호} - \text{가격})
+  \end{equation*}
+\end{itemize}
+\end{frame}
+
+% ---------------------------------------------------------------------------
+\begin{frame}{원인 1 (C1). B 는 예약 단위와 비예약 단위에서 똑같이 $v$ 를 번다}
+\begin{equation*}
+\phi(x,h,\xi) \;=\; -v\textstyle\sum_{i\in I_B}\sum_{j}\big(y^{R}_{ij}+y^{S}_{ij}\big)
+\end{equation*}
+\begin{itemize}
+  \item B 가 가장 싼 시장에서는 예약이 줄어도 같은 양이 비예약으로 팔린다. B 판매는 변하지 않는다.
+  \item 예약이 B 판매를 바꾸는 경로는 A 와 다투는 시장뿐이다.
+  \begin{itemize}
+    \item 한쪽의 남는 예약분이 상대의 비예약 판매를 대신한다.
+    \item $h_A$ 와 $h_B$ 는 같은 belief 를 따라 함께 움직인다 (belief 평균 수요와의 상관 $0.62$, $0.64$).
+    \item 수요 수준에 대한 예측 오차는 상쇄되고 지역 구성에 대한 오차만 남는다.
+  \end{itemize}
+  \item 증거 (진단 30 건, $N_F = 5$).
+  \begin{itemize}
+    \item Nominal 결정의 belief 피해는 평균 $0.23\%$, q90 $2.8\%$ 이다.
+    \item 소매상 belief 뽑기의 $40\%$ 는 리더에게 오히려 이득이다.
+    \item 피해와의 순위 상관은 $h_B - h_A$ 가 $0.75$, $h_B$ 자체가 $0.26$ 이다.
+  \end{itemize}
+\end{itemize}
+\end{frame}
+
+% ---------------------------------------------------------------------------
+\begin{frame}{원인 2 (C2). 예약이 묶이는 시나리오와 CVaR 꼬리가 엇갈린다}
+\begin{itemize}
+  \item $f/p = 0.25$ 이면 $h_i$ 는 사용량의 $0.75$ 분위다. 예약 제약은 고수요 시나리오에서만 묶인다.
+  \item $\CVaR_{0.4}$ 는 손실이 큰 $60\%$, 즉 B 판매가 낮은 6 개 시나리오를 본다.
+  \begin{itemize}
+    \item 그 시나리오에서는 사용량이 예약보다 적어서 $h$ 가 조금 변해도 판매가 변하지 않는다.
+  \end{itemize}
+\end{itemize}
+\begin{center}
+\small
+\begin{tabular}{lcc}
+\toprule
+ & CVaR 꼬리 (6 개) & 꼬리 밖 (4 개)\\
+\midrule
+예약 제약이 묶이는 시나리오 수 (평균) & $1.60$ & $3.07$\\
+예측 오차가 바꾸는 손실 $|\Delta\phi_s|$ & $2.75\%$ & $5.96\%$\\
+\bottomrule
+\end{tabular}
+\end{center}
+\begin{itemize}
+  \item 열린 B 거점의 $46\%$ 는 $h_i = w_i$ 라서 belief 에 반응하지 않는다.
+\end{itemize}
+\vfill
+{\footnotesize 진단 30 건 (도시 조합 15 $\times$ 시드 2), $N_F = 5$. 묶임은 한도에 붙지 않은 거점 기준.}
+\end{frame}
+
+% ---------------------------------------------------------------------------
+\begin{frame}{원인 3 (C3). 남는 피해는 근접 최적 결정들이 함께 입는다}
+\begin{itemize}
+  \item Nominal 값이 가까운 결정들은 대개 거점 하나만 다르다.
+  \item 수요가 지역 요인을 공유하므로 소매상의 예측 오차는 수요 수준의 오차다.
+  \begin{itemize}
+    \item 어느 결정에서나 예약이 같은 방향으로 움직인다.
+  \end{itemize}
+  \item 증거.
+  \begin{itemize}
+    \item Nominal 결정이 크게 다치는 뽑기 (상위 $10\%$) 에서 가장 안전한 대안도 그 피해의 $55\%$ 를 입는다 (뽑기별 상관 $0.77$).
+    \item 여지 $= 0.37 \times (2.09\% - 1.00\%) = 0.41\%$.
+    \item Belief-only 가 실제로 회수한 것은 $0.32\%$ 다.
+  \end{itemize}
+  \item 모형이 좋은 결정을 못 찾는 것이 아니다. 찾을 것이 없다.
+\end{itemize}
+\vfill
+{\footnotesize 보호는 대안으로 바꿔서 줄어드는 꼬리 피해, 가격은 대안의 Nominal 값 열세. 도시 조합 15 $\times$ 시드 10, $N_F = 5$.}
+\end{frame}
+
+% ---------------------------------------------------------------------------
+\begin{frame}{파라미터 손잡이로는 한계를 넘지 못했다}
+\begin{center}
+\small
+\begin{tabular}{lll}
+\toprule
+손잡이 & 바꾼 것 & 꼬리 비용 차 (Belief-only $-$ Nominal)\\
+\midrule
+기준 & $w = 300$, $N_F = 5$ & $-0.18 \pm 0.04$ \;(평균은 $+0.02 \pm 0.03$)\\
+소매상 표본 수 & $N_F = 3 \to 10 \to 30$ & $-0.21 \to -0.13 \to -0.12$\\
+예약 한도 낮춤 & $w = 150$ & 두 모형의 결정이 $89$--$95\%$ 같다\\
+예약 한도 높임 & $w = 600$ & $w = 300$ 보다 크지 않다\\
+A 점포 예약 없음 & $w_i = 0$, $i \in I_A$ & $-0.24 \pm 0.10$ \;(같은 조합의 기준 $-0.32 \pm 0.17$)\\
+리더 표본 수 & $S = 10 \to 20$ (리더가 추정) & $+0.16 \pm 0.12 \to -0.00 \pm 0.07$\\
+\bottomrule
+\end{tabular}
+\end{center}
+\begin{itemize}
+  \item A 점포의 예약을 없애면 상쇄는 사라진다 (피해와 $h_B$ 의 상관 $0.26 \to 0.89$).
+  \begin{itemize}
+    \item 그러나 되살아난 피해를 모든 결정이 같이 입어서 여지는 $0.41\%$ 그대로다.
+    \item B 가 시장을 거의 다 차지해서 Nominal 최적이 여럿인 인스턴스가 $69\%$ 로 는다.
+  \end{itemize}
+  \item 모든 실행은 예측과 기각 기준을 먼저 적고 돌렸다.
+\end{itemize}
+\end{frame}
+
+% ---------------------------------------------------------------------------
+\begin{frame}{한계를 넘으려면 세 조건을 직접 바꿔야 한다}
+\begin{center}
+\small
+\begin{tabular}{llll}
+\toprule
+조건 & 지금 & 바꿀 후보 & 원고에 미치는 영향\\
+\midrule
+(C1) & $y^{R}$, $y^{S}$ 의 마진이 같다 & 비예약 단위의 마진 $v^{S} < v$ & 식 (loc-$\phi$) 의 계수\\
+(C2) & $f/p = 0.25$, $\beta = 0.4$ & $f/p$ 를 높이거나 $\beta$ 를 낮춘다 & 파라미터\\
+(C3) & 지역별 수요 변동 폭이 같다 & 지역별 변동 폭을 다르게 한다 & 인스턴스 생성 규칙\\
+\bottomrule
+\end{tabular}
+\end{center}
+\begin{itemize}
+  \item (C1) 의 수정은 $\phi = -\sum_{i \in I_B}\sum_j (v\,y^{R}_{ij} + v^{S} y^{S}_{ij})$ 이다. $v^{S} = v$ 이면 지금 모형이다.
+  \begin{itemize}
+    \item 해석은 예약분이 계획 공급이고 비예약분이 긴급 조달이라는 것이다.
+    \item $\phi$ 의 계수만 바뀌므로 일반 틀과 알고리즘은 그대로다.
+  \end{itemize}
+  \item (C2) 에서 $f/p$ 는 예약이 묶이는 시나리오를, $\beta$ 는 리더가 보는 시나리오를 정한다. $\beta$ 는 두 게임에서 같은 값을 쓰기로 했다.
+  \item (C3) 은 결정마다 belief 노출이 갈리게 하는 조건이다. 지역별 변동 폭은 그 첫 후보다.
+\end{itemize}
+\end{frame}
+
+% ---------------------------------------------------------------------------
+\begin{frame}{선별 실험 (손잡이 10 종 $\times$ 30 건)}
+\begin{center}
+\footnotesize
+\begin{tabular}{lcccc}
+\toprule
+ & Nominal 결정의 & \multicolumn{2}{c}{오라클의 여지} & Belief-only $-$ Nominal\\
+\cmidrule(lr){3-4}
+설정 & q90 피해 & 평균 & 꼬리 & 꼬리 ($\teps = 0.2$)\\
+\midrule
+기준 ($f/p = 0.25$, $\beta = 0.4$, $v^{S} = v$) & $3.4\%$ & $0.04 \pm 0.03$ & $0.12 \pm 0.16$ & $-0.25 \pm 0.12$\\
+$f/p = 0.5$ & $5.5\%$ & $0.42 \pm 0.15$ & $0.68 \pm 0.23$ & $-0.52 \pm 0.19$\\
+$f/p = 0.75$ & $6.1\%$ & $0.35 \pm 0.17$ & $0.53 \pm 0.23$ & $-0.59 \pm 0.28$\\
+$\beta = 0$ & $4.4\%$ & $0.07 \pm 0.03$ & $-0.01 \pm 0.08$ & $-0.14 \pm 0.10$\\
+$v^{S} = 0$ & $5.6\%$ & $0.07 \pm 0.06$ & $0.65 \pm 0.36$ & $-0.55 \pm 0.49$\\
+$v^{S} = 0$, $f/p = 0.5$ & $10.2\%$ & $0.55 \pm 0.21$ & $1.09 \pm 0.59$ & $-0.86 \pm 0.57$\\
+$v^{S} = 0$, $f/p = 0.75$ & $12.7\%$ & $0.23 \pm 0.20$ & $1.28 \pm 0.51$ & $-0.50 \pm 0.52$\\
+$v^{S} = 0$, $\beta = 0$ & $9.0\%$ & $0.20 \pm 0.07$ & $0.96 \pm 0.42$ & $-0.50 \pm 0.22$\\
+지역별 변동 폭 차등 & $2.8\%$ & $0.09 \pm 0.05$ & $0.12 \pm 0.11$ & $-0.10 \pm 0.08$\\
+변동 폭 차등, $v^{S} = 0$, $f/p = 0.75$ & $12.8\%$ & $0.31 \pm 0.19$ & $2.08 \pm 0.85$ & $-1.44 \pm 0.78$\\
+\bottomrule
+\end{tabular}
+\end{center}
+{\footnotesize 오라클은 소매상 belief 의 분포를 알고 결정을 고른다. 여지가 작으면 어떤 hedging 도 Nominal 을 못 이긴다.\\
+리더가 진짜 분포를 아는 조건, $N_F = 5$, 도시 조합 15 $\times$ 시드 2. 여지는 뽑기의 절반으로 고르고 나머지로 평가했다.}
+\end{frame}
+
+% ---------------------------------------------------------------------------
+\begin{frame}{선별 실험에서 읽히는 것}
+\begin{itemize}
+  \item \textbf{꼬리는 키울 수 있다.}
+  \begin{itemize}
+    \item (C1), (C2) 의 손잡이는 Nominal 결정의 꼬리 피해와 오라클의 꼬리 여지를 $3$--$10$ 배로 키운다.
+    \item $v^{S} = 0$ 을 넣은 설정은 꼬리 피해가 $10\%$ 대다. 30 건으로는 오차가 크다.
+  \end{itemize}
+  \item \textbf{평균은 키우기 어렵다.}
+  \begin{itemize}
+    \item 오라클의 평균 여지는 어느 설정에서도 $0.55\%$ 이하다.
+    \item 평균 피해는 예측 오차의 2 차 항이고 꼬리 피해는 1 차 항이다.
+    \item 더 안전한 결정은 인스턴스의 $57$--$90\%$ 에 있다. 그러나 Nominal 값 열세가 $2$--$6\%$ 로 평균 보호 ($0.7$--$2.8\%$) 보다 비싸다.
+  \end{itemize}
+  \item \textbf{(C3) 은 풀리지 않았다.}
+  \begin{itemize}
+    \item 지역별 변동 폭을 다르게 해도 결정별 평균 피해의 차이는 커지지 않았다 (후보 간 표준편차 $0.91 \to 0.95$).
+  \end{itemize}
+  \item 선별은 반지름을 $0.2$ 로 고정했다. 유망한 두 설정은 보정한 반지름으로 다시 평가했다.
+\end{itemize}
+\end{frame}
+
+% ---------------------------------------------------------------------------
+\begin{frame}{본 평가 (보정한 반지름, 설정마다 75 건)}
+\begin{center}
+\footnotesize
+\begin{tabular}{ccccccc}
+\toprule
+ & \multicolumn{2}{c}{기준} & \multicolumn{2}{c}{$f/p = 0.5$} & \multicolumn{2}{c}{$v^{S} = 0$, $f/p = 0.5$}\\
+\cmidrule(lr){2-3}\cmidrule(lr){4-5}\cmidrule(lr){6-7}
+$N_F$ & 평균 & 꼬리 & 평균 & 꼬리 & 평균 & 꼬리\\
+\midrule
+3 & $+0.13 \pm 0.11$ & $-0.35 \pm 0.18$ & $+0.14 \pm 0.14$ & $-0.40 \pm 0.15$ & $+0.02 \pm 0.25$ & $-1.62 \pm 0.52$\\
+5 & $+0.11 \pm 0.11$ & $-0.26 \pm 0.14$ & $+0.18 \pm 0.14$ & $-0.35 \pm 0.14$ & $+0.26 \pm 0.18$ & $-1.28 \pm 0.46$\\
+10 & $+0.13 \pm 0.12$ & $-0.14 \pm 0.07$ & $+0.14 \pm 0.13$ & $-0.44 \pm 0.16$ & $+0.44 \pm 0.22$ & $-0.68 \pm 0.33$\\
+30 & $+0.10 \pm 0.06$ & $-0.09 \pm 0.08$ & $+0.05 \pm 0.09$ & $-0.38 \pm 0.14$ & $+0.15 \pm 0.12$ & $-0.34 \pm 0.12$\\
+\bottomrule
+\end{tabular}
+\end{center}
+\begin{itemize}
+  \item \textbf{식 수정은 꼬리 우위를 네다섯 배로 키운다.} $N_F = 5$ 에서 $-1.28 \pm 0.46$ 이고 도시 조합 11 승 3 패다. 평균은 $+0.26 \pm 0.18$ 손해다.
+  \item \textbf{$f/p = 0.5$ 단독은 표본이 클 때 우위를 유지한다.} $N_F \le 5$ 에서는 기준과 같고 $N_F \ge 10$ 에서 기준보다 $0.30 \pm 0.15$ 낫다.
+  \item Nominal 결정의 q90 피해는 차례로 $3.1\%$, $5.3\%$, $12.5\%$ 다. 꼬리 이득은 그 $7$--$10\%$ 다.
+\end{itemize}
+{\footnotesize 값은 Belief-only $-$ Nominal (리더 비용 대비 \%). 리더가 진짜 분포를 아는 조건, 도시 조합 15 $\times$ 시드 5, 세 설정 모두 같은 조합과 시드.}
+\end{frame}
+
+% ---------------------------------------------------------------------------
+\begin{frame}{식 수정의 다른 방식 둘}
+\begin{itemize}
+  \item $v^{S} < v$ 는 해석이 어색하다. 식을 다르게 고치는 두 방식을 시험했다.
+  \item \textbf{수정안 1. 예약료 수입.} 리더 목적에 B 거점의 예약료를 넣는다.
+  \[
+    \min_{x}\; q_B^{\top}x \;-\; r\sum_{i\in I_B} h_i \;+\; \mathrm{CVaR}_{\beta}\bigl[\phi(x,h,\xi)\bigr]
+  \]
+  \begin{itemize}
+    \item $\phi$ 와 소매상 문제는 그대로다. $r = 0$ 이면 지금 모형이다.
+    \item 예약료는 시나리오와 무관하므로 꼬리에 그대로 실린다.
+  \end{itemize}
+  \item \textbf{수정안 2. 비예약 물량의 공급 한도.} 식 (loc-Q) 에 행을 더한다.
+  \[
+    \sum_{j} y^{S}_{ij} \;\le\; \sigma\, b_i\,(t_i + x_i)
+  \]
+  \begin{itemize}
+    \item $\phi$ 와 마진은 그대로다. $\sigma = 0$ 이면 그 거점은 예약분만 판다.
+    \item A 거점에도 한도를 두면 외부 조달 열 (단가 $c_{\max} + 2p$) 이 필요하다.
+  \end{itemize}
+\end{itemize}
+\end{frame}
+
+% ---------------------------------------------------------------------------
+\begin{frame}{수정안 비교 (설정마다 75 건)}
+\begin{center}
+\scriptsize
+\begin{tabular}{lcccc}
+\toprule
+ & Nominal 의& \multicolumn{2}{c}{$N_F = 5$} & $N_F = 10$\\
+\cmidrule(lr){3-4}\cmidrule(lr){5-5}
+설정 & q90 피해 (\%) & 평균 & 꼬리 & 꼬리\\
+\midrule
+원고 식 & $3.1$ & $+0.11 \pm 0.11$ & $-0.26 \pm 0.14$ & $-0.14 \pm 0.07$\\
+$f/p = 0.5$ & $5.3$ & $+0.18 \pm 0.14$ & $-0.35 \pm 0.14$ & $-0.44 \pm 0.16$\\
+\midrule
+예약료 $r = 1$ & $4.7$ & $-0.02 \pm 0.07$ & $-0.31 \pm 0.12$ & $-0.27 \pm 0.10$\\
+예약료 $r = 2$ & $6.1$ & $-0.03 \pm 0.12$ & $-0.39 \pm 0.17$ & $-0.31 \pm 0.14$\\
+\midrule
+한도 $\sigma_B = 0.25$, $f/p = 0.5$ & $5.3$ & $+0.08 \pm 0.08$ & $-0.18 \pm 0.11$ & $-0.43 \pm 0.15$\\
+한도 $\sigma_B = 0$, $f/p = 0.5$ & $8.7$ & $+0.39 \pm 0.24$ & $-0.79 \pm 0.33$ & $-0.11 \pm 0.23$\\
+\midrule
+$v^{S} = 0$, $f/p = 0.5$ & $12.5$ & $+0.26 \pm 0.18$ & $-1.28 \pm 0.46$ & $-0.68 \pm 0.33$\\
+\bottomrule
+\end{tabular}
+\end{center}
+\begin{itemize}
+  \item \textbf{꼬리 우위가 $1\%$ 에 닿는 것은 B 의 이익이 예약에서만 나오는 두 경우다} ($v^{S} = 0$, $\sigma_B = 0$).
+  \item 예약료 수입은 원고 식과 구별되지 않는다 (쌍별 차 $-0.06 \pm 0.11$, $-0.14 \pm 0.14$). 평균 손해는 없앤다.
+\end{itemize}
+{\scriptsize 값은 Belief-only $-$ Nominal (리더 비용 대비 \%). 리더가 진짜 분포를 아는 조건, 보정한 반지름.}
+\end{frame}
+
+% ---------------------------------------------------------------------------
+\begin{frame}{belief 가 치우친 경우}
+\begin{itemize}
+  \item 지금까지 소매상 belief 는 진짜 분포의 불편 표본이었다.
+  \item 소매상이 치우친 분포에서 5 개를 뽑게 했다. 총수요 하위 절반 시나리오의 확률을 TV 거리 $0.2$ 만큼 올리거나 내린다. 아래는 방향을 모르는 경우다.
+\end{itemize}
+\begin{center}
+\footnotesize
+\begin{tabular}{lccc}
+\toprule
+설정 & Nominal 의 피해 평균 $\cdot$ q90 (\%) & 평균 & 꼬리\\
+\midrule
+원고 식 & $+0.30 \cdot 3.32$ & $+0.11 \pm 0.11$ & $-0.35 \pm 0.17$\\
+$f/p = 0.5$ & $+0.84 \cdot 5.58$ & $+0.18 \pm 0.15$ & $-0.44 \pm 0.12$\\
+$v^{S} = 0$, $f/p = 0.5$ & $+4.18 \cdot 13.67$ & $+0.22 \pm 0.18$ & $-1.22 \pm 0.49$\\
+\bottomrule
+\end{tabular}
+\end{center}
+\begin{itemize}
+  \item \textbf{치우쳐도 평균으로는 이기지 못한다.} 원고 식에서는 치우친 belief 아래에서도 Nominal 결정의 평균 피해가 $0$ 근처다.
+  \item \textbf{꼬리 우위는 유지된다.}
+  \item $v^{S} = 0$ 에서 고수요 쪽으로 치우치면 소매상이 예약을 늘려 피해가 줄고, 꼬리 우위가 $+0.49 \pm 0.38$ 로 뒤집힌다.
+\end{itemize}
+\end{frame}
+
+% ---------------------------------------------------------------------------
+\begin{frame}{리더가 $\hat q$ 를 추정하는 조건 (설정마다 75 건)}
+\begin{center}
+\footnotesize
+\begin{tabular}{lcccccc}
+\toprule
+ & \multicolumn{2}{c}{원고 식} & \multicolumn{2}{c}{$f/p = 0.5$} & \multicolumn{2}{c}{$v^{S} = 0$, $f/p = 0.5$}\\
+\cmidrule(lr){2-3}\cmidrule(lr){4-5}\cmidrule(lr){6-7}
+비교 & 평균 & 꼬리 & 평균 & 꼬리 & 평균 & 꼬리\\
+\midrule
+Belief-only ($\delta^{*}$) $-$ Nominal & $+0.27$ & $+0.10$ & $+0.16$ & $+0.00$ & $+0.06$ & $-0.88$\\
+Belief-only ($\delta = 0.1$) $-$ Nominal & $+0.06$ & $+0.01$ & $-0.04$ & $-0.25$ & $-0.38$ & $-1.03$\\
+Data-DR $-$ Nominal & $+1.49$ & $+1.49$ & $+0.51$ & $+0.80$ & $+1.40$ & $+0.54$\\
+Coupled $-$ Data-DR & $+0.21$ & $+0.13$ & $-0.01$ & $-0.11$ & $-0.81$ & $-1.37$\\
+\bottomrule
+\end{tabular}
+\end{center}
+\begin{itemize}
+  \item \textbf{원고 식에서는 belief 헤징의 가치가 없다.} 진짜를 아는 조건의 꼬리 우위 ($-0.26$) 가 리더의 추정 오차에 묻힌다 ($+0.10 \pm 0.15$).
+  \item \textbf{$v^{S} = 0$ 에서는 Coupled 가 Data-DR 을 이긴다.} 평균 $-0.81 \pm 0.23$, 꼬리 $-1.37 \pm 0.42$, 도시 조합 13 승 1 패다.
+  \item Data-DR 은 세 설정 모두 평균에서 Nominal 에 진다.
+  \item 예약료와 공급 한도 수정안은 이 조건에서 아직 평가하지 않았다.
+\end{itemize}
+{\footnotesize 진짜 분포의 시험 표본 500 개로 잰 비용, Nominal 결정의 평균 비용 대비 \%. 소매상 belief 는 진짜 분포에서 5 개.}
+\end{frame}
+
+% ---------------------------------------------------------------------------
+\begin{frame}{약정 물량 방식 (11 월 14 일 채택 방향)}
+\begin{itemize}
+  \item 예약을 확정 주문으로 본다. 소매상은 예약한 $h_i$ 를 모두 인수하고, 쓰지 않은 물량 $s_i$ 는 소매상의 재고가 된다.
+\end{itemize}
+{\small
+\begin{align*}
+  Q(x,h,\xi) \;=\; \min_{y,s\ge 0}\;& \sum_{i,j}\bigl[c_{ij}\,y^{R}_{ij} + (c_{ij}+p)\,y^{S}_{ij}\bigr] \;+\; \kappa\sum_{i} s_i\\
+  \text{s.t.}\;& \sum_{i}\bigl(y^{R}_{ij}+y^{S}_{ij}\bigr) \ge \xi_j,\qquad
+  \sum_{j}\bigl(y^{R}_{ij}+y^{S}_{ij}\bigr) \le b_i\,(t_i+x_i),\qquad
+  \sum_{j} y^{R}_{ij} + s_i = h_i\\[2pt]
+  \phi(x,h,\xi) \;=\; \max\;& \Bigl\{-v\sum_{i\in I_B}\Bigl[\sum_{j}\bigl(y^{R}_{ij}+y^{S}_{ij}\bigr) + s_i\Bigr] \;:\; (y,s)\ \text{optimal in } Q\Bigr\}
+\end{align*}}
+\begin{itemize}
+  \item \textbf{$\kappa = 0$ 이면 원고 식과 다른 점은 둘이다.} 예약 제약이 등식이고, B 의 마진 $v$ 가 남는 물량 $s_i$ 에도 붙는다.
+  \item 예약 범위 $H$, 용량 제약, 리더 목적은 그대로다. 일반 모형과 정리는 바뀌지 않는다.
+  \item 소매상은 뉴스벤더다. 자기 belief 아래 수요의 $1 - (f+\kappa)/(p+\kappa)$ 분위수까지 약정한다.
+  \item B 의 판매량이 저수요 시나리오에서도 $h$ 를 따라 움직인다 (원인 1, 2 에 해당하는 구조가 바뀐다).
+\end{itemize}
+\end{frame}
+
+% ---------------------------------------------------------------------------
+\begin{frame}{약정 방식, 리더가 진짜 분포를 아는 조건 (설정마다 75 건)}
+\begin{center}
+\scriptsize
+\begin{tabular}{lccccc}
+\toprule
+ & Nominal 의 & \multicolumn{2}{c}{$N_F = 5$} & $N_F = 10$ & $N_F = 30$\\
+\cmidrule(lr){3-4}\cmidrule(lr){5-5}\cmidrule(lr){6-6}
+설정 & q90 피해 (\%) & 평균 & 꼬리 & 꼬리 & 꼬리\\
+\midrule
+원고 식 & $3.1$ & $+0.11 \pm 0.11$ & $-0.26 \pm 0.14$ & $-0.14 \pm 0.07$ & $-0.09 \pm 0.08$\\
+\midrule
+\textbf{약정, $f/p = 0.25$, $\kappa = 0$} & $18.4$ & $-0.33 \pm 0.29$ & $\mathbf{-1.82 \pm 0.62}$ & $-2.06 \pm 0.52$ & $-1.40 \pm 0.38$\\
+약정, $f/p = 0.5$, $\kappa = 0$ & $13.4$ & $+0.66 \pm 0.26$ & $-0.58 \pm 0.35$ & $-0.65 \pm 0.28$ & $-0.40 \pm 0.25$\\
+약정, $f/p = 0.25$, $\kappa = 100$ & $13.5$ & $+0.23 \pm 0.24$ & $-1.13 \pm 0.31$ & $-0.87 \pm 0.24$ & $-0.79 \pm 0.21$\\
+약정, $f/p = 0.25$, $\kappa = 200$ & $16.3$ & $-0.04 \pm 0.22$ & $-1.28 \pm 0.44$ & $-0.84 \pm 0.24$ & $-0.67 \pm 0.35$\\
+\midrule
+예약료 $r = 20$ & $11.1$ & $-0.24 \pm 0.17$ & $-0.80 \pm 0.30$ & $-0.99 \pm 0.29$ & $-0.73 \pm 0.19$\\
+예약료 $r = 200$ & $12.2$ & $-0.15 \pm 0.16$ & $-0.92 \pm 0.33$ & $-0.98 \pm 0.27$ & $-0.68 \pm 0.16$\\
+\bottomrule
+\end{tabular}
+\end{center}
+\vspace{-0.4em}
+{\small
+\begin{itemize}
+  \item \textbf{약정 방식 ($f/p = 0.25$, $\kappa = 0$) 의 꼬리 우위는 원고 식과 구별된다.} 쌍별 차 $-1.57 \pm 0.61$, 도시 조합 11 승 4 패다. 평균 손해도 없다.
+  \item \textbf{$\kappa > 0$ 과 높은 $f/p$ 는 우위를 줄인다.} 둘 다 약정 분위수를 낮춘다 ($0.75 \to 0.67,\ 0.60,\ 0.50$).
+  \item $\kappa$ 는 수요 제약이 등식일 때만 작동한다. $\ge$ 이면 소매상이 남는 물량을 운송비 $0$ 인 같은 도시 고객에게 보내 $\kappa$ 를 피한다.
+\end{itemize}}
+{\scriptsize 값은 Belief-only $-$ Nominal (리더 비용 대비 \%), 보정한 반지름. $\kappa > 0$ 두 줄은 수요 등식.}
+\end{frame}
+
+% ---------------------------------------------------------------------------
+\begin{frame}{약정 방식, 리더가 $\hat q$ 를 추정하는 조건 (설정마다 75 건)}
+\begin{center}
+\footnotesize
+\begin{tabular}{lcccccc}
+\toprule
+ & \multicolumn{2}{c}{원고 식} & \multicolumn{2}{c}{약정, $f/p = 0.25$} & \multicolumn{2}{c}{약정, $f/p = 0.5$}\\
+\cmidrule(lr){2-3}\cmidrule(lr){4-5}\cmidrule(lr){6-7}
+비교 & 평균 & 꼬리 & 평균 & 꼬리 & 평균 & 꼬리\\
+\midrule
+Belief-only ($\delta = 0.1$) $-$ Nominal & $+0.06$ & $+0.01$ & $\mathbf{-1.07}$ & $\mathbf{-1.48}$ & $+0.43$ & $+0.01$\\
+Data-DR $-$ Nominal & $+1.49$ & $+1.49$ & $+0.22$ & $+0.51$ & $+0.47$ & $+1.07$\\
+Coupled $-$ Nominal & $+1.70$ & $+1.62$ & $-0.68$ & $-1.46$ & $+0.62$ & $-0.20$\\
+Coupled $-$ Data-DR & $+0.21$ & $+0.13$ & $\mathbf{-0.91}$ & $\mathbf{-1.97}$ & $+0.15$ & $-1.27$\\
+Coupled $-$ Belief-only ($\delta = 0.1$) & & & $+0.38$ & $+0.02$ & $+0.20$ & $-0.21$\\
+\bottomrule
+\end{tabular}
+\end{center}
+\begin{itemize}
+  \item \textbf{약정 $f/p = 0.25$ 에서 belief 헤징이 평균과 꼬리 모두 Nominal 과 Data-DR 을 이긴다.} 표준오차는 평균 $0.34$--$0.38$, 꼬리 $0.52$--$0.60$ 이다. 꼬리에서 Belief-only 는 도시 조합 12 승 1 패, Coupled 는 Data-DR 에 11 승 3 패다.
+  \item \textbf{가치는 belief 쪽에서만 나온다.} Data-DR 은 Nominal 과 결정이 다른 경우가 $11\%$ 뿐이고, Coupled 는 Belief-only 보다 낫지 않다.
+  \item $f/p = 0.5$ 에서는 Nominal 을 이기지 못한다.
+\end{itemize}
+{\footnotesize 진짜 분포의 시험 표본으로 잰 비용, Nominal 결정의 평균 비용 대비 \%. $\kappa = 0$.}
+\end{frame}
+
+% ---------------------------------------------------------------------------
+\begin{frame}{결정할 사항}
+\begin{enumerate}
+  \item \textbf{가치 지표.} 소매상 belief 에 대한 꼬리로 정했다 (11 월 13 일). 약정 방식에서는 평균으로도 이긴다.
+  \item \textbf{원고 6.2 절을 약정 방식으로 바꿀 것인가.}
+  \begin{itemize}
+    \item 바꾸면 belief 헤징이 Nominal 과 Data-DR 을 평균과 꼬리 모두에서 이긴다.
+    \item Coupled 는 Belief-only 보다 낫지 않다. 주장은 ``belief 모호성 헤징의 가치'' 가 된다.
+  \end{itemize}
+  \item \textbf{$\kappa$ 항을 식에 둘 것인가.}
+  \begin{itemize}
+    \item 권고는 $\kappa = 0$ 이다. 식에서 빼면 원고 식과의 차이가 둘뿐이다.
+    \item 남기면 수요 제약을 등식으로 써야 한다.
+  \end{itemize}
+  \item \textbf{인스턴스.} $f/p = 0.25$, 고정 반지름 $\delta = 0.1$ 을 권고한다. 보정한 반지름은 큰 값을 골라 평균이 흔들린다.
+  \item \textbf{바꿀 때 필요한 것.}
+  \begin{itemize}
+    \item $\theta^{U}$ 의 재유도, ``이후 물량의 마진도 $v$'' 라는 가정의 서술.
+    \item 알고리즘으로 푼 해의 확인. 지금 평가는 후보 결정의 열거다.
+    \item $f/p = 0.5$ 에서 우위가 약해지는 원인.
+  \end{itemize}
+\end{enumerate}
+\end{frame}
+
+\end{document}
