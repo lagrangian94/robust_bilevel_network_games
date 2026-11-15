@@ -10,3 +10,12 @@
 - 진단: `chk_why.py`, `chk_clair.py`, `chk_h.py`.
 
 요약은 `docs/nz_location_capacity_hypothesis_2026-11-14.md`, 경위는 `docs/nz_location_formulation_discussion_2026-11-14.md`.
+
+## 2026-11-15 추가분
+
+설정을 왜·무엇을·어떻게 바꿨는지는 `docs/nz_location_config_log.md` (설정 변경 대장) 에 있다.
+
+- `cf_predictions.txt` 는 H55 까지, `scr_cfg.txt` 는 `dwf75` 까지 갱신.
+- 평가: `tkT.jl`·`tkU.jl` (용량 단계, 층화 후보), `tkV.jl` (둘을 한 번에, 본 구성 `tkv75` 가 씀), `dwTier.jl` (자료 세계), `expo.jl` (노출 선별). `*_job.sh` 가 한 건 실행, `fine_job.sh`·`main_job.sh` 는 설정 이름으로 둘 중 하나에 넘김.
+- 집계: `agg_tier2.py`, `agg_dwtier.py`, `agg_expo.py`, `chk_tiers.py` (Nominal 이 고른 용량 단계 분포).
+- 그림: `box_eps.py`, `box_tier.py`, `box_final.py`.
