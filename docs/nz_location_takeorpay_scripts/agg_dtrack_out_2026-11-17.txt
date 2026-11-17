@@ -1,0 +1,15 @@
+runs: 45 (geographies 15)
+== c/f 0.4 | Nominal capacity 729
+   radius 0.1: capacity Data-DR 691, D-track 702 (D-track larger in 16%, smaller in  9%) | same decision 42% | differs from N: Data-DR 40%, D-track 58%
+      at Data-DR's decision: V_D - V0 = +2.53 +- 0.39 | V_T - V_D = +4.70 +- 0.69 (positive: following the truth is more pessimistic; share > 0: 93%)
+      loss of Data-DR's decision under the tracked criterion +1.94 +- 0.45 | loss of D-track's decision under Data-DR's criterion +1.12 +- 0.30 | nominal cost, D-track - Data-DR +0.38 +- 0.29
+   radius 0.2: capacity Data-DR 676, D-track 678 (D-track larger in 18%, smaller in 18%) | same decision 38% | differs from N: Data-DR 53%, D-track 76%
+      at Data-DR's decision: V_D - V0 = +3.20 +- 0.54 | V_T - V_D = +7.75 +- 0.94 (positive: following the truth is more pessimistic; share > 0: 100%)
+      loss of Data-DR's decision under the tracked criterion +2.84 +- 0.49 | loss of D-track's decision under Data-DR's criterion +2.79 +- 0.58 | nominal cost, D-track - Data-DR +0.91 +- 0.58
+== c/f 0.5 | Nominal capacity 713
+   radius 0.1: capacity Data-DR 687, D-track 702 (D-track larger in 13%, smaller in  2%) | same decision 49% | differs from N: Data-DR 27%, D-track 53%
+      at Data-DR's decision: V_D - V0 = +1.97 +- 0.27 | V_T - V_D = +4.11 +- 0.62 (positive: following the truth is more pessimistic; share > 0: 91%)
+      loss of Data-DR's decision under the tracked criterion +1.16 +- 0.30 | loss of D-track's decision under Data-DR's criterion +0.72 +- 0.20 | nominal cost, D-track - Data-DR +0.15 +- 0.20
+   radius 0.2: capacity Data-DR 678, D-track 676 (D-track larger in 11%, smaller in 16%) | same decision 44% | differs from N: Data-DR 40%, D-track 64%
+      at Data-DR's decision: V_D - V0 = +2.95 +- 0.46 | V_T - V_D = +7.09 +- 0.65 (positive: following the truth is more pessimistic; share > 0: 98%)
+      loss of Data-DR's decision under the tracked criterion +1.95 +- 0.38 | loss of D-track's decision under Data-DR's criterion +2.44 +- 0.60 | nominal cost, D-track - Data-DR +1.27 +- 0.56
