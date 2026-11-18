@@ -35,8 +35,8 @@ def draw(ax, P, off, extra=None):
 ax = axs[0]; style(ax); P = {w: (LV[w][2], DM[w][3]) for w in MOD}
 draw(ax, P, {"N": (12, 0), "B0.1": (12, -2), "D0.1": (12, 4), "C": (12, -8)}, {w: "\n여유 %.0f, 빠지는 약정 %.1f" % P[w] for w in MOD})
 ax.set_xlabel("여유 용량: 총용량에서 약정을 뺀 것 (왼쪽일수록 여유 용량을 줄임)", fontsize=10, color=INK2)
-ax.set_ylabel("belief 가 틀릴 때 빠지는 약정 (아래일수록 약정이 덜 흔들리는 거점)", fontsize=10, color=INK2)
-ax.set_title("(가) 전략: 두 손잡이를 얼마나 썼나", loc="left", fontsize=11.5, color=INK, pad=8)
+ax.set_ylabel("belief 가 틀릴 때 리더 거점에서 빠지는 약정 (거점 배치의 결과, 아래일수록 안정)", fontsize=9.5, color=INK2)
+ax.set_title("(가) 결정: 여유 용량과, 거점 배치가 낳은 약정의 안정", loc="left", fontsize=11.5, color=INK, pad=8)
 xs = [p[0] for p in P.values()]; ys = [p[1] for p in P.values()]; ax.set_xlim(min(xs) - 8, max(xs) + 26); ax.set_ylim(min(ys) - 2.5, max(ys) + 2.5)
 # ---- (b) the result
 ax = axs[1]; style(ax); P = {w: (DM[w][0], DM[w][1]) for w in MOD}
