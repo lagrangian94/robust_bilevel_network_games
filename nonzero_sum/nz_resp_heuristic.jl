@@ -28,7 +28,7 @@ function _nz_build_resp(nd::NZData, x̄; optimizer)
     @variable(mdl, y[1:ny, 1:S] >= 0)
     @constraint(mdl, [k=1:m, s=1:S], sum(nd.A[k, j] * y[j, s] for j in 1:ny if nd.A[k, j] != 0)
                                      - (nd.hrow[k] > 0 ? nd.hcoef[k] * α[nd.hrow[k]] : 0.0)
-                                     <= nd.u[k, s] + (nd.xrow[k] > 0 ? nd.g[k, s] * x̄[nd.xrow[k]] : 0.0))
+                                     <= nd.u[k, s] + nz_gx(nd, k, s, x̄))
     @variable(mdl, t[1:nh] >= 0)
     cdev = [(@constraint(mdl, t[i] - α[i] >= 0.0), @constraint(mdl, t[i] + α[i] >= 0.0)) for i in 1:nh]
     copt = @constraint(mdl, sum(nd.c0[i] * α[i] for i in 1:nh) + sum(0.0 * y[j, s] for j in 1:ny, s in 1:S if nd.c[j] != 0) >= -1e30)

@@ -318,8 +318,11 @@ function _nz_solve_lp!(model)
     # 이전에는 error() 로 worker task 가 죽었다 (bardx 첫 실행의 TaskFailedException 추정 원인).
     # LOCALLY_SOLVED = Gurobi SUBOPTIMAL (최적성 허용오차를 못 맞춘 해, Gurobi.jl 의 매핑): crossover 끔 barrier 에서 간헐적으로 나옴
     #   (bardx 의 TaskFailedException 원인). 덜 수렴한 primal 값은 상한으로 쓸 수 없으므로 정상 해로 받지 않고 재시도한다.
+    # DUAL_INFEASIBLE (2026-11-20): α 고정 LP 는 α ∈ H 면 유계인데, 계수를 바꾼 뒤 이어 푼 dual simplex 가 비유계로 보고한 적이 있다
+    #   (loc_tkp g=1, 같은 x̄·α̂ 를 새로 풀면 OPTIMAL). 재시도한다. 재시도 뒤에도 비유계면 아래에서 그대로 오류.
+    du0 = st == MOI.DUAL_INFEASIBLE
     if st in (MOI.NUMERICAL_ERROR, MOI.OTHER_ERROR, MOI.ALMOST_OPTIMAL, MOI.LOCALLY_SOLVED, MOI.INFEASIBLE_OR_UNBOUNDED,
-              MOI.SLOW_PROGRESS, MOI.ITERATION_LIMIT)
+              MOI.SLOW_PROGRESS, MOI.ITERATION_LIMIT, MOI.DUAL_INFEASIBLE)
         k = Threads.atomic_add!(_NZ_NUMERR, 1) + 1
         # 진단: NZ_NUMERR_DUMP=<폴더> 면 처음 3 개의 실패 LP 를 Gurobi 내부 모델 (.mps) 과 basis (.bas) 로 저장
         if haskey(ENV, "NZ_NUMERR_DUMP") && k <= 3
@@ -349,6 +352,8 @@ function _nz_solve_lp!(model)
             st = termination_status(model)
             st in (MOI.OPTIMAL, MOI.INFEASIBLE, MOI.TIME_LIMIT) && break
         end
+        du0 && st == MOI.DUAL_INFEASIBLE && error("nz_alpha_bnb LP: DUAL_INFEASIBLE (새로 풀어도 비유계)")
+        du0 && @printf("    [LP] 비유계 보고 → 재시도 결과 %s\n", st)
         st in (MOI.OPTIMAL, MOI.INFEASIBLE, MOI.TIME_LIMIT) || (Threads.atomic_add!(_NZ_NUMERR_FAIL, 1); return Inf)
     end
     if st == MOI.OPTIMAL && haskey(ENV, "NZ_LP_DUMP_EVERY")      # 진단: 정상 노드 LP 를 N 번째마다 저장 (조건수 비교용)

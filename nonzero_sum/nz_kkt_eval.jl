@@ -49,6 +49,7 @@ function nz_kkt_value(nd::NZData, x̄; optimizer, time_limit=600.0, gap=1e-6, si
     @constraint(model, sum(d) == 1)
     @constraint(model, [s=1:S], d[s] - e[s] <= q[s]); @constraint(model, [s=1:S], d[s] + e[s] >= q[s])
     @constraint(model, sum(e) <= 2ε̃)
+    nz_add_box!(model, a, d, nd)
     # belief 결합 (종속 ambiguity set): d_TV(a, d) ≤ δ
     if nz_coupled(nd)
         @variable(model, cpl[1:S] >= 0)
@@ -62,7 +63,7 @@ function nz_kkt_value(nd::NZData, x̄; optimizer, time_limit=600.0, gap=1e-6, si
     @variable(model, π[1:m, 1:S] >= 0)       # d_s 스케일 dual
     @variable(model, κ[1:nW] >= 0)
     rhs(s) = [nd.u[k, s] + (nd.hrow[k] > 0 ? nd.hcoef[k] * α[nd.hrow[k]] : 0.0) +
-              (nd.xrow[k] > 0 ? nd.g[k, s] * x̄[nd.xrow[k]] : 0.0) for k in 1:m]
+              nz_gx(nd, k, s, x̄) for k in 1:m]
     R = [rhs(s) for s in 1:S]
     slackP = [@expression(model, R[s][k] - sum(A[k, j] * y[j, s] for j in 1:ny if A[k, j] != 0)) for k in 1:m, s in 1:S]
     slackD = [@expression(model, sum(A[k, j] * π[k, s] for k in 1:m if A[k, j] != 0) - c[j] * d[s]) for j in 1:ny, s in 1:S]
@@ -170,6 +171,8 @@ function _nz_kkt_start(nd::NZData, x̄, d̂; optimizer)
     d̂ = max.(d̂, 0.0); d̂ = d̂ ./ sum(d̂)
     ê = abs.(d̂ .- q)
     sum(ê) <= 2ε̃ + 1e-9 || return nothing
+    bx = nz_box(nd)
+    bx === nothing || (all(bx.dl .- 1e-9 .<= d̂ .<= bx.du .+ 1e-9) || return nothing)
     # 1. follower 2 단계 LP
     F = Model(optimizer); set_silent(F)
     # α ≤ hU 는 변수 상한으로 두지 않는다: KKT 모형의 정류 조건 (slackA) 에는 W 행의 쌍대 κ 만 있으므로, 같은 한도가 변수 상한으로도
@@ -177,7 +180,7 @@ function _nz_kkt_start(nd::NZData, x̄, d̂; optimizer)
     @variable(F, αv[i=1:nh] >= 0); @variable(F, yv[1:ny, 1:S] >= 0)
     @constraint(F, cw[l=1:nW], sum(nd.W[l, i] * αv[i] for i in 1:nh) <= nd.wvec[l])
     @constraint(F, ca[k=1:m, s=1:S], sum(A[k, j] * yv[j, s] for j in 1:ny if A[k, j] != 0) <=
-        nd.u[k, s] + (nd.hrow[k] > 0 ? nd.hcoef[k] * αv[nd.hrow[k]] : 0.0) + (nd.xrow[k] > 0 ? nd.g[k, s] * x̄[nd.xrow[k]] : 0.0))
+        nd.u[k, s] + (nd.hrow[k] > 0 ? nd.hcoef[k] * αv[nd.hrow[k]] : 0.0) + nz_gx(nd, k, s, x̄))
     @objective(F, Max, dot(nd.c0, αv) + sum(d̂[s] * dot(c, yv[:, s]) for s in 1:S))
     optimize!(F)
     termination_status(F) == MOI.OPTIMAL || return nothing
@@ -210,6 +213,7 @@ function _nz_kkt_start(nd::NZData, x̄, d̂; optimizer)
     @constraint(Lm, sum(av) == 1); @constraint(Lm, sum(rv) == 1)
     @constraint(Lm, [s=1:S], av[s] - bv[s] <= q[s]); @constraint(Lm, [s=1:S], av[s] + bv[s] >= q[s])
     @constraint(Lm, sum(bv) <= 2ε̂); @constraint(Lm, [s=1:S], (1 - β) * rv[s] <= av[s])
+    bx === nothing || @constraint(Lm, [s=1:S], bx.al[s] <= av[s] <= bx.au[s])
     if nz_coupled(nd)
         @variable(Lm, cv[1:S] >= 0)
         @constraint(Lm, [s=1:S], av[s] - d̂[s] <= cv[s]); @constraint(Lm, [s=1:S], d̂[s] - av[s] <= cv[s])
@@ -251,6 +255,7 @@ function nz_kkt_value_reduced(nd::NZData, x̄; optimizer, time_limit=600.0, gap=
     @constraint(model, sum(d) == 1)
     @constraint(model, [s=1:S], d[s] - e[s] <= q[s]); @constraint(model, [s=1:S], d[s] + e[s] >= q[s])
     @constraint(model, sum(e) <= 2ε̃)
+    nz_add_box!(model, a, d, nd)
     if nz_coupled(nd)
         @variable(model, cpl[1:S] >= 0)
         @constraint(model, [s=1:S], a[s] - d[s] <= cpl[s]); @constraint(model, [s=1:S], d[s] - a[s] <= cpl[s])
@@ -263,7 +268,7 @@ function nz_kkt_value_reduced(nd::NZData, x̄; optimizer, time_limit=600.0, gap=
     @variable(model, π[1:m, 1:S] >= 0)
     @variable(model, κ[1:nW] >= 0)
     rhs(s) = [nd.u[k, s] + (nd.hrow[k] > 0 ? nd.hcoef[k] * α[nd.hrow[k]] : 0.0) +
-              (nd.xrow[k] > 0 ? nd.g[k, s] * x̄[nd.xrow[k]] : 0.0) for k in 1:m]
+              nz_gx(nd, k, s, x̄) for k in 1:m]
     R = [rhs(s) for s in 1:S]
     slackP = [@expression(model, R[s][k] - sum(A[k, j] * y[j, s] for j in 1:ny if A[k, j] != 0)) for k in 1:m, s in 1:S]
     slackD = [@expression(model, sum(A[k, j] * π[k, s] for k in 1:m if A[k, j] != 0) - c[j]) for j in 1:ny, s in 1:S]
@@ -307,7 +312,7 @@ function _phi_range(nd::NZData, x̄; optimizer)
         @constraint(mdl, [l=1:size(nd.W, 1)], sum(nd.W[l, i] * α[i] for i in 1:nh) <= nd.wvec[l])
         @constraint(mdl, [k=1:m], sum(nd.A[k, j] * yv[j] for j in 1:ny if nd.A[k, j] != 0) <=
             nd.u[k, s] + (nd.hrow[k] > 0 ? nd.hcoef[k] * α[nd.hrow[k]] : 0.0) +
-            (nd.xrow[k] > 0 ? nd.g[k, s] * x̄[nd.xrow[k]] : 0.0))
+            nz_gx(nd, k, s, x̄))
         @objective(mdl, sense, dot(nd.ell, yv))
         optimize!(mdl)
         val = objective_value(mdl)
@@ -338,7 +343,7 @@ function nz_theta_diag(nd::NZData, x̄, α̂, s; lp_optimizer)
     φ, θneed, _ = lp(nd.ell; zF=zF)
     Lθ, _, πpen = lp(nd.ell .+ nd.thetaU .* nd.c)
     Lθ -= nd.thetaU * zF
-    Xr = findall(nd.xrow .> 0)
+    Xr = unique(e.k for e in nz_xentries(nd))
     πratio = maximum([nd.piLU[k] > 0 ? πpen[k] / nd.piLU[k] : 0.0 for k in Xr]; init=0.0)
     return Dict(:phi => φ, :theta_need => θneed, :penalty_excess => Lθ - φ, :pi_ratio => πratio, :zF => zF)
 end

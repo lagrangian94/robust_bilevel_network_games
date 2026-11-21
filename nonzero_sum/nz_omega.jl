@@ -19,6 +19,11 @@ follower 블록 (원고 그대로 + 1단계 목적 c0ᵀh)
   Σ_s Σ_{k: ι(k)=i} g_kˢ π̃_ks − ρ⁰¹ − ρ⁰² + ρ⁰³ ≤ 0
 θ = 0, ℓ = c 이면 원고 coro:algorithmic-TV 의 Ω 와 같다.
 
+x 항목 (2026-11-20): 위 식의 "X 행 k" 는 x 항목 e = (k_e, i_e, g_e) (nz_xentries) 로 읽는다. 행 하나에 항목이 여럿이면
+(입지 크기 단계) Lflow/Fflow 의 [X행] 항은 그 행의 항목 합, ρ̂·ρ̃ 와 벌점은 항목마다, Fpsi 는 i_e = i 인 항목의 합.
+항목마다 w_e = x_{i_e} π_{k_e} 의 McCormick (π_{k_e} ≤ π̂ᵁ_{k_e}) 이 정확하므로 Σ_e g_e x_{i_e} π_{k_e} 도 정확하다.
+항목이 xrow 뿐이면 변수·행 순서가 예전과 같다. 상자 meta[:box] (nz_box) 는 a, d 의 상·하한을 좁힌다.
+
 belief 고정 LP (html "확장 belief")
   belief (a, b, r, d, e) 와 follower 의 recourse 쌍대해 σˢ (ϖˢ = r_s σˢ) 를 고정하면 ζL, ζF, ζW 가 α 에 선형 → LP.
   cert_rows = :hrows (기본) 는 bilinear 에 들어가는 H 행의 ϖ 만 고정 (나머지는 LP 변수, 더 강한 restriction),
@@ -43,8 +48,12 @@ function build_nz_omega(nd::NZData; optimizer, belief_lp::Bool=false, cert_rows:
     nW = size(nd.W, 1)
     q, ε̂, ε̃, β = nd.q_hat, nd.eps_hat, nd.eps_tilde, nd.beta
     θ = nd.thetaU
-    Xr = findall(nd.xrow .> 0); Hr = findall(nd.hrow .> 0)
-    nXr, nHr = length(Xr), length(Hr)
+    XE = nz_xentries(nd); Hr = findall(nd.hrow .> 0)
+    nXr, nHr = length(XE), length(Hr)
+    # 예전 이름 :Xr (X 행 = 항목) 은 항목이 xrow 뿐일 때만 뜻이 같다. 추가 항목이 있으면 nothing 으로 두어 :Xr 를 쓰는 진단 코드가 오류로 멈추게 함
+    Xr = haskey(nd.meta, :xextra) ? nothing : [e.k for e in XE]
+    ent_of_row = [Int[] for _ in 1:m]
+    for (jj, e) in enumerate(XE); push!(ent_of_row[e.k], jj); end
 
     model = Model(optimizer)
     silent && set_silent(model)
@@ -57,6 +66,10 @@ function build_nz_omega(nd::NZData; optimizer, belief_lp::Bool=false, cert_rows:
 
     amin = [max(0.0, q[s] - 2ε̂) for s in 1:S]; amax = [min(1.0, q[s] + 2ε̂) for s in 1:S]
     dmin = [max(0.0, q[s] - 2ε̃) for s in 1:S]; dmax = [min(1.0, q[s] + 2ε̃) for s in 1:S]
+    bx = nz_box(nd)
+    if bx !== nothing     # 상자: a·d 범위를 좁힘 → rmax·ζ 상한·cpl·α-B&B 의 RLT 한계 인자가 따라옴
+        amin = max.(amin, bx.al); amax = min.(amax, bx.au); dmin = max.(dmin, bx.dl); dmax = min.(dmax, bx.du)
+    end
     rmax = amax ./ (1 - β)
 
     @variable(model, 0 <= α[i=1:nh] <= nd.hU[i])
@@ -83,14 +96,13 @@ function build_nz_omega(nd::NZData; optimizer, belief_lp::Bool=false, cert_rows:
     @variable(model, ρ̂3[1:nXr, 1:S] >= 0)
     @variable(model, 0 <= ζL[i=1:nh, s=1:S] <= nd.hU[i] * rmax[s])
     @variable(model, 0 <= ζW[jj=1:nHr, s=1:S] <= nd.hU[nd.hrow[Hr[jj]]] * nd.varpiU[Hr[jj]] * rmax[s])
-    xpos = zeros(Int, m); for (jj, k) in enumerate(Xr); xpos[k] = jj; end
     hpos = zeros(Int, m); for (jj, k) in enumerate(Hr); hpos[k] = jj; end
 
     @constraint(model, Lflow[k=1:m, s=1:S],
         sum(A[k, j] * ŷ[j, s] for j in 1:ny if A[k, j] != 0)
-        + (xpos[k] > 0 ? ρ̂2[xpos[k], s] - ρ̂3[xpos[k], s] : 0.0)
+        + sum(ρ̂2[jj, s] - ρ̂3[jj, s] for jj in ent_of_row[k]; init=0.0)
         <= u[k, s] * r[s] + (nd.hrow[k] > 0 ? nd.hcoef[k] * ζL[nd.hrow[k], s] : 0.0))
-    @constraint(model, LMC[jj=1:nXr, s=1:S], ρ̂1[jj, s] + ρ̂2[jj, s] - ρ̂3[jj, s] >= -g[Xr[jj], s] * r[s])
+    @constraint(model, LMC[jj=1:nXr, s=1:S], ρ̂1[jj, s] + ρ̂2[jj, s] - ρ̂3[jj, s] >= -XE[jj].g[s] * r[s])
     @constraint(model, N1[j=1:ny, s=1:S], sum(A[k, j] * ϖ[k, s] for k in 1:m if A[k, j] != 0) >= c[j] * r[s])
     # ϖ_ks ≤ ϖᵁ_k r_s (H 행): ϖˢ/r_s 는 follower 최적 dual 이고 그중 H 행 성분이 ϖᵁ 이하인 것이 존재 (nz_data.jl)
     # → 최적값을 바꾸지 않는 강화. α-B&B 의 α·ϖ RLT 가 이 행을 쓴다.
@@ -127,12 +139,12 @@ function build_nz_omega(nd::NZData; optimizer, belief_lp::Bool=false, cert_rows:
 
     @constraint(model, Fflow[k=1:m, s=1:S],
         sum(A[k, j] * ȳ[j, s] for j in 1:ny if A[k, j] != 0)
-        + (xpos[k] > 0 ? ρ̃2[xpos[k], s] - ρ̃3[xpos[k], s] : 0.0)
+        + sum(ρ̃2[jj, s] - ρ̃3[jj, s] for jj in ent_of_row[k]; init=0.0)
         <= u[k, s] * d[s] + (nd.hrow[k] > 0 ? nd.hcoef[k] * ζF[nd.hrow[k], s] : 0.0))
-    @constraint(model, FMC[jj=1:nXr, s=1:S], ρ̃1[jj, s] + ρ̃2[jj, s] - ρ̃3[jj, s] >= -g[Xr[jj], s] * d[s])
+    @constraint(model, FMC[jj=1:nXr, s=1:S], ρ̃1[jj, s] + ρ̃2[jj, s] - ρ̃3[jj, s] >= -XE[jj].g[s] * d[s])
     @constraint(model, Ffeas[j=1:ny, s=1:S], sum(A[k, j] * π̃[k, s] for k in 1:m if A[k, j] != 0) >= c[j] * d[s])
     hrows_of = [[k for k in Hr if nd.hrow[k] == i] for i in 1:nh]
-    xrows_of = [[k for k in Xr if nd.xrow[k] == i] for i in 1:nx]
+    ents_of_x = [[jj for (jj, e) in enumerate(XE) if e.i == i] for i in 1:nx]
     @constraint(model, Fh[i=1:nh],
         sum(nd.hcoef[k] * π̃[k, s] for s in 1:S, k in hrows_of[i]) + nd.c0[i]
         <= sum(nd.W[l, i] * κ[l] for l in 1:nW))
@@ -141,14 +153,14 @@ function build_nz_omega(nd::NZData; optimizer, belief_lp::Bool=false, cert_rows:
         + sum(ρ02[i] - ρ03[i] for i in 1:nx) - sum(c[j] * ȳ[j, s] for j in 1:ny, s in 1:S if c[j] != 0)
         <= sum(nd.c0[i] * α[i] for i in 1:nh))
     @constraint(model, Fpsi[i=1:nx],
-        sum(g[k, s] * π̃[k, s] for s in 1:S, k in xrows_of[i])
+        sum(XE[jj].g[s] * π̃[XE[jj].k, s] for s in 1:S, jj in ents_of_x[i]; init=0.0)
         - ρ01[i] - ρ02[i] + ρ03[i] <= 0)
 
     # ---------------- bilinear 정의 ----------------
     v = Dict{Symbol,Any}(:α => α, :a => a, :b => b, :r => r, :ŷ => ŷ, :ϖ => ϖ,
         :ρ̂1 => ρ̂1, :ρ̂3 => ρ̂3, :ζL => ζL, :ζW => ζW,
         :d => d, :e => e, :ȳ => ȳ, :π̃ => π̃, :κ => κ, :ρ̃1 => ρ̃1, :ρ̃3 => ρ̃3,
-        :ρ01 => ρ01, :ρ03 => ρ03, :ζF => ζF, :Xr => Xr, :Hr => Hr, :cert_rows => cert_rows, :mode => mode,
+        :ρ01 => ρ01, :ρ03 => ρ03, :ζF => ζF, :Xr => Xr, :XE => XE, :Hr => Hr, :cert_rows => cert_rows, :mode => mode,
         :cpl => cpl)
     if mode == :belief_lp
         # belief (r, d) 와 recourse 쌍대해 ϖ 고정 → α 의 계수. 계수는 nz_set_belief! 에서 채움
@@ -179,7 +191,7 @@ function build_nz_omega(nd::NZData; optimizer, belief_lp::Bool=false, cert_rows:
             sum(c[j] * ŷ[j, s] for j in 1:ny if c[j] != 0)
             - sum(u[k, s] * ϖ[k, s] for k in 1:m if u[k, s] != 0)
             - sum(nd.hcoef[k] * ζW[jj, s] for (jj, k) in enumerate(Hr)) <= 0.0)
-        for k in Xr, s in 1:S
+        for k in unique(e.k for e in XE), s in 1:S
             set_normalized_coefficient(v[:wd][s], ϖ[k, s], -u[k, s])     # x̄ 항은 nz_set_objective! 에서
         end
     end
@@ -193,7 +205,7 @@ end
 function nz_set_objective!(O::NZOmega, nd::NZData, x̄)
     v = O.v
     S, ny, m = nd.S, nz_ny(nd), nz_m(nd)
-    Xr, Hr = v[:Xr], v[:Hr]
+    XE, Hr = v[:XE], v[:Hr]
     θ, λU = nd.thetaU, nd.lambdaU
     ŷ, ϖ, ζW = v[:ŷ], v[:ϖ], v[:ζW]
     FL = AffExpr(0.0)
@@ -208,12 +220,12 @@ function nz_set_objective!(O::NZOmega, nd::NZData, x̄)
         for (jj, k) in enumerate(Hr), s in 1:S
             add_to_expression!(FL, -θ * nd.hcoef[k], ζW[jj, s])
         end
-        for k in Xr, s in 1:S
-            add_to_expression!(FL, -θ * nd.g[k, s] * x̄[nd.xrow[k]], ϖ[k, s])
+        for e in XE, s in 1:S
+            add_to_expression!(FL, -θ * e.g[s] * x̄[e.i], ϖ[e.k, s])
         end
     end
-    for (jj, k) in enumerate(Xr), s in 1:S
-        xi = x̄[nd.xrow[k]]
+    for (jj, e) in enumerate(XE), s in 1:S
+        k = e.k; xi = x̄[e.i]
         add_to_expression!(FL, -nd.piLU[k] * xi, v[:ρ̂1][jj, s])
         add_to_expression!(FL, -nd.piLU[k] * (1 - xi), v[:ρ̂3][jj, s])
         add_to_expression!(FL, -λU * nd.piFU[k] * xi, v[:ρ̃1][jj, s])
@@ -223,9 +235,9 @@ function nz_set_objective!(O::NZOmega, nd::NZData, x̄)
         add_to_expression!(FL, -λU * x̄[i], v[:ρ01][i])
         add_to_expression!(FL, -λU * (1 - x̄[i]), v[:ρ03][i])
     end
-    if haskey(v, :wd)                                   # 약쌍대 부등식의 x 행 계수: −(u + g x̄)
-        for k in Xr, s in 1:S
-            set_normalized_coefficient(v[:wd][s], ϖ[k, s], -(nd.u[k, s] + nd.g[k, s] * x̄[nd.xrow[k]]))
+    if haskey(v, :wd)                                   # 약쌍대 부등식의 x 행 계수: −(u + Σ_e g_e x̄)
+        for k in unique(e.k for e in XE), s in 1:S
+            set_normalized_coefficient(v[:wd][s], ϖ[k, s], -(nd.u[k, s] + nz_gx(nd, k, s, x̄)))
         end
     end
     @objective(O.model, Max, FL)
@@ -236,12 +248,12 @@ end
 "현재 해에서 cut 계수와 F 값 (x 에 affine: F(x) = intercept + slopeᵀx)"
 function nz_cut_from_solution(O::NZOmega, nd::NZData, x̄)
     v = O.v
-    S = nd.S; Xr = v[:Xr]
+    S = nd.S; XE = v[:XE]
     θ, λU = nd.thetaU, nd.lambdaU
     slope = zeros(nd.nx)
-    for (jj, k) in enumerate(Xr), s in 1:S
-        i = nd.xrow[k]
-        slope[i] += -θ * nd.g[k, s] * value(v[:ϖ][k, s]) -
+    for (jj, e) in enumerate(XE), s in 1:S
+        i = e.i; k = e.k
+        slope[i] += -θ * e.g[s] * value(v[:ϖ][k, s]) -
                     nd.piLU[k] * (value(v[:ρ̂1][jj, s]) - value(v[:ρ̂3][jj, s])) -
                     λU * nd.piFU[k] * (value(v[:ρ̃1][jj, s]) - value(v[:ρ̃3][jj, s]))
     end
@@ -264,10 +276,35 @@ end
 
 
 """
+    nz_feasible_alpha(nd, x̄, α̂; lp_optimizer, tol=1e-5)
+
+α̂ 에 가장 가까운 (ℓ₁) follower 실행가능 반응: α ∈ H 이고 모든 시나리오에서 recourse 가 실행가능 (A y ≤ rhs(x̄, α, s), y ≥ 0).
+옮긴 거리가 좌표마다 tol·max(1, hᵁ) 를 넘으면 잡음이 아니라 실제로 실행불가인 반응이므로 오류.
+"""
+function nz_feasible_alpha(nd::NZData, x̄, α̂; lp_optimizer, tol=1e-5)
+    S, m, ny, nh = nd.S, nz_m(nd), nz_ny(nd), nz_nh(nd)
+    mdl = Model(lp_optimizer); set_silent(mdl)
+    @variable(mdl, 0 <= α[i=1:nh] <= nd.hU[i]); @variable(mdl, dev[1:nh] >= 0); @variable(mdl, y[1:ny, 1:S] >= 0)
+    @constraint(mdl, nd.W * α .<= nd.wvec)
+    @constraint(mdl, [i=1:nh], dev[i] >= α[i] - α̂[i]); @constraint(mdl, [i=1:nh], dev[i] >= α̂[i] - α[i])
+    for s in 1:S, k in 1:m
+        @constraint(mdl, sum(nd.A[k, j] * y[j, s] for j in 1:ny if nd.A[k, j] != 0)
+                         - (nd.hrow[k] > 0 ? nd.hcoef[k] * α[nd.hrow[k]] : 0.0) <= nd.u[k, s] + nz_gx(nd, k, s, x̄))
+    end
+    @objective(mdl, Min, sum(dev)); optimize!(mdl)
+    termination_status(mdl) == MOI.OPTIMAL || error("nz_feasible_alpha: 실행가능 반응이 없음 ($(termination_status(mdl)))")
+    a = [clamp(value(α[i]), 0.0, nd.hU[i]) for i in 1:nh]
+    worst = maximum(abs(a[i] - α̂[i]) / max(1.0, nd.hU[i]) for i in 1:nh)
+    worst <= tol || error(@sprintf("nz_feasible_alpha: α̂ 가 실행가능 영역에서 %.2e 떨어져 있음 (허용 %.0e) — 잡음이 아님", worst, tol))
+    return a
+end
+
+
+"""
 follower 의 recourse 쌍대해 σˢ (html (b)): (x̄, α̂) 에서 시나리오별 follower recourse LP 를 simplex 로 풀어
 최적 dual 꼭짓점을 얻는다. shadow price (rhs 1 증가 시 목적 증가) ≥ 0.
 """
-function nz_follower_duals(nd::NZData, x̄, α̂; lp_optimizer)
+function nz_follower_duals(nd::NZData, x̄, α̂; lp_optimizer, repaired::Bool=false)
     S, m, ny = nd.S, nz_m(nd), nz_ny(nd)
     σ = zeros(m, S); z = zeros(S)
     for s in 1:S
@@ -277,6 +314,11 @@ function nz_follower_duals(nd::NZData, x̄, α̂; lp_optimizer)
         @constraint(mdl, con[k=1:m], sum(nd.A[k, j] * y[j] for j in 1:ny if nd.A[k, j] != 0) <= rr[k])
         @objective(mdl, Max, dot(nd.c, y))
         optimize!(mdl)
+        if termination_status(mdl) in (MOI.INFEASIBLE, MOI.INFEASIBLE_OR_UNBOUNDED) && !repaired
+            # α̂ 가 해법 잡음만큼 실행가능 영역 밖일 수 있다 (약정 물량: 닫힌 거점의 α ≈ 1e-9, 용량을 1e-9 넘는 α → 약정 등식이 깨짐, 2026-11-20).
+            # 가장 가까운 실행가능 반응으로 옮겨 한 번만 다시 푼다. 잡음보다 많이 옮겨야 하면 nz_feasible_alpha 가 오류.
+            return nz_follower_duals(nd, x̄, nz_feasible_alpha(nd, x̄, α̂; lp_optimizer=lp_optimizer); lp_optimizer=lp_optimizer, repaired=true)
+        end
         termination_status(mdl) == MOI.OPTIMAL || error("follower LP s=$s: $(termination_status(mdl))")
         σ[:, s] = max.([shadow_price(con[k]) for k in 1:m], 0.0)
         z[s] = objective_value(mdl)
@@ -293,6 +335,7 @@ solver dual 허용오차 (~1e-7) 나 ϖ̂/r̂ 의 잔차가 남으면 ϖ 고정 
 function nz_repair_cert(nd::NZData, σ; lp_optimizer)
     m, ny, S = nz_m(nd), nz_ny(nd), size(σ, 2)
     out = similar(σ)
+    σ = nz_canon_pairs!(copy(σ), nd)       # 등식 쌍 (약정 물량) 은 정규형으로 먼저: 최적성 유지, 두 성분이 함께 줄어 상한 (Wcap) 쪽으로
     for s in 1:S
         mdl = Model(lp_optimizer); set_silent(mdl)
         @variable(mdl, σp[1:m] >= 0); @variable(mdl, dev[1:m] >= 0)
@@ -333,6 +376,12 @@ function nz_clean_belief(bel, nd::NZData)
     a = simp(bel[:a]); d = simp(bel[:d])
     ratio(dev, ε) = dev > 2ε ? 2ε / dev : 1.0
     ta = ratio(sum(abs.(a .- q)), nd.eps_hat); td = ratio(sum(abs.(d .- q)), nd.eps_tilde)
+    bx = nz_box(nd)
+    if bx !== nothing     # 상자도 q̂ 를 담는 볼록 집합이라 q̂ 쪽 축소 비율에 상자 비율을 더한다
+        bratio(y, lo, hi) = minimum([y[s] > hi[s] ? (hi[s] - q[s]) / (y[s] - q[s]) : y[s] < lo[s] ? (q[s] - lo[s]) / (q[s] - y[s]) : 1.0
+                                     for s in eachindex(y)])
+        ta = min(ta, bratio(a, bx.al, bx.au)); td = min(td, bratio(d, bx.dl, bx.du))
+    end
     if nz_coupled(nd)
         t = min(ta, td, ratio(sum(abs.(a .- d)), nz_delta(nd)))
         ta = td = t

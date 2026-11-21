@@ -109,6 +109,7 @@ _log_cut!(cuts, kind, iter, x̄, cut, mw) =
 """
 function nz_add_dual_vi!(omp, x, t0, nd::NZData; exact_h::Bool=false)
     m, ny, S = nz_m(nd), nz_ny(nd), nd.S
+    haskey(nd.meta, :xextra) && error("nz_add_dual_vi!: 한 행에 x 가 여럿인 데이터 (meta[:xextra]) 는 아직 지원 안 함")
     xr = [k for k in 1:m if nd.xrow[k] > 0]
     hr = [k for k in 1:m if nd.hrow[k] > 0]
     all(isfinite, nd.varpiU[hr]) || error("nz_add_dual_vi!: h 행의 varpiU 가 유한해야 함")
@@ -260,7 +261,10 @@ MW 강화 (α-B&B 경로와 같은 _nz_lp_cut!). α 고정 LP 가 실패하면 �
 """
 function _nz_alpha_cut(O::NZOmega, Fx, nd::NZData, x̄; mw::Bool, x_core)
     (mw && Fx !== nothing) || return nz_cut_from_solution(O, nd, x̄), false
-    α̂ = [max(value(O.v[:α][i]), 0.0) for i in 1:nz_nh(nd)]
+    # local 해의 α 에는 해법 잡음 (1e-9 수준) 이 남는다. 약정 물량 인스턴스 (loc_tkp) 에서 닫힌 거점의 α ≈ 3e-9 를 그대로 고정하면
+    # α 고정 LP 를 primal·기본 simplex 가 비유계로 잘못 보고했다 (2026-11-20, 같은 LP 를 α 잡음만 0 으로 하면 네 방법 모두 OPTIMAL).
+    # H = {0 ≤ α ≤ hᵁ, Wα ≤ w} (W ≥ 0) 에서 좌표를 낮춰도 H 안이므로 cut 유효성 (restricted ISP) 은 그대로다.
+    α̂ = [(a = clamp(value(O.v[:α][i]), 0.0, nd.hU[i]); a < 1e-7 * max(1.0, nd.hU[i]) ? 0.0 : a) for i in 1:nz_nh(nd)]
     nz_set_objective!(Fx, nd, x̄)
     z = Main.nz_eval_alpha!(Fx, nd, α̂)
     isfinite(z) || return nz_cut_from_solution(O, nd, x̄), false

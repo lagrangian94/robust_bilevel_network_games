@@ -1,0 +1,73 @@
+Set parameter WLSAccessID
+Set parameter WLSSecret
+Set parameter LicenseID to value 926906
+Academic license 926906 - for non-commercial use only - registered to se___@postech.ac.kr
+Set parameter WLSAccessID
+Set parameter WLSSecret
+Set parameter LicenseID to value 926906
+Academic license 926906 - for non-commercial use only - registered to se___@postech.ac.kr
+Set parameter WLSAccessID
+Set parameter WLSSecret
+Set parameter LicenseID to value 926906
+Academic license 926906 - for non-commercial use only - registered to se___@postech.ac.kr
+Set parameter WLSAccessID
+Set parameter WLSSecret
+Set parameter LicenseID to value 926906
+Academic license 926906 - for non-commercial use only - registered to se___@postech.ac.kr
+Set parameter WLSAccessID
+Set parameter WLSSecret
+Set parameter LicenseID to value 926906
+Academic license 926906 - for non-commercial use only - registered to se___@postech.ac.kr
+Set parameter WLSAccessID
+Set parameter WLSSecret
+Set parameter LicenseID to value 926906
+Academic license 926906 - for non-commercial use only - registered to se___@postech.ac.kr
+Set parameter WLSAccessID
+Set parameter WLSSecret
+Set parameter LicenseID to value 926906
+Academic license 926906 - for non-commercial use only - registered to se___@postech.ac.kr
+Set parameter WLSAccessID
+Set parameter WLSSecret
+Set parameter LicenseID to value 926906
+Academic license 926906 - for non-commercial use only - registered to se___@postech.ac.kr
+Set parameter WLSAccessID
+Set parameter WLSSecret
+Set parameter LicenseID to value 926906
+Academic license 926906 - for non-commercial use only - registered to se___@postech.ac.kr
+Set parameter WLSAccessID
+Set parameter WLSSecret
+Set parameter LicenseID to value 926906
+Academic license 926906 - for non-commercial use only - registered to se___@postech.ac.kr
+Set parameter WLSAccessID
+Set parameter WLSSecret
+Set parameter LicenseID to value 926906
+Academic license 926906 - for non-commercial use only - registered to se___@postech.ac.kr
+Set parameter WLSAccessID
+Set parameter WLSSecret
+Set parameter LicenseID to value 926906
+Academic license 926906 - for non-commercial use only - registered to se___@postech.ac.kr
+Set parameter WLSAccessID
+Set parameter WLSSecret
+Set parameter LicenseID to value 926906
+Academic license 926906 - for non-commercial use only - registered to se___@postech.ac.kr
+--- dromu μ·120=1200 ε=0.1 VUB=1 | g=1 model=coupled r=0.20 S=10 |X|=8464 스레드 12 TL=10800
+  [srch] it   1 LB=  -2089.40 UB=       Inf x={8:400;10:200;15:300}  마스터 t0 -4339.40 < 싼 하한 -3714.45 → belief 추가 (마스터 48.7s, 노드 19246, 탐색 2.0s)  beliefs=2
+  [srch] it   2 LB=  -1708.96 UB=       Inf x={10:200;12:300;15:300} 마스터 t0 -3758.96 < 싼 하한 -3595.90 → belief 추가 (마스터 167.3s, 노드 19417, 탐색 0.9s)  beliefs=3
+  [srch] it   3 LB=  -1654.96 UB=       Inf x={10:200;13:300;15:300} 마스터 t0 -3704.96 < 싼 하한 -3676.59 → belief 추가 (마스터 292.7s, 노드 19153, 탐색 0.9s)  beliefs=4
+  [srch] it   4 LB=  -1640.35 UB=       Inf x={4:200;11:300;15:300}  마스터 t0 -3690.35 < 싼 하한 -3629.50 → belief 추가 (마스터 434.1s, 노드 19256, 탐색 0.8s)  beliefs=5
+  [srch] it   5 LB=  -1640.35 UB=       Inf x={4:200;6:300;15:300}   마스터 t0 -3690.35 < 싼 하한 -3629.50 → belief 추가 (마스터 627.8s, 노드 19877, 탐색 0.9s)  beliefs=6
+  [srch] it   6 LB=  -1640.02 UB=       Inf x={3:300;10:200;15:300}  마스터 t0 -3690.02 < 싼 하한 -3679.42 → belief 추가 (마스터 780.7s, 노드 19674, 탐색 1.0s)  beliefs=7
+  [srch] it   7 LB=  -1633.18 UB=       Inf x={9:200;10:300;15:300}  마스터 t0 -3683.18 < 싼 하한 -3678.27 → belief 추가 (마스터 952.8s, 노드 19496, 탐색 1.0s)  beliefs=8
+  [srch] it   8 LB=  -1632.99 UB=       Inf x={8:400;10:200;15:200}  마스터 t0 -3682.99 < 싼 하한 -3678.27 → belief 추가 (마스터 1144.8s, 노드 19306, 탐색 0.9s)  beliefs=9
+
+******************************************************************************
+This program contains Ipopt, a library for large-scale nonlinear optimization.
+ Ipopt is released as open source code under the Eclipse Public License (EPL).
+         For more information visit https://github.com/coin-or/Ipopt
+******************************************************************************
+
+  [orcl] it   9 LB=  -1630.91 UB=  -1511.28 x={5:300;10:200;15:300}  V in [-3660.28, -3561.28], 마스터 t0 -3680.91 (110s, 마스터 1338.2s 노드 19487), belief 추가  beliefs=10
+  [orcl] it  10 LB=  -1630.91 UB=  -1625.07 x={6:400;10:200;15:200}  V in [-3678.30, -3675.07], 마스터 t0 -3680.91 (314s, 마스터 1462.5s 노드 19410), belief 추가  beliefs=11
+┌ Warning: The addition operator has been used on JuMP expressions a large number of times. This warning is safe to ignore but may indicate that model generation is slower than necessary. For performance reasons, you should not add expressions in a loop. Instead of x += y, use add_to_expression!(x,y) to modify x in place. If y is a single variable, you may also use add_to_expression!(x, coef, y) for x += coef*y.
+└ @ JuMP C:\Users\user\.julia\packages\JuMP\i68GU\src\operators.jl:282
+RESULT dromu μ·120=1200 g=1 model=coupled r=0.20 S=10 |X|=8464 status=Optimal x={6:400;10:200;15:200} LB=-1630.9141 UB=-1625.0654 gap=3.60e-03 iters=10 beliefs=11 master=7250s oracle=2 (425s) evals=1375 time=7689.5

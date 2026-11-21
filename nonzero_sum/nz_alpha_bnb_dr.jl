@@ -27,6 +27,8 @@ nz_alpha_bnb_dr.jl — α-B&B (nz_alpha_bnb.jl) + **상자별 쌍대 범위 조�
   - "더 낮출 수 없는" 쌍대: H 행 k 의 우변이 양수 (α_i > 0) 면 최적 쌍대는 자동으로 그렇고 (낮출 수 있으면 쌍대목적이 줄어 모순),
     α_i = 0 이면 σ_k 를 낮춰도 실행가능·최적이 유지된다 → 일반성을 잃지 않음. Wcap (ϖ ≤ ϖᵁ r) 과 같은 종류의 논증.
   - 범위 MIP 는 objective_bound (바깥쪽) 에 1e-6 여유를 더해 쓴다.
+  - 등식 h 행 쌍 (2026-11-20, 입지의 약정 물량, nz_eq_pairs): 우변 −α 인 행에는 "더 낮출 수 없음" 대신 정규형 (둘 중 하나 0) 을 쓰고,
+    꼭짓점 LP 는 승수 ν = σ⁺ − σ⁻ 의 범위로, κmax·resp_fix 는 hcoef 부호에 맞춰 위·아래 범위를 고른다. 짝이 없는 hcoef < 0 행은 오류.
   **주의: 시제품. 유효성은 위 논증 + 작은 S 에서 KKT 값과의 대조 (diag_dual_range.jl, test) 로만 확인했다.**
 
 사용: r = nz_alpha_bnb_dr(nd, x̄; nworkers=12, time_limit=600.0, rel_gap=1e-3)
@@ -54,14 +56,22 @@ function _nz_dr_build_mip(nd::NZData, x̄, s; optimizer)
     @variable(mdl, y[1:ny] >= 0); @variable(mdl, σ[1:m] >= 0)
     for k in Hr; isfinite(nd.varpiU[k]) && set_upper_bound(σ[k], nd.varpiU[k]); end
     sP = [@expression(mdl, nd.u[k, s] + (nd.hrow[k] > 0 ? nd.hcoef[k] * α[nd.hrow[k]] : 0.0) +
-                           (nd.xrow[k] > 0 ? nd.g[k, s] * x̄[nd.xrow[k]] : 0.0) -
+                           nz_gx(nd, k, s, x̄) -
                            sum(nd.A[k, j] * y[j] for j in 1:ny if nd.A[k, j] != 0)) for k in 1:m]
     sD = [@expression(mdl, sum(nd.A[k, j] * σ[k] for k in 1:m if nd.A[k, j] != 0) - nd.c[j]) for j in 1:ny]
     @constraint(mdl, [k=1:m], sP[k] >= 0); @constraint(mdl, [j=1:ny], sD[j] >= 0)
     comp(var, slack) = (z = @variable(mdl, binary = true); @constraint(mdl, z => {var == 0}); @constraint(mdl, !z => {slack == 0}))
     for k in 1:m; comp(σ[k], sP[k]); end
     for j in 1:ny; comp(y[j], sD[j]); end
+    EP = nz_eq_pairs(nd)
     for k in Hr                                   # 더 낮출 수 없는 쌍대: σ_k = 0 이거나, 그 행에 걸린 열 중 하나의 쌍대 제약이 등호
+        if haskey(EP, k)
+            # 등식 쌍의 우변 −h 행 (약정 물량): "더 낮출 수 없음" 은 이 행에 맞지 않는다 (낮추면 Aᵀσ 가 오히려 커짐). 대신 정규형
+            # σ_k = 0 또는 σ_{k⁺} = 0 (nz_eq_pairs). 짝 k⁺ 의 "더 낮출 수 없음" 과 함께 성립하는 최적 쌍대가 있다: 승수 ν = σ⁺ − σ⁻ 를
+            # 막힐 때까지 낮춘 뒤 (우변 α ≥ 0 이라 쌍대 목적 불증가) 정규형으로 나누면, ν > 0 일 때 σ⁺ 를 낮추는 것이 곧 ν 를 낮추는 것이라 막혀 있다.
+            z = @variable(mdl, binary = true); @constraint(mdl, z => {σ[k] == 0}); @constraint(mdl, !z => {σ[EP[k]] == 0})
+            continue
+        end
         J = [j for j in 1:ny if nd.A[k, j] > 0]
         z = @variable(mdl, binary = true); @constraint(mdl, z => {σ[k] == 0})
         w = @variable(mdl, [1:length(J)], binary = true)
@@ -150,7 +160,8 @@ function _nz_dr_attach!(P::_NZSepLP, nd::NZData, x̄; optimizer, vcut::Bool=true
             all(nd.W .>= 0) || error("_nz_dr_attach!: kmc — W 에 음수")
             κmax = zeros(nW)
             for l in 1:nW
-                cand = [(sum(nd.hcoef[k] * nd.varpiU[k] for k in Hk if nd.hrow[k] == ii; init=0.0) + nd.c0[ii]) / nd.W[l, ii]
+                # hcoef < 0 (등식 쌍의 우변 −h 행) 은 hcoef·π̃ ≤ 0 이라 상한에 0 을 더한다 (hcoef·ϖᵁ 로 쓰면 κmax 를 과소평가)
+                cand = [(sum(max(nd.hcoef[k], 0.0) * nd.varpiU[k] for k in Hk if nd.hrow[k] == ii; init=0.0) + nd.c0[ii]) / nd.W[l, ii]
                         for ii in 1:nh if nd.hU[ii] > 0 && nd.W[l, ii] > 0]
                 κmax[l] = isempty(cand) ? 0.0 : max(0.0, maximum(cand))
                 @constraint(mdl, κ[l] <= κmax[l])
@@ -186,7 +197,7 @@ function _nz_dr_attach!(P::_NZSepLP, nd::NZData, x̄; optimizer, vcut::Bool=true
     if fwd
         all(nd.hU[nd.hrow[k]] <= 0 || k in Hk for k in Hr) || error("_nz_dr_attach!: fwd — ζΠ 가 없는 H 행이 있음 (ϖᵁ 무한)")
         m_, ny_ = nz_m(nd), nz_ny(nd); ȳ = v[:ȳ]; πt = v[:π̃]
-        coefπ(k, s) = nd.u[k, s] + (nd.xrow[k] > 0 ? nd.g[k, s] * x̄[nd.xrow[k]] : 0.0)
+        coefπ(k, s) = nd.u[k, s] + nz_gx(nd, k, s, x̄)
         fw = [@constraint(mdl, sum(nd.c[j] * ȳ[j, s] for j in 1:ny_ if nd.c[j] != 0)
                                - sum(coefπ(k, s) * πt[k, s] for k in 1:m_ if coefπ(k, s) != 0)
                                - sum(nd.hcoef[Hk[a]] * zPm[a, s] for a in 1:n) <= 0.0) for s in 1:S]
@@ -399,13 +410,24 @@ function _nz_dr_build_corner(nd::NZData, x̄, s; optimizer)
     return _NZCornerLP(M, σ, opt)
 end
 
-"상자 [l, u] 의 쌍대 범위를 두 꼭짓점의 LP 로 (부모 범위 lo0, hi0 와 교집합). 범위 MIP 의 바깥쪽 여유 1e-6 과 같게."
+"""상자 [l, u] 의 쌍대 범위를 두 꼭짓점의 LP 로 (부모 범위 lo0, hi0 와 교집합). 범위 MIP 의 바깥쪽 여유 1e-6 과 같게.
+등식 쌍 (nz_eq_pairs, 약정 물량) 은 성분 대신 승수 ν = σ⁺ − σ⁻ 의 범위를 같은 전제 (ν 는 α 의 모든 좌표에 단조 감소) 로 구하고
+정규형 σ⁺ ∈ [ν_lo⁺, ν_hi⁺], σ⁻ ∈ [(−ν_hi)⁺, (−ν_lo)⁺] 로 나눈다. 우변이 −α 인 σ⁻ 는 α 에 증가하므로 성분 그대로 두 꼭짓점을 쓰면 틀린다."""
 function _nz_dr_corner_ranges(CL::Vector{_NZCornerLP}, DR::_NZDR, nd::NZData, x̄, l, u, lo0, hi0; fixtol=1e-4)
     lo = copy(lo0); hi = copy(hi0); S, m = nd.S, nz_m(nd)
+    pos = Dict(k => a for (a, k) in enumerate(DR.Hk))
+    prs = Tuple{Int,Int}[]                                       # (σ⁺ 의 위치, σ⁻ 의 위치) in Hk
+    for (kn, kp) in nz_eq_pairs(nd)
+        (haskey(pos, kn) == haskey(pos, kp)) || error("_nz_dr_corner_ranges: 등식 쌍 ($kp, $kn) 중 하나만 범위 대상 (ϖᵁ·hᵁ 확인)")
+        haskey(pos, kn) && push!(prs, (pos[kp], pos[kn]))
+    end
+    inpair = Set(vcat(first.(prs), last.(prs)))
     for s in 1:S
-        todo = [a for a in eachindex(DR.Hk) if hi[a, s] - lo[a, s] > fixtol]
-        isempty(todo) && continue
+        todo = [a for a in eachindex(DR.Hk) if !(a in inpair) && hi[a, s] - lo[a, s] > fixtol]
+        todop = [p for p in prs if hi[p[1], s] - lo[p[1], s] > fixtol || hi[p[2], s] - lo[p[2], s] > fixtol]
+        isempty(todo) && isempty(todop) && continue
         C = CL[s]
+        νlo = fill(-Inf, length(todop)); νhi = fill(Inf, length(todop))
         for (αc, ismax) in ((u, false), (l, true))
             rr = nz_rhs(nd, x̄, αc, s)
             for k in 1:m; nd.hrow[k] > 0 && set_normalized_coefficient(C.opt, C.σ[k], rr[k]); end
@@ -422,8 +444,19 @@ function _nz_dr_corner_ranges(CL::Vector{_NZCornerLP}, DR::_NZDR, nd::NZData, x�
                 b = objective_value(C.model)
                 ismax ? (hi[a, s] = min(hi[a, s], b + 1e-6)) : (lo[a, s] = max(lo[a, s], b - 1e-6))
             end
+            for (n, (ap, an)) in enumerate(todop)                  # ν = σ⁺ − σ⁻: 최대는 α = l, 최소는 α = u (σ⁺ 와 같은 방향)
+                @objective(C.model, ismax ? MAX_SENSE : MIN_SENSE, C.σ[DR.Hk[ap]] - C.σ[DR.Hk[an]])
+                optimize!(C.model)
+                termination_status(C.model) == MOI.OPTIMAL || error("nz_alpha_bnb_dr 꼭짓점 LP (s=$s, 등식 쌍 $(DR.Hk[ap])): $(termination_status(C.model))")
+                b = objective_value(C.model)
+                ismax ? (νhi[n] = b + 1e-6) : (νlo[n] = b - 1e-6)
+            end
         end
-        for a in todo
+        for (n, (ap, an)) in enumerate(todop)
+            lo[ap, s] = max(lo[ap, s], max(νlo[n], 0.0)); hi[ap, s] = min(hi[ap, s], max(νhi[n], 0.0))
+            lo[an, s] = max(lo[an, s], max(-νhi[n], 0.0)); hi[an, s] = min(hi[an, s], max(-νlo[n], 0.0))
+        end
+        for a in vcat(todo, first.(todop), last.(todop))
             hi[a, s] < lo[a, s] && (hi[a, s] = lo[a, s] = 0.5 * (lo[a, s] + hi[a, s]))   # 여유로 생긴 역전 (폭 ≤ 2e-6)
         end
     end
@@ -456,8 +489,10 @@ function _nz_dr_resp_fix(nd::NZData, DR::_NZDR, l, u, lo, hi, solo; τ=1e-6)
         u[i] - l[i] <= 1e-9 && continue
         rows = [a for a in eachindex(DR.Hk) if nd.hrow[DR.Hk[a]] == i]
         isempty(rows) && continue
-        vhi = [sum(nd.hcoef[DR.Hk[a]] * hi[a, s] for a in rows) for s in 1:S]
-        vlo = [sum(nd.hcoef[DR.Hk[a]] * lo[a, s] for a in rows) for s in 1:S]
+        # hcoef 의 부호에 따라 위·아래 범위를 고른다 (등식 쌍의 우변 −h 행은 hcoef = −1)
+        hc(a) = nd.hcoef[DR.Hk[a]]
+        vhi = [sum(hc(a) * (hc(a) >= 0 ? hi[a, s] : lo[a, s]) for a in rows) for s in 1:S]
+        vlo = [sum(hc(a) * (hc(a) >= 0 ? lo[a, s] : hi[a, s]) for a in rows) for s in 1:S]
         if nd.c0[i] + _nz_tv_max(q, vhi, ε) < -τ
             u2[i] = l[i]; n += 1
         elseif solo[i] && nd.c0[i] - _nz_tv_max(q, -vlo, ε) > τ

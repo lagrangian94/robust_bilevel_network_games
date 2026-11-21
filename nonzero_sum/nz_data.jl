@@ -59,6 +59,66 @@ nz_m(nd::NZData) = size(nd.A, 1)
 nz_ny(nd::NZData) = size(nd.A, 2)
 nz_nh(nd::NZData) = length(nd.c0)
 
+"""
+x 항목 (2026-11-20): 행 k 의 우변 중 x 부분은 Σ_{항목 e: k_e = k} g_eˢ x_{i_e}.
+xrow/g 가 행마다 항목 하나를 주고, meta[:xextra] = [(k, i, gˢ 벡터), ...] 가 같은 행에 항목을 더 붙인다
+(입지의 거점별 크기 단계: 용량 행 하나에 단계마다 이진변수 하나, b_i(x) = Σ_k b^k x_i^k). 원고 식 b_x(ξ) = u + Σ_i x_i g_i 와 같은 꼴.
+Ω 의 x 곱 선형화 (ρ¹·ρ²·ρ³, 이진 x 와 쌍대 상계의 McCormick) 는 항목마다 따로 두면 정확하다 (nz_omega.jl).
+반환: 항목 벡터 [(k, i, g)], 앞쪽은 xrow 순서 (항목이 xrow 뿐이면 예전 X 행 순서와 같음)
+"""
+function nz_xentries(nd::NZData)
+    E = NamedTuple{(:k, :i, :g),Tuple{Int,Int,Vector{Float64}}}[]
+    for k in 1:nz_m(nd)
+        nd.xrow[k] > 0 && push!(E, (k=k, i=nd.xrow[k], g=nd.g[k, :]))
+    end
+    for (k, i, gv) in get(nd.meta, :xextra, ())
+        length(gv) == nd.S || error("nz_xentries: meta[:xextra] 의 계수 길이 $(length(gv)) ≠ S = $(nd.S)")
+        push!(E, (k=k, i=i, g=Float64.(gv)))
+    end
+    return E
+end
+
+"행 k, 시나리오 s 의 우변 x 부분 Σ_e g_eˢ x_{i_e} (x 는 실수 벡터 또는 JuMP 변수)"
+function nz_gx(nd::NZData, k, s, x)
+    v = nd.xrow[k] > 0 ? nd.g[k, s] * x[nd.xrow[k]] : 0.0
+    for (kk, i, gv) in get(nd.meta, :xextra, ())
+        kk == k && (v += gv[s] * x[i])
+    end
+    return v
+end
+
+"""
+    nz_eq_pairs(nd) -> Dict(k⁻ => k⁺)
+
+등식 h 행 쌍 (2026-11-20, 입지의 약정 물량 Σ_j y^R_ij + s_i = h_i). hcoef < 0 인 h 행 k⁻ 마다 A[k⁺,:] = −A[k⁻,:], u[k⁺,:] = −u[k⁻,:],
+같은 h 좌표, hcoef[k⁺] = −hcoef[k⁻] > 0, 두 행 모두 x 없음 인 짝 k⁺ 를 찾는다 (등식 = 부등식 두 개).
+두 recourse 쌍대를 같이 t 만큼 올려도 Aᵀσ 와 쌍대 목적 rᵀσ 가 그대로이고 (우변도 서로 반대), F·WD·Fh 도 그대로라,
+둘 중 하나가 0 인 정규형 σ⁺ = ν⁺, σ⁻ = ν⁻ (ν = σ⁺ − σ⁻ = 등식의 승수) 만 봐도 일반성을 잃지 않는다 (nz_canon_pairs!).
+짝이 없는 hcoef < 0 인 h 행이 있으면 오류: α-B&B 의 쌍대 범위 논증 (h 행 우변 ≥ 0) 이 성립하지 않는다.
+"""
+function nz_eq_pairs(nd::NZData)
+    P = Dict{Int,Int}()
+    m = nz_m(nd)
+    hasx(k) = nd.xrow[k] > 0 || any(e -> e[1] == k, get(nd.meta, :xextra, ()))
+    for k in 1:m
+        (nd.hrow[k] > 0 && nd.hcoef[k] < 0) || continue
+        cand = [k2 for k2 in 1:m if k2 != k && nd.hrow[k2] == nd.hrow[k] && nd.hcoef[k2] == -nd.hcoef[k] &&
+                nd.A[k2, :] == -nd.A[k, :] && nd.u[k2, :] == -nd.u[k, :] && !hasx(k) && !hasx(k2)]
+        length(cand) == 1 || error("nz_eq_pairs: hcoef < 0 인 h 행 $k 의 짝 (등식의 다른 쪽) 이 $(length(cand)) 개 — 1 개여야 함")
+        P[k] = cand[1]
+    end
+    return P
+end
+
+"recourse 쌍대 σ (m × S 또는 m) 의 등식 쌍을 정규형으로: ν = σ⁺ − σ⁻ 를 σ⁺ = ν⁺, σ⁻ = ν⁻ 로 (Aᵀσ·쌍대 목적 불변)"
+function nz_canon_pairs!(σ::AbstractArray, nd::NZData; P=nz_eq_pairs(nd))
+    for (kn, kp) in P, s in axes(σ, 2)
+        ν = σ[kp, s] - σ[kn, s]
+        σ[kp, s] = max(ν, 0.0); σ[kn, s] = max(-ν, 0.0)
+    end
+    return σ
+end
+
 "r_s(x,h) 계산 (x, h 는 실수 벡터)"
 function nz_rhs(nd::NZData, x, h, s)
     r = copy(nd.u[:, s])
@@ -66,7 +126,43 @@ function nz_rhs(nd::NZData, x, h, s)
         nd.hrow[k] > 0 && (r[k] += nd.hcoef[k] * h[nd.hrow[k]])
         nd.xrow[k] > 0 && (r[k] += nd.g[k, s] * x[nd.xrow[k]])
     end
+    for (k, i, gv) in get(nd.meta, :xextra, ())
+        r[k] += gv[s] * x[i]
+    end
     return r
+end
+
+"""
+시나리오별 상자 (2026-11-20, 원고 6.1.2: 볼마다 |q_s − q̂_s| ≤ r/√S 와 교집합, Sadana–Delage budgeted set).
+meta[:box] = (al, au, dl, du) 이면 리더 분포 a ∈ [al, au], follower belief d ∈ [dl, du] 를 TV 볼에 더한다. 없으면 nothing.
+"""
+function nz_box(nd::NZData)
+    haskey(nd.meta, :box) || return nothing
+    bx = nd.meta[:box]
+    q = nd.q_hat
+    (all(bx.al .<= q .+ 1e-12) && all(q .<= bx.au .+ 1e-12) && all(bx.dl .<= q .+ 1e-12) && all(q .<= bx.du .+ 1e-12)) ||
+        error("nz_box: 상자가 q̂ 를 담지 않음")
+    return bx
+end
+
+"""상자가 있으면 a, d (JuMP 변수 벡터, 상·하한이 이미 있는 변수) 의 상·하한을 상자로 좁힌다 (KKT·정확 평가처럼 Ω 를 거치지 않는 모형용).
+nz_data.jl 은 JuMP 를 쓰지 않으므로 매크로 대신 set_lower_bound/set_upper_bound (부를 때 JuMP 가 있어야 함)."""
+function nz_add_box!(model, a, d, nd::NZData)
+    bx = nz_box(nd)
+    bx === nothing && return nothing
+    for s in 1:nd.S
+        set_lower_bound(a[s], max(lower_bound(a[s]), bx.al[s])); set_upper_bound(a[s], min(upper_bound(a[s]), bx.au[s]))
+        set_lower_bound(d[s], max(lower_bound(d[s]), bx.dl[s])); set_upper_bound(d[s], min(upper_bound(d[s]), bx.du[s]))
+    end
+    return nothing
+end
+
+"반지름 ε̂, ε̃ 의 볼마다 폭 ε/√S 상자 (원고 규칙) 를 meta[:box] 에 둔다"
+function nz_set_box!(nd::NZData)
+    q = nd.q_hat; S = nd.S
+    wa = nd.eps_hat / sqrt(S); wd = nd.eps_tilde / sqrt(S)
+    nd.meta[:box] = (al=max.(0.0, q .- wa), au=min.(1.0, q .+ wa), dl=max.(0.0, q .- wd), du=min.(1.0, q .+ wd))
+    return nd
 end
 
 """
@@ -247,8 +343,10 @@ function nz_presolve_hU(nd::NZData, x̄)
     nA, nst, ncu = nd.meta[:nA], nd.meta[:nst], nd.meta[:ncu]
     hidx = nd.meta[:hidx]
     nfix = 0
+    # 거점 → x 번호: 크기 단계가 있으면 meta[:site_x][i] (그 거점의 단계 변수들), 없으면 x_{i−nA} 하나
+    sx = get(nd.meta, :site_x, nothing)
     for i in nA+1:nst
-        x̄[i - nA] > 0.5 && continue
+        (sx === nothing ? x̄[i - nA] : sum(x̄[t] for t in sx[i]; init=0.0)) > 0.5 && continue
         for j in (nd.meta[:reservation] == :pair ? (1:ncu) : (1:1))
             k = hidx(i, j)
             nd.c0[k] < 0 || error("nz_presolve_hU: 예약비가 양수가 아님 (c0[$k] = $(nd.c0[k])) — 지배 논증이 성립 안 함")
@@ -339,7 +437,7 @@ function make_location_instance(; coords::Symbol=:sgb128, n_loc=8, nA=1, nB=4, N
         reservation::Symbol=:pooled, quota=wres, pool_limit::Symbol=:total,
         eps_hat=0.2, eps_tilde=0.2, beta=0.4,
         thetaU=:circuit, lambdaU=nothing, bigm::Symbol=:tight,
-        demand::Symbol=:iid, nfac::Int=2, fac_a=nothing, sgb15_dist::Symbol=:euclid)
+        demand::Symbol=:iid, nfac::Int=2, fac_a=nothing, sgb15_dist::Symbol=:euclid, sgb15_set=nothing)
     reservation in (:pooled, :pair) || error("reservation = :pooled | :pair")
     pool_limit in (:total, :store) || error("pool_limit = :total | :store")
     reservation == :pair && pool_limit != :total && error("pool_limit 는 reservation = :pooled 전용")
@@ -374,8 +472,11 @@ function make_location_instance(; coords::Symbol=:sgb128, n_loc=8, nA=1, nB=4, N
         # Yanıkoğlu–Kuhn §7: 15 개 도시 모두 고객이고 출점 가능, A 는 Saint Louis·San Jose. 같은 도시에 점포 노드와 고객 노드를
         # 둔다 (점포 노드 = A 2 + B 후보 13, 고객 노드 = 표 순서 15). 같은 도시의 수송비는 0.
         @assert (n_loc, nA, nB) == (30, 2, 13) "coords=:sgb15 은 점포 노드 15 (A 2 + B 13) + 고객 노드 15 (n_loc = 30) 전용"
-        kd = sgb15_kuhn()
-        ia = [findfirst(==("Saint Louis"), kd.names), findfirst(==("San Jose"), kd.names)]
+        # sgb15_set (2026-11-20): Yanıkoğlu–Kuhn 15 도시 대신 다른 15 도시 (loc_tkp.jl 의 지리). (; names, A, pop, idx), road 없음
+        kd = sgb15_set === nothing ? sgb15_kuhn() : sgb15_set
+        anames = sgb15_set === nothing ? ["Saint Louis", "San Jose"] : sgb15_set.A
+        ia = [findfirst(==(a), kd.names) for a in anames]
+        any(isnothing, ia) && error("make_location_instance: A 도시 $anames 가 도시 목록에 없음")
         order = vcat(ia, setdiff(1:15, ia))
         xy = sgb128_xy()
         coord = vcat(xy[kd.idx[order], :], xy[kd.idx, :])
@@ -386,6 +487,7 @@ function make_location_instance(; coords::Symbol=:sgb128, n_loc=8, nA=1, nB=4, N
     end
     dist = [round(norm(coord[i, :] .- coord[j, :]) / dist_res) * dist_res for i in st, j in cu]
     if coords == :sgb15 && sgb15_dist == :road
+        sgb15_set === nothing || error("sgb15_set 에는 도로 거리가 없음 (sgb15_dist = :euclid)")
         dist = [kd.road[order[i], j] for i in 1:nst, j in 1:ncu]
     end
     if coords == :sgb15
@@ -517,9 +619,9 @@ Yanıkoğlu–Kuhn (2018) §7 의 SGB15 예에 사전예약을 얹은 인스턴�
   dist = :euclid (SGB128 좌표의 직선거리, Goyal 기본 사례와 같은 규칙) | :road (Table 7.1 도로 거리)
   예약은 점포별 풀 (pool_limit = :store, 한도 quota, L1~L6 과 같은 형태). p, f, eps_hat, eps_tilde, beta 등은 make_location_instance 로 넘긴다.
 """
-function make_sgb15_instance(; S=10, seed=1, dist::Symbol=:euclid, quota=300.0, kwargs...)
-    μ = sgb15_mu(sgb15_kuhn().pop)
-    return make_location_instance(; coords=:sgb15, sgb15_dist=dist, n_loc=30, nA=2, nB=13, NB=3, S=S, seed=seed,
+function make_sgb15_instance(; S=10, seed=1, dist::Symbol=:euclid, quota=300.0, sgb15_set=nothing, kwargs...)
+    μ = sgb15_mu((sgb15_set === nothing ? sgb15_kuhn() : sgb15_set).pop)
+    return make_location_instance(; coords=:sgb15, sgb15_dist=dist, sgb15_set=sgb15_set, n_loc=30, nA=2, nB=13, NB=3, S=S, seed=seed,
         bA=0.75 * sum(μ), bB=0.5 * sum(μ), qB=500.0, v=5.0, reservation=:pooled, pool_limit=:store, quota=quota, kwargs...)
 end
 
