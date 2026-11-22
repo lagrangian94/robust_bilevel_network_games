@@ -25,7 +25,14 @@ nz_belief_ccg (마스터 안에 블록 사본을 그대로 넣는 판) 과 같�
   | ucut_calls    | 0    | 분수 노드 분리를 하는 user cut callback 호출 수 상한 |
   | cut_tol       | 1e-6 | cut 위반 판정 (상대) |
   | parallel      | true | 생성기 평가를 묶음별 task 로 병렬 (콜백 안 포함). false 면 차례로 |
-  | lazy_attr     | 0    | 콜백 cut 을 실제 제약으로 옮길 때 Gurobi 의 Lazy 속성 (0 = 보통 제약, 1·2·3 = Gurobi Lazy, 3 은 분수 LP 해도 자름) |
+  | lazy_attr     | 3    | 콜백 cut 을 실제 제약으로 옮길 때 Gurobi 의 Lazy 속성 (0 = 보통 제약, 1·2·3 = Gurobi Lazy, 3 은 분수 LP 해도 자름).
+  |               |      | 2026-11-21 전체 X: 다시 푸는 나무 한 번 476~501 s (0) → 125~130 s (3), 노드 수는 비슷 → 기본 3 |
+  | chain         | false| 사슬 submodular cut (Nemhauser–Wolsey 의 부분집합 사슬 꼴, 문서 15 절): t0 ≥ L(S) − Σ_{j∈S} ρ̄_j(S)(1 − x_j) + Σ_{j∉S} ρ_j(∅) x_j.
+  |               |      | ρ̄_j(S) = max_{U⊆S, j∈U} [L(U) − L(U−j)], ρ_j(∅) = L({j}) − L(∅). 유효 조건: 모든 V ∈ X 에서 ρ_j(V) ≥ ρ_j(∅) (첫 원소의 이득이 가장 큼).
+  |               |      | 이 조건은 증명이 없고 측정으로만 확인 → 정수 후보마다 그 점의 부분집합에서 검사하고 깨지면 오류. belief 마다 S = ∅ 와 원소 쌍의 cut 을 넣고,
+  |               |      | 위반 블록이 있는 정수 후보에서는 LP cut 과 함께 그 점의 사슬 cut 을 넣음 |
+  | mw_eps        | 0.0  | > 0 이면 정수 후보에서 위반 cut 마다 섭동점 x̂ = x̄ + mw_eps (x⁰ − x̄) 의 쌍대로 cut 을 하나 더 (x⁰ = conv X 안쪽 점).
+  |               |      | 모든 x 에서 유효, x̄ 에서는 조금 낮을 수 있음 (그래서 x̄ 에서 정확한 cut 과 함께 넣음). 문서 12.5 |
 결과 Dict 의 :impl = "nz_belief_ccg_tree".
 """
 
@@ -33,6 +40,7 @@ isdefined(Main, :nz_belief_ccg) || include(joinpath(@__DIR__, "nz_belief_ccg.jl"
 
 mutable struct BCCGGen
     P::Model; xv::Vector{VariableRef}; fixc; d::Vector{Float64}; r::Vector{Float64}; μ::Float64; grp::Int
+    cache::Dict{Vector{Float64},Float64}       # 정수점의 블록 값 (사슬 cut 용)
 end
 
 "belief (d, r), 벌점 μ 의 블록 생성기 LP 를 env 위에 만든다"
@@ -43,7 +51,7 @@ function _bccg_gen(C, d, r, μ, env, grp)
     fixc = @constraint(P, [i=1:nx], xv[i] == 0.0)
     _bccg_add_block!(merge(C, (M = P, x = xv, t0 = tP)), d, r, μ)
     @objective(P, Min, tP)
-    return BCCGGen(P, xv, fixc, copy(d), copy(r), μ, grp)
+    return BCCGGen(P, xv, fixc, copy(d), copy(r), μ, grp, Dict{Vector{Float64},Float64}())
 end
 
 "생성기를 x̄ 에서 풀어 (값, 기울기)"
@@ -55,7 +63,7 @@ function _bccg_gen_eval!(G::BCCGGen, x̄)
 end
 
 function nz_belief_ccg_tree(nd::NZData; time_limit=3600.0, tol=5e-3, mu=10.0, eta=0.1, mu_max=1e4, safeguard::Symbol=:nogood,
-                            master_gap=1e-3, wd::Bool=false, nrand::Int=40, root_rounds::Int=30, ucut_calls::Int=0, cut_tol=1e-6, parallel::Bool=true, lazy_attr::Int=0,
+                            master_gap=1e-3, wd::Bool=false, nrand::Int=40, root_rounds::Int=30, ucut_calls::Int=0, cut_tol=1e-6, parallel::Bool=true, lazy_attr::Int=3, mw_eps=0.0, chain::Bool=false,
                             threads::Int=Threads.nthreads(), seed::Int=2026, verbose::Bool=true)
     safeguard in (:nogood, :restricted, :both) || error("nz_belief_ccg_tree: safeguard = :nogood | :restricted | :both")
     wall = time()
@@ -74,9 +82,13 @@ function nz_belief_ccg_tree(nd::NZData; time_limit=3600.0, tol=5e-3, mu=10.0, et
     C = (nd = nd, eta = Float64(eta), vub = false, wd = wd, XE = XE, lp_opt = lp_opt,
          rowA = [[(j, A[k, j]) for j in 1:ny if A[k, j] != 0] for k in 1:m], colA = [[(k, A[k, j]) for k in 1:m if A[k, j] != 0] for j in 1:ny],
          ents_of_row = [[e for e in XE if e.k == k] for k in 1:m])
-    verbose && @printf("  [설정] nz_belief_ccg_tree: μ %.3g, η %.3g, μ 상한 %.3g, 안전장치 %s, 마스터 gap %.0e, 블록 약쌍대 %s, 루트 Kelley %d, user cut 호출 %d, 무작위 후보 %d, 스레드 %d\n",
-                       mu, eta, mu_max, safeguard, master_gap, wd ? "켬" : "끔", root_rounds, ucut_calls, nrand, threads); flush(stdout)
+    verbose && @printf("  [설정] nz_belief_ccg_tree: μ %.3g, η %.3g, μ 상한 %.3g, 안전장치 %s, 마스터 gap %.0e, 블록 약쌍대 %s, 루트 Kelley %d, user cut 호출 %d, 무작위 후보 %d, Lazy 속성 %d, MW 섭동 %s, 사슬 cut %s, 스레드 %d\n",
+                       mu, eta, mu_max, safeguard, master_gap, wd ? "켬" : "끔", root_rounds, ucut_calls, nrand, lazy_attr, mw_eps > 0 ? @sprintf("%.0e", mw_eps) : "끔", chain ? "켬 (유효 조건은 측정으로만 확인, 후보마다 검사)" : "끔", threads); flush(stdout)
 
+    # MW 섭동의 안쪽 점 x⁰ (conv X 안쪽)
+    nsites_al = count(st -> any(nd.x_allowed[(st - 1) * nd.meta[:K] + k] for k in 1:nd.meta[:K]), 1:nd.meta[:nB])
+    x0 = [nd.x_allowed[i] ? 0.5 * min(1 / nd.meta[:K], nd.gamma / max(1, nsites_al) / nd.meta[:K]) : 0.0 for i in 1:nx]
+    n_mwcut = Ref(0)
     # belief 후보 (nz_belief_ccg 와 같음)
     qh = nd.q_hat; bx = nd.meta[:box]
     inset(d) = all(d .>= bx.dl .- 1e-12) && all(d .<= bx.du .+ 1e-12) && sum(abs.(d .- qh)) <= 2nd.eps_tilde + 1e-12
@@ -137,6 +149,54 @@ function nz_belief_ccg_tree(nd::NZData; time_limit=3600.0, tol=5e-3, mu=10.0, et
     end
     function add_real_cut!(v, g, x̄)
         a, g2 = makecut(v, g, x̄); @constraint(M, t0 >= cutexpr(a, g2)); n_cuts_real[] += 1
+    end
+
+    # 사슬 submodular cut (chain)
+    al = findall(nd.x_allowed); siteof(i) = (i - 1) ÷ nd.meta[:K] + 1
+    unitv(j) = (z = zeros(nx); z[j] = 1.0; z)
+    n_chain = Ref(0); n_chain_chk = Ref(0)
+    function Lval(G::BCCGGen, z)
+        v = get(G.cache, z, nothing)
+        v === nothing || return v
+        v = first(_bccg_gen_eval!(G, z)); G.cache[copy(z)] = v; return v
+    end
+    "S (정수점) 에서 belief 생성기 G 의 사슬 cut (a, g). 조건 ρ_j(U−j) ≥ ρ_j(∅) 을 S 의 부분집합에서 검사"
+    function chaincut(G::BCCGGen, Sx)
+        L0 = Lval(G, zeros(nx)); ρ0 = Dict(j => Lval(G, unitv(j)) - L0 for j in al)
+        els = [i for i in al if Sx[i] > 0.5]
+        g = zeros(nx); a = Lval(G, Sx)
+        for j in els
+            best = -Inf
+            for mask in 0:(2^length(els) - 1)
+                U = zeros(nx); for (b, e) in enumerate(els); (mask >> (b - 1)) & 1 == 1 && (U[e] = 1.0); end
+                U[j] > 0.5 || continue
+                W = copy(U); W[j] = 0.0
+                mg = Lval(G, U) - Lval(G, W)
+                n_chain_chk[] += 1
+                mg >= ρ0[j] - 1e-6 * max(1.0, abs(ρ0[j])) ||
+                    error("nz_belief_ccg_tree (chain): 유효 조건 위반 — 원소 $(j) 의 한계값 $(mg) < 단일 원소 한계값 $(ρ0[j]) (U = $(findall(U .> 0.5))). 사슬 cut 을 쓸 수 없음")
+                best = max(best, mg)
+            end
+            a -= best; g[j] = best
+        end
+        for j in al; Sx[j] > 0.5 || (g[j] = ρ0[j]); end
+        n_chain[] += 1
+        return a, g
+    end
+    "새 생성기의 사슬 cut 묶음 (S = ∅ 와 다른 거점의 원소 쌍). 반환 = [(a, g)]"
+    function chainfamily(G::BCCGGen)
+        out = [chaincut(G, zeros(nx))]
+        for i in al, j in al
+            (i < j && siteof(i) != siteof(j)) || continue
+            z = zeros(nx); z[i] = 1.0; z[j] = 1.0; push!(out, chaincut(G, z))
+        end
+        return out
+    end
+    function add_family_real!(G)
+        for (a, g) in chainfamily(G)
+            cr = @constraint(M, t0 >= cutexpr(a, g)); n_cuts_real[] += 1
+            lazy_attr > 0 && MOI.set(M, Gurobi.ConstraintAttribute("Lazy"), cr, lazy_attr)
+        end
     end
 
     # 탐색 (nz_belief_ccg 의 search 와 같음)
@@ -240,20 +300,36 @@ function nz_belief_ccg_tree(nd::NZData; time_limit=3600.0, tol=5e-3, mu=10.0, et
     seen = Dict{Vector{Float64},Int}()
     n_lazy = Ref(0); n_lazycut = Ref(0); n_ucb = Ref(0); n_ucut = Ref(0); n_tree_bel = Ref(0); n_srch = Ref(0)
     t_srch = Ref(0.0); t_cb = Ref(0.0); newbel_solve = Ref(0); n_keep = Ref(0)
+    seen_x = Set{Vector{Float64}}()                      # 정수 후보로 불린 서로 다른 x (진단)
     function lazy_cb(cb)
         callback_node_status(cb, M) == MOI.CALLBACK_NODE_STATUS_INTEGER || return
         tc0 = time()
         try
             n_lazy[] += 1
             xb = [callback_value(cb, x[i]) > 0.5 ? 1.0 : 0.0 for i in 1:nx]; tv = callback_value(cb, t0)
-            nv = 0
-            for (v, g) in eval_all(xb)
+            push!(seen_x, xb)
+            nv = 0; viol = Int[]
+            for (b, (v, g)) in enumerate(eval_all(xb))
                 v > tv + cut_tol * max(1.0, abs(v)) || continue
                 a, g2 = makecut(v, g, xb)
                 MOI.submit(M, MOI.LazyConstraint(cb), @build_constraint(t0 >= cutexpr(a, g2)))
-                push!(cutrec, (a, g2)); nv += 1
+                push!(cutrec, (a, g2)); nv += 1; push!(viol, b)
             end
             n_lazycut[] += nv
+            if chain && nv > 0
+                for b in viol
+                    a, g2 = chaincut(gens[b], xb)
+                    MOI.submit(M, MOI.LazyConstraint(cb), @build_constraint(t0 >= cutexpr(a, g2))); push!(cutrec, (a, g2))
+                end
+            end
+            if mw_eps > 0 && nv > 0
+                x̂ = xb .+ mw_eps .* (x0 .- xb)
+                for (b, (v, g)) in enumerate(eval_all(x̂))
+                    b in viol || continue
+                    a, g2 = makecut(v, g, x̂)
+                    MOI.submit(M, MOI.LazyConstraint(cb), @build_constraint(t0 >= cutexpr(a, g2))); push!(cutrec, (a, g2)); n_mwcut[] += 1
+                end
+            end
             nv > 0 && return
             get(seen, xb, 0) >= 3 && return
             seen[xb] = get(seen, xb, 0) + 1
@@ -265,6 +341,15 @@ function nz_belief_ccg_tree(nd::NZData; time_limit=3600.0, tol=5e-3, mu=10.0, et
             if vb > tv + cut_tol * max(1.0, abs(vb))
                 a, g2 = makecut(vb, gb, xb)
                 MOI.submit(M, MOI.LazyConstraint(cb), @build_constraint(t0 >= cutexpr(a, g2))); push!(cutrec, (a, g2))
+                if mw_eps > 0
+                    x̂ = xb .+ mw_eps .* (x0 .- xb); v3, g3 = _bccg_gen_eval!(gens[end], x̂); a3, g4 = makecut(v3, g3, x̂)
+                    MOI.submit(M, MOI.LazyConstraint(cb), @build_constraint(t0 >= cutexpr(a3, g4))); push!(cutrec, (a3, g4)); n_mwcut[] += 1
+                end
+            end
+            if chain
+                for (a, g2) in chainfamily(gens[end])
+                    MOI.submit(M, MOI.LazyConstraint(cb), @build_constraint(t0 >= cutexpr(a, g2))); push!(cutrec, (a, g2))
+                end
             end
             if how == :safeguard
                 safeguard in (:restricted, :both) && error("nz_belief_ccg_tree: 나무 안의 restricted ISP cut 은 아직 없음 (safeguard = :nogood 만)")
@@ -296,6 +381,7 @@ function nz_belief_ccg_tree(nd::NZData; time_limit=3600.0, tol=5e-3, mu=10.0, et
 
     # 시작: 명목 블록, no-good 의 t 하한 (Kelley 근사의 min t0 ≤ min_x L_b0(x)), 루트 Kelley
     new_gen!(qh, qh, mu)
+    chain && add_family_real!(gens[1])
     tk = @elapsed begin
         zt, _, _ = kelley!(1.0 * t0, root_rounds)
         tlow = zt - 1e-6 * max(1.0, abs(zt))
@@ -356,6 +442,7 @@ function nz_belief_ccg_tree(nd::NZData; time_limit=3600.0, tol=5e-3, mu=10.0, et
             if dd !== nothing
                 how, (vb, gb) = add_and_secure!(xb, vv, dd, r2)
                 add_real_cut!(vb, gb, xb)
+                chain && add_family_real!(gens[end])
                 if how == :safeguard
                     safeguard in (:nogood, :both) && nogood_real!(xb, vv)
                     safeguard in (:restricted, :both) && (restricted!(xb, a1) || safeguard == :both || nogood_real!(xb, vv))
@@ -365,20 +452,25 @@ function nz_belief_ccg_tree(nd::NZData; time_limit=3600.0, tol=5e-3, mu=10.0, et
                 end
             end
         end
+        # oracle 이 t0 보다 큰 하한을 증명했는데 belief 를 못 만든 경우 (α 의 정확 평가 실패, 2026-11-22 지리 8·13 에서 Stalled):
+        # 증명된 하한 v = res[:LB] ≤ V*(x̄) 로 no-good cut (유효, x̄ 에서 진전 보장)
+        if how == :none && res[:LB] > t0v + 1e-6 * max(1.0, abs(t0v))
+            nogood_real!(xb, res[:LB]); how = :nogood_lb
+        end
         verbose && @printf("  [orcl] it %3d LB=%10.2f UB=%10.2f x=%-24s V in [%.2f, %.2f], t0 %.2f (%.0fs, %s) %s, beliefs=%d\n",
                            iter, LB, UB, loc_tkp_xstr(nd, xb), res[:LB], res[:UB], t0v, to, cbinfo, how, length(gens)); flush(stdout)
         if isfinite(UB) && UB - LB <= tol * max(1.0, abs(UB)); status = :Optimal; break; end
         if how == :none
             time() - wall >= time_limit - 1.0 && break
-            status = :Stalled; verbose && println("  [!] oracle 이 상한도 새 belief 도 못 줌"); break
+            status = :Stalled; verbose && println("  [!] oracle 이 t0 보다 큰 하한도 새 belief 도 못 줌"); break
         end
         how != :none && kelley!(dot(nd.qx, x) + t0, root_rounds)
     end
     return Dict(:impl => "nz_belief_ccg_tree", :status => status, :x => xbest, :UB => UB, :LB => LB, :gap => abs(UB - LB) / max(1.0, abs(UB)),
                 :iters => iter, :beliefs => length(gens), :tree_beliefs => n_tree_bel[], :kept_incumbent => n_keep[], :master_time => t_ms, :callback_time => t_cb[],
                 :gen_time => t_gen[], :gen_evals => n_geneval[], :search_time => t_srch[], :searches => n_srch[],
-                :lazy_calls => n_lazy[], :lazy_cuts => n_lazycut[], :ucut_calls => n_ucb[], :ucuts => n_ucut[], :real_cuts => n_cuts_real[] + n_flush,
+                :belief_list => [(d = copy(G.d), r = copy(G.r), μ = G.μ) for G in gens], :chain_cuts => n_chain[], :chain_checks => n_chain_chk[], :lazy_calls => n_lazy[], :lazy_distinct => length(seen_x), :lazy_cuts => n_lazycut[], :mw_cuts => n_mwcut[], :ucut_calls => n_ucb[], :ucuts => n_ucut[], :real_cuts => n_cuts_real[] + n_flush,
                 :oracle_calls => n_or, :oracle_time => t_or, :nogood => n_ng[], :restricted => n_rc[], :mu_raises => n_mu[], :time => time() - wall,
                 :args => (mu = mu, eta = eta, mu_max = mu_max, safeguard = safeguard, master_gap = master_gap, wd = wd, nrand = nrand,
-                          root_rounds = root_rounds, ucut_calls = ucut_calls, cut_tol = cut_tol, parallel = parallel, lazy_attr = lazy_attr))
+                          root_rounds = root_rounds, ucut_calls = ucut_calls, cut_tol = cut_tol, parallel = parallel, lazy_attr = lazy_attr, mw_eps = mw_eps, chain = chain))
 end

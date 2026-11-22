@@ -1,0 +1,104 @@
+--- ccgdw | g=1 coupled r=0.20 S=10, 스레드 12, tol 5.0e-03, μ 10, η 0.1, NS 0, SEED_ALL true, NTOP 5, CGTOL 1.0e-03
+Set parameter WLSAccessID
+Set parameter WLSSecret
+Set parameter LicenseID to value 926906
+Academic license 926906 - for non-commercial use only - registered to <가림>
+Set parameter WLSAccessID
+Set parameter WLSSecret
+Set parameter LicenseID to value 926906
+Academic license 926906 - for non-commercial use only - registered to <가림>
+Set parameter WLSAccessID
+Set parameter WLSSecret
+Set parameter LicenseID to value 926906
+Academic license 926906 - for non-commercial use only - registered to <가림>
+Set parameter WLSAccessID
+Set parameter WLSSecret
+Set parameter LicenseID to value 926906
+Academic license 926906 - for non-commercial use only - registered to <가림>
+Set parameter WLSAccessID
+Set parameter WLSSecret
+Set parameter LicenseID to value 926906
+Academic license 926906 - for non-commercial use only - registered to <가림>
+Set parameter WLSAccessID
+Set parameter WLSSecret
+Set parameter LicenseID to value 926906
+Academic license 926906 - for non-commercial use only - registered to <가림>
+Set parameter WLSAccessID
+Set parameter WLSSecret
+Set parameter LicenseID to value 926906
+Academic license 926906 - for non-commercial use only - registered to <가림>
+Set parameter WLSAccessID
+Set parameter WLSSecret
+Set parameter LicenseID to value 926906
+Academic license 926906 - for non-commercial use only - registered to <가림>
+Set parameter WLSAccessID
+Set parameter WLSSecret
+Set parameter LicenseID to value 926906
+Academic license 926906 - for non-commercial use only - registered to <가림>
+Set parameter WLSAccessID
+Set parameter WLSSecret
+Set parameter LicenseID to value 926906
+Academic license 926906 - for non-commercial use only - registered to <가림>
+Set parameter WLSAccessID
+Set parameter WLSSecret
+Set parameter LicenseID to value 926906
+Academic license 926906 - for non-commercial use only - registered to <가림>
+Set parameter WLSAccessID
+Set parameter WLSSecret
+Set parameter LicenseID to value 926906
+Academic license 926906 - for non-commercial use only - registered to <가림>
+Set parameter WLSAccessID
+Set parameter WLSSecret
+Set parameter LicenseID to value 926906
+Academic license 926906 - for non-commercial use only - registered to <가림>
+Set parameter WLSAccessID
+Set parameter WLSSecret
+Set parameter LicenseID to value 926906
+Academic license 926906 - for non-commercial use only - registered to <가림>
+Set parameter WLSAccessID
+Set parameter WLSSecret
+Set parameter LicenseID to value 926906
+Academic license 926906 - for non-commercial use only - registered to <가림>
+  [시작] 블록 생성기 6.0s, t 하한 -4439.17 (가격 MILP 22.1s)
+  [dw-h] it  1: 마스터 UB -2031.73 (x={10:400;15:400}), 반복 4, 블록 1, LP 누적 210, 2s (경과 35s)
+    [탐색] x={10:400;15:400}          t -3931.73 → -3265.47 (mu), 블록 2
+  [dw-h] it  2: 마스터 UB -1860.92 (x={10:200;13:300;15:300}), 반복 63, 블록 2, LP 누적 1590, 4s (경과 50s)
+    [탐색] x={10:200;13:300;15:300}   t -3910.92 → -3676.59 (mu), 블록 3
+  [dw-h] it  3: 마스터 UB -1743.26 (x={5:300;10:200;15:300}), 반복 58, 블록 3, LP 누적 3150, 3s (경과 63s)
+    [탐색] x={5:300;10:200;15:300}    t -3793.26 → -3749.48 (block), 블록 4
+  [dw-h] it  4: 마스터 UB -1696.94 (x={5:300;10:200;15:300}), 반복 58, 블록 4, LP 누적 5407, 4s (경과 76s)
+    [탐색] x={10:200;12:300;15:300}   t -3719.21 → -3595.90 (block), 블록 5
+  [dw-h] it  5: 마스터 UB -1688.76 (x={5:300;10:200;15:300}), 반복 46, 블록 5, LP 누적 8616, 4s (경과 90s)
+    [탐색] x={5:300;10:200;15:300}    t -3738.76 → -3729.05 (mu), 블록 6
+  [dw-h] it  6: 마스터 UB -1679.05 (x={5:300;10:200;15:300}), 반복 55, 블록 6, LP 누적 14192, 9s (경과 115s)
+    [탐색] x={4:200;9:300;15:300}     t -3718.00 → -3649.18 (mu), 블록 7
+  [dw-h] it  7: 마스터 UB -1679.05 (x={5:300;10:200;15:300}), 반복 22, 블록 7, LP 누적 18065, 2s (경과 136s)
+    [탐색] x={5:300;10:200;15:300}    t -3729.05 → -3683.18 (block), 블록 8
+  [dw-h] it  8: 마스터 UB -1633.18 (x={5:300;10:200;15:300}), 반복 37, 블록 8, LP 누적 22613, 3s (경과 155s)
+  [dw-x] it  8: Farley LB -1660.07, 마스터 UB -1633.18 (x={5:300;10:200;15:300}), 간격 1.647%, 반복 1 (정확 1), 블록 8, LP 누적 22613, MILP 누적 4, 51s (경과 210s)
+
+******************************************************************************
+This program contains Ipopt, a library for large-scale nonlinear optimization.
+ Ipopt is released as open source code under the Eclipse Public License (EPL).
+         For more information visit https://github.com/coin-or/Ipopt
+******************************************************************************
+
+  [orcl] it  8: LB -1660.07 UB -1425.59 x={5:300;10:200;15:300}    V in [-3661.52, -3475.59], t0 -3683.18 (77s) mu, 블록 9
+  [dw-h] it  9: 마스터 UB -1640.02 (x={3:300;10:200;15:300}), 반복 46, 블록 9, LP 누적 30321, 13s (경과 327s)
+    [탐색] x={3:300;10:200;15:300}    t -3690.02 → -3679.42 (block), 블록 10
+  [dw-h] it 10: 마스터 UB -1630.91 (x={6:400;10:200;15:200}), 반복 71, 블록 10, LP 누적 36802, 8s (경과 358s)
+    [탐색] x={6:300;10:200;15:300}    t -3678.27 → -3655.22 (mu), 블록 11
+  [dw-h] it 11: 마스터 UB -1630.91 (x={6:400;10:200;15:200}), 반복 21, 블록 11, LP 누적 42765, 2s (경과 394s)
+  [dw-x] it 11: Farley LB -1652.30, 마스터 UB -1630.91 (x={6:400;10:200;15:200}), 간격 1.312%, 반복 2 (정확 2), 블록 11, LP 누적 42766, MILP 누적 18, 184s (경과 583s)
+  [orcl] it 11: LB -1652.30 UB -1623.98 x={6:400;10:200;15:200}    V in [-3678.37, -3673.98], t0 -3680.91 (323s) mu, 블록 12
+  [dw-h] it 12: 마스터 UB -1629.42 (x={3:300;10:200;15:300}), 반복 17, 블록 12, LP 누적 49347, 3s (경과 944s)
+    [탐색] x={6:200;10:300;15:300}    t -3678.27 → -3661.86 (mu), 블록 13
+  [dw-h] it 13: 마스터 UB -1628.27 (x={9:300;10:200;15:300}), 반복 17, 블록 13, LP 누적 55348, 1s (경과 977s)
+  [dw-x] it 13: Farley LB -1639.10, 마스터 UB -1628.27 (x={9:300;10:200;15:300}), 간격 0.665%, 반복 4 (정확 4), 블록 13, LP 누적 55352, MILP 누적 34, 305s (경과 1286s)
+  [orcl] it 13: LB -1639.10 UB -1623.98 x={9:300;10:200;15:300}    V in [-3677.44, -3672.48], t0 -3678.27 (148s) mu, 블록 14
+  [dw-h] it 14: 마스터 UB -1628.27 (x={9:200;10:300;15:300}), 반복 33, 블록 14, LP 누적 61513, 3s (경과 1470s)
+  [dw-x] it 14: Farley LB -1638.87, 마스터 UB -1628.27 (x={9:200;10:300;15:300}), 간격 0.651%, 반복 1 (정확 1), 블록 14, LP 누적 61513, MILP 누적 38, 79s (경과 1554s)
+  [orcl] it 14: LB -1638.87 UB -1623.98 x={9:200;10:300;15:300}    V in [-3678.32, -3671.06], t0 -3678.27 (232s) none, 블록 14
+  [!] oracle 이 진전을 못 줌 (DWGap)
+RESULT ccgdw g=1 status=DWGap x={6:400;10:200;15:200} LB=-1638.8726 UB=-1623.9783 gap=0.917% iters=14 beliefs=14 안전장치 0 (no-good 0, restricted 0, μ 올림 9) time=1791.3
+  시간: DW 680s [블록 LP 61513 번 173s, 가격 MILP 38 번 637s (노드 664836), RMP 556 번 6s, 생성기 구성 118s], oracle 4 번 781s, 탐색 57 번 56s; 서로 다른 점 6063 / 8464

@@ -1,7 +1,7 @@
 # run_nz_belief_ccg.jl — 입지 가치 계열 (loc_tkp) 을 belief 블록 CCG (nz_belief_ccg.jl) 로 푼다 (2026-11-21).
 #   환경 변수: GEO (1), MODEL (coupled | belief | data | nominal | product), R (0.2), SS (10), SEED (1), SITES (예 "4,7,11", 비우면 전부),
 #             TL (3600), MU (10), ETA (0.1), MU_MAX (1e4), SAFEGUARD (nogood | restricted | both), MGAP (1e-3), EARLY_GAP (0), OBJ_CUT (0), POOL (1), VUB (0), NRAND (40)
-#             ALG (explicit | tree: nz_belief_ccg_tree.jl 의 한 나무 판), tree 전용: ROOT_ROUNDS (30), UCUT (0), PAR (1), LAZY_ATTR (0)
+#             ALG (explicit | tree: nz_belief_ccg_tree.jl 의 한 나무 판), tree 전용: ROOT_ROUNDS (30), UCUT (0), PAR (1), LAZY_ATTR (3), MW_EPS (0), CHAIN (0)
 #   실행: julia -t T,1 nonzero_sum/run_nz_belief_ccg.jl
 root = dirname(@__DIR__)
 using JuMP, Gurobi, Printf, LinearAlgebra, Random
@@ -30,16 +30,21 @@ elseif ALG == "tree"
     nz_belief_ccg_tree(nd; time_limit=parse(Float64, envf("TL", "3600")), mu=parse(Float64, envf("MU", "10")), eta=parse(Float64, envf("ETA", "0.1")),
                        mu_max=parse(Float64, envf("MU_MAX", "1e4")), safeguard=Symbol(envf("SAFEGUARD", "nogood")),
                        master_gap=parse(Float64, envf("MGAP", "1e-3")), wd=envf("WD", "0") == "1", nrand=parse(Int, envf("NRAND", "40")),
-                       root_rounds=parse(Int, envf("ROOT_ROUNDS", "30")), ucut_calls=parse(Int, envf("UCUT", "0")), parallel=envf("PAR", "1") == "1", lazy_attr=parse(Int, envf("LAZY_ATTR", "0")))
+                       root_rounds=parse(Int, envf("ROOT_ROUNDS", "30")), ucut_calls=parse(Int, envf("UCUT", "0")), parallel=envf("PAR", "1") == "1", lazy_attr=parse(Int, envf("LAZY_ATTR", "3")), mw_eps=parse(Float64, envf("MW_EPS", "0")), chain=envf("CHAIN", "0") == "1")
 else
     error("ALG = explicit | tree")
 end
 if ALG == "tree"
-    @printf("TREE tree_beliefs=%d kept=%d callback=%.0fs gen=%.0fs (평가 %d) search=%.0fs (%d 번) lazy_calls=%d lazy_cuts=%d ucut_calls=%d ucuts=%d real_cuts=%d\n",
-            res[:tree_beliefs], res[:kept_incumbent], res[:callback_time], res[:gen_time], res[:gen_evals], res[:search_time], res[:searches], res[:lazy_calls], res[:lazy_cuts],
+    @printf("TREE tree_beliefs=%d kept=%d callback=%.0fs gen=%.0fs (평가 %d) search=%.0fs (%d 번) chain=%d (검사 %d) lazy_calls=%d (서로 다른 x %d) lazy_cuts=%d mw_cuts=%d ucut_calls=%d ucuts=%d real_cuts=%d\n",
+            res[:tree_beliefs], res[:kept_incumbent], res[:callback_time], res[:gen_time], res[:gen_evals], res[:search_time], res[:searches], res[:chain_cuts], res[:chain_checks], res[:lazy_calls], res[:lazy_distinct], res[:lazy_cuts], res[:mw_cuts],
             res[:ucut_calls], res[:ucuts], res[:real_cuts])
 end
 @printf("RESULT %s g=%d model=%s r=%.2f |X|=%d status=%s x=%s LB=%.4f UB=%.4f gap=%.2e iters=%d beliefs=%d master=%.0fs oracle=%d (%.0fs) nogood=%d restricted=%d mu_raises=%d time=%.1f args=%s\n",
         res[:impl], g, MODEL, rr, nX, res[:status], res[:x] === nothing ? "-" : loc_tkp_xstr(nd, res[:x]), res[:LB], res[:UB], res[:gap],
         res[:iters], res[:beliefs], res[:master_time], res[:oracle_calls], res[:oracle_time], res[:nogood], res[:restricted], res[:mu_raises],
         res[:time], string(res[:args]))
+if ALG == "tree" && !isempty(envf("SAVE_BEL", ""))
+    using Serialization
+    serialize(ENV["SAVE_BEL"], (g = g, model = MODEL, r = rr, S = nd.S, seed = parse(Int, envf("SEED", "1")), x = res[:x], UB = res[:UB], LB = res[:LB], beliefs = res[:belief_list]))
+    println("belief 저장: ", ENV["SAVE_BEL"], " (", length(res[:belief_list]), " 개)")
+end

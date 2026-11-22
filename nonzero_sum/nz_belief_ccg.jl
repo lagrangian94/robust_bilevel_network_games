@@ -411,6 +411,11 @@ function nz_belief_ccg(nd::NZData; time_limit=3600.0, tol=5e-3, mu=10.0, eta=0.1
                 end
             end
         end
+        # oracle 이 t0 보다 큰 하한을 증명했는데 belief 를 못 만든 경우 (α 의 정확 평가 실패, 2026-11-22 지리 8·13 에서 Stalled):
+        # 증명된 하한 v = res[:LB] ≤ V*(x̄) 로 no-good cut (유효, x̄ 에서 진전 보장)
+        if how == :none && res[:LB] > t0v + 1e-6 * max(1.0, abs(t0v))
+            nogood!(xb, res[:LB]); how = :nogood_lb
+        end
         verbose && @printf("  [orcl] it %3d LB=%10.2f UB=%10.2f x=%-24s V in [%.2f, %.2f], t0 %.2f (%.0fs, 마스터 %.1fs 노드 %d) %s, beliefs=%d\n",
                            iter, LB, UB, loc_tkp_xstr(nd, xb), res[:LB], res[:UB], t0v, to, tm, nodes, how, length(blocks)); flush(stdout)
         if isfinite(UB) && UB - LB <= tol * max(1.0, abs(UB)); status = :Optimal; break; end
@@ -419,7 +424,7 @@ function nz_belief_ccg(nd::NZData; time_limit=3600.0, tol=5e-3, mu=10.0, eta=0.1
             if eps > master_gap                    # 부정확 마스터의 해라 진전이 없을 수 있음 → gap 을 줄여 다시
                 eps = max(master_gap, gap_shrink * eps); continue
             end
-            status = :Stalled; verbose && println("  [!] oracle 이 상한도 새 belief 도 못 줌"); break
+            status = :Stalled; verbose && println("  [!] oracle 이 t0 보다 큰 하한도 새 belief 도 못 줌"); break
         end
     end
     return Dict(:impl => "nz_belief_ccg", :status => status, :x => xbest, :UB => UB, :LB => LB, :gap => abs(UB - LB) / max(1.0, abs(UB)),
