@@ -1,0 +1,108 @@
+  [설정] η 1.0e-04, μ 1.0e+04 (상한 1.0e+04), oracle λᵁ 1.0e+04, μη = 1
+--- ccgbp v5 | SB_K 3 PH1 true ORCL_TL 900 PSTOP true
+ g=12 coupled r=0.20 S=10, 스레드 12, tol 5.0e-03, μ 1e+04, η 0.0001, NS 10, SEED_ALL false, NTOP 5, CGTOL 1.0e-03
+Set parameter WLSAccessID
+Set parameter WLSSecret
+Set parameter LicenseID to value 926906
+Academic license 926906 - for non-commercial use only - registered to <가림>
+Set parameter WLSAccessID
+Set parameter WLSSecret
+Set parameter LicenseID to value 926906
+Academic license 926906 - for non-commercial use only - registered to <가림>
+Set parameter WLSAccessID
+Set parameter WLSSecret
+Set parameter LicenseID to value 926906
+Academic license 926906 - for non-commercial use only - registered to <가림>
+Set parameter WLSAccessID
+Set parameter WLSSecret
+Set parameter LicenseID to value 926906
+Academic license 926906 - for non-commercial use only - registered to <가림>
+Set parameter WLSAccessID
+Set parameter WLSSecret
+Set parameter LicenseID to value 926906
+Academic license 926906 - for non-commercial use only - registered to <가림>
+Set parameter WLSAccessID
+Set parameter WLSSecret
+Set parameter LicenseID to value 926906
+Academic license 926906 - for non-commercial use only - registered to <가림>
+Set parameter WLSAccessID
+Set parameter WLSSecret
+Set parameter LicenseID to value 926906
+Academic license 926906 - for non-commercial use only - registered to <가림>
+Set parameter WLSAccessID
+Set parameter WLSSecret
+Set parameter LicenseID to value 926906
+Academic license 926906 - for non-commercial use only - registered to <가림>
+Set parameter WLSAccessID
+Set parameter WLSSecret
+Set parameter LicenseID to value 926906
+Academic license 926906 - for non-commercial use only - registered to <가림>
+Set parameter WLSAccessID
+Set parameter WLSSecret
+Set parameter LicenseID to value 926906
+Academic license 926906 - for non-commercial use only - registered to <가림>
+Set parameter WLSAccessID
+Set parameter WLSSecret
+Set parameter LicenseID to value 926906
+Academic license 926906 - for non-commercial use only - registered to <가림>
+Set parameter WLSAccessID
+Set parameter WLSSecret
+Set parameter LicenseID to value 926906
+Academic license 926906 - for non-commercial use only - registered to <가림>
+Set parameter WLSAccessID
+Set parameter WLSSecret
+Set parameter LicenseID to value 926906
+Academic license 926906 - for non-commercial use only - registered to <가림>
+Set parameter WLSAccessID
+Set parameter WLSSecret
+Set parameter LicenseID to value 926906
+Academic license 926906 - for non-commercial use only - registered to <가림>
+Set parameter WLSAccessID
+Set parameter WLSSecret
+Set parameter LicenseID to value 926906
+Academic license 926906 - for non-commercial use only - registered to <가림>
+  [시작] t 하한 -4261.57 (가격 MILP 51.6s)
+  [ph1] 루트 RMP -1855.50, 마스터 UB -1855.50 (x={7:400;8:300}), 블록 1, LP 누적 29 (경과 64s)
+    [탐색] x={7:400;8:300}            t -3555.50 → -3193.67 (safeguard), 블록 3
+  [ph1] 루트 RMP -1645.31, 마스터 UB -1645.31 (x={7:400;8:200}), 블록 3, LP 누적 1357 (경과 76s)
+    [탐색] x={7:400;8:200}            t -3145.31 → -3135.88 (safeguard), 블록 5
+  [ph1] 루트 RMP -1645.31, 마스터 UB -1645.31 (x={8:200;14:400}), 블록 5, LP 누적 1429 (경과 81s)
+    [탐색] x={7:400;8:200;14:400}     t -3164.22 → -3118.09 (block), 블록 6
+  [ph1] 루트 RMP -1643.26, 마스터 UB -1643.26 (x={8:200;14:400}), 블록 6, LP 누적 1649 (경과 88s)
+
+******************************************************************************
+This program contains Ipopt, a library for large-scale nonlinear optimization.
+ Ipopt is released as open source code under the Eclipse Public License (EPL).
+         For more information visit https://github.com/coin-or/Ipopt
+******************************************************************************
+
+
+Please submit a bug report with steps to reproduce this fault, and any error messages that follow (in their entirety). Thanks.
+Exception: EXCEPTION_ACCESS_VIOLATION at 0x65203643 -- _ZN5Ipopt14IpoptAlgorithm22ComputeSearchDirectionEv at C:\Users\user\.julia\artifacts\43401de1ab3976d2f69eb81da19a4172230179a0\bin\libipopt-3.dll (unknown line)
+in expression starting at none:0
+_ZN5Ipopt14IpoptAlgorithm22ComputeSearchDirectionEv at C:\Users\user\.julia\artifacts\43401de1ab3976d2f69eb81da19a4172230179a0\bin\libipopt-3.dll (unknown line)
+_ZN5Ipopt14IpoptAlgorithm8OptimizeEb at C:\Users\user\.julia\artifacts\43401de1ab3976d2f69eb81da19a4172230179a0\bin\libipopt-3.dll (unknown line)
+_ZN5Ipopt16IpoptApplication13call_optimizeEv at C:\Users\user\.julia\artifacts\43401de1ab3976d2f69eb81da19a4172230179a0\bin\libipopt-3.dll (unknown line)
+_ZN5Ipopt16IpoptApplication11OptimizeNLPERKNS_8SmartPtrINS_3NLPEEERNS1_INS_16AlgorithmBuilderEEE at C:\Users\user\.julia\artifacts\43401de1ab3976d2f69eb81da19a4172230179a0\bin\libipopt-3.dll (unknown line)
+_ZN5Ipopt16IpoptApplication11OptimizeNLPERKNS_8SmartPtrINS_3NLPEEE at C:\Users\user\.julia\artifacts\43401de1ab3976d2f69eb81da19a4172230179a0\bin\libipopt-3.dll (unknown line)
+_ZN5Ipopt16IpoptApplication12OptimizeTNLPERKNS_8SmartPtrINS_4TNLPEEE at C:\Users\user\.julia\artifacts\43401de1ab3976d2f69eb81da19a4172230179a0\bin\libipopt-3.dll (unknown line)
+IpoptSolve at C:\Users\user\.julia\artifacts\43401de1ab3976d2f69eb81da19a4172230179a0\bin\libipopt-3.dll (unknown line)
+#5 at C:\Users\user\.julia\packages\Ipopt\nzOsV\src\C_wrapper.jl:407 [inlined]
+disable_sigint at .\c.jl:167
+IpoptSolve at C:\Users\user\.julia\packages\Ipopt\nzOsV\src\C_wrapper.jl:406 [inlined]
+optimize! at C:\Users\user\.julia\packages\Ipopt\nzOsV\ext\IpoptMathOptInterfaceExt\MOI_wrapper.jl:1553
+optimize! at C:\Users\user\.julia\packages\MathOptInterface\gLl4d\src\Bridges\bridge_optimizer.jl:367 [inlined]
+optimize! at C:\Users\user\.julia\packages\MathOptInterface\gLl4d\src\Utilities\cachingoptimizer.jl:330
+optimize! at C:\Users\user\.julia\packages\MathOptInterface\gLl4d\src\Utilities\cachingoptimizer.jl:318
+unknown function (ip: 0000022e43fd38fb)
+#optimize!#108 at C:\Users\user\.julia\packages\JuMP\i68GU\src\optimizer_interface.jl:595
+optimize! at C:\Users\user\.julia\packages\JuMP\i68GU\src\optimizer_interface.jl:546 [inlined]
+#nz_ipopt_local_alpha#391 at C:\Users\user\robust_bilevel_network_games\nonzero_sum\nz_alpha_bnb.jl:480
+nz_ipopt_local_alpha at C:\Users\user\robust_bilevel_network_games\nonzero_sum\nz_alpha_bnb.jl:458
+unknown function (ip: 0000022e43f9d191)
+heuristic_task at C:\Users\user\robust_bilevel_network_games\nonzero_sum\nz_alpha_bnb_dr.jl:1423
+#617 at C:\Users\user\robust_bilevel_network_games\nonzero_sum\nz_alpha_bnb_dr.jl:1448
+unknown function (ip: 0000022e43f986ab)
+jl_apply at C:/workdir/src\julia.h:2157 [inlined]
+start_task at C:/workdir/src\task.c:1202
+Allocations: 443247351 (Pool: 443244031; Big: 3320); GC: 1695

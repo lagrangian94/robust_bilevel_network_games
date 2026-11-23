@@ -1,0 +1,114 @@
+  [설정] η 1.0e-04, μ 1.0e+04 (상한 1.0e+04), oracle λᵁ 1.0e+04, μη = 1
+--- ccgbp v5 | SB_K 3 PH1 true ORCL_TL 900 PSTOP true
+ g=9 coupled r=0.20 S=10, 스레드 12, tol 5.0e-03, μ 1e+04, η 0.0001, NS 10, SEED_ALL false, NTOP 5, CGTOL 1.0e-03
+Set parameter WLSAccessID
+Set parameter WLSSecret
+Set parameter LicenseID to value 926906
+Academic license 926906 - for non-commercial use only - registered to <가림>
+Set parameter WLSAccessID
+Set parameter WLSSecret
+Set parameter LicenseID to value 926906
+Academic license 926906 - for non-commercial use only - registered to <가림>
+Set parameter WLSAccessID
+Set parameter WLSSecret
+Set parameter LicenseID to value 926906
+Academic license 926906 - for non-commercial use only - registered to <가림>
+Set parameter WLSAccessID
+Set parameter WLSSecret
+Set parameter LicenseID to value 926906
+Academic license 926906 - for non-commercial use only - registered to <가림>
+Set parameter WLSAccessID
+Set parameter WLSSecret
+Set parameter LicenseID to value 926906
+Academic license 926906 - for non-commercial use only - registered to <가림>
+Set parameter WLSAccessID
+Set parameter WLSSecret
+Set parameter LicenseID to value 926906
+Academic license 926906 - for non-commercial use only - registered to <가림>
+Set parameter WLSAccessID
+Set parameter WLSSecret
+Set parameter LicenseID to value 926906
+Academic license 926906 - for non-commercial use only - registered to <가림>
+Set parameter WLSAccessID
+Set parameter WLSSecret
+Set parameter LicenseID to value 926906
+Academic license 926906 - for non-commercial use only - registered to <가림>
+Set parameter WLSAccessID
+Set parameter WLSSecret
+Set parameter LicenseID to value 926906
+Academic license 926906 - for non-commercial use only - registered to <가림>
+Set parameter WLSAccessID
+Set parameter WLSSecret
+Set parameter LicenseID to value 926906
+Academic license 926906 - for non-commercial use only - registered to <가림>
+Set parameter WLSAccessID
+Set parameter WLSSecret
+Set parameter LicenseID to value 926906
+Academic license 926906 - for non-commercial use only - registered to <가림>
+Set parameter WLSAccessID
+Set parameter WLSSecret
+Set parameter LicenseID to value 926906
+Academic license 926906 - for non-commercial use only - registered to <가림>
+Set parameter WLSAccessID
+Set parameter WLSSecret
+Set parameter LicenseID to value 926906
+Academic license 926906 - for non-commercial use only - registered to <가림>
+Set parameter WLSAccessID
+Set parameter WLSSecret
+Set parameter LicenseID to value 926906
+Academic license 926906 - for non-commercial use only - registered to <가림>
+Set parameter WLSAccessID
+Set parameter WLSSecret
+Set parameter LicenseID to value 926906
+Academic license 926906 - for non-commercial use only - registered to <가림>
+  [시작] t 하한 -3677.44 (가격 MILP 95.8s)
+  [ph1] 루트 RMP -1284.73, 마스터 UB -1284.73 (x={3:300;4:300}), 블록 1, LP 누적 48 (경과 110s)
+    [탐색] x={3:300;4:300}            t -2784.73 → -2418.55 (block), 블록 2
+  [ph1] 루트 RMP -1107.35, 마스터 UB -1107.35 (x={3:200;6:200;15:200}), 블록 2, LP 누적 806 (경과 119s)
+    [탐색] x={3:200;6:200;15:200}     t -2757.35 → -2580.25 (safeguard), 블록 4
+  [ph1] 루트 RMP -1148.00, 마스터 UB -1148.00 (x={3:200;6:300}), 블록 4, LP 누적 1517 (경과 130s)
+    [탐색] x={3:200;6:300}            t -2448.00 → -2299.00 (block), 블록 5
+  [ph1] 루트 RMP -1114.30, 마스터 UB -1077.19 (x={3:200;7:200;15:200}), 블록 5, LP 누적 4833 (경과 146s)
+    [탐색] x={3:200;7:300;15:200}     t -2893.59 → -2859.41 (safeguard), 블록 7
+  [ph1] 루트 RMP -1080.58, 마스터 UB -1075.56 (x={3:200;7:200;15:200}), 블록 7, LP 누적 5556 (경과 155s)
+    [탐색] x={5:200;9:200;15:200}     t -2720.20 → -2561.33 (safeguard), 블록 9
+  [ph1] 루트 RMP -1078.20, 마스터 UB -1075.56 (x={3:200;7:200;15:200}), 블록 9, LP 누적 6271 (경과 164s)
+
+******************************************************************************
+This program contains Ipopt, a library for large-scale nonlinear optimization.
+ Ipopt is released as open source code under the Eclipse Public License (EPL).
+         For more information visit https://github.com/coin-or/Ipopt
+******************************************************************************
+
+ERROR: LoadError: TaskFailedException
+Stacktrace:
+ [1] wait(t::Task)
+   @ Base .\task.jl:370
+ [2] foreach(f::typeof(wait), itr::Vector{Task})
+   @ Base .\abstractarray.jl:3187
+ [3] nz_alpha_bnb_dr(nd::NZData, x̄::Vector{Float64}; nworkers::Int64, time_limit::Float64, rel_gap::Float64, target::Float64, verbose::Bool, log_every::Float64, ipopt_time::Float64, heuristic::Bool, envs::Nothing, branch_point::Symbol, child_rounds::Int64, maxrounds::Int64, dive_max::Int64, sep_maxadd::Int64, min_width::Float64, presolve::Bool, dual_range::Bool, comp::Bool, vcut::Bool, cslift::Bool, fwd::Bool, kmc::Bool, dd::Bool, cbranch::Bool, sticky::Bool, lp_tol::Float64, resp::Bool, range_mip::Bool, range_nodes::Int64, range_time::Float64, range_lp::Bool, resp_fix::Bool, farkas::Bool, lp_method::Int64, lp_presolve::Int64, lp_crossover::Int64, infeas_pre::Bool, infeas_pre_retry::Bool, parent_basis::Bool, share_rows::Bool, node_lp_cap::Float64, resume::Nothing)
+   @ Main C:\Users\user\robust_bilevel_network_games\nonzero_sum\nz_alpha_bnb_dr.jl:1471
+ [4] macro expansion
+   @ .\timing.jl:421 [inlined]
+ [5] oracle_at!(c::Int64; cap::Float64)
+   @ Main C:\Users\user\AppData\Local\Temp\claude\b55b069927d98669\5ed04639-c8f0-4837-9037-f61ff4814c8e\scratchpad\ccgbp_v5.jl:373
+ [6] oracle_at!(c::Int64)
+   @ Main C:\Users\user\AppData\Local\Temp\claude\b55b069927d98669\5ed04639-c8f0-4837-9037-f61ff4814c8e\scratchpad\ccgbp_v5.jl:368
+ [7] top-level scope
+   @ C:\Users\user\AppData\Local\Temp\claude\b55b069927d98669\5ed04639-c8f0-4837-9037-f61ff4814c8e\scratchpad\ccgbp_v5.jl:402
+
+    nested task error: nz_alpha_bnb LP: DUAL_INFEASIBLE (새로 풀어도 비유계)
+    Stacktrace:
+     [1] error(s::String)
+       @ Base .\error.jl:35
+     [2] _nz_solve_lp!(model::Model)
+       @ Main C:\Users\user\robust_bilevel_network_games\nonzero_sum\nz_alpha_bnb.jl:355
+     [3] nz_eval_alpha!(F::NZOmega, nd::NZData, α̂::Vector{Float64})
+       @ Main C:\Users\user\robust_bilevel_network_games\nonzero_sum\nz_alpha_bnb.jl:443
+     [4] macro expansion
+       @ .\timing.jl:421 [inlined]
+     [5] (::var"#worker#645"{Float64, Symbol, Int64, Int64, Int64, Int64, Float64, Bool, Bool, Bool, Bool, Bool, Int64, Float64, Bool, Bool, Bool, Bool, Bool, Bool, Float64, Vector{Float64}, var"#globalUB#641"{Base.RefValue{Float64}, Base.RefValue{Float64}, Vector{Float64}}, Base.RefValue{Float64}, Base.RefValue{Float64}, Vector{Tuple{Float64, Vector{Float64}}}, Base.RefValue{Any}, Base.RefValue{Float64}, Base.RefValue{Bool}, Base.RefValue{Int64}, Base.RefValue{Vector{Float64}}, Base.RefValue{Float64}, Vector{Float64}, Base.Threads.Atomic{Float64}, Base.Threads.Atomic{Float64}, Base.Threads.Atomic{Float64}, Base.Threads.Atomic{Float64}, ReentrantLock, var"#boxok#640", var"#tol#639"{Float64}, Base.Threads.Atomic{Int64}, Nothing, Vector{NZOmega}, Vector{NTuple{4, Float64}}, ReentrantLock, String, var"#zpad#631"{Float64}, Base.Threads.Atomic{Int64}, Vector{Bool}, Vector{Vector{_NZCornerLP}}, Vector{_NZDR}, Vector{_NZSepLP}, Vector{Int64}, Int64, Int64, Float64, Float64, Base.Threads.Atomic{Int64}, Base.Threads.Atomic{Int64}, Bool, Bool, Base.Threads.Atomic{Int64}, Base.Threads.Atomic{Int64}, Bool, ReentrantLock, Set{Tuple{Int64, Int64, Bool}}, Vector{Tuple{Int64, Int64, Bool}}, Bool, Base.Threads.Atomic{Int64}, Base.Threads.Atomic{Int64}, Base.Threads.Atomic{Int64}, Base.Threads.Atomic{Int64}, Base.Threads.Atomic{Float64}, Base.Threads.Atomic{Int64}, Base.Threads.Atomic{Int64}, Base.Threads.Atomic{Int64}, Base.Threads.Atomic{Int64}, Base.Threads.Atomic{Int64}, Base.Threads.Atomic{Int64}, Base.Threads.Atomic{Int64}, Base.Threads.Atomic{Int64}, Base.Threads.Atomic{Int64}, @NamedTuple{dual_range::Bool, comp::Bool, vcut::Bool, cslift::Bool, branch_point::Symbol, child_rounds::Int64, maxrounds::Int64, dive_max::Int64, sep_maxadd::Int64, presolve::Bool, heuristic::Bool, fwd::Bool, kmc::Bool, dd::Bool, cbranch::Bool, sticky::Bool, lp_tol::Float64, resp::Bool, range_mip::Bool, range_nodes::Int64, range_time::Float64, range_lp::Bool, resp_fix::Bool, farkas::Bool, lp_method::Int64, lp_presolve::Int64, lp_crossover::Int64, infeas_pre::Bool, infeas_pre_retry::Bool, parent_basis::Bool, share_rows::Bool, node_lp_cap::Float64}})(wid::Int64)
+       @ Main C:\Users\user\robust_bilevel_network_games\nonzero_sum\nz_alpha_bnb_dr.jl:1327
+     [6] (::var"#616#657"{Int64, var"#worker#645"{Float64, Symbol, Int64, Int64, Int64, Int64, Float64, Bool, Bool, Bool, Bool, Bool, Int64, Float64, Bool, Bool, Bool, Bool, Bool, Bool, Float64, Vector{Float64}, var"#globalUB#641"{Base.RefValue{Float64}, Base.RefValue{Float64}, Vector{Float64}}, Base.RefValue{Float64}, Base.RefValue{Float64}, Vector{Tuple{Float64, Vector{Float64}}}, Base.RefValue{Any}, Base.RefValue{Float64}, Base.RefValue{Bool}, Base.RefValue{Int64}, Base.RefValue{Vector{Float64}}, Base.RefValue{Float64}, Vector{Float64}, Base.Threads.Atomic{Float64}, Base.Threads.Atomic{Float64}, Base.Threads.Atomic{Float64}, Base.Threads.Atomic{Float64}, ReentrantLock, var"#boxok#640", var"#tol#639"{Float64}, Base.Threads.Atomic{Int64}, Nothing, Vector{NZOmega}, Vector{NTuple{4, Float64}}, ReentrantLock, String, var"#zpad#631"{Float64}, Base.Threads.Atomic{Int64}, Vector{Bool}, Vector{Vector{_NZCornerLP}}, Vector{_NZDR}, Vector{_NZSepLP}, Vector{Int64}, Int64, Int64, Float64, Float64, Base.Threads.Atomic{Int64}, Base.Threads.Atomic{Int64}, Bool, Bool, Base.Threads.Atomic{Int64}, Base.Threads.Atomic{Int64}, Bool, ReentrantLock, Set{Tuple{Int64, Int64, Bool}}, Vector{Tuple{Int64, Int64, Bool}}, Bool, Base.Threads.Atomic{Int64}, Base.Threads.Atomic{Int64}, Base.Threads.Atomic{Int64}, Base.Threads.Atomic{Int64}, Base.Threads.Atomic{Float64}, Base.Threads.Atomic{Int64}, Base.Threads.Atomic{Int64}, Base.Threads.Atomic{Int64}, Base.Threads.Atomic{Int64}, Base.Threads.Atomic{Int64}, Base.Threads.Atomic{Int64}, Base.Threads.Atomic{Int64}, Base.Threads.Atomic{Int64}, Base.Threads.Atomic{Int64}, @NamedTuple{dual_range::Bool, comp::Bool, vcut::Bool, cslift::Bool, branch_point::Symbol, child_rounds::Int64, maxrounds::Int64, dive_max::Int64, sep_maxadd::Int64, presolve::Bool, heuristic::Bool, fwd::Bool, kmc::Bool, dd::Bool, cbranch::Bool, sticky::Bool, lp_tol::Float64, resp::Bool, range_mip::Bool, range_nodes::Int64, range_time::Float64, range_lp::Bool, resp_fix::Bool, farkas::Bool, lp_method::Int64, lp_presolve::Int64, lp_crossover::Int64, infeas_pre::Bool, infeas_pre_retry::Bool, parent_basis::Bool, share_rows::Bool, node_lp_cap::Float64}}})()
+       @ Main C:\Users\user\robust_bilevel_network_games\nonzero_sum\nz_alpha_bnb_dr.jl:1447
+in expression starting at C:\Users\user\AppData\Local\Temp\claude\b55b069927d98669\5ed04639-c8f0-4837-9037-f61ff4814c8e\scratchpad\ccgbp_v5.jl:397
