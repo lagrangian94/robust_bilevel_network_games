@@ -1,0 +1,139 @@
+  [설정] η 1.0e-04, μ 1.0e+04 (상한 1.0e+04), oracle λᵁ 1.0e+04, μη = 1
+--- ccgbp v5 | SB_K 3 PH1 true ORCL_TL 900 PSTOP true
+ g=1 coupled r=0.20 S=10, 스레드 12, tol 5.0e-03, μ 1e+04, η 0.0001, NS 10, SEED_ALL false, NTOP 5, CGTOL 1.0e-03
+Set parameter WLSAccessID
+Set parameter WLSSecret
+Set parameter LicenseID to value 926906
+Academic license 926906 - for non-commercial use only - registered to <가림>
+Set parameter WLSAccessID
+Set parameter WLSSecret
+Set parameter LicenseID to value 926906
+Academic license 926906 - for non-commercial use only - registered to <가림>
+Set parameter WLSAccessID
+Set parameter WLSSecret
+Set parameter LicenseID to value 926906
+Academic license 926906 - for non-commercial use only - registered to <가림>
+Set parameter WLSAccessID
+Set parameter WLSSecret
+Set parameter LicenseID to value 926906
+Academic license 926906 - for non-commercial use only - registered to <가림>
+Set parameter WLSAccessID
+Set parameter WLSSecret
+Set parameter LicenseID to value 926906
+Academic license 926906 - for non-commercial use only - registered to <가림>
+Set parameter WLSAccessID
+Set parameter WLSSecret
+Set parameter LicenseID to value 926906
+Academic license 926906 - for non-commercial use only - registered to <가림>
+Set parameter WLSAccessID
+Set parameter WLSSecret
+Set parameter LicenseID to value 926906
+Academic license 926906 - for non-commercial use only - registered to <가림>
+Set parameter WLSAccessID
+Set parameter WLSSecret
+Set parameter LicenseID to value 926906
+Academic license 926906 - for non-commercial use only - registered to <가림>
+Set parameter WLSAccessID
+Set parameter WLSSecret
+Set parameter LicenseID to value 926906
+Academic license 926906 - for non-commercial use only - registered to <가림>
+Set parameter WLSAccessID
+Set parameter WLSSecret
+Set parameter LicenseID to value 926906
+Academic license 926906 - for non-commercial use only - registered to <가림>
+Set parameter WLSAccessID
+Set parameter WLSSecret
+Set parameter LicenseID to value 926906
+Academic license 926906 - for non-commercial use only - registered to <가림>
+Set parameter WLSAccessID
+Set parameter WLSSecret
+Set parameter LicenseID to value 926906
+Academic license 926906 - for non-commercial use only - registered to <가림>
+Set parameter WLSAccessID
+Set parameter WLSSecret
+Set parameter LicenseID to value 926906
+Academic license 926906 - for non-commercial use only - registered to <가림>
+Set parameter WLSAccessID
+Set parameter WLSSecret
+Set parameter LicenseID to value 926906
+Academic license 926906 - for non-commercial use only - registered to <가림>
+Set parameter WLSAccessID
+Set parameter WLSSecret
+Set parameter LicenseID to value 926906
+Academic license 926906 - for non-commercial use only - registered to <가림>
+  [시작] t 하한 -4809.47 (가격 MILP 329.9s)
+  [ph1] 루트 RMP -2031.73, 마스터 UB -2031.73 (x={10:400;15:400}), 블록 1, LP 누적 30 (경과 344s)
+    [탐색] x={10:400;15:400}          t -3931.73 → -3265.47 (safeguard), 블록 3
+  [ph1] 루트 RMP -1860.92, 마스터 UB -1860.92 (x={6:300;10:200;15:300}), 블록 3, LP 누적 7375 (경과 378s)
+    [탐색] x={6:300;10:200;15:300}    t -3910.92 → -3655.22 (safeguard), 블록 5
+  [ph1] 루트 RMP -1747.55, 마스터 UB -1747.55 (x={5:300;10:200;15:300}), 블록 5, LP 누적 11222 (경과 400s)
+    [탐색] x={5:300;10:200;15:300}    t -3797.55 → -3749.48 (safeguard), 블록 7
+  [ph1] 루트 RMP -1707.96, 마스터 UB -1699.48 (x={5:300;10:200;15:300}), 블록 7, LP 누적 15999 (경과 429s)
+    [탐색] x={10:200;12:300;15:300}   t -3725.04 → -3595.90 (safeguard), 블록 9
+  [ph1] 루트 RMP -1696.25, 마스터 UB -1688.76 (x={5:300;10:200;15:300}), 블록 9, LP 누적 19253 (경과 454s)
+    [탐색] x={5:300;10:200;15:300}    t -3738.76 → -3729.05 (block), 블록 10
+  [ph1] 루트 RMP -1680.92, 마스터 UB -1679.05 (x={5:300;10:200;15:300}), 블록 10, LP 누적 19831 (경과 463s)
+    [탐색] x={4:200;6:300;15:300}     t -3718.00 → -3629.50 (block), 블록 11
+  [ph1] 루트 RMP -1680.92, 마스터 UB -1679.05 (x={5:300;10:200;15:300}), 블록 11, LP 누적 20203 (경과 471s)
+    [탐색] x={5:300;10:200;15:300}    t -3729.05 → -3683.18 (block), 블록 12
+  [ph1] 루트 RMP -1666.58, 마스터 UB -1633.18 (x={9:300;10:200;15:300}), 블록 12, LP 누적 35453 (경과 543s)
+    [탐색] x={9:300;10:200;15:300}    t -3683.18 → -3678.27 (safeguard), 블록 14
+  [ph1] 루트 RMP -1658.50, 마스터 UB -1632.99 (x={8:400;10:200;15:200}), 블록 14, LP 누적 40777 (경과 573s)
+    [탐색] x={8:400;10:200;15:200}    t -3682.99 → -3678.27 (block), 블록 15
+  [ph1] 루트 RMP -1658.50, 마스터 UB -1640.02 (x={3:300;10:200;15:300}), 블록 15, LP 누적 43428 (경과 589s)
+    [탐색] x={3:300;10:200;15:300}    t -3690.02 → -3679.42 (block), 블록 16
+  [ph1] 루트 RMP -1658.50, 마스터 UB -1633.18 (x={9:200;10:300;15:300}), 블록 16, LP 누적 43817 (경과 595s)
+    [탐색] x={9:200;10:300;15:300}    t -3683.18 → -3678.27 (safeguard), 블록 18
+  [ph1] 루트 RMP -1658.50, 마스터 UB -1630.91 (x={6:400;10:200;15:200}), 블록 18, LP 누적 46077 (경과 609s)
+
+******************************************************************************
+This program contains Ipopt, a library for large-scale nonlinear optimization.
+ Ipopt is released as open source code under the Eclipse Public License (EPL).
+         For more information visit https://github.com/coin-or/Ipopt
+******************************************************************************
+
+    [LP] 비유계 보고 → 재시도 결과 OPTIMAL
+    [LP] 비유계 보고 → 재시도 결과 OPTIMAL
+    [LP] 비유계 보고 → 재시도 결과 OPTIMAL
+    [LP] 비유계 보고 → 재시도 결과 OPTIMAL
+    [LP] 비유계 보고 → 재시도 결과 OPTIMAL
+    [LP] 비유계 보고 → 재시도 결과 OPTIMAL
+  [orcl] x={6:400;10:200;15:200}    V in [-3680.26, -3674.49], t0 -3680.91, 목표 -3673.58 (499s, 상한 900s) safeguard, 블록 20, LB -Inf UB -1624.49 (경과 1120s)
+  [ph1] 루트 RMP -1633.17, 마스터 UB -1633.11 (x={10:200;13:300;15:300}), 블록 20, LP 누적 66469 (경과 1196s)
+    [탐색] x={10:200;13:300;15:300}   t -3683.11 → -3676.59 (safeguard), 블록 22
+  [ph1] 루트 RMP -1633.17, 마스터 UB -1630.91 (x={5:300;10:200;15:300}), 블록 22, LP 누적 67289 (경과 1207s)
+  [orcl] x={5:300;10:200;15:300}    V in [-3661.52, -3541.93], t0 -3680.91, 목표 -3673.58 (99s, 상한 900s) safeguard, 블록 24, LB -Inf UB -1624.49 (경과 1317s)
+  [ph1] 루트 RMP -1633.17, 마스터 UB -1630.91 (x={9:400;10:200;15:200}), 블록 24, LP 누적 76083 (경과 1354s)
+    [LP] 비유계 보고 → 재시도 결과 OPTIMAL
+    [LP] 비유계 보고 → 재시도 결과 OPTIMAL
+    [LP] 비유계 보고 → 재시도 결과 OPTIMAL
+  [orcl] x={9:400;10:200;15:200}    V in [-3687.08, -3673.88], t0 -3680.91, 목표 -3673.58 (156s, 상한 900s) none, 블록 24, LB -Inf UB -1624.49 (경과 1516s)
+  [1 단계 끝] 1516s, belief 15, UB -1624.49
+  [node   1] root                               깊이 0: RMP -1633.17, LB -Inf, 분수, 열린 0, LB* -Inf UB -1624.49, 마스터 inc -1630.91, 블록 24, MILP 1 (경과 1517s)
+      [sb] o3 (0.465): 열림 -1630.71, 닫힘 -1633.13, 점수 0.078
+      [sb] o11 (0.198): 열림 -1625.36, 닫힘 -1633.17, 점수 7.8e-06
+      [sb] o1 (0.139): 열림 -1629.42, 닫힘 -1633.16, 점수 0.0198
+  [node   2] root o3=0                          깊이 1: RMP -1633.18, LB -Inf, 분수, 열린 1, LB* -Inf UB -1624.49, 마스터 inc -1630.91, 블록 24, MILP 1 (경과 2062s)
+      [sb] o11 (0.534): 열림 -1625.36, 닫힘 -1633.12, 점수 0.426
+      [sb] o1 (0.466): 열림 -1629.42, 닫힘 -1633.10, 점수 0.309
+  [node   3] root o3=0 o11=0                    깊이 2: RMP -1633.12, LB -Inf, 분수, 열린 2, LB* -Inf UB -1624.49, 마스터 inc -1630.91, 블록 24, MILP 1 (경과 2088s)
+      [sb] o1 (0.492): 열림 -1629.42, 닫힘 -1632.93, 점수 0.733
+      [sb] o6 (0.285): 열림 -1632.70, 닫힘 -1633.06, 점수 0.0282
+      [sb] o10 (0.223): 열림 -1622.08, 닫힘 -1632.83, 점수 3.27
+  [node   4] root o3=0 o11=0 o10=0              깊이 3: RMP -1632.83, LB -Inf, 분수, 열린 3, LB* -Inf UB -1624.49, 마스터 inc -1630.91, 블록 24, MILP 1 (경과 2250s)
+      [sb] o6 (0.847): 열림 -1632.70, 닫힘 -1631.94, 점수 0.11
+      [sb] o1 (0.136): 열림 -1629.42, 닫힘 -1632.78, 점수 0.148
+      [sb] o7 (0.006): 열림 -1630.91, 닫힘 -1632.82, 점수 0.0216
+  [node   5] root o3=0 o11=0 o10=0 o1=0         깊이 4: RMP -1632.78, LB -Inf, 분수, 열린 4, LB* -Inf UB -1624.49, 마스터 inc -1630.91, 블록 24, MILP 1 (경과 2330s)
+      [sb] o6 (0.957): 열림 -1632.70, 닫힘 -1630.91, 점수 0.151
+      [sb] o9 (0.043): 열림 -1627.07, 닫힘 -1632.70, 점수 0.462
+  [node   6] root o3=0 o11=0 o10=0 o1=0 o9=0    깊이 5: RMP -1632.70, LB -Inf, 분수, 열린 5, LB* -Inf UB -1624.49, 마스터 inc -1630.91, 블록 24, MILP 1 (경과 2413s)
+  [node   7] root o3=0 o11=0 o10=0 o1=0 o9=0 x18=1 깊이 6: RMP -1628.27, LB -1628.27, 정수, 열린 6, LB* -Inf UB -1624.49, 마스터 inc -1630.91, 블록 24, MILP 3 (경과 2425s)
+  [node   8] root o3=0 o11=0 o10=0 o1=0 o9=0 x18=0 깊이 6: RMP -1630.91, LB -1632.59, 분수, 열린 5, LB* -Inf UB -1624.49, 마스터 inc -1630.91, 블록 24, MILP 9 (경과 2530s)
+  [node   9] root o3=1                          깊이 1: RMP -1630.71, LB -1630.76, 분수, 열린 4, LB* -Inf UB -1624.49, 마스터 inc -1630.91, 블록 24, MILP 10 (경과 2595s)
+  [node  10] root o3=0 o11=0 o10=0 o1=1         깊이 4: RMP -1629.42, LB -1630.48, 정수, 열린 3, LB* -Inf UB -1624.49, 마스터 inc -1630.91, 블록 24, MILP 13 (경과 2628s)
+  [node  11] root o3=0 o11=0 o10=0 o1=0 o9=1    깊이 5: RMP -1627.07, LB -1627.75, 분수, 열린 2, LB* -Inf UB -1624.49, 마스터 inc -1630.91, 블록 24, MILP 26 (경과 2836s)
+  [node  12] root o3=0 o11=1                    깊이 2: RMP -1625.36, LB -1625.36, 분수, 열린 1, LB* -Inf UB -1624.49, 마스터 inc -1630.91, 블록 24, MILP 31 (경과 2998s)
+  [node  13] root o3=0 o11=0 o10=1              깊이 3: RMP -1622.08, LB -1622.11, 분수, 열린 0, LB* -Inf UB -1624.49, 마스터 inc -1630.91, 블록 24, MILP 33 (경과 3068s)
+RESULT ccgbp g=1 status=Optimal x={6:400;10:200;15:200} LB=-1632.6151 UB=-1624.4926 gap=0.500% beliefs=15 노드 13 (가지침 7, 정확 7, 정수 0, 남은 0, 닫힌 정수 0) 안전장치 9 (no-good 9, restricted 0, μ 올림 0) time=3068.4 (1 단계 1516s)
+  시간: oracle 3 번 754s, 탐색 29 번 28s, 블록 LP 215776 번 795s, 가격 MILP 33 번 967s (노드 503745), RMP 2192 번 124s (crossover 재시도 73), 생성기 구성 65s; 서로 다른 점 45069 / 66379
