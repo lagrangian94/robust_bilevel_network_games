@@ -1319,14 +1319,18 @@ function nz_alpha_bnb_dr(nd::NZData, x̄;
                         basP = parent_basis ? _nz_dr_get_basis(P) : nothing
                         basP === nothing || (basP = merge(basP, (wid=wid,)))   # 자식에 실을 부모 basis (값을 읽기만 한 뒤라 모델은 그대로)
                         α̂ = clamp.(value.(v[:α]), l, u)
+                        # 정확 평가용 사본 (2026-11-23): 아주 작은 성분은 0 으로. α 고정 LP 의 계수 −α̂ 로 들어가 행렬 범위를 4e-6 까지 넓힌다.
+                        #   W ≥ 0 이라 0 으로 줄여도 H 안이고, 값은 이 점에서 정확히 평가하므로 incumbent 로 유효 (상자 [l, u] 밖이어도 됨).
+                        #   α̂ 자체 (곱 위반, 분기점, 완화 값의 귀속) 는 그대로 둔다. 나무 판 exact_value 와 같은 정리.
+                        α̂c = [(α̂[i] < 1e-6 * max(1.0, nd.hU[i])) ? 0.0 : α̂[i] for i in eachindex(α̂)]
                         rv = value.(v[:r]); dv = value.(v[:d])
                         ϖv = zeros(size(v[:ϖ]))
                         for k in Hr, s in 1:S; ϖv[k, s] = value(v[:ϖ][k, s]); end
                         ζLv = value.(v[:ζL]); ζFv = value.(v[:ζF]); ζWv = value.(v[:ζW])
                         set_time_limit_sec(F.model, max(t_end - time(), 0.1))
-                        te = @elapsed (zE = nz_eval_alpha!(F, nd, α̂))
+                        te = @elapsed (zE = nz_eval_alpha!(F, nd, α̂c))
                         isnan(zE) && (zE = -Inf)
-                        αE = α̂                                  # zE 를 준 점 (incumbent 후보)
+                        αE = α̂c                                 # zE 를 준 점 (incumbent 후보)
                         if resp
                             te += @elapsed begin
                                 αr = _nz_resp!(Rs[wid], nd, max.(dv, 0.0), α̂)
@@ -1394,7 +1398,7 @@ function nz_alpha_bnb_dr(nd::NZData, x̄;
                     root_rows[] = [(r[1], r[6], r[2], r[3]) for r in P.allrows]
                 end
                 if zE > LB[]
-                    αE === α̂ || Threads.atomic_add!(n_resp, 1)
+                    (αE === α̂c || αE === α̂) || Threads.atomic_add!(n_resp, 1)
                     LB[] = zE; best_α[] = copy(αE)
                 end
                 if α̂ !== nothing

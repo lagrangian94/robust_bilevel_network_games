@@ -347,6 +347,9 @@ function _nz_solve_lp!(model)
         st in (MOI.OPTIMAL, MOI.INFEASIBLE, MOI.TIME_LIMIT) || for (nf, meth) in ((3, 1), (3, 2))
             set_optimizer_attribute(model, "NumericFocus", nf); set_optimizer_attribute(model, "Method", meth)
             set_optimizer_attribute(model, "Crossover", -1)      # 재시도는 crossover 를 켜서 (기저해까지)
+            # 이어 푼 기저를 버리고 처음부터 (2026-11-23): λᵁ = 1e4 에서 α 고정 LP 가 재시도 뒤에도 비유계로 보고되어 oracle 이 멈춤 (loc_tkp 지리 9·12).
+            #   실패 LP 세 개를 덤프해 새로 풀면 모두 OPTIMAL 이었다 (목적 계수 범위 최대 4e7). 기저를 남긴 재시도는 같은 오판을 되풀이할 수 있다.
+            Gurobi.GRBreset(JuMP.unsafe_backend(model), 0)
             settl!() || return NaN
             optimize!(model)
             st = termination_status(model)

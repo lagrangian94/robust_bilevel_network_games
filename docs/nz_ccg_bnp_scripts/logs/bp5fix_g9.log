@@ -1,0 +1,208 @@
+  [설정] η 1.0e-04, μ 1.0e+04 (상한 1.0e+04), oracle λᵁ 1.0e+04, μη = 1
+--- ccgbp v5 | SB_K 3 PH1 true ORCL_TL 900 PSTOP true
+ g=9 coupled r=0.20 S=10, 스레드 12, tol 5.0e-03, μ 1e+04, η 0.0001, NS 10, SEED_ALL false, NTOP 5, CGTOL 1.0e-03
+Set parameter WLSAccessID
+Set parameter WLSSecret
+Set parameter LicenseID to value 926906
+Academic license 926906 - for non-commercial use only - registered to <가림>
+Set parameter WLSAccessID
+Set parameter WLSSecret
+Set parameter LicenseID to value 926906
+Academic license 926906 - for non-commercial use only - registered to <가림>
+Set parameter WLSAccessID
+Set parameter WLSSecret
+Set parameter LicenseID to value 926906
+Academic license 926906 - for non-commercial use only - registered to <가림>
+Set parameter WLSAccessID
+Set parameter WLSSecret
+Set parameter LicenseID to value 926906
+Academic license 926906 - for non-commercial use only - registered to <가림>
+Set parameter WLSAccessID
+Set parameter WLSSecret
+Set parameter LicenseID to value 926906
+Academic license 926906 - for non-commercial use only - registered to <가림>
+Set parameter WLSAccessID
+Set parameter WLSSecret
+Set parameter LicenseID to value 926906
+Academic license 926906 - for non-commercial use only - registered to <가림>
+Set parameter WLSAccessID
+Set parameter WLSSecret
+Set parameter LicenseID to value 926906
+Academic license 926906 - for non-commercial use only - registered to <가림>
+Set parameter WLSAccessID
+Set parameter WLSSecret
+Set parameter LicenseID to value 926906
+Academic license 926906 - for non-commercial use only - registered to <가림>
+Set parameter WLSAccessID
+Set parameter WLSSecret
+Set parameter LicenseID to value 926906
+Academic license 926906 - for non-commercial use only - registered to <가림>
+Set parameter WLSAccessID
+Set parameter WLSSecret
+Set parameter LicenseID to value 926906
+Academic license 926906 - for non-commercial use only - registered to <가림>
+Set parameter WLSAccessID
+Set parameter WLSSecret
+Set parameter LicenseID to value 926906
+Academic license 926906 - for non-commercial use only - registered to <가림>
+Set parameter WLSAccessID
+Set parameter WLSSecret
+Set parameter LicenseID to value 926906
+Academic license 926906 - for non-commercial use only - registered to <가림>
+Set parameter WLSAccessID
+Set parameter WLSSecret
+Set parameter LicenseID to value 926906
+Academic license 926906 - for non-commercial use only - registered to <가림>
+Set parameter WLSAccessID
+Set parameter WLSSecret
+Set parameter LicenseID to value 926906
+Academic license 926906 - for non-commercial use only - registered to <가림>
+Set parameter WLSAccessID
+Set parameter WLSSecret
+Set parameter LicenseID to value 926906
+Academic license 926906 - for non-commercial use only - registered to <가림>
+  [시작] t 하한 -3677.44 (가격 MILP 96.6s)
+  [ph1] 루트 RMP -1284.73, 마스터 UB -1284.73 (x={3:300;4:300}), 블록 1, LP 누적 48 (경과 110s)
+    [탐색] x={3:300;4:300}            t -2784.73 → -2418.55 (block), 블록 2
+  [ph1] 루트 RMP -1084.18, 마스터 UB -1084.18 (x={3:300;12:200}), 블록 2, LP 누적 523 (경과 118s)
+    [탐색] x={3:300;12:200}           t -2384.18 → -2346.49 (block), 블록 3
+  [ph1] 루트 RMP -1049.65, 마스터 UB -1046.49 (x={3:300;12:200}), 블록 3, LP 누적 938 (경과 124s)
+    [탐색] x={5:300;12:200}           t -2346.49 → -2332.91 (safeguard), 블록 5
+  [ph1] 루트 RMP -1049.65, 마스터 UB -1046.49 (x={3:300;12:200}), 블록 5, LP 누적 973 (경과 129s)
+    [탐색] x={5:300;6:300}            t -2458.48 → -2380.34 (block), 블록 6
+  [ph1] 루트 RMP -1049.53, 마스터 UB -1046.49 (x={3:300;12:200}), 블록 6, LP 누적 1939 (경과 138s)
+    [탐색] x={5:300;6:300}            t -2380.34 → -2371.28 (block), 블록 7
+  [ph1] 루트 RMP -1047.52, 마스터 UB -1046.49 (x={3:300;12:200}), 블록 7, LP 누적 2361 (경과 149s)
+    [탐색] x={3:300;12:200}           t -2346.49 → -2333.63 (safeguard), 블록 9
+  [ph1] 루트 RMP -1047.52, 마스터 UB -1033.63 (x={3:300;12:200}), 블록 9, LP 누적 2723 (경과 155s)
+
+******************************************************************************
+This program contains Ipopt, a library for large-scale nonlinear optimization.
+ Ipopt is released as open source code under the Eclipse Public License (EPL).
+         For more information visit https://github.com/coin-or/Ipopt
+******************************************************************************
+
+  [orcl] x={3:300;12:200}           V in [-2349.11, -2323.10], t0 -2333.63, 목표 -2328.98 (904s, 상한 900s) none, 블록 9, LB -Inf UB -1023.10 (경과 1065s)
+  [1 단계 끝] 1065s, belief 7, UB -1023.10
+  [node   1] root                               깊이 0: RMP -1047.52, LB -Inf, 분수, 열린 0, LB* -Inf UB -1023.10, 마스터 inc -1033.63, 블록 9, MILP 1 (경과 1068s)
+      [sb] o1 (0.886): 열림 -1047.21, 닫힘 -1081.97, 점수 3.13e-07
+      [sb] o3 (0.114): 열림 -1066.39, 닫힘 -1085.26, 점수 1e-12
+      [sb] o4 (0.089): 열림 -1036.99, 닫힘 -1085.26, 점수 1.05e-05
+    [탐색] x={3:300;9:200;10:200}     t -2908.25 → -2867.53 (block), 블록 10
+    [탐색] x={7:300;11:200;15:200}    t -2899.24 → -2859.41 (safeguard), 블록 12
+    [탐색] x={3:200;12:200;15:200}    t -2695.19 → -2689.06 (safeguard), 블록 14
+    [탐색] x={3:200;7:300;15:200}     t -2888.70 → -2867.38 (safeguard), 블록 16
+  [node   2] root o4=0                          깊이 1: RMP -1080.65, LB -Inf, 분수, 열린 1, LB* -Inf UB -1023.10, 마스터 inc -1075.56, 블록 16, MILP 1 (경과 1191s)
+    [LP] 비유계 보고 → 재시도 결과 OPTIMAL
+    [LP] 비유계 보고 → 재시도 결과 OPTIMAL
+  [orcl] x={3:200;7:200;15:200}     V in [-2711.32, -2632.23], t0 -2725.56, 목표 -2720.72 (130s, 상한 900s) block, 블록 17, LB -Inf UB -1023.10 (경과 1327s)
+    [탐색] x={3:200;12:200;15:200}    t -2684.79 → -2678.66 (block), 블록 18
+  [node   3] root o4=0                          깊이 1: RMP -1069.93, LB -Inf, 분수, 열린 1, LB* -Inf UB -1023.10, 마스터 inc -1037.88, 블록 18, MILP 1 (경과 1353s)
+    [LP] 비유계 보고 → 재시도 결과 OPTIMAL
+  [orcl] x={7:200;11:200;15:200}    V in [-2681.57, -2668.04], t0 -2687.88, 목표 -2683.21 (255s, 상한 900s) safeguard, 블록 20, LB -Inf UB -1023.10 (경과 1615s)
+  [node   4] root o4=0                          깊이 1: RMP -1068.40, LB -Inf, 분수, 열린 1, LB* -Inf UB -1023.10, 마스터 inc -1033.63, 블록 20, MILP 1 (경과 1622s)
+      [sb] o10 (0.575): 열림 -1049.11, 닫힘 -1062.25, 점수 119
+      [sb] o1 (0.587): 열림 -1065.54, 닫힘 -1067.66, 점수 2.1
+      [sb] o13 (0.341): 열림 -1062.25, 닫힘 -1049.58, 점수 116
+  [node   5] root o4=0 o10=0                    깊이 2: RMP -1062.25, LB -Inf, 분수, 열린 2, LB* -Inf UB -1023.10, 마스터 inc -1033.63, 블록 20, MILP 1 (경과 1649s)
+      [sb] o5 (0.539): 열림 -1050.48, 닫힘 -1031.26, 점수 365
+      [sb] o7 (0.461): 열림 -1026.63, 닫힘 -1050.48, 점수 419
+      [sb] o1 (0.715): 열림 -1058.34, 닫힘 -1061.83, 점수 1.64
+  [node   6] root o4=0 o10=0 o7=0               깊이 3: RMP -1050.48, LB -Inf, 분수, 열린 3, LB* -Inf UB -1023.10, 마스터 inc -1033.63, 블록 20, MILP 1 (경과 1669s)
+      [sb] o13 (0.438): 열림 -1046.93, 닫힘 -1030.97, 점수 69.2
+      [sb] o1 (0.790): 열림 -1048.10, 닫힘 -1037.88, 점수 29.9
+      [sb] o9 (0.210): 열림 -1037.82, 닫힘 -1048.10, 점수 30
+  [node   7] root o4=0 o10=1                    깊이 2: RMP -1049.11, LB -Inf, 분수, 열린 4, LB* -Inf UB -1023.10, 마스터 inc -1033.63, 블록 20, MILP 1 (경과 1697s)
+      [sb] o1 (0.550): 열림 -1048.27, 닫힘 -1048.82, 점수 0.239
+      [sb] o13 (0.450): 열림 -1032.32, 닫힘 -1046.49, 점수 43.9
+      [sb] o9 (0.450): 열림 -1027.44, 닫힘 -1048.27, 점수 18.1
+  [node   8] root o4=0 o10=0 o7=0 o13=1         깊이 4: RMP -1046.93, LB -Inf, 분수, 열린 5, LB* -Inf UB -1023.10, 마스터 inc -1033.63, 블록 20, MILP 1 (경과 1724s)
+      [sb] o1 (0.521): 열림 -1041.54, 닫힘 -1037.73, 점수 49.6
+      [sb] o9 (0.479): 열림 -1037.66, 닫힘 -1041.54, 점수 50
+  [node   9] root o4=0 o10=1 o13=0              깊이 3: RMP -1046.49, LB -Inf, 분수, 열린 6, LB* -Inf UB -1023.10, 마스터 inc -1033.63, 블록 20, MILP 1 (경과 1734s)
+      [sb] o1 (0.654): 열림 -1046.22, 닫힘 -1034.02, 점수 3.47
+      [sb] o3 (0.346): 열림 -1034.02, 닫힘 -1046.22, 점수 3.47
+  [node  10] root o4=0 o10=1 o13=0 o1=1         깊이 4: RMP -1046.22, LB -Inf, 분수, 열린 7, LB* -Inf UB -1023.10, 마스터 inc -1033.63, 블록 20, MILP 1 (경과 1751s)
+  [node  11] root o4=0 o10=1 o13=0 o1=1 x2=1    깊이 5: RMP -1045.64, LB -Inf, 분수, 열린 8, LB* -Inf UB -1023.10, 마스터 inc -1033.63, 블록 20, MILP 1 (경과 1754s)
+  [node  12] root o4=0 o10=1 o13=0 o1=1 x2=0    깊이 5: RMP -899.97, LB -918.53, 분수, 열린 9, LB* -Inf UB -1023.10, 마스터 inc -1033.63, 블록 20, MILP 3 (경과 1763s)
+  [node  13] root o4=0 o10=1 o13=0 o1=1 x2=1 x28=1 깊이 6: RMP -1043.94, LB -Inf, 분수, 열린 8, LB* -Inf UB -1023.10, 마스터 inc -1033.63, 블록 20, MILP 3 (경과 1764s)
+      [sb] o6 (0.013): 열림 -666.49, 닫힘 -1043.70, 점수 91.6
+  [node  14] root o4=0 o10=1 o13=0 o1=1 x2=1 x28=0 깊이 6: RMP -848.73, LB -848.73, 정수, 열린 9, LB* -Inf UB -1023.10, 마스터 inc -1033.63, 블록 20, MILP 4 (경과 1766s)
+  [node  15] root o4=0 o10=1 o13=0 o1=1 x2=1 x28=1 o6=0 깊이 7: RMP -1043.70, LB -Inf, 분수, 열린 8, LB* -Inf UB -1023.10, 마스터 inc -1033.63, 블록 20, MILP 4 (경과 1766s)
+      [sb] o8 (0.013): 열림 -826.08, 닫힘 -1043.60, 점수 22.4
+  [node  16] root o4=0 o10=1 o13=0 o1=1 x2=1 x28=1 o6=0 o8=0 깊이 8: RMP -1043.60, LB -Inf, 분수, 열린 9, LB* -Inf UB -1023.10, 마스터 inc -1033.63, 블록 20, MILP 4 (경과 1768s)
+      [sb] o12 (0.013): 열림 -779.02, 닫힘 -1043.57, 점수 7.95
+  [node  17] root o4=0 o10=1 o13=0 o1=1 x2=1 x28=1 o6=0 o8=0 o12=0 깊이 9: RMP -1043.57, LB -Inf, 분수, 열린 10, LB* -Inf UB -1023.10, 마스터 inc -1033.63, 블록 20, MILP 4 (경과 1768s)
+      [sb] o11 (0.013): 열림 -681.49, 닫힘 -1043.32, 점수 87.7
+  [node  18] root o4=0 o10=1 o13=0 o1=1 x2=1 x28=1 o6=0 o8=0 o12=0 o11=0 깊이 10: RMP -1043.32, LB -Inf, 분수, 열린 11, LB* -Inf UB -1023.10, 마스터 inc -1033.63, 블록 20, MILP 4 (경과 1769s)
+      [sb] o7 (0.012): 열림 -776.45, 닫힘 -1042.78, 점수 145
+  [node  19] root o4=0 o10=1 o13=0 o1=1 x2=1 x28=1 o6=0 o8=0 o12=0 o11=0 o7=0 깊이 11: RMP -1042.78, LB -Inf, 분수, 열린 12, LB* -Inf UB -1023.10, 마스터 inc -1033.63, 블록 20, MILP 4 (경과 1770s)
+      [sb] o5 (0.012): 열림 -694.00, 닫힘 -1042.42, 점수 126
+  [node  20] root o4=0 o10=1 o13=0 o1=1 x2=1 x28=1 o6=0 o8=0 o12=0 o11=0 o7=0 o5=0 깊이 12: RMP -1042.42, LB -Inf, 분수, 열린 13, LB* -Inf UB -1023.10, 마스터 inc -1033.63, 블록 20, MILP 4 (경과 1771s)
+      [sb] o9 (0.011): 열림 -536.19, 닫힘 -1042.42, 점수 0.000506
+  [node  21] root o4=0 o10=1 o13=0 o1=1 x2=1 x28=1 o6=0 o8=0 o12=0 o11=0 o7=0 o5=0 o9=0 깊이 13: RMP -1042.42, LB -Inf, 분수, 열린 14, LB* -Inf UB -1023.10, 마스터 inc -1033.63, 블록 20, MILP 4 (경과 1772s)
+      [sb] o3 (0.011): 열림 -536.19, 닫힘 -1041.73, 점수 349
+  [node  22] root o4=0 o10=1 o13=0 o1=1 x2=1 x28=1 o6=0 o8=0 o12=0 o11=0 o7=0 o5=0 o9=0 o3=0 깊이 14: RMP -1041.73, LB -Inf, 분수, 열린 15, LB* -Inf UB -1023.10, 마스터 inc -1033.63, 블록 20, MILP 4 (경과 1773s)
+      [sb] o2 (0.010): 열림 -574.06, 닫힘 -1033.63, 점수 3.79e+03
+  [node  23] root o4=0 o10=0 o7=0 o13=1 o9=0    깊이 5: RMP -1041.54, LB -Inf, 분수, 열린 16, LB* -Inf UB -1023.10, 마스터 inc -1033.63, 블록 20, MILP 4 (경과 1774s)
+  [node  24] root o4=0 o10=0 o7=0 o13=1 o9=0 x14=1 깊이 6: RMP -1018.85, LB -1026.69, 분수, 열린 17, LB* -Inf UB -1023.10, 마스터 inc -1033.63, 블록 20, MILP 5 (경과 1775s)
+  [node  25] root o4=0 o10=0 o7=0 o13=1 o9=0 x14=0 깊이 6: RMP -1018.93, LB -1021.18, 정수, 열린 16, LB* -Inf UB -1023.10, 마스터 inc -1033.63, 블록 20, MILP 6 (경과 1778s)
+  [node  26] root o4=0 o10=0 o7=0 o13=1 o9=1    깊이 5: RMP -1037.66, LB -Inf, 분수, 열린 15, LB* -Inf UB -1023.10, 마스터 inc -1033.63, 블록 20, MILP 6 (경과 1779s)
+      [sb] o5 (0.996): 열림 -1037.62, 닫힘 -984.80, 점수 1.72
+      [sb] o2 (0.004): 열림 -984.80, 닫힘 -1037.62, 점수 1.72
+  [node  27] root o4=0 o10=0 o7=0 o13=1 o9=1 o2=0 깊이 6: RMP -1037.62, LB -Inf, 분수, 열린 16, LB* -Inf UB -1023.10, 마스터 inc -1033.63, 블록 20, MILP 6 (경과 1783s)
+  [node  28] root o4=0 o10=0 o7=0 o13=1 o9=1 o2=0 x13=1 깊이 7: RMP -1037.04, LB -Inf, 분수, 열린 17, LB* -Inf UB -1023.10, 마스터 inc -1033.63, 블록 20, MILP 6 (경과 1784s)
+  [node  29] root o4=0 o10=0 o7=0 o13=1 o9=1 o2=0 x13=0 깊이 7: RMP -982.94, LB -990.84, 정수, 열린 18, LB* -Inf UB -1023.10, 마스터 inc -1033.63, 블록 20, MILP 7 (경과 1786s)
+  [node  30] root o4=0 o10=0 o7=0 o13=1 o9=1 o2=0 x13=1 x37=1 깊이 8: RMP -1037.01, LB -Inf, 분수, 열린 17, LB* -Inf UB -1023.10, 마스터 inc -1033.63, 블록 20, MILP 7 (경과 1787s)
+  [node  31] root o4=0 o10=0 o7=0 o13=1 o9=1 o2=0 x13=1 x37=0 깊이 8: RMP -845.23, LB -845.23, 정수, 열린 18, LB* -Inf UB -1023.10, 마스터 inc -1033.63, 블록 20, MILP 8 (경과 1787s)
+  [node  32] root o4=0 o10=0 o7=0 o13=1 o9=1 o2=0 x13=1 x37=1 x26=1 깊이 9: RMP -837.88, LB -837.88, 정수, 열린 17, LB* -Inf UB -1023.10, 마스터 inc -1033.63, 블록 20, MILP 9 (경과 1788s)
+  [node  33] root o4=0 o10=0 o7=0 o13=1 o9=1 o2=0 x13=1 x37=1 x26=0 깊이 9: RMP -1036.15, LB -Inf, 분수, 열린 16, LB* -Inf UB -1023.10, 마스터 inc -1033.63, 블록 20, MILP 9 (경과 1789s)
+  [node  34] root o4=1                          깊이 1: RMP -1023.43, LB -1023.84, 분수, 열린 17, LB* -Inf UB -1023.10, 마스터 inc -1033.63, 블록 20, MILP 15 (경과 1863s)
+  [node  35] root o4=0 o10=0 o7=0 o13=1 o9=1 o2=0 x13=1 x37=1 x26=0 x27=1 깊이 10: RMP -637.88, LB -637.88, 정수, 열린 16, LB* -Inf UB -1023.10, 마스터 inc -1033.63, 블록 20, MILP 16 (경과 1863s)
+  [node  36] root o4=0 o10=0 o7=0 o13=1 o9=1 o2=0 x13=1 x37=1 x26=0 x27=0 깊이 10: RMP -1029.25, LB -1029.25, 정수, 열린 15, LB* -Inf UB -1023.10, 마스터 inc -1033.63, 블록 20, MILP 16 (경과 1864s)
+  [node  37] root o4=0 o10=1 o13=0 o1=0         깊이 4: RMP -1034.02, LB -Inf, 분수, 열린 14, LB* -Inf UB -1023.10, 마스터 inc -1033.63, 블록 20, MILP 16 (경과 1865s)
+  [node  38] root o4=0 o10=1 o13=0 o1=0 x8=1    깊이 5: RMP -1033.59, LB -Inf, 분수, 열린 15, LB* -Inf UB -1023.10, 마스터 inc -1033.63, 블록 20, MILP 16 (경과 1868s)
+  [node  39] root o4=0 o10=1 o13=0 o1=0 x8=0    깊이 5: RMP -890.08, LB -949.18, 분수, 열린 16, LB* -Inf UB -1023.10, 마스터 inc -1033.63, 블록 20, MILP 20 (경과 1890s)
+  [node  40] root o4=0 o10=1 o13=0 o1=1 x2=1 x28=1 o6=0 o8=0 o12=0 o11=0 o7=0 o5=0 o9=0 o3=0 o2=0 깊이 15: RMP -1033.63, LB -1033.63, 정수, 열린 15, LB* -Inf UB -1023.10, 마스터 inc -1033.63, 블록 20, MILP 20 (경과 1891s)
+  [node  41] root o4=0 o10=1 o13=0 o1=0 x8=1 x28=1 깊이 6: RMP -1033.54, LB -Inf, 분수, 열린 14, LB* -Inf UB -1023.10, 마스터 inc -1033.63, 블록 20, MILP 20 (경과 1892s)
+      [sb] o6 (0.001): 열림 -666.49, 닫힘 -1033.52, 점수 8.6
+  [node  42] root o4=0 o10=1 o13=0 o1=0 x8=1 x28=0 깊이 6: RMP -848.73, LB -848.73, 정수, 열린 15, LB* -Inf UB -1023.10, 마스터 inc -1033.63, 블록 20, MILP 21 (경과 1894s)
+  [node  43] root o4=0 o10=1 o13=0 o1=0 x8=1 x28=1 o6=0 깊이 7: RMP -1033.52, LB -Inf, 분수, 열린 14, LB* -Inf UB -1023.10, 마스터 inc -1033.63, 블록 20, MILP 21 (경과 1894s)
+      [sb] o11 (0.001): 열림 -686.13, 닫힘 -1033.47, 점수 15.7
+  [node  44] root o4=0 o10=1 o13=0 o1=0 x8=1 x28=1 o6=0 o11=0 깊이 8: RMP -1033.47, LB -Inf, 분수, 열린 15, LB* -Inf UB -1023.10, 마스터 inc -1033.63, 블록 20, MILP 21 (경과 1895s)
+      [sb] o12 (0.001): 열림 -779.02, 닫힘 -1033.46, 점수 2.8
+  [node  45] root o4=0 o10=1 o13=0 o1=0 x8=1 x28=1 o6=0 o11=0 o12=0 깊이 9: RMP -1033.46, LB -Inf, 분수, 열린 16, LB* -Inf UB -1023.10, 마스터 inc -1033.63, 블록 20, MILP 21 (경과 1896s)
+      [sb] o8 (0.001): 열림 -761.09, 닫힘 -1033.46, 점수 1.39
+  [node  46] root o4=0 o10=1 o13=0 o1=0 x8=1 x28=1 o6=0 o11=0 o12=0 o8=0 깊이 10: RMP -1033.46, LB -Inf, 분수, 열린 17, LB* -Inf UB -1023.10, 마스터 inc -1033.63, 블록 20, MILP 21 (경과 1897s)
+      [sb] o7 (0.001): 열림 -776.45, 닫힘 -1033.43, 점수 7.69
+  [node  47] root o4=0 o10=1 o13=0 o1=0 x8=1 x28=1 o6=0 o11=0 o12=0 o8=0 o7=0 깊이 11: RMP -1033.43, LB -Inf, 분수, 열린 18, LB* -Inf UB -1023.10, 마스터 inc -1033.63, 블록 20, MILP 21 (경과 1898s)
+      [sb] o9 (0.001): 열림 -520.11, 닫힘 -1033.42, 점수 3.78
+  [node  48] root o4=0 o10=1 o13=0 o1=0 x8=1 x28=1 o6=0 o11=0 o12=0 o8=0 o7=0 o9=0 깊이 12: RMP -1033.42, LB -Inf, 분수, 열린 19, LB* -Inf UB -1023.10, 마스터 inc -1033.63, 블록 20, MILP 21 (경과 1899s)
+      [sb] o5 (0.001): 열림 -687.26, 닫힘 -1033.38, 점수 14.7
+  [node  49] root o4=0 o10=1 o13=0 o1=0 x8=1 x28=1 o6=0 o11=0 o12=0 o8=0 o7=0 o9=0 o5=0 깊이 13: RMP -1033.38, LB -Inf, 분수, 열린 20, LB* -Inf UB -1023.10, 마스터 inc -1033.63, 블록 20, MILP 21 (경과 1900s)
+      [sb] o2 (0.001): 열림 -576.93, 닫힘 -1032.91, 점수 214
+  [node  50] root o4=0 o10=1 o13=0 o1=0 x8=1 x28=1 o6=0 o11=0 o12=0 o8=0 o7=0 o9=0 o5=0 o2=0 깊이 14: RMP -1032.91, LB -1032.91, 정수, 열린 21, LB* -Inf UB -1023.10, 마스터 inc -1033.63, 블록 20, MILP 21 (경과 1901s)
+  [orcl] x={5:300;12:200}           V in [-2348.11, -2330.56], t0 -2332.91, 목표 -2328.26 (255s, 상한 900s) none, 블록 20, LB -Inf UB -1030.56 (경과 2156s)
+  [node  51] root o4=0 o10=1 o13=1              깊이 3: RMP -1032.32, LB -1032.32, 분수, 열린 20, LB* -Inf UB -1030.56, 마스터 inc -1033.63, 블록 20, MILP 31 (경과 2177s)
+  [node  52] root o4=0 o10=0 o7=0 o13=0         깊이 4: RMP -1030.97, LB -1031.22, 분수, 열린 19, LB* -Inf UB -1030.56, 마스터 inc -1033.63, 블록 20, MILP 67 (경과 2296s)
+  [node  53] root o4=0 o10=0 o7=1               깊이 3: RMP -1026.63, LB -1030.94, 분수, 열린 18, LB* -Inf UB -1030.56, 마스터 inc -1033.63, 블록 20, MILP 71 (경과 2304s)
+  [node  54] root o4=0 o10=0 o7=0 o13=1 o9=1 o2=1 깊이 6: RMP -984.80, LB -984.80, 정수, 열린 17, LB* -Inf UB -1030.56, 마스터 inc -1033.63, 블록 20, MILP 72 (경과 2305s)
+  [node  55] root o4=0 o10=1 o13=0 o1=1 x2=1 x28=1 o6=0 o8=1 깊이 8: RMP -826.08, LB -826.08, 정수, 열린 16, LB* -Inf UB -1030.56, 마스터 inc -1033.63, 블록 20, MILP 73 (경과 2305s)
+  [node  56] root o4=0 o10=1 o13=0 o1=0 x8=1 x28=1 o6=0 o11=0 o12=1 깊이 9: RMP -779.02, LB -779.02, 정수, 열린 15, LB* -Inf UB -1030.56, 마스터 inc -1033.63, 블록 20, MILP 74 (경과 2306s)
+  [node  57] root o4=0 o10=1 o13=0 o1=1 x2=1 x28=1 o6=0 o8=0 o12=1 깊이 9: RMP -779.02, LB -779.02, 정수, 열린 14, LB* -Inf UB -1030.56, 마스터 inc -1033.63, 블록 20, MILP 75 (경과 2306s)
+  [node  58] root o4=0 o10=1 o13=0 o1=1 x2=1 x28=1 o6=0 o8=0 o12=0 o11=0 o7=1 깊이 11: RMP -776.45, LB -776.45, 정수, 열린 13, LB* -Inf UB -1030.56, 마스터 inc -1033.63, 블록 20, MILP 76 (경과 2306s)
+  [node  59] root o4=0 o10=1 o13=0 o1=0 x8=1 x28=1 o6=0 o11=0 o12=0 o8=0 o7=1 깊이 11: RMP -776.45, LB -776.45, 정수, 열린 12, LB* -Inf UB -1030.56, 마스터 inc -1033.63, 블록 20, MILP 77 (경과 2306s)
+  [node  60] root o4=0 o10=1 o13=0 o1=0 x8=1 x28=1 o6=0 o11=0 o12=0 o8=1 깊이 10: RMP -761.09, LB -761.09, 정수, 열린 11, LB* -Inf UB -1030.56, 마스터 inc -1033.63, 블록 20, MILP 78 (경과 2307s)
+  [node  61] root o4=0 o10=1 o13=0 o1=1 x2=1 x28=1 o6=0 o8=0 o12=0 o11=0 o7=0 o5=1 깊이 12: RMP -694.00, LB -694.00, 정수, 열린 10, LB* -Inf UB -1030.56, 마스터 inc -1033.63, 블록 20, MILP 79 (경과 2307s)
+  [node  62] root o4=0 o10=1 o13=0 o1=0 x8=1 x28=1 o6=0 o11=0 o12=0 o8=0 o7=0 o9=0 o5=1 깊이 13: RMP -687.26, LB -687.26, 정수, 열린 9, LB* -Inf UB -1030.56, 마스터 inc -1033.63, 블록 20, MILP 80 (경과 2307s)
+  [node  63] root o4=0 o10=1 o13=0 o1=0 x8=1 x28=1 o6=0 o11=1 깊이 8: RMP -686.13, LB -686.13, 정수, 열린 8, LB* -Inf UB -1030.56, 마스터 inc -1033.63, 블록 20, MILP 81 (경과 2308s)
+  [node  64] root o4=0 o10=1 o13=0 o1=1 x2=1 x28=1 o6=0 o8=0 o12=0 o11=1 깊이 10: RMP -681.49, LB -681.49, 정수, 열린 7, LB* -Inf UB -1030.56, 마스터 inc -1033.63, 블록 20, MILP 82 (경과 2308s)
+  [node  65] root o4=0 o10=1 o13=0 o1=1 x2=1 x28=1 o6=1 깊이 7: RMP -666.49, LB -666.49, 정수, 열린 6, LB* -Inf UB -1030.56, 마스터 inc -1033.63, 블록 20, MILP 83 (경과 2308s)
+  [node  66] root o4=0 o10=1 o13=0 o1=0 x8=1 x28=1 o6=1 깊이 7: RMP -666.49, LB -666.49, 정수, 열린 5, LB* -Inf UB -1030.56, 마스터 inc -1033.63, 블록 20, MILP 84 (경과 2309s)
+  [node  67] root o4=0 o10=1 o13=0 o1=0 x8=1 x28=1 o6=0 o11=0 o12=0 o8=0 o7=0 o9=0 o5=0 o2=1 깊이 14: RMP -576.93, LB -576.93, 정수, 열린 4, LB* -Inf UB -1030.56, 마스터 inc -1033.63, 블록 20, MILP 85 (경과 2309s)
+  [node  68] root o4=0 o10=1 o13=0 o1=1 x2=1 x28=1 o6=0 o8=0 o12=0 o11=0 o7=0 o5=0 o9=0 o3=0 o2=1 깊이 15: RMP -574.06, LB -574.06, 정수, 열린 3, LB* -Inf UB -1030.56, 마스터 inc -1033.63, 블록 20, MILP 86 (경과 2309s)
+  [node  69] root o4=0 o10=1 o13=0 o1=1 x2=1 x28=1 o6=0 o8=0 o12=0 o11=0 o7=0 o5=0 o9=1 깊이 13: RMP -536.19, LB -536.19, 정수, 열린 2, LB* -Inf UB -1030.56, 마스터 inc -1033.63, 블록 20, MILP 87 (경과 2310s)
+  [node  70] root o4=0 o10=1 o13=0 o1=1 x2=1 x28=1 o6=0 o8=0 o12=0 o11=0 o7=0 o5=0 o9=0 o3=1 깊이 14: RMP -536.19, LB -536.19, 정수, 열린 1, LB* -Inf UB -1030.56, 마스터 inc -1033.63, 블록 20, MILP 88 (경과 2310s)
+  [node  71] root o4=0 o10=1 o13=0 o1=0 x8=1 x28=1 o6=0 o11=0 o12=0 o8=0 o7=0 o9=1 깊이 12: RMP -520.11, LB -520.11, 정수, 열린 0, LB* -Inf UB -1030.56, 마스터 inc -1033.63, 블록 20, MILP 89 (경과 2310s)
+RESULT ccgbp g=9 status=Optimal x={5:300;12:200} LB=-1035.7094 UB=-1030.5566 gap=0.500% beliefs=14 노드 71 (가지침 32, 정확 35, 정수 3, 남은 0, 닫힌 정수 3) 안전장치 6 (no-good 6, restricted 0, μ 올림 0) time=2310.3 (1 단계 1065s)
+  시간: oracle 4 번 1544s, 탐색 84 번 78s, 블록 LP 39251 번 137s, 가격 MILP 89 번 293s (노드 124215), RMP 2874 번 30s (crossover 재시도 7), 생성기 구성 87s; 서로 다른 점 4616 / 8464
