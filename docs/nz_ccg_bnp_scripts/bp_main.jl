@@ -97,8 +97,7 @@ function finish_or_deepen!()
         if isempty(openq)
             lbg = isfinite(UB) ? min(UB - TOL * max(1.0, abs(UB)), global_lb()) : global_lb()
             global LB = max(LB, lbg)
-            if isfinite(UB) && UB - LB <= TOL * max(1.0, abs(UB)); global status = :Optimal; return; end
-            isempty(closedq) && return
+            if isfinite(UB) && (isempty(closedq) || UB - LB <= TOL * max(1.0, abs(UB)) * (1 + 1e-9)); global status = :Optimal; return; end   # 모든 노드가 UB − tol 로 잘림
             k = argmin([closed_lb(e) for e in closedq]); N, c = closedq[k]
             cap2 = 2 * get(orcap, c, ORCL_TL)
             @printf("  [deepen] 닫힌 노드 %s (점 %s, 하한 %.2f) 이 막음 → oracle 상한 %.0fs 로 다시\n", N.tag, loc_tkp_xstr(nd, pts[c]), closed_lb(closedq[k]), cap2); flush(stdout)

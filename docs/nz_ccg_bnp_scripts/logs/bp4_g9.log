@@ -1,0 +1,128 @@
+--- ccgbp v4 | SB_K 3 PH1 true ORCL_TL 900 PSTOP true
+ g=9 coupled r=0.20 S=10, 스레드 12, tol 5.0e-03, μ 1e+03, η 0.1, NS 10, SEED_ALL false, NTOP 5, CGTOL 1.0e-03
+Set parameter WLSAccessID
+Set parameter WLSSecret
+Set parameter LicenseID to value 926906
+Academic license 926906 - for non-commercial use only - registered to <가림>
+Set parameter WLSAccessID
+Set parameter WLSSecret
+Set parameter LicenseID to value 926906
+Academic license 926906 - for non-commercial use only - registered to <가림>
+Set parameter WLSAccessID
+Set parameter WLSSecret
+Set parameter LicenseID to value 926906
+Academic license 926906 - for non-commercial use only - registered to <가림>
+Set parameter WLSAccessID
+Set parameter WLSSecret
+Set parameter LicenseID to value 926906
+Academic license 926906 - for non-commercial use only - registered to <가림>
+Set parameter WLSAccessID
+Set parameter WLSSecret
+Set parameter LicenseID to value 926906
+Academic license 926906 - for non-commercial use only - registered to <가림>
+Set parameter WLSAccessID
+Set parameter WLSSecret
+Set parameter LicenseID to value 926906
+Academic license 926906 - for non-commercial use only - registered to <가림>
+Set parameter WLSAccessID
+Set parameter WLSSecret
+Set parameter LicenseID to value 926906
+Academic license 926906 - for non-commercial use only - registered to <가림>
+Set parameter WLSAccessID
+Set parameter WLSSecret
+Set parameter LicenseID to value 926906
+Academic license 926906 - for non-commercial use only - registered to <가림>
+Set parameter WLSAccessID
+Set parameter WLSSecret
+Set parameter LicenseID to value 926906
+Academic license 926906 - for non-commercial use only - registered to <가림>
+Set parameter WLSAccessID
+Set parameter WLSSecret
+Set parameter LicenseID to value 926906
+Academic license 926906 - for non-commercial use only - registered to <가림>
+Set parameter WLSAccessID
+Set parameter WLSSecret
+Set parameter LicenseID to value 926906
+Academic license 926906 - for non-commercial use only - registered to <가림>
+Set parameter WLSAccessID
+Set parameter WLSSecret
+Set parameter LicenseID to value 926906
+Academic license 926906 - for non-commercial use only - registered to <가림>
+Set parameter WLSAccessID
+Set parameter WLSSecret
+Set parameter LicenseID to value 926906
+Academic license 926906 - for non-commercial use only - registered to <가림>
+Set parameter WLSAccessID
+Set parameter WLSSecret
+Set parameter LicenseID to value 926906
+Academic license 926906 - for non-commercial use only - registered to <가림>
+Set parameter WLSAccessID
+Set parameter WLSSecret
+Set parameter LicenseID to value 926906
+Academic license 926906 - for non-commercial use only - registered to <가림>
+  [시작] t 하한 -3677.44 (가격 MILP 107.1s)
+  [ph1] 루트 RMP -1284.73, 마스터 UB -1284.73 (x={3:300;4:300}), 블록 1, LP 누적 48 (경과 121s)
+    [탐색] x={3:300;4:300}            t -2784.73 → -2418.55 (block), 블록 2
+  [ph1] 루트 RMP -1084.18, 마스터 UB -1084.18 (x={5:300;12:200}), 블록 2, LP 누적 486 (경과 129s)
+    [탐색] x={5:300;12:200}           t -2384.18 → -2346.49 (block), 블록 3
+  [ph1] 루트 RMP -1055.75, 마스터 UB -1033.75 (x={3:300;12:200}), 블록 3, LP 누적 1094 (경과 135s)
+    [탐색] x={3:300;7:200;12:200}     t -2574.09 → -2542.18 (block), 블록 4
+  [ph1] 루트 RMP -1055.75, 마스터 UB -1033.75 (x={3:300;12:200}), 블록 4, LP 누적 1195 (경과 143s)
+
+******************************************************************************
+This program contains Ipopt, a library for large-scale nonlinear optimization.
+ Ipopt is released as open source code under the Eclipse Public License (EPL).
+         For more information visit https://github.com/coin-or/Ipopt
+******************************************************************************
+
+  [orcl] x={3:300;12:200}           V in [-2332.91, -2324.29], t0 -2333.75, 목표 -2329.10 (905s, 상한 900s) safeguard, 블록 6, LB -Inf UB -1024.29 (경과 1061s)
+  [ph1] 루트 RMP -1055.75, 마스터 UB -1033.63 (x={5:300;12:200}), 블록 6, LP 누적 1519 (경과 1063s)
+  [orcl] x={5:300;12:200}           V in [-2333.64, -2329.11], t0 -2333.63, 목표 -2328.98 (174s, 상한 900s) none, 블록 6, LB -Inf UB -1029.11 (경과 1242s)
+  [1 단계 끝] 1242s, belief 5, UB -1029.11
+  [node   1] root                               깊이 0: RMP -1055.75, LB -Inf, 분수, 열린 0, LB* -Inf UB -1029.11, 마스터 inc -1033.63, 블록 6, MILP 1 (경과 1243s)
+      [sb] o1 (0.529): 열림 -1079.08, 닫힘 -1077.86, 점수 1e-12
+      [sb] o3 (0.471): 열림 -1063.31, 닫힘 -1079.08, 점수 1e-12
+      [sb] o10 (0.582): 열림 -1050.00, 닫힘 -1078.01, 점수 5.75e-06
+  [node   2] root o10=0                         깊이 1: RMP -1078.01, LB -Inf, 분수, 열린 1, LB* -Inf UB -1029.11, 마스터 inc -1075.56, 블록 6, MILP 1 (경과 1274s)
+  [orcl] x={3:200;7:200;15:200}     V in [-2694.95, -2600.00], t0 -2725.56, 목표 -2720.72 (116s, 상한 900s) block, 블록 7, LB -Inf UB -1029.11 (경과 1395s)
+    [탐색] x={3:200;6:300}            t -2348.25 → -2299.00 (block), 블록 8
+  [node   3] root o10=0                         깊이 1: RMP -1072.67, LB -Inf, 분수, 열린 1, LB* -Inf UB -1029.11, 마스터 inc -1029.25, 블록 8, MILP 1 (경과 1407s)
+      [sb] o7 (0.424): 열림 -1055.83, 닫힘 -1068.86, 점수 64.1
+      [sb] o1 (0.587): 열림 -1070.66, 닫힘 -1064.20, 점수 17
+      [sb] o5 (0.413): 열림 -1063.05, 닫힘 -1057.84, 점수 143
+    [탐색] x={3:200;7:300;15:200}     t -2888.70 → -2867.38 (block), 블록 9
+  [node   4] root o10=0 o5=1                    깊이 2: RMP -1063.05, LB -Inf, 분수, 열린 2, LB* -Inf UB -1029.11, 마스터 inc -1055.83, 블록 9, MILP 1 (경과 1440s)
+  [orcl] x={3:300;9:200;10:200}     V in [-2867.53, -2806.50], t0 -2905.83, 목표 -2901.08 (195s, 상한 900s) block, 블록 10, LB -Inf UB -1029.11 (경과 1641s)
+  [node   5] root o10=0 o5=1                    깊이 2: RMP -1060.46, LB -Inf, 분수, 열린 2, LB* -Inf UB -1029.11, 마스터 inc -1029.25, 블록 10, MILP 1 (경과 1645s)
+      [sb] o1 (0.675): 열림 -1058.94, 닫힘 -1048.48, 점수 18.2
+      [sb] o9 (0.325): 열림 -1047.74, 닫힘 -1058.94, 점수 19.3
+      [sb] o13 (0.675): 열림 -1052.80, 닫힘 -1035.63, 점수 190
+  [node   6] root o10=0 o5=0                    깊이 2: RMP -1054.19, LB -Inf, 분수, 열린 3, LB* -Inf UB -1029.11, 마스터 inc -1029.25, 블록 10, MILP 1 (경과 1674s)
+      [sb] o8 (0.556): 열림 -1034.84, 닫힘 -1048.34, 점수 113
+      [sb] o7 (0.651): 열림 -1032.66, 닫힘 -1036.71, 점수 376
+      [sb] o1 (0.778): 열림 -1049.48, 닫힘 -1044.96, 점수 43.5
+  [node   7] root o10=0 o5=1 o13=1              깊이 3: RMP -1052.80, LB -Inf, 분수, 열린 4, LB* -Inf UB -1029.11, 마스터 inc -1029.25, 블록 10, MILP 1 (경과 1690s)
+      [sb] o9 (0.688): 열림 -1047.74, 닫힘 -1048.69, 점수 20.7
+      [sb] o1 (0.312): 열림 -1048.69, 닫힘 -1047.74, 점수 20.7
+    [탐색] x={3:200;12:200;15:200}    t -2693.42 → -2687.29 (block), 블록 11
+  [node   8] root o10=1                         깊이 1: RMP -1049.07, LB -Inf, 분수, 열린 5, LB* -Inf UB -1029.11, 마스터 inc -1037.29, 블록 11, MILP 1 (경과 1720s)
+  [orcl] x={3:200;12:200;15:200}    V in [-2678.72, -2668.66], t0 -2687.29, 목표 -2682.62 (319s, 상한 900s) block, 블록 12, LB -Inf UB -1029.11 (경과 2045s)
+  [node   9] root o10=1                         깊이 1: RMP -1048.09, LB -Inf, 분수, 열린 5, LB* -Inf UB -1029.11, 마스터 inc -1036.07, 블록 12, MILP 1 (경과 2053s)
+  [orcl] x={11:200;12:200;15:200}   V in [-2677.45, -2580.50], t0 -2686.07, 목표 -2681.40 (200s, 상한 900s) block, 블록 13, LB -Inf UB -1029.11 (경과 2260s)
+  [node  10] root o10=0 o5=1 o13=1 o1=1         깊이 4: RMP -1048.69, LB -Inf, 분수, 열린 5, LB* -Inf UB -1029.11, 마스터 inc -1027.44, 블록 13, MILP 1 (경과 2261s)
+  [node  11] root o10=0 o5=1 o13=1 o1=1 x13=1   깊이 5: RMP -1010.30, LB -1010.30, 정수, 열린 6, LB* -Inf UB -1029.11, 마스터 inc -1027.44, 블록 13, MILP 2 (경과 2262s)
+  [node  12] root o10=0 o5=1 o13=1 o1=1 x13=0   깊이 5: RMP -1009.41, LB -1009.41, 정수, 열린 5, LB* -Inf UB -1029.11, 마스터 inc -1027.44, 블록 13, MILP 3 (경과 2263s)
+  [node  13] root o10=1                         깊이 1: RMP -1047.07, LB -Inf, 분수, 열린 4, LB* -Inf UB -1029.11, 마스터 inc -1033.63, 블록 13, MILP 3 (경과 2268s)
+      [sb] o1 (0.651): 열림 -1046.38, 닫힘 -1046.27, 점수 0.559
+      [sb] o13 (0.718): 열림 -1032.25, 닫힘 -1033.64, 점수 199
+      [sb] o9 (0.267): 열림 -1027.44, 닫힘 -1046.38, 점수 13.6
+  [node  14] root o10=0 o5=1 o13=1 o1=0         깊이 4: RMP -1047.74, LB -Inf, 분수, 열린 5, LB* -Inf UB -1029.11, 마스터 inc -1033.63, 블록 13, MILP 3 (경과 2284s)
+  [node  15] root o10=0 o5=1 o13=1 o1=0 x14=1   깊이 5: RMP -1012.24, LB -1020.91, 분수, 열린 6, LB* -Inf UB -1029.11, 마스터 inc -1033.63, 블록 13, MILP 6 (경과 2287s)
+  [node  16] root o10=0 o5=1 o13=1 o1=0 x14=0   깊이 5: RMP -1029.25, LB -1029.25, 정수, 열린 5, LB* -Inf UB -1029.11, 마스터 inc -1033.63, 블록 13, MILP 9 (경과 2291s)
+  [node  17] root o10=0 o5=0 o7=0               깊이 3: RMP -1023.72, LB -1023.81, 분수, 열린 4, LB* -Inf UB -1029.11, 마스터 inc -1033.63, 블록 13, MILP 29 (경과 2548s)
+  [node  18] root o10=0 o5=1 o13=0              깊이 3: RMP -1023.21, LB -1027.69, 분수, 열린 3, LB* -Inf UB -1029.11, 마스터 inc -1033.63, 블록 13, MILP 41 (경과 2588s)
+  [node  19] root o10=1 o13=0                   깊이 2: RMP -1033.64, LB -1033.73, 분수, 열린 2, LB* -Inf UB -1029.11, 마스터 inc -1033.63, 블록 13, MILP 55 (경과 2637s)
+  [node  20] root o10=0 o5=0 o7=1               깊이 3: RMP -1032.66, LB -1032.73, 분수, 열린 1, LB* -Inf UB -1029.11, 마스터 inc -1033.63, 블록 13, MILP 70 (경과 2696s)
+  [node  21] root o10=1 o13=1                   깊이 2: RMP -1032.25, LB -1032.25, 분수, 열린 0, LB* -Inf UB -1029.11, 마스터 inc -1033.63, 블록 13, MILP 76 (경과 2707s)
+RESULT ccgbp g=9 status=TimeLimit x={5:300;12:200} LB=-1034.2595 UB=-1029.1140 gap=0.500% beliefs=12 노드 21 (가지침 9, 정확 9, 정수 0, 남은 0, 닫힌 정수 0) 안전장치 1 (no-good 1, restricted 0, μ 올림 0) time=2707.5 (1 단계 1242s)
+  시간: oracle 6 번 1908s, 탐색 25 번 24s, 블록 LP 34670 번 133s, 가격 MILP 76 번 472s (노드 251097), RMP 1760 번 15s (crossover 재시도 21), 생성기 구성 66s; 서로 다른 점 5818 / 8464

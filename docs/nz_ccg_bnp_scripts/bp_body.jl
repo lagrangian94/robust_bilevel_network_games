@@ -152,6 +152,8 @@ function dwsolve!(N; exact=true, ubglob=Inf)
             end
         end
         nex += 1; lb = max(lb, lbit)
+        # 노드를 자를 수 있으면 더 조일 필요 없음 (가지치기 기준 = UB − tol)
+        (isfinite(ubglob) && lb >= ubglob - TOL * max(1.0, abs(ubglob))) && return lb, v, xv, ubm, cbest, topl, (it = it, nex = nex)
         tgt = min(ubm, ubglob)
         (added2 == 0 || tgt - lb <= CGTOL * max(1, abs(tgt))) && return lb, v, xv, ubm, cbest, topl, (it = it, nex = nex)
     end
