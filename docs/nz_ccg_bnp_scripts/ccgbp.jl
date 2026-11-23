@@ -2,7 +2,7 @@
 #  저장소 부품 (블록 생성기 _bccg_gen, belief 탐색 평가기, α-B&B oracle nz_alpha_bnb_dr, 확보 규칙) 을 그대로 부름. X 를 미리 나열하지 않음 (만난 점에만 번호).
 #  기본값 = 인증용 설정: η = 1/λᵁ, μ = μ 상한 = λᵁ = 1e4 (블록 = 원고 Prop certificate (ii) 의 벌점값을 belief 로 제한한 것, μ 올림 없음 → 모자라면 no-good).
 #  환경 변수 (기본값): GEO 1, R 0.2, NB 3 (거점 수 상한), TL 3600, TOL 5e-3, ETA 1e-4, MU 1e4, MU_MAX 1e4, LAMU 1e4 (oracle λᵁ),
-#    NS 10 (지지 열당 이웃 표본, 0 = 전부), SEED_ALL 0 (1 이면 새 블록에 평가한 점 전부를 LP 로), NTOP 5 (탐색할 상위 정수점), CGTOL 1e-3,
+#    S 10 (시나리오 수), NS 10 (지지 열당 이웃 표본, 0 = 전부), SEED_ALL 0 (1 이면 새 블록에 평가한 점 전부를 LP 로), NTOP 5 (탐색할 상위 정수점), CGTOL 1e-3,
 #    NRAND 40 (무작위 belief 후보), SB_K 3 (strong branching 후보), PH1 1 (1 단계), ORCL_TL 900 (oracle 호출당 상한), PSTOP 1 (가지치기 기준 가격 멈춤)
 #  실행: GRB_LICENSE_FILE=... julia -t 12,1 --project=. docs/nz_ccg_bnp_scripts/ccgbp.jl   (oracle 때문에 interactive 스레드 1 개 필요)
 root = "C:/Users/user/robust_bilevel_network_games"
@@ -19,7 +19,7 @@ const NS = parse(Int, envf("NS", "10")); const SEED_ALL = envf("SEED_ALL", "0") 
 const CGTOL = parse(Float64, envf("CGTOL", "1e-3")); const NRAND = parse(Int, envf("NRAND", "40"))
 const SB_K = parse(Int, envf("SB_K", "3")); const PH1 = envf("PH1", "1") == "1"; const ORCL_TL = parse(Float64, envf("ORCL_TL", "900")); const PSTOP = envf("PSTOP", "1") == "1"
 const LAMU = parse(Float64, envf("LAMU", "1e4"))   # oracle 의 λᵁ (loc_tkp 자체 기본은 100)
-nd = make_loc_tkp(; g=GEO, S=10, seed=1, eps_hat=RR, eps_tilde=RR, delta=RR / 3, beta=0.4, lambdaU=LAMU, NB=parse(Int, envf("NB", "3")))
+nd = make_loc_tkp(; g=GEO, S=parse(Int, envf("S", "10")), seed=1, eps_hat=RR, eps_tilde=RR, delta=RR / 3, beta=0.4, lambdaU=LAMU, NB=parse(Int, envf("NB", "3")))
 @printf("  [설정] η %.1e, μ %.1e (상한 %.1e), oracle λᵁ %.1e, μη = %.3g\n", ETA, MU, MU_MAX, LAMU, MU * ETA)
 K = nd.meta[:K]; nx = nd.nx; m, ny = nz_m(nd), nz_ny(nd); A = nd.A; XE = nz_xentries(nd); S = nd.S
 NT = Threads.nthreads()
@@ -369,6 +369,7 @@ function upd_inc!(cs)
 end
 "oracle (α-B&B) 을 c 에서. 목표는 지금 LB 기준 (끝에 UB − LB ≤ tol 이 되게)"
 orLB = Dict{Int,Float64}(); orcap = Dict{Int,Float64}()
+orcl_log = NamedTuple[]
 function oracle_at!(c; cap=ORCL_TL)
     evalall!([c]); t0v = mval(c) - qv[c]; xb = pts[c]
     tau = isfinite(LB) ? max(t0v + 1e-6 * max(1.0, abs(t0v)), LB + 0.95 * TOL * max(1.0, abs(LB)) - qv[c]) : t0v + 0.9 * TOL * max(1.0, abs(qv[c] + t0v))
@@ -387,7 +388,12 @@ function oracle_at!(c; cap=ORCL_TL)
     end
     if how == :none && res[:LB] > t0v + 1e-6 * max(1.0, abs(t0v)); nogood!(c, res[:LB]); how = :nogood_lb; end
     certified[c] = mval(c)
-    @printf("  [orcl] x=%-24s V in [%.2f, %.2f], t0 %.2f, 목표 %.2f (%.0fs, 상한 %.0fs) %s, 블록 %d, LB %.2f UB %.2f (경과 %.0fs)\n", loc_tkp_xstr(nd, xb), res[:LB], res[:UB], t0v, tau, to, lim, how, length(blks), LB, UB, time() - wall); flush(stdout)
+    @printf("  [orcl] x=%-24s V in [%.2f, %.2f], t0 %.2f, 목표 %.2f (%.0fs, 상한 %.0fs) %s, 블록 %d, LB %.2f UB %.2f (경과 %.0fs)\n", loc_tkp_xstr(nd, xb), res[:LB], res[:UB], t0v, tau, to, lim, how, length(blks), LB, UB, time() - wall)
+    @printf("         α-B&B: 노드 %d, 이완 %.0fs, 평가 %.0fs, 범위 %.0fs (MIP %d, 실패 %d), 재확인 %.0fs, ipopt %d, 고정 비율 %.2f, 수치 오류 %d\n",
+            res[:nodes], res[:t_relax], res[:t_eval], res[:t_range], res[:range_mips], res[:range_fail], res[:t_recheck], res[:ipopt_calls], res[:fixfrac], res[:numerr]); flush(stdout)
+    # 재현용 기록 (α-B&B 조정): 같은 인자로 nz_alpha_bnb_dr 를 따로 부를 수 있게
+    push!(orcl_log, (g=GEO, S=S, x=copy(xb), tau=tau, gap=gap_o, lim=lim, LB=res[:LB], UB=res[:UB], time=to, nodes=res[:nodes]))
+    serialize(@sprintf("orcl_calls_g%d_S%d.jls", GEO, S), orcl_log)
     return how
 end
 
@@ -436,7 +442,7 @@ function children(N, xv, vpar)
             Node(union(N.f0, [i]), copy(N.f1), copy(N.opn), N.lb, vpar, N.depth + 1, N.tag * @sprintf(" x%d=0", i)))
 end
 closedq = Tuple{Node,Int}[]       # 정수로 닫은 노드와 그 점 (하한 = max(마스터 값, q + oracle 하한))
-closed_lb(e) = max(e[1].lb, mval(e[2]), qv[e[2]] + get(orLB, e[2], -Inf))
+closed_lb(e) = (evalall!([e[2]]); max(e[1].lb, mval(e[2]), qv[e[2]] + get(orLB, e[2], -Inf)))   # 닫은 뒤 생긴 블록도 먼저 평가 (2026-11-24 지리 14 KeyError)
 global_lb(extra=Inf) = min(extra, minimum((o.lb for o in openq); init=Inf), minimum((closed_lb(e) for e in closedq); init=Inf))
 function finish_or_deepen!()
     while time() - wall < TL
