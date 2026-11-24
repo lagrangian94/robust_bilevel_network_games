@@ -1,0 +1,160 @@
+  [설정] η 1.0e-04, μ 1.0e+04 (상한 1.0e+04), oracle λᵁ 1.0e+04, μη = 1
+--- ccgbp v7 (oracle 이어 풀기) | SB_K 3 PH1 true ORCL_TL 900 PSTOP true
+ g=1 coupled r=0.20 S=20, 스레드 12, tol 5.0e-03, μ 1e+04, η 0.0001, NS 10, SEED_ALL false, NTOP 5, CGTOL 1.0e-03
+Set parameter WLSAccessID
+Set parameter WLSSecret
+Set parameter LicenseID to value 926906
+Academic license 926906 - for non-commercial use only - registered to <가림>
+Set parameter WLSAccessID
+Set parameter WLSSecret
+Set parameter LicenseID to value 926906
+Academic license 926906 - for non-commercial use only - registered to <가림>
+Set parameter WLSAccessID
+Set parameter WLSSecret
+Set parameter LicenseID to value 926906
+Academic license 926906 - for non-commercial use only - registered to <가림>
+Set parameter WLSAccessID
+Set parameter WLSSecret
+Set parameter LicenseID to value 926906
+Academic license 926906 - for non-commercial use only - registered to <가림>
+Set parameter WLSAccessID
+Set parameter WLSSecret
+Set parameter LicenseID to value 926906
+Academic license 926906 - for non-commercial use only - registered to <가림>
+Set parameter WLSAccessID
+Set parameter WLSSecret
+Set parameter LicenseID to value 926906
+Academic license 926906 - for non-commercial use only - registered to <가림>
+Set parameter WLSAccessID
+Set parameter WLSSecret
+Set parameter LicenseID to value 926906
+Academic license 926906 - for non-commercial use only - registered to <가림>
+Set parameter WLSAccessID
+Set parameter WLSSecret
+Set parameter LicenseID to value 926906
+Academic license 926906 - for non-commercial use only - registered to <가림>
+Set parameter WLSAccessID
+Set parameter WLSSecret
+Set parameter LicenseID to value 926906
+Academic license 926906 - for non-commercial use only - registered to <가림>
+Set parameter WLSAccessID
+Set parameter WLSSecret
+Set parameter LicenseID to value 926906
+Academic license 926906 - for non-commercial use only - registered to <가림>
+Set parameter WLSAccessID
+Set parameter WLSSecret
+Set parameter LicenseID to value 926906
+Academic license 926906 - for non-commercial use only - registered to <가림>
+Set parameter WLSAccessID
+Set parameter WLSSecret
+Set parameter LicenseID to value 926906
+Academic license 926906 - for non-commercial use only - registered to <가림>
+Set parameter WLSAccessID
+Set parameter WLSSecret
+Set parameter LicenseID to value 926906
+Academic license 926906 - for non-commercial use only - registered to <가림>
+Set parameter WLSAccessID
+Set parameter WLSSecret
+Set parameter LicenseID to value 926906
+Academic license 926906 - for non-commercial use only - registered to <가림>
+Set parameter WLSAccessID
+Set parameter WLSSecret
+Set parameter LicenseID to value 926906
+Academic license 926906 - for non-commercial use only - registered to <가림>
+  [시작] t 하한 -4410.24 (가격 MILP 351.0s)
+  [ph1] 루트 RMP -2017.77, 마스터 UB -2017.77 (x={10:400;15:400}), 블록 1, LP 누적 30 (경과 376s)
+    [탐색] x={10:400;15:400}          t -3917.77 → -3221.04 (safeguard), 블록 3
+  [ph1] 루트 RMP -1704.70, 마스터 UB -1704.70 (x={9:200;10:300;15:300}), 블록 3, LP 누적 1773 (경과 416s)
+    [탐색] x={9:200;10:300;15:300}    t -3754.70 → -3563.84 (block), 블록 4
+  [ph1] 루트 RMP -1603.67, 마스터 UB -1603.67 (x={8:200;10:300;15:200}), 블록 4, LP 누적 3006 (경과 445s)
+    [탐색] x={8:200;10:300;15:200}    t -3453.67 → -3448.29 (safeguard), 블록 6
+  [ph1] 루트 RMP -1603.67, 마스터 UB -1603.67 (x={6:300;10:200;15:200}), 블록 6, LP 누적 4417 (경과 476s)
+    [탐색] x={9:300;10:200;15:200}    t -3453.67 → -3403.40 (block), 블록 7
+  [ph1] 루트 RMP -1595.17, 마스터 UB -1595.17 (x={9:200;10:300;15:200}), 블록 7, LP 누적 5057 (경과 510s)
+
+******************************************************************************
+This program contains Ipopt, a library for large-scale nonlinear optimization.
+ Ipopt is released as open source code under the Eclipse Public License (EPL).
+         For more information visit https://github.com/coin-or/Ipopt
+******************************************************************************
+
+  [orcl] x={9:200;10:300;15:200}    V in [-3430.03, -3236.51], t0 -3445.17, 목표 -3437.99 (747s, 상한 900s) safeguard, 블록 9, LB -Inf UB -1386.51 (경과 1281s)
+         α-B&B: 노드 1337, 이완 5962s, 평가 496s, 범위 634s (MIP 0, 실패 0), 재확인 0s, ipopt 12, 고정 비율 0.15, 수치 오류 1
+  [ph1] 루트 RMP -1578.15, 마스터 UB -1578.15 (x={10:200;11:300;15:200}), 블록 9, LP 누적 7645 (경과 1308s)
+    [탐색] x={10:300;11:300;15:200}   t -3548.76 → -3526.69 (block), 블록 10
+  [ph1] 루트 RMP -1578.15, 마스터 UB -1578.15 (x={10:200;11:300;15:200}), 블록 10, LP 누적 8579 (경과 1364s)
+    [LP] 비유계 보고 → 재시도 결과 OPTIMAL
+    [LP] 비유계 보고 → 재시도 결과 OPTIMAL
+    [LP] 비유계 보고 → 재시도 결과 OPTIMAL
+    [LP] 비유계 보고 → 재시도 결과 OPTIMAL
+    [LP] 비유계 보고 → 재시도 결과 OPTIMAL
+  [orcl] x={10:200;11:300;15:200}   V in [-3480.78, -3310.63], t0 -3428.15, 목표 -3421.05 (900s, 상한 900s) none, 블록 10, LB -Inf UB -1460.63 (경과 2287s)
+         α-B&B: 노드 2142, 이완 7642s, 평가 781s, 범위 1035s (MIP 0, 실패 0), 재확인 14s, ipopt 16, 고정 비율 0.15, 수치 오류 6
+  [1 단계 끝] 2287s, belief 7, UB -1460.63
+  [node   1] root                               깊이 0: RMP -1578.15, LB -1578.74, 정수, 열린 0, LB* -Inf UB -1460.63, 마스터 inc -1578.15, 블록 10, MILP 18 (경과 3550s)
+  [deepen] 닫힌 노드 root (점 {10:200;11:300;15:200}, 하한 -1578.15) 이 막음 → oracle 상한 1800s 로 다시
+    [LP] 비유계 보고 → 재시도 결과 OPTIMAL
+    [LP] 비유계 보고 → 재시도 결과 OPTIMAL
+    [LP] 비유계 보고 → 재시도 결과 OPTIMAL
+    [LP] 비유계 보고 → 재시도 결과 OPTIMAL
+    [LP] 비유계 보고 → 재시도 결과 OPTIMAL
+    [LP] 비유계 보고 → 재시도 결과 OPTIMAL
+    [LP] 비유계 보고 → 재시도 결과 OPTIMAL
+    [LP] 비유계 보고 → 재시도 결과 OPTIMAL
+    [LP] 비유계 보고 → 재시도 결과 OPTIMAL
+    [LP] 비유계 보고 → 재시도 결과 OPTIMAL
+    [LP] 비유계 보고 → 재시도 결과 OPTIMAL
+    [LP] 비유계 보고 → 재시도 결과 OPTIMAL
+    [LP] 비유계 보고 → 재시도 결과 OPTIMAL
+    [LP] 비유계 보고 → 재시도 결과 OPTIMAL
+    [LP] 비유계 보고 → 재시도 결과 OPTIMAL
+    [LP] 비유계 보고 → 재시도 결과 OPTIMAL
+    [LP] 비유계 보고 → 재시도 결과 OPTIMAL
+    [LP] 비유계 보고 → 재시도 결과 OPTIMAL
+    [LP] 비유계 보고 → 재시도 결과 OPTIMAL
+    [LP] 비유계 보고 → 재시도 결과 OPTIMAL
+    [LP] 비유계 보고 → 재시도 결과 OPTIMAL
+    [LP] 비유계 보고 → 재시도 결과 OPTIMAL
+    [LP] 비유계 보고 → 재시도 결과 OPTIMAL
+    [LP] 비유계 보고 → 재시도 결과 OPTIMAL
+  [orcl] x={10:200;11:300;15:200}   V in [-3418.73, -3387.00], t0 -3428.15, 목표 -3420.65 (1801s, 상한 1800s, 이어 풂) block, 블록 11, LB -1578.15 UB -1537.00 (경과 5378s)
+         α-B&B: 노드 4485, 이완 14737s, 평가 2057s, 범위 2220s (MIP 0, 실패 0), 재확인 27s, ipopt 30, 고정 비율 0.15, 수치 오류 48
+    [탐색] x={10:300;11:200;15:200}   t -3418.92 → -3403.40 (safeguard), 블록 13
+  [node   2] root                               깊이 0: RMP -1572.40, LB -1578.74, 분수, 열린 0, LB* -1578.15 UB -1537.00, 마스터 inc -1557.28, 블록 13, MILP 18 (경과 5479s)
+      [sb] o9 (0.908): 열림 -1571.86, 닫힘 -1563.88, 점수 4.63
+      [sb] o7 (0.092): 열림 -1563.87, 닫힘 -1571.89, 점수 4.36
+  [node   3] root o9=1                          깊이 1: RMP -1571.86, LB -1578.74, 분수, 열린 1, LB* -1578.15 UB -1537.00, 마스터 inc -1560.26, 블록 13, MILP 18 (경과 5531s)
+    [LP] 비유계 보고 → 재시도 결과 OPTIMAL
+    [LP] 비유계 보고 → 재시도 결과 OPTIMAL
+    [LP] 비유계 보고 → 재시도 결과 OPTIMAL
+    [LP] 비유계 보고 → 재시도 결과 OPTIMAL
+    [LP] 비유계 보고 → 재시도 결과 OPTIMAL
+    [LP] 비유계 보고 → 재시도 결과 OPTIMAL
+    [LP] 비유계 보고 → 재시도 결과 OPTIMAL
+  [orcl] x={10:200;12:200;15:300}   V in [-3497.69, -3256.02], t0 -3410.26, 목표 -3410.26 (900s, 상한 900s) none, 블록 13, LB -1578.15 UB -1537.00 (경과 6431s)
+         α-B&B: 노드 1756, 이완 7877s, 평가 716s, 범위 901s (MIP 0, 실패 0), 재확인 0s, ipopt 16, 고정 비율 0.13, 수치 오류 18
+  [node   4] root o9=1 x23=1                    깊이 2: RMP -1571.50, LB -1578.74, 분수, 열린 2, LB* -1578.15 UB -1537.00, 마스터 inc -1560.26, 블록 13, MILP 18 (경과 6440s)
+  [node   5] root o9=1 x23=0                    깊이 2: RMP -1554.89, LB -1578.74, 분수, 열린 3, LB* -1578.15 UB -1537.00, 마스터 inc -1560.26, 블록 13, MILP 18 (경과 6462s)
+  [node   6] root o9=1 x23=1 x27=1              깊이 3: RMP -1292.25, LB -1292.25, 정수, 열린 4, LB* -1578.15 UB -1537.00, 마스터 inc -1560.26, 블록 13, MILP 19 (경과 6466s)
+  [node   7] root o9=1 x23=1 x27=0              깊이 3: RMP -1571.38, LB -1578.74, 분수, 열린 3, LB* -1578.15 UB -1537.00, 마스터 inc -1560.26, 블록 13, MILP 19 (경과 6473s)
+  [node   8] root o9=1 x23=1 x27=0 x37=1        깊이 4: RMP -1571.37, LB -1578.74, 분수, 열린 4, LB* -1578.15 UB -1537.00, 마스터 inc -1560.26, 블록 13, MILP 19 (경과 6479s)
+  [node   9] root o9=1 x23=1 x27=0 x37=0        깊이 4: RMP -1480.27, LB -1480.27, 정수, 열린 5, LB* -1578.15 UB -1537.00, 마스터 inc -1560.26, 블록 13, MILP 20 (경과 6484s)
+  [node  10] root o9=1 x23=1 x27=0 x37=1 x26=1  깊이 5: RMP -1476.69, LB -1476.69, 정수, 열린 4, LB* -1578.15 UB -1537.00, 마스터 inc -1560.26, 블록 13, MILP 21 (경과 6484s)
+  [node  11] root o9=1 x23=1 x27=0 x37=1 x26=0  깊이 5: RMP -1553.40, LB -1553.40, 정수, 열린 3, LB* -1578.15 UB -1537.00, 마스터 inc -1560.26, 블록 13, MILP 21 (경과 6490s)
+  [orcl] x={10:300;11:200;15:200}   V in [-3471.09, -3220.76], t0 -3403.40, 목표 -3403.40 (710s, 상한 710s) none, 블록 13, LB -1578.15 UB -1537.00 (경과 7200s)
+         α-B&B: 노드 1384, 이완 6151s, 평가 510s, 범위 756s (MIP 0, 실패 0), 재확인 17s, ipopt 12, 고정 비율 0.14, 수치 오류 8
+┌ Warning: The addition operator has been used on JuMP expressions a large number of times. This warning is safe to ignore but may indicate that model generation is slower than necessary. For performance reasons, you should not add expressions in a loop. Instead of x += y, use add_to_expression!(x,y) to modify x in place. If y is a single variable, you may also use add_to_expression!(x, coef, y) for x += coef*y.
+└ @ JuMP C:\Users\user\.julia\packages\JuMP\i68GU\src\operators.jl:282
+┌ Warning: The addition operator has been used on JuMP expressions a large number of times. This warning is safe to ignore but may indicate that model generation is slower than necessary. For performance reasons, you should not add expressions in a loop. Instead of x += y, use add_to_expression!(x,y) to modify x in place. If y is a single variable, you may also use add_to_expression!(x, coef, y) for x += coef*y.
+└ @ JuMP C:\Users\user\.julia\packages\JuMP\i68GU\src\operators.jl:282
+┌ Warning: The addition operator has been used on JuMP expressions a large number of times. This warning is safe to ignore but may indicate that model generation is slower than necessary. For performance reasons, you should not add expressions in a loop. Instead of x += y, use add_to_expression!(x,y) to modify x in place. If y is a single variable, you may also use add_to_expression!(x, coef, y) for x += coef*y.
+└ @ JuMP C:\Users\user\.julia\packages\JuMP\i68GU\src\operators.jl:282
+┌ Warning: The addition operator has been used on JuMP expressions a large number of times. This warning is safe to ignore but may indicate that model generation is slower than necessary. For performance reasons, you should not add expressions in a loop. Instead of x += y, use add_to_expression!(x,y) to modify x in place. If y is a single variable, you may also use add_to_expression!(x, coef, y) for x += coef*y.
+└ @ JuMP C:\Users\user\.julia\packages\JuMP\i68GU\src\operators.jl:282
+┌ Warning: The addition operator has been used on JuMP expressions a large number of times. This warning is safe to ignore but may indicate that model generation is slower than necessary. For performance reasons, you should not add expressions in a loop. Instead of x += y, use add_to_expression!(x,y) to modify x in place. If y is a single variable, you may also use add_to_expression!(x, coef, y) for x += coef*y.
+└ @ JuMP C:\Users\user\.julia\packages\JuMP\i68GU\src\operators.jl:282
+┌ Warning: The addition operator has been used on JuMP expressions a large number of times. This warning is safe to ignore but may indicate that model generation is slower than necessary. For performance reasons, you should not add expressions in a loop. Instead of x += y, use add_to_expression!(x,y) to modify x in place. If y is a single variable, you may also use add_to_expression!(x, coef, y) for x += coef*y.
+└ @ JuMP C:\Users\user\.julia\packages\JuMP\i68GU\src\operators.jl:282
+RESULT ccgbp g=1 status=TimeLimit x={10:200;11:300;15:200} LB=-1578.1473 UB=-1536.9955 gap=2.677% beliefs=9 노드 11 (가지침 3, 정확 5, 정수 2, 남은 3, 닫힌 정수 1) 안전장치 4 (no-good 4, restricted 0, μ 올림 0) time=7200.1 (1 단계 2287s)
+  시간: oracle 5 번 5058s, 탐색 32 번 197s, 블록 LP 16364 번 162s, 가격 MILP 21 번 1591s (노드 268487), RMP 733 번 6s (crossover 재시도 0), 생성기 구성 149s; 서로 다른 점 3914 / 8464
+  열: RMP 에 들어간 열 (블록 합) 2620, 서로 다른 열 1007, 번호를 붙인 점 5060 / |X| 8464

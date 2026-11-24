@@ -1,0 +1,63 @@
+--- oracle 재현 g=1 S=20 x={9:200;10:300;15:200} λᵁ=10000 목표 -3437.59 gap 1.0e-03 상한 1800s, 스레드 12, 추가 인자 (resp = true,)
+Set parameter WLSAccessID
+Set parameter WLSSecret
+Set parameter LicenseID to value 926906
+Academic license 926906 - for non-commercial use only - registered to <가림>
+Set parameter WLSAccessID
+Set parameter WLSSecret
+Set parameter LicenseID to value 926906
+Academic license 926906 - for non-commercial use only - registered to <가림>
+Set parameter WLSAccessID
+Set parameter WLSSecret
+Set parameter LicenseID to value 926906
+Academic license 926906 - for non-commercial use only - registered to <가림>
+Set parameter WLSAccessID
+Set parameter WLSSecret
+Set parameter LicenseID to value 926906
+Academic license 926906 - for non-commercial use only - registered to <가림>
+Set parameter WLSAccessID
+Set parameter WLSSecret
+Set parameter LicenseID to value 926906
+Academic license 926906 - for non-commercial use only - registered to <가림>
+Set parameter WLSAccessID
+Set parameter WLSSecret
+Set parameter LicenseID to value 926906
+Academic license 926906 - for non-commercial use only - registered to <가림>
+Set parameter WLSAccessID
+Set parameter WLSSecret
+Set parameter LicenseID to value 926906
+Academic license 926906 - for non-commercial use only - registered to <가림>
+Set parameter WLSAccessID
+Set parameter WLSSecret
+Set parameter LicenseID to value 926906
+Academic license 926906 - for non-commercial use only - registered to <가림>
+Set parameter WLSAccessID
+Set parameter WLSSecret
+Set parameter LicenseID to value 926906
+Academic license 926906 - for non-commercial use only - registered to <가림>
+Set parameter WLSAccessID
+Set parameter WLSSecret
+Set parameter LicenseID to value 926906
+Academic license 926906 - for non-commercial use only - registered to <가림>
+Set parameter WLSAccessID
+Set parameter WLSSecret
+Set parameter LicenseID to value 926906
+Academic license 926906 - for non-commercial use only - registered to <가림>
+Set parameter WLSAccessID
+Set parameter WLSSecret
+Set parameter LicenseID to value 926906
+Academic license 926906 - for non-commercial use only - registered to <가림>
+
+******************************************************************************
+This program contains Ipopt, a library for large-scale nonlinear optimization.
+ Ipopt is released as open source code under the Eclipse Public License (EPL).
+         For more information visit https://github.com/coin-or/Ipopt
+******************************************************************************
+
+    [nz-α-B&B-dr] t=  70.0s nodes=   68 open=   12 LB=-3457.136287 UB=-2322.518007 gap=3.282e-01
+    [nz-α-B&B-dr] t= 130.3s nodes=  145 open=   35 LB=-3437.686290 UB=-2649.638391 gap=2.292e-01
+nz_alpha_bnb_dr: 기본이 아닌 구성으로 실행 — resp = true
+RESULT g=1 S=20 x={9:200;10:300;15:200} V in [-3411.2923, -2881.1382] (206s) 노드 219, 이완 1264s, 평가 225s, 범위 104s (MIP 0, 실패 0), 재확인 0s, ipopt 3, 고정 비율 0.15, 수치 오류 1, 루트 UB -2141.1778
+느린 노드 (상위 10): [(72.875, 0.4618506, 70.5560086, 0.0), (49.282999992370605, 0.5006441, 48.6605718, 0.0), (42.3529999256134, 0.5015753, 41.7869022, 0.0), (38.76300001144409, 0.4515246, 38.1404215, 0.0), (34.24600005149841, 0.4466807, 33.5303146, 0.0), (31.367000102996826, 0.4671233, 29.5877043, 0.0), (29.01900005340576, 0.4357096, 28.4643609, 0.0), (20.27300000190735, 0.5597076, 19.5759386, 0.0)]
+전선 저장: orep_front_g1_S20_resp.jls (열린 노드 64)
+전선: 열린 노드 64, 상한 ≤ 목표 0 (0%), 상한 범위 [-3167.16, -2881.14], 목표 -3437.59, incumbent -3411.29
