@@ -1,0 +1,26 @@
+--- oracle 재현 g=1 S=20 x={9:200;10:300;15:200} λᵁ=1000 목표 -3437.59 gap 1.0e-03 상한 1800s, 스레드 12, 추가 인자 (resp = true,)
+Academic license 926906 - for non-commercial use only - registered to [가림]
+Academic license 926906 - for non-commercial use only - registered to [가림]
+Academic license 926906 - for non-commercial use only - registered to [가림]
+Academic license 926906 - for non-commercial use only - registered to [가림]
+Academic license 926906 - for non-commercial use only - registered to [가림]
+Academic license 926906 - for non-commercial use only - registered to [가림]
+Academic license 926906 - for non-commercial use only - registered to [가림]
+Academic license 926906 - for non-commercial use only - registered to [가림]
+Academic license 926906 - for non-commercial use only - registered to [가림]
+Academic license 926906 - for non-commercial use only - registered to [가림]
+Academic license 926906 - for non-commercial use only - registered to [가림]
+Academic license 926906 - for non-commercial use only - registered to [가림]
+
+******************************************************************************
+This program contains Ipopt, a library for large-scale nonlinear optimization.
+ Ipopt is released as open source code under the Eclipse Public License (EPL).
+         For more information visit https://github.com/coin-or/Ipopt
+******************************************************************************
+
+    [nz-α-B&B-dr] t=  70.0s nodes=   57 open=   11 LB=-3470.856356 UB=-2387.652724 gap=3.121e-01
+nz_alpha_bnb_dr: 기본이 아닌 구성으로 실행 — resp = true
+RESULT g=1 S=20 x={9:200;10:300;15:200} V in [-3437.1617, -2446.7688] (146s) 노드 78, 이완 421s, 평가 87s, 범위 38s (MIP 0, 실패 0), 재확인 0s, ipopt 2, 고정 비율 0.13, 수치 오류 0, 루트 UB -2141.1778
+느린 노드 (상위 10): [(38.759000062942505, 0.4605872, 38.1959452, 0.0), (27.164999961853027, 0.4834273, 25.6943676, 0.0), (24.82699990272522, 0.447327, 23.3387254, 0.0), (22.78500008583069, 0.4789911, 22.1792841, 0.0)]
+전선 저장: orep_front_g1_S20_s20_g1_lam1e3.jls (열린 노드 33)
+전선: 열린 노드 33, 상한 ≤ 목표 0 (0%), 상한 범위 [-3160.48, -2446.77], 목표 -3437.59, incumbent -3437.16
