@@ -1,0 +1,29 @@
+  [HUCAP] 거점 9: hᵁ 300 → 200
+--- oracle 재현 g=1 S=10 x={9:200;10:300;15:300} λᵁ=10000 목표 -3673.58 gap 1.0e-03 상한 900s, 스레드 12, 추가 인자 NamedTuple()
+Academic license 926906 - for non-commercial use only - registered to [가림]
+Academic license 926906 - for non-commercial use only - registered to [가림]
+Academic license 926906 - for non-commercial use only - registered to [가림]
+Academic license 926906 - for non-commercial use only - registered to [가림]
+Academic license 926906 - for non-commercial use only - registered to [가림]
+Academic license 926906 - for non-commercial use only - registered to [가림]
+Academic license 926906 - for non-commercial use only - registered to [가림]
+Academic license 926906 - for non-commercial use only - registered to [가림]
+Academic license 926906 - for non-commercial use only - registered to [가림]
+Academic license 926906 - for non-commercial use only - registered to [가림]
+Academic license 926906 - for non-commercial use only - registered to [가림]
+Academic license 926906 - for non-commercial use only - registered to [가림]
+
+******************************************************************************
+This program contains Ipopt, a library for large-scale nonlinear optimization.
+ Ipopt is released as open source code under the Eclipse Public License (EPL).
+         For more information visit https://github.com/coin-or/Ipopt
+******************************************************************************
+
+    [nz-α-B&B-dr] t=  67.7s nodes=  651 open=  235 LB=-3816.861009 UB=-3518.294486 gap=7.822e-02
+    [nz-α-B&B-dr] t= 128.2s nodes= 1624 open=  370 LB=-3689.267758 UB=-3644.548719 gap=1.212e-02
+    [LP] 비유계 보고 → 재시도 결과 OPTIMAL
+    [nz-α-B&B-dr] t= 188.3s nodes= 2507 open=  389 LB=-3689.267758 UB=-3673.292714 gap=4.330e-03
+RESULT g=1 S=10 x={9:200;10:300;15:300} V in [-3689.2678, -3676.0318] (211s) 노드 2563, 이완 1099s, 평가 128s, 범위 605s (MIP 0, 실패 0), 재확인 4s, ipopt 7, 고정 비율 0.17, 수치 오류 10, 루트 UB -2724.0685
+느린 노드 (상위 10): [(39.199000120162964, 0.2514354, 38.9206906, 0.0), (29.66599988937378, 0.2283662, 29.3999897, 0.0), (26.465999841690063, 0.2157897, 26.2216605, 0.0), (21.62399983406067, 0.2970471, 21.3028705, 0.0)]
+전선 저장: orep_front_g1_S10_s10_g1_hucap.jls (열린 노드 418)
+전선: 열린 노드 418, 상한 ≤ 목표 418 (100%), 상한 범위 [-5116667.25, -3676.03], 목표 -3673.58, incumbent -3689.27

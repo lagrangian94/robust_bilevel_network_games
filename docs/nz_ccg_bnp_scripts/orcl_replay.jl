@@ -1,5 +1,5 @@
 # oracle (α-B&B) 한 번을 B&P 와 같은 인자로 따로 다시 부름 (2026-11-24, S=20 병목 분석)
-#  환경 변수: GEO 1, S 10, XSTR (예 "{9:200;10:300;15:200}"), TAU (목표, 없으면 끔), GAP 1e-3, TLIM 3600, LAMU 1e4, LOG 60, KW (α-B&B 추가 인자), TAG (전선 파일 꼬리표)
+#  환경 변수: HUCAP 0 (1 이면 연 B 거점 약정 상한 = 용량), GEO 1, S 10, XSTR (예 "{9:200;10:300;15:200}"), TAU (목표, 없으면 끔), GAP 1e-3, TLIM 3600, LAMU 1e4, LOG 60, KW (α-B&B 추가 인자), TAG (전선 파일 꼬리표)
 #  ccgbp.jl 의 oracle_at! 과 같은 호출: nworkers = 스레드 − 1, rel_gap = GAP, target = TAU. verbose 로 하한·상한 경과를 찍음
 root = "C:/Users/user/robust_bilevel_network_games"
 using JuMP, Gurobi, Printf, LinearAlgebra, Random, Serialization
@@ -22,6 +22,16 @@ for p in split(strip(xs, ['{', '}']), ";"; keepempty=false)
     k === nothing && error("등급 $t 없음"); x̄[(i - nA - 1) * K + k] = 1.0
 end
 loc_tkp_xstr(nd, x̄) == xs || error("x 복원 실패: $(loc_tkp_xstr(nd, x̄)) ≠ $xs")
+# HUCAP=1: 연 B 거점의 약정 상한을 그 거점 용량으로 (h_i ≤ b_i(x̄)). 약정 등식 Σ_j yR_ij + s_i = h_i 와 용량 행 Σ_j (yR_ij + yS_ij) + s_i ≤ b_i 에서
+#   h_i > b_i 면 recourse 가 실행 불가능이라 그런 α 는 어떤 belief 의 최적 반응도 아님 → 정의역을 줄여도 V*(x̄) 그대로 (nz_presolve_hU 의 0 고정과 같은 논증)
+if get(ENV, "HUCAP", "0") == "1"
+    hU = copy(nd.hU); hidx = nd.meta[:hidx]; sx = nd.meta[:site_x]
+    for i in nA+1:nd.meta[:nst]
+        b = sum(tiers[(t - 1) % K + 1] * x̄[t] for t in sx[i]; init=0.0)
+        k = hidx(i, 1); b > 0.5 && b < hU[k] && (@printf("  [HUCAP] 거점 %d: hᵁ %.0f → %.0f\n", i, hU[k], b); hU[k] = b)
+    end
+    global nd = nz_with_hU(nd, hU)
+end
 @printf("--- oracle 재현 g=%d S=%d x=%s λᵁ=%.0f 목표 %s gap %.1e 상한 %.0fs, 스레드 %d, 추가 인자 %s\n", g, S, xs, lam, string(tau), gap, tl, Threads.nthreads(), string(kw)); flush(stdout)
 t = @elapsed res = nz_alpha_bnb_dr(nd, x̄; nworkers=max(1, Threads.nthreads() - 1), time_limit=tl, rel_gap=gap, target=tau, verbose=true, log_every=le, kw...)
 @printf("RESULT g=%d S=%d x=%s V in [%.4f, %.4f] (%.0fs) 노드 %d, 이완 %.0fs, 평가 %.0fs, 범위 %.0fs (MIP %d, 실패 %d), 재확인 %.0fs, ipopt %d, 고정 비율 %.2f, 수치 오류 %d, 루트 UB %.4f\n",

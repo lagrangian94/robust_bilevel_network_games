@@ -1,0 +1,26 @@
+--- oracle 재현 g=1 S=20 x={9:200;10:300;15:200} λᵁ=10000 목표 -3437.59 gap 1.0e-03 상한 1800s, 스레드 12, 추가 인자 (resp = true, branch_point = :alphahat)
+Academic license 926906 - for non-commercial use only - registered to [가림]
+Academic license 926906 - for non-commercial use only - registered to [가림]
+Academic license 926906 - for non-commercial use only - registered to [가림]
+Academic license 926906 - for non-commercial use only - registered to [가림]
+Academic license 926906 - for non-commercial use only - registered to [가림]
+Academic license 926906 - for non-commercial use only - registered to [가림]
+Academic license 926906 - for non-commercial use only - registered to [가림]
+Academic license 926906 - for non-commercial use only - registered to [가림]
+Academic license 926906 - for non-commercial use only - registered to [가림]
+Academic license 926906 - for non-commercial use only - registered to [가림]
+Academic license 926906 - for non-commercial use only - registered to [가림]
+Academic license 926906 - for non-commercial use only - registered to [가림]
+
+******************************************************************************
+This program contains Ipopt, a library for large-scale nonlinear optimization.
+ Ipopt is released as open source code under the Eclipse Public License (EPL).
+         For more information visit https://github.com/coin-or/Ipopt
+******************************************************************************
+
+    [nz-α-B&B-dr] t=  70.0s nodes=   43 open=    9 LB=-3469.812260 UB=-2332.504054 gap=3.278e-01
+nz_alpha_bnb_dr: 기본이 아닌 구성으로 실행 — branch_point = alphahat, resp = true
+RESULT g=1 S=20 x={9:200;10:300;15:200} V in [-3428.7436, -2618.3313] (191s) 노드 124, 이완 824s, 평가 168s, 범위 59s (MIP 0, 실패 0), 재확인 0s, ipopt 2, 고정 비율 0.14, 수치 오류 0, 루트 UB -2141.1778
+느린 노드 (상위 10): [(85.99599981307983, 0.6709201, 85.2246595, 0.0), (58.170000076293945, 0.5586276, 57.5393971, 0.0), (28.45300006866455, 0.4491578, 25.7341669, 0.0), (28.180000066757202, 0.4740079, 26.4409752, 0.0), (21.69599986076355, 0.4045737, 19.4505762, 0.0)]
+전선 저장: orep_front_g1_S20_s20_g1_ahat.jls (열린 노드 51)
+전선: 열린 노드 51, 상한 ≤ 목표 0 (0%), 상한 범위 [-3121.39, -2618.33], 목표 -3437.59, incumbent -3428.74

@@ -1,9 +1,10 @@
-# ccgbp.jl — belief 블록 CCG 를 Dantzig–Wolfe branch-and-price 한 나무로. **기본 판 (v6, 2026-11-23 확정)**. 절차는 docs/nz_ccg_bnp_2026-11-23.md 10 절.
+# ccgbp.jl — belief 블록 CCG 를 Dantzig–Wolfe branch-and-price 한 나무로. **기본 판 (v8, 2026-11-24 확정)**. 절차는 docs/nz_ccg_bnp_2026-11-23.md 10·11 절.
+#  v8 = v6 (ccgbp_v6.jl) + 같은 점의 oracle 재호출은 이전 α-B&B 상태에서 이어 풂 (resume, v7) + oracle 의 follower 반응 휴리스틱 resp (ORCL_RESP, 기본 1).
 #  저장소 부품 (블록 생성기 _bccg_gen, belief 탐색 평가기, α-B&B oracle nz_alpha_bnb_dr, 확보 규칙) 을 그대로 부름. X 를 미리 나열하지 않음 (만난 점에만 번호).
 #  기본값 = 인증용 설정: η = 1/λᵁ, μ = μ 상한 = λᵁ = 1e4 (블록 = 원고 Prop certificate (ii) 의 벌점값을 belief 로 제한한 것, μ 올림 없음 → 모자라면 no-good).
 #  환경 변수 (기본값): GEO 1, R 0.2, NB 3 (거점 수 상한), TL 3600, TOL 5e-3, ETA 1e-4, MU 1e4, MU_MAX 1e4, LAMU 1e4 (oracle λᵁ),
 #    S 10 (시나리오 수), NS 10 (지지 열당 이웃 표본, 0 = 전부), SEED_ALL 0 (1 이면 새 블록에 평가한 점 전부를 LP 로), NTOP 5 (탐색할 상위 정수점), CGTOL 1e-3,
-#    NRAND 40 (무작위 belief 후보), SB_K 3 (strong branching 후보), PH1 1 (1 단계), ORCL_TL 900 (oracle 호출당 상한), PSTOP 1 (가지치기 기준 가격 멈춤)
+#    NRAND 40 (무작위 belief 후보), SB_K 3 (strong branching 후보), PH1 1 (1 단계), ORCL_TL 900 (oracle 호출당 상한), PSTOP 1 (가지치기 기준 가격 멈춤), ORCL_RESP 1 (oracle resp)
 #  실행: GRB_LICENSE_FILE=... julia -t 12,1 --project=. docs/nz_ccg_bnp_scripts/ccgbp.jl   (oracle 때문에 interactive 스레드 1 개 필요)
 root = "C:/Users/user/robust_bilevel_network_games"
 using JuMP, Gurobi, Printf, LinearAlgebra, Random, Serialization
@@ -18,12 +19,12 @@ const MU = parse(Float64, envf("MU", "1e4")); const ETA = parse(Float64, envf("E
 const NS = parse(Int, envf("NS", "10")); const SEED_ALL = envf("SEED_ALL", "0") == "1"; const NTOP = parse(Int, envf("NTOP", "5"))
 const CGTOL = parse(Float64, envf("CGTOL", "1e-3")); const NRAND = parse(Int, envf("NRAND", "40"))
 const SB_K = parse(Int, envf("SB_K", "3")); const PH1 = envf("PH1", "1") == "1"; const ORCL_TL = parse(Float64, envf("ORCL_TL", "900")); const PSTOP = envf("PSTOP", "1") == "1"
-const LAMU = parse(Float64, envf("LAMU", "1e4"))   # oracle 의 λᵁ (loc_tkp 자체 기본은 100)
+const LAMU = parse(Float64, envf("LAMU", "1e4")); const ORCL_RESP = envf("ORCL_RESP", "1") == "1"   # oracle 의 λᵁ (loc_tkp 자체 기본은 100), resp 켬/끔
 nd = make_loc_tkp(; g=GEO, S=parse(Int, envf("S", "10")), seed=1, eps_hat=RR, eps_tilde=RR, delta=RR / 3, beta=0.4, lambdaU=LAMU, NB=parse(Int, envf("NB", "3")))
 @printf("  [설정] η %.1e, μ %.1e (상한 %.1e), oracle λᵁ %.1e, μη = %.3g\n", ETA, MU, MU_MAX, LAMU, MU * ETA)
 K = nd.meta[:K]; nx = nd.nx; m, ny = nz_m(nd), nz_ny(nd); A = nd.A; XE = nz_xentries(nd); S = nd.S
 NT = Threads.nthreads()
-@printf("--- ccgbp (기본 판 v6) | SB_K %d PH1 %s ORCL_TL %.0f PSTOP %s\n", SB_K, PH1, ORCL_TL, PSTOP); @printf(" g=%d coupled r=%.2f S=%d, 스레드 %d, tol %.1e, μ %.3g, η %.3g, NS %d, SEED_ALL %s, NTOP %d, CGTOL %.1e\n", GEO, RR, S, NT, TOL, MU, ETA, NS, SEED_ALL, NTOP, CGTOL); flush(stdout)
+@printf("--- ccgbp (기본 판 v8: oracle 이어 풀기 + resp=%s) | SB_K %d PH1 %s ORCL_TL %.0f PSTOP %s\n", ORCL_RESP, SB_K, PH1, ORCL_TL, PSTOP); @printf(" g=%d coupled r=%.2f S=%d, 스레드 %d, tol %.1e, μ %.3g, η %.3g, NS %d, SEED_ALL %s, NTOP %d, CGTOL %.1e\n", GEO, RR, S, NT, TOL, MU, ETA, NS, SEED_ALL, NTOP, CGTOL); flush(stdout)
 wall = time()
 site(i) = (i - 1) ÷ K + 1
 al = findall(nd.x_allowed); sites = unique(site.(al))
@@ -370,12 +371,14 @@ end
 "oracle (α-B&B) 을 c 에서. 목표는 지금 LB 기준 (끝에 UB − LB ≤ tol 이 되게)"
 orLB = Dict{Int,Float64}(); orcap = Dict{Int,Float64}()
 orcl_log = NamedTuple[]
+orstate = Dict{Int,Any}()     # v7: 점 → 마지막 α-B&B 상태 (같은 점을 다시 부르면 이어 풂)
 function oracle_at!(c; cap=ORCL_TL)
     evalall!([c]); t0v = mval(c) - qv[c]; xb = pts[c]
     tau = isfinite(LB) ? max(t0v + 1e-6 * max(1.0, abs(t0v)), LB + 0.95 * TOL * max(1.0, abs(LB)) - qv[c]) : t0v + 0.9 * TOL * max(1.0, abs(qv[c] + t0v))
     gap_o = min(1e-3, 0.4 * TOL * max(1.0, abs(qv[c] + t0v)) / max(1.0, abs(t0v)))
     lim = max(10.0, min(cap, TL - (time() - wall))); orcap[c] = cap
-    to = @elapsed (res = nz_alpha_bnb_dr(nd, xb; nworkers=max(1, NT - 1), time_limit=lim, rel_gap=gap_o, target=tau, verbose=false))
+    to = @elapsed (res = nz_alpha_bnb_dr(nd, xb; nworkers=max(1, NT - 1), time_limit=lim, rel_gap=gap_o, target=tau, verbose=false, resume=get(orstate, c, nothing), resp=ORCL_RESP))
+    orstate[c] = res[:state]
     global t_or += to; global n_or += 1; orLB[c] = max(get(orLB, c, -Inf), res[:LB])
     if qv[c] + res[:UB] < UB; global UB = qv[c] + res[:UB]; global xbest = c; end
     how = :none
@@ -388,7 +391,7 @@ function oracle_at!(c; cap=ORCL_TL)
     end
     if how == :none && res[:LB] > t0v + 1e-6 * max(1.0, abs(t0v)); nogood!(c, res[:LB]); how = :nogood_lb; end
     certified[c] = mval(c)
-    @printf("  [orcl] x=%-24s V in [%.2f, %.2f], t0 %.2f, 목표 %.2f (%.0fs, 상한 %.0fs) %s, 블록 %d, LB %.2f UB %.2f (경과 %.0fs)\n", loc_tkp_xstr(nd, xb), res[:LB], res[:UB], t0v, tau, to, lim, how, length(blks), LB, UB, time() - wall)
+    @printf("  [orcl] x=%-24s V in [%.2f, %.2f], t0 %.2f, 목표 %.2f (%.0fs, 상한 %.0fs%s) %s, 블록 %d, LB %.2f UB %.2f (경과 %.0fs)\n", loc_tkp_xstr(nd, xb), res[:LB], res[:UB], t0v, tau, to, lim, res[:resumed] ? ", 이어 풂" : "", how, length(blks), LB, UB, time() - wall)
     @printf("         α-B&B: 노드 %d, 이완 %.0fs, 평가 %.0fs, 범위 %.0fs (MIP %d, 실패 %d), 재확인 %.0fs, ipopt %d, 고정 비율 %.2f, 수치 오류 %d\n",
             res[:nodes], res[:t_relax], res[:t_eval], res[:t_range], res[:range_mips], res[:range_fail], res[:t_recheck], res[:ipopt_calls], res[:fixfrac], res[:numerr]); flush(stdout)
     # 재현용 기록 (α-B&B 조정): 같은 인자로 nz_alpha_bnb_dr 를 따로 부를 수 있게

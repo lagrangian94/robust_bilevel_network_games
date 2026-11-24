@@ -1,0 +1,29 @@
+  [HUCAP] 거점 9: hᵁ 300 → 200
+  [HUCAP] 거점 15: hᵁ 300 → 200
+--- oracle 재현 g=1 S=20 x={9:200;10:300;15:200} λᵁ=10000 목표 -3437.59 gap 1.0e-03 상한 1800s, 스레드 12, 추가 인자 (resp = true,)
+Academic license 926906 - for non-commercial use only - registered to [가림]
+Academic license 926906 - for non-commercial use only - registered to [가림]
+Academic license 926906 - for non-commercial use only - registered to [가림]
+Academic license 926906 - for non-commercial use only - registered to [가림]
+Academic license 926906 - for non-commercial use only - registered to [가림]
+Academic license 926906 - for non-commercial use only - registered to [가림]
+Academic license 926906 - for non-commercial use only - registered to [가림]
+Academic license 926906 - for non-commercial use only - registered to [가림]
+Academic license 926906 - for non-commercial use only - registered to [가림]
+Academic license 926906 - for non-commercial use only - registered to [가림]
+Academic license 926906 - for non-commercial use only - registered to [가림]
+Academic license 926906 - for non-commercial use only - registered to [가림]
+
+******************************************************************************
+This program contains Ipopt, a library for large-scale nonlinear optimization.
+ Ipopt is released as open source code under the Eclipse Public License (EPL).
+         For more information visit https://github.com/coin-or/Ipopt
+******************************************************************************
+
+    [nz-α-B&B-dr] t=  70.0s nodes=   50 open=    8 LB=-3453.239869 UB=-2484.100943 gap=2.806e-01
+    [nz-α-B&B-dr] t= 130.5s nodes=  118 open=   22 LB=-3452.389581 UB=-2794.890281 gap=1.904e-01
+nz_alpha_bnb_dr: 기본이 아닌 구성으로 실행 — resp = true
+RESULT g=1 S=20 x={9:200;10:300;15:200} V in [-3437.5527, -2986.4001] (198s) 노드 160, 이완 1071s, 평가 167s, 범위 76s (MIP 0, 실패 0), 재확인 0s, ipopt 3, 고정 비율 0.12, 수치 오류 2, 루트 UB -2162.3470
+느린 노드 (상위 10): [(94.83899998664856, 0.4730165, 94.2923548, 0.0), (58.99500012397766, 0.4625955, 58.4652495, 0.0), (58.9060001373291, 0.4551182, 57.1748504, 0.0), (49.59599995613098, 0.4664766, 48.9884872, 0.0), (45.861000061035156, 0.4782415, 45.2489173, 0.0), (37.96299982070923, 0.4688946, 37.2543454, 0.0), (33.58400011062622, 0.4465856, 31.3048522, 0.0), (30.01900005340576, 0.4594349, 27.5335432, 0.0), (24.16100001335144, 0.4601486, 22.2459381, 0.0), (24.153000116348267, 0.4677318, 23.5589494, 0.0)]
+전선 저장: orep_front_g1_S20_s20_g1_hucap.jls (열린 노드 47)
+전선: 열린 노드 47, 상한 ≤ 목표 0 (0%), 상한 범위 [-3373.56, -2986.40], 목표 -3437.59, incumbent -3437.55
