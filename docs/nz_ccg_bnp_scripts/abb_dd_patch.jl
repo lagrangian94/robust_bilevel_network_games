@@ -3,7 +3,7 @@
 println(stderr, "[abb_dd_patch] nz_alpha_bnb_dr 재정의: range_lp + dd 허용 (실험용)")
 
 "패치 (screen): 두 꼭짓점의 최적 쌍대 면에서 차이가 모인 (쌍, s) 를 골라 KKT-MIP 로 차이 범위를 인증. 반환 (:none | :tight | :empty, (dlo, dhi), MIP 수)"
-function _abb_dd_screen!(CL, DR, nd, x̄, l, u, lo, hi, dlo0, dhi0; mip_tl=2.0, deadline=Inf, fixtol=1e-4)
+function _abb_dd_screen!(CL, DR, nd, x̄, l, u, lo, hi, dlo0, dhi0; mip_tl=2.0, deadline=Inf, fixtol=1e-4, sigbd::Bool=true)
     S, m, nh = nd.S, nz_m(nd), nz_nh(nd); dlo = copy(dlo0); dhi = copy(dhi0); nmip = 0; tight = false
     for s in 1:S
         time() > deadline && break
@@ -40,11 +40,12 @@ function _abb_dd_screen!(CL, DR, nd, x̄, l, u, lo, hi, dlo0, dhi0; mip_tl=2.0, 
             ext[p][2] - ext[p][1] < 0.5 * (wh - wl) || continue          # 두 꼭짓점의 차이가 함의 폭의 절반 안에 모인 쌍만
             if !boxset
                 for i in 1:nh; set_lower_bound(M.α[i], l[i]); set_upper_bound(M.α[i], u[i]); end
+                sigbd && _abb_sigbd!(M, DR, nd, lo, hi, s)
                 boxset = true
             end
             for ismax in (false, true)
                 if time() > deadline
-                    set_time_limit_sec(M.model, nothing)
+                    set_time_limit_sec(M.model, nothing); sigbd && _abb_sigbd!(M, DR, nd, nothing, nothing, s)
                     return (tight ? :tight : :none), (dlo, dhi), nmip
                 end
                 @objective(M.model, ismax ? MAX_SENSE : MIN_SENSE, M.σ[DR.Hk[a]] - M.σ[DR.Hk[b]])
@@ -52,8 +53,15 @@ function _abb_dd_screen!(CL, DR, nd, x̄, l, u, lo, hi, dlo0, dhi0; mip_tl=2.0, 
                 nmip += 1
                 _nz_dr_opt!(DR, M, l, u, "dd screen s=$s 쌍 ($(DR.Hk[a]), $(DR.Hk[b]))") || continue
                 st = termination_status(M.model)
+                if sigbd && st in (MOI.INFEASIBLE, MOI.INFEASIBLE_OR_UNBOUNDED)   # 경계를 빼고 다시 풀어 확인 (허용오차 거짓 판정 방지)
+                    _abb_sigbd!(M, DR, nd, nothing, nothing, s); nmip += 1
+                    ok = _nz_dr_opt!(DR, M, l, u, "dd screen 재확인 s=$s")
+                    sigbd && _abb_sigbd!(M, DR, nd, lo, hi, s)
+                    ok || continue
+                    st = termination_status(M.model)
+                end
                 if st in (MOI.INFEASIBLE, MOI.INFEASIBLE_OR_UNBOUNDED)       # 상자 안에 recourse 최적 쌍대를 갖는 α 없음
-                    set_time_limit_sec(M.model, nothing)
+                    set_time_limit_sec(M.model, nothing); sigbd && _abb_sigbd!(M, DR, nd, nothing, nothing, s)
                     return :empty, (dlo, dhi), nmip
                 end
                 bd = st == MOI.OPTIMAL ? objective_bound(M.model) : (st == MOI.TIME_LIMIT ? _nz_dr_bound_or_nan(M.model) : NaN)
@@ -67,8 +75,20 @@ function _abb_dd_screen!(CL, DR, nd, x̄, l, u, lo, hi, dlo0, dhi0; mip_tl=2.0, 
             dhi[p, s] < dlo[p, s] && (dhi[p, s] = dlo[p, s] = 0.5 * (dlo[p, s] + dhi[p, s]))
         end
         boxset && set_time_limit_sec(M.model, nothing)
+        boxset && sigbd && _abb_sigbd!(M, DR, nd, nothing, nothing, s)
     end
     return (tight ? :tight : :none), (dlo, dhi), nmip
+end
+
+"패치 (dd_sigbd): 시나리오 s 의 범위 MIP 에 H 행 쌍대 경계 [max(0, lo), hi] 를 넣거나 (lo = nothing 이면) 원래 경계 [0, ϖᵁ] 로 되돌림"
+function _abb_sigbd!(M, DR, nd, lo, hi, s)
+    for (a, k) in enumerate(DR.Hk)
+        if lo === nothing
+            set_lower_bound(M.σ[k], 0.0); isfinite(nd.varpiU[k]) ? set_upper_bound(M.σ[k], nd.varpiU[k]) : (has_upper_bound(M.σ[k]) && delete_upper_bound(M.σ[k]))
+        else
+            set_lower_bound(M.σ[k], max(0.0, lo[a, s])); set_upper_bound(M.σ[k], max(hi[a, s], max(0.0, lo[a, s])))
+        end
+    end
 end
 
 function nz_alpha_bnb_dr(nd::NZData, x̄;
@@ -127,7 +147,7 @@ function nz_alpha_bnb_dr(nd::NZData, x̄;
                          resume=nothing,
                          # 패치: dd = true 일 때 DD 를 구하는 방식 (:screen 기본 | :full), 선별 DD 의 MIP 하나 시간 상한
                          #   dd_maxw: 선별 DD 는 활성 좌표의 최대 상자 폭이 이 값 이하인 노드에서만 (넓은 상자에서는 차이가 상수가 아니라 효과 없고 비쌈)
-                         dd_mode::Symbol=:screen, dd_mip_tl::Float64=2.0, dd_maxw::Float64=25.0)
+                         dd_mode::Symbol=:screen, dd_mip_tl::Float64=2.0, dd_maxw::Float64=25.0, dd_sigbd::Bool=true)
     branch_point in (:alphahat, :mid) || error("branch_point = :alphahat | :mid")
     config = (dual_range=dual_range, comp=dual_range && comp, vcut=dual_range && vcut, cslift=dual_range && cslift,
               branch_point=branch_point, child_rounds=child_rounds, maxrounds=maxrounds, dive_max=dive_max,
@@ -393,7 +413,7 @@ function nz_alpha_bnb_dr(nd::NZData, x̄;
                     dd_empty = false                          # 패치 (screen): 가지치기 못 한 노드에서 선별 DD → 상자가 비었거나 조여지면 다시 풂
                     if config.dd && dd_mode == :screen && range_lp && !pre_inf && ubp != Inf && isfinite(z) && z > LB[] + tol(LB[]) &&
                        maximum((u[i] - l[i] for i in 1:nh if nd.hU[i] > 1e-9); init=0.0) <= dd_maxw
-                        tdd = @elapsed (ddr = _abb_dd_screen!(CLs[wid], DR, nd, x̄, l, u, lo, hi, dlo, dhi; mip_tl=dd_mip_tl, deadline=t_end))
+                        tdd = @elapsed (ddr = _abb_dd_screen!(CLs[wid], DR, nd, x̄, l, u, lo, hi, dlo, dhi; mip_tl=dd_mip_tl, deadline=t_end, sigbd=dd_sigbd))
                         Threads.atomic_add!(t_range, tdd); tn_rg += tdd; Threads.atomic_add!(n_ddnode, 1); Threads.atomic_add!(n_ddmip, ddr[3])
                         if ddr[1] === :empty
                             dd_empty = true; z = -Inf; Threads.atomic_add!(n_ddempty, 1)

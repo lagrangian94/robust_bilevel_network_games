@@ -1,0 +1,24 @@
+  [HUCAP] 거점 4: hᵁ 300 → 200
+  [HUCAP] 거점 7: hᵁ 300 → 200
+--- oracle 재현 g=5 S=10 x={4:200;7:200;12:300} λᵁ=10000 목표 -3151.6 gap 1.0e-03 상한 150s, 스레드 3, 추가 인자 (resp = true, dd = true, dd_maxw = 12.5)
+Academic license 926906 - for non-commercial use only - registered to [가림]
+Academic license 926906 - for non-commercial use only - registered to [가림]
+Academic license 926906 - for non-commercial use only - registered to [가림]
+
+******************************************************************************
+This program contains Ipopt, a library for large-scale nonlinear optimization.
+ Ipopt is released as open source code under the Eclipse Public License (EPL).
+         For more information visit https://github.com/coin-or/Ipopt
+******************************************************************************
+
+    [nz-α-B&B-dr] t=  38.7s nodes=   22 open=   19 LB=-3180.863663 UB=-1864.554517 gap=4.138e-01
+    [nz-α-B&B-dr] t=  69.1s nodes=   69 open=   34 LB=-3180.863663 UB=-2040.968233 gap=3.584e-01
+    [nz-α-B&B-dr] t=  99.1s nodes=  123 open=   50 LB=-3180.863663 UB=-2167.968012 gap=3.184e-01
+    [nz-α-B&B-dr] t= 129.2s nodes=  173 open=   70 LB=-3172.761645 UB=-2238.980081 gap=2.943e-01
+[abb_dd_patch] nz_alpha_bnb_dr 재정의: range_lp + dd 허용 (실험용)
+nz_alpha_bnb_dr: 기본이 아닌 구성으로 실행 — dd = true, resp = true
+RESULT g=5 S=10 x={4:200;7:200;12:300} V in [-3172.7616, -2287.9841] (156s) 노드 219, 이완 158s, 평가 44s, 범위 51s (MIP 0, 실패 0), 재확인 0s, ipopt 3, 고정 비율 0.16, 수치 오류 0, 루트 UB -1787.7431
+DD 선별 (패치): (nodes = 0, mips = 0, empty = 0, cut = 0)
+느린 노드 (상위 10): NTuple{4, Float64}[]
+전선 저장: orep_front_g5_S10_ddv1smoke.jls (열린 노드 86)
+전선: 열린 노드 86, 상한 ≤ 목표 0 (0%), 상한 범위 [-2746.30, -2287.98], 목표 -3151.60, incumbent -3172.76
