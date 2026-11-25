@@ -108,7 +108,16 @@ function _bccg_resp!(ev::BCCGEval, nd::NZData, d)
     return [max(value(ev.Rα[i]), 0.0) for i in 1:nz_nh(nd)]
 end
 
-"반응 α 의 정확 평가: (값, follower belief d). α 가 어떤 belief 에서도 최적이 아니면 (−Inf, nothing). 재가중 r 은 ev.lastr"
+"""
+follower 최적 행의 여유 κ (상대, 척도 1 + |c0ᵀα| + max|Q|). 작은 값부터 풀어 E 가 OPTIMAL 인 첫 값을 쓴다 (2026-11-25).
+여유가 블록의 동률 깨기 η·ΔC_L 보다 크면 E 가 동률 반대편 belief (α 가 여유만큼 비최적인 belief) 를 돌려주고, 그 belief 의 블록은
+정확해도 평가값 v 에 못 미쳐 확보 규칙이 no-good 을 넣는다. 예전 고정값 1e-7 은 절대 약 0.12 라 η = 1e-4 블록 (0.005) 이 못 덮었다
+(η = 1e-4 판에서 belief 추가 56 번 중 35 번이 no-good, η = 0.1 판은 36 번 중 1 번). κ 를 1e-7 → 0 으로 줄여도 v 는 0.01 만 바뀜.
+α 가 follower LP 의 해가 아닐 때 (oracle incumbent) 는 κ = 0 이 실행 불가능할 수 있어 단계적으로 늘린다. docs/nz_ccg_bnp_2026-11-23.md 11.10.
+"""
+const _BCCG_KAPPAS = (0.0, 1e-11, 1e-9, 1e-7)
+
+"반응 α 의 정확 평가: (값, follower belief d). α 가 어떤 belief 에서도 최적이 아니면 (−Inf, nothing). 재가중 r 은 ev.lastr. 여유는 `_BCCG_KAPPAS` 순서"
 function _bccg_value!(ev::BCCGEval, nd::NZData, α)
     S, m = nd.S, nz_m(nd); Q = zeros(S); φ = zeros(S)
     for s in 1:S
@@ -126,8 +135,11 @@ function _bccg_value!(ev::BCCGEval, nd::NZData, α)
     for s in 1:S
         set_normalized_coefficient(ev.EFO, ev.Ed[s], Q[s]); set_objective_coefficient(ev.E, ev.Er[s], φ[s])
     end
-    set_normalized_rhs(ev.EFO, -lhs - 1e-7 * (1 + abs(lhs) + maximum(abs, Q)))
-    optimize!(ev.E)
+    sc = 1 + abs(lhs) + maximum(abs, Q)
+    for κ in _BCCG_KAPPAS
+        set_normalized_rhs(ev.EFO, -lhs - κ * sc); optimize!(ev.E)
+        termination_status(ev.E) == MOI.OPTIMAL && break
+    end
     termination_status(ev.E) == MOI.OPTIMAL || return -Inf, nothing
     ev.lastr = [value(ev.Er[s]) for s in 1:S]
     return objective_value(ev.E), [value(ev.Ed[s]) for s in 1:S]
