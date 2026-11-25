@@ -875,7 +875,56 @@ const _NZ_DR_ANNOUNCE_LOCK = ReentrantLock()
 "기본 구성 (2026-10-13, 2026-10-30 갱신: 꼭짓점 LP 범위·Farkas·사전 판정·부모 basis·노드 LP 상한, 문서 §10.29). 이 값과 다른 항목이 있으면 _nz_dr_announce 가 stderr 에 알린다"
 const _NZ_DR_DEFAULT = (dual_range=true, comp=true, vcut=true, cslift=true, fwd=true, kmc=true, dd=false, cbranch=true, sticky=true,
                         lp_tol=1e-7, branch_point=:mid, child_rounds=1, resp=false, range_mip=true, range_nodes=typemax(Int), range_time=Inf,
-                        range_lp=true, resp_fix=false, farkas=true, lp_method=1, lp_presolve=0, lp_crossover=-1, infeas_pre=true, infeas_pre_retry=true, parent_basis=true, share_rows=false, node_lp_cap=120.0)
+                        range_lp=true, resp_fix=false, farkas=true, lp_method=1, lp_presolve=0, lp_crossover=-1, infeas_pre=true, infeas_pre_retry=true, parent_basis=true, share_rows=false, node_lp_cap=120.0, hucap=true)
+
+"""
+    nz_presolve_hU_feas(nd, x̄, hU; optimizer) -> (hU', 줄인 좌표 수)
+
+follower 1 단계 h 의 상한을 recourse 실행 가능성으로 조인다 (bound tightening). h 가 어떤 belief P̃ 의 최적 반응이려면
+E^P̃[Q(x̄, h, ξ)] > −∞, 곧 P̃ 가 양의 확률을 둔 시나리오에서 recourse {y ≥ 0 : A y ≤ r_s(x̄, h)} 가 비어 있지 않아야 한다.
+그래서 적어도 한 시나리오에서 실행 가능한 h 만 남겨도 최적 반응은 모두 남는다:
+
+    hU'_k = max_s max{ h_k : 0 ≤ h ≤ hU, W h ≤ w, ∃ y ≥ 0 : A y ≤ u_s + hcoef ⊙ h_hrow + g_s x̄ }
+
+정의역을 줄인 Ω_λ 도 최적 반응 α* (벌점 0) 를 품으므로 ≥ V*(x̄) (상한 인증 유효), 줄인 정의역의 α 는 원래 정의역에도 있으므로
+incumbent 도 그대로다. nz_presolve_hU (닫힌 거점 0 고정) 와 같은 종류의 정의역 축소. location (loc_tkp) 에서는 약정 등식과
+거점 용량 행에서 h_i ≤ b_i(x̄) 가 나온다 (문서 docs/nz_ccg_bnp_2026-11-23.md 11.6, 2026-11-25). LP 가 OPTIMAL·INFEASIBLE 이
+아니면 그 좌표는 줄이지 않는다. 모든 시나리오에서 recourse 가 실행 불가능하면 오류.
+"""
+function nz_presolve_hU_feas(nd::NZData, x̄, hU=nd.hU; optimizer, slack=1e-9)   # slack: 꼭짓점 해의 반올림 오차만 덮음 (h > b 쪽 벌점 기울기 ~1e7 이라 크게 두지 않음)
+    nh, m, ny = nz_nh(nd), nz_m(nd), nz_ny(nd)
+    act = [i for i in 1:nh if hU[i] > 0]
+    isempty(act) && return copy(hU), 0
+    mdl = Model(optimizer); set_silent(mdl)
+    @variable(mdl, 0 <= h[i=1:nh] <= hU[i]); @variable(mdl, y[1:ny] >= 0)
+    size(nd.W, 1) > 0 && @constraint(mdl, nd.W * h .<= nd.wvec)
+    rows = [@constraint(mdl, sum(nd.A[k, j] * y[j] for j in 1:ny if nd.A[k, j] != 0; init=AffExpr(0.0))
+                             - (nd.hrow[k] > 0 ? nd.hcoef[k] * h[nd.hrow[k]] : 0.0) <= 0.0) for k in 1:m]
+    best = zeros(nh); nfeas = 0
+    for s in 1:nd.S
+        for k in 1:m; set_normalized_rhs(rows[k], nd.u[k, s] + nz_gx(nd, k, s, x̄)); end
+        feas_s = false
+        for i in act
+            best[i] >= hU[i] && continue
+            @objective(mdl, Max, h[i]); optimize!(mdl)
+            st = termination_status(mdl)
+            if st == MOI.OPTIMAL
+                feas_s = true; best[i] = max(best[i], value(h[i]) + slack * max(1.0, abs(value(h[i]))))
+            elseif st == MOI.INFEASIBLE
+                break                                   # 이 시나리오는 어떤 h 로도 recourse 실행 불가능
+            else
+                feas_s = true; best[i] = hU[i]          # 판정 못 함 → 줄이지 않음
+            end
+        end
+        nfeas += feas_s
+    end
+    nfeas > 0 || error("nz_presolve_hU_feas: 모든 시나리오에서 recourse 가 실행 불가능 (x̄ = $(findall(x̄ .> 0.5)))")
+    hU2 = copy(hU); nt = 0
+    for i in act
+        if best[i] < hU[i]; hU2[i] = best[i]; nt += 1; end
+    end
+    return hU2, nt
+end
 
 "구성이 기본과 다르면 다른 항목을 stderr 에 한 번 알린다 (같은 구성은 프로세스당 한 번) — 의도하지 않은 구성으로 도는 것을 막기 위해"
 function _nz_dr_announce(config)
@@ -932,6 +981,7 @@ nz_alpha_bnb (기존, `bnb = :legacy`) 의 탐색 — worker 병렬, best-first 
 | | `sticky` | true | 분리 행을 (좌표, 후보 행, 쪽) 마다 하나만 두고 상자 경계를 제자리 갱신. false 면 행을 쌓는 기존 방식 |
 | | `lp_tol` | 1e-7 | 노드 LP 의 Feasibility/OptimalityTol (+ NumericFocus 0). 상한에 상대 1e-6 여유를 더함. 1e-9 면 build_nz_omega 의 설정 그대로 |
 | | `resp` | false | primal 휴리스틱: 노드 완화의 belief 에서 follower 의 실제 최적 반응을 평가 (nz_resp_heuristic.jl). 이득을 확인하지 못해 기본 끔 |
+| | `hucap` | true | 루트 전에 h 상한을 recourse 실행 가능성으로 조임 (`nz_presolve_hU_feas`, location 에선 약정 ≤ 거점 용량, 2026-11-25) |
 | 이어 풀기 | `resume` | nothing | 같은 x̄ 의 이전 호출이 돌려준 `r[:state]`. 주면 그 호출이 멈춘 곳 (열린 노드, incumbent) 에서 이어 푼다 |
 
 이어 풀기 (`resume`): Ω(x̄) 는 x̄ 만으로 정해지므로 같은 x̄ 에서는 이전 호출의 B&B 전선 (열린 노드와 그 상한, 가지친 노드의 상한,
@@ -997,6 +1047,9 @@ function nz_alpha_bnb_dr(nd::NZData, x̄;
                          # node_lp_cap: 루트가 아닌 노드의 LP 작업 (분리 라운드·수치 오류 재시도·실행 불가능 재확인) 시간 상한 (초). 넘으면 수치 오류 노드처럼
                          #   부모 상한을 물려 가장 넓은 좌표를 반으로 나눔 (노드 하나가 오래 전역 UB 를 붙잡지 않게, 문서 §10.29). Inf = 전체 마감까지
                          node_lp_cap::Float64=120.0,
+                         # hucap = true: 루트 전에 h 상한을 recourse 실행 가능성으로 조임 (nz_presolve_hU_feas, location 에선 약정 ≤ 거점 용량).
+                         #   최적 반응은 모두 남아 상한·incumbent 유효성 그대로. 재현에서 인증 약 2 배 (문서 docs/nz_ccg_bnp_2026-11-23.md 11.6, 2026-11-25)
+                         hucap::Bool=true,
                          # 이어 풀기: 같은 x̄ 의 이전 호출이 돌려준 r[:state]
                          resume=nothing)
     branch_point in (:alphahat, :mid) || error("branch_point = :alphahat | :mid")
@@ -1005,7 +1058,7 @@ function nz_alpha_bnb_dr(nd::NZData, x̄;
               sep_maxadd=sep_maxadd, presolve=presolve, heuristic=heuristic,
               fwd=dual_range && cslift && fwd, kmc=dual_range && cslift && kmc, dd=dual_range && dd,
               cbranch=dual_range && comp && cbranch, sticky=sticky, lp_tol=lp_tol, resp=resp, range_mip=range_mip, range_nodes=range_nodes, range_time=range_time,
-              range_lp=range_lp, resp_fix=resp_fix, farkas=farkas, lp_method=lp_method, lp_presolve=lp_presolve, lp_crossover=lp_crossover, infeas_pre=infeas_pre, infeas_pre_retry=infeas_pre && infeas_pre_retry, parent_basis=parent_basis, share_rows=share_rows, node_lp_cap=node_lp_cap)
+              range_lp=range_lp, resp_fix=resp_fix, farkas=farkas, lp_method=lp_method, lp_presolve=lp_presolve, lp_crossover=lp_crossover, infeas_pre=infeas_pre, infeas_pre_retry=infeas_pre && infeas_pre_retry, parent_basis=parent_basis, share_rows=share_rows, node_lp_cap=node_lp_cap, hucap=hucap)
     resp_fix && !range_lp && error("nz_alpha_bnb_dr: resp_fix = true 는 range_lp = true 와 함께")
     range_lp &&(dd || isfinite(range_time) || range_nodes != typemax(Int) || !range_mip || !dual_range) &&
         error("nz_alpha_bnb_dr: range_lp = true 는 dual_range = true, dd = false 와 함께 쓰고 range_mip·range_time·range_nodes 는 기본값으로")
@@ -1038,6 +1091,11 @@ function nz_alpha_bnb_dr(nd::NZData, x̄;
                      MOI.set(o, MOI.RawOptimizerAttribute("Threads"), 1); o)
     envs = envs === nothing ? _nz_envs(nworkers + 1) : envs
     length(envs) >= nworkers + (heuristic ? 1 : 0) || error("nz_alpha_bnb_dr: envs 가 부족함 (worker $nworkers + heuristic $(heuristic))")
+    nhcap = 0
+    if hucap
+        hUc, nhcap = nz_presolve_hU_feas(nd, x̄; optimizer=mk(envs[1]))
+        nhcap > 0 && (nd = nz_with_hU(nd, hUc))
+    end
     Ps = [_nz_build_sep(nd, x̄; optimizer=mk(envs[i])) for i in 1:nworkers]
     numerr0 = _NZ_NUMERR[]; numfail0 = _NZ_NUMERR_FAIL[]
     DRs = dual_range ? [_nz_dr_attach!(Ps[i], nd, x̄; optimizer=mk(envs[i]), vcut=vcut, cslift=cslift,
@@ -1476,7 +1534,7 @@ function nz_alpha_bnb_dr(nd::NZData, x̄;
     UB = max(LB[], isempty(open) ? -Inf : maximum(n[3] for n in open), pruned_ub[])
     return Dict(:LB => LB[], :UB => UB, :α => best_α[], :is_exact => (UB - LB[] <= tol(LB[])),
                 :nodes => nodes[], :time => time() - t0, :root_UB => root_UB[], :ipopt_calls => ipopt_calls[],
-                :solver => :nz_alpha_bnb_dr, :config => config, :presolve_fixed => nfix, :resumed => resume !== nothing,
+                :solver => :nz_alpha_bnb_dr, :config => config, :presolve_fixed => nfix, :hucap_tightened => nhcap, :resumed => resume !== nothing,
                 :state => (x=copy(x̄), config=config, open=open, LB=LB[], α=copy(best_α[]), pruned_ub=pruned_ub[],
                            root_UB=root_UB[], root_rows=root_rows[]), :t_relax => t_relax[], :t_eval => t_eval[], :t_range => t_range[],
                 :t_recheck => t_recheck[], :slow_nodes => sort(slow; rev=true), :numerr_fresh => _NZ_FRESH_OK[] - fresh0,
