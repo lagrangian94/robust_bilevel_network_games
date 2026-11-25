@@ -1,0 +1,109 @@
+  [설정] η 1.0e-04, μ 1.0e+04 (상한 1.0e+04), oracle λᵁ 1.0e+04, μη = 1
+--- ccgbp v13 (v12 + oracle α 재사용·1 단계 반복 금지; 예산 분할: oracle θ 0.75, 나무 몫 0.20, 루트 정확 CG end; HUCAP=true, resp=true; 평가기 κ 단계 (0.0, 1.0e-11, 1.0e-9, 1.0e-7)) | SB_K 3 PH1 true ORCL_TL 900 PSTOP true
+ g=13 coupled r=0.20 S=10, 스레드 12, tol 5.0e-03, μ 1e+04, η 0.0001, NS 10, SEED_ALL false, NTOP 5, CGTOL 1.0e-03
+Set parameter WLSAccessID
+Set parameter WLSSecret
+Set parameter LicenseID to value 926906
+Academic license 926906 - for non-commercial use only - registered to [가림]
+Set parameter WLSAccessID
+Set parameter WLSSecret
+Set parameter LicenseID to value 926906
+Academic license 926906 - for non-commercial use only - registered to [가림]
+Set parameter WLSAccessID
+Set parameter WLSSecret
+Set parameter LicenseID to value 926906
+Academic license 926906 - for non-commercial use only - registered to [가림]
+Set parameter WLSAccessID
+Set parameter WLSSecret
+Set parameter LicenseID to value 926906
+Academic license 926906 - for non-commercial use only - registered to [가림]
+Set parameter WLSAccessID
+Set parameter WLSSecret
+Set parameter LicenseID to value 926906
+Academic license 926906 - for non-commercial use only - registered to [가림]
+Set parameter WLSAccessID
+Set parameter WLSSecret
+Set parameter LicenseID to value 926906
+Academic license 926906 - for non-commercial use only - registered to [가림]
+Set parameter WLSAccessID
+Set parameter WLSSecret
+Set parameter LicenseID to value 926906
+Academic license 926906 - for non-commercial use only - registered to [가림]
+Set parameter WLSAccessID
+Set parameter WLSSecret
+Set parameter LicenseID to value 926906
+Academic license 926906 - for non-commercial use only - registered to [가림]
+Set parameter WLSAccessID
+Set parameter WLSSecret
+Set parameter LicenseID to value 926906
+Academic license 926906 - for non-commercial use only - registered to [가림]
+Set parameter WLSAccessID
+Set parameter WLSSecret
+Set parameter LicenseID to value 926906
+Academic license 926906 - for non-commercial use only - registered to [가림]
+Set parameter WLSAccessID
+Set parameter WLSSecret
+Set parameter LicenseID to value 926906
+Academic license 926906 - for non-commercial use only - registered to [가림]
+Set parameter WLSAccessID
+Set parameter WLSSecret
+Set parameter LicenseID to value 926906
+Academic license 926906 - for non-commercial use only - registered to [가림]
+Set parameter WLSAccessID
+Set parameter WLSSecret
+Set parameter LicenseID to value 926906
+Academic license 926906 - for non-commercial use only - registered to [가림]
+Set parameter WLSAccessID
+Set parameter WLSSecret
+Set parameter LicenseID to value 926906
+Academic license 926906 - for non-commercial use only - registered to [가림]
+Set parameter WLSAccessID
+Set parameter WLSSecret
+Set parameter LicenseID to value 926906
+Academic license 926906 - for non-commercial use only - registered to [가림]
+  [시작] t 하한 -8000.01 (낙관값 LP 0.4s)
+  [ph1] 루트 RMP -1921.30, 마스터 UB -1921.30 (x={6:400;15:400}), 블록 1, LP 누적 30 (경과 14s)
+    [탐색] x={6:400;15:400}           t -3821.30 → -3311.35 (block), 블록 2
+  [ph1] 루트 RMP -1643.33, 마스터 UB -1643.33 (x={12:300;15:400}), 블록 2, LP 누적 231 (경과 21s)
+    [탐색] x={12:300;15:400}          t -3343.33 → -3181.09 (block), 블록 3
+  [ph1] 루트 RMP -1621.42, 마스터 UB -1601.74 (x={6:300;15:400}), 블록 3, LP 누적 519 (경과 29s)
+    [탐색] x={12:300;15:400}          t -3181.09 → -3151.44 (block), 블록 4
+  [ph1] 루트 RMP -1619.03, 마스터 UB -1601.74 (x={6:300;15:400}), 블록 4, LP 누적 696 (경과 37s)
+    [탐색] x={12:300;15:400}          t -3151.44 → -3135.77 (block), 블록 5
+  [ph1] 루트 RMP -1615.49, 마스터 UB -1601.74 (x={6:300;15:400}), 블록 5, LP 누적 880 (경과 44s)
+    [탐색] x={15:400}                 t -2075.43 → -2066.18 (block), 블록 6
+  [ph1] 루트 RMP -1615.49, 마스터 UB -1601.74 (x={6:300;15:400}), 블록 6, LP 누적 961 (경과 52s)
+    [탐색] x={6:300;12:300;15:400}    t -3368.83 → -3307.42 (block), 블록 7
+  [ph1] 루트 RMP -1597.81, 마스터 UB -1597.81 (x={6:300;15:400}), 블록 7, LP 누적 1319 (경과 61s)
+
+******************************************************************************
+This program contains Ipopt, a library for large-scale nonlinear optimization.
+ Ipopt is released as open source code under the Eclipse Public License (EPL).
+         For more information visit https://github.com/coin-or/Ipopt
+******************************************************************************
+
+  [orcl] x={6:300;15:400}           V in [-3282.24, -3033.77] (정확값 -3282.24), t0 -3297.81, 목표 -3291.82 (55s, 상한 900s) block, 블록 8, LB -Inf UB -1333.77 (경과 126s)
+         α-B&B: 노드 131, 이완 55s, 평가 22s, 범위 25s (MIP 0, 실패 0), 재확인 0s, ipopt 1, 고정 비율 0.27, 수치 오류 0
+  [ph1] 루트 RMP -1582.90, 마스터 UB -1570.60 (x={6:300;15:400}), 블록 8, LP 누적 1670 (경과 129s)
+  [1 단계 끝] 134s, belief 8, UB -1333.77
+  [node   1] root                               깊이 0: RMP -1582.90, LB -Inf, 분수, 열린 0, 주차 0, LB* -Inf UB -1333.77, 마스터 inc -1570.60 (PT -1572.17), 블록 8, MILP 0 (경과 136s)
+      [sb] o4 (0.548): 열림 -1570.60, 닫힘 -1520.80, 점수 764
+      [sb] o10 (0.452): 열림 -1520.80, 닫힘 -1570.60, 점수 764
+  [node   2] root o4=1                          깊이 1: RMP -1570.60, LB -1570.62, 정수, 열린 1, 주차 0, LB* -Inf UB -1333.77, 마스터 inc -1570.60 (PT -1572.17), 블록 8, MILP 21 (경과 258s)
+    [탐색] x={12:200;15:400}          t -3020.80 → -3003.24 (block), 블록 9
+    [탐색] x={11:400;12:200}          t -2939.61 → -2897.73 (block), 블록 10
+  [node   3] root o4=0                          깊이 1: RMP -1518.97, LB -1540.86, 분수, 열린 0, 주차 1, LB* -Inf UB -1333.77, 마스터 inc -1570.60 (PT -1572.17), 블록 10, MILP 39 (경과 699s)
+  [마스터 풀림] 주차 2, 막힘 0, LB -1570.62, cinc {6:300;15:400} (mval -1570.60, PT -1572.17, 목표 UB ≤ -1564.71) → oracle
+  [orcl] x={6:300;15:400}           V in [-3261.17, -3097.47] (정확값 -3261.17), t0 -3270.60, 목표 -3264.71 (39s, 상한 740s, 이어 풂) block, 블록 11, LB -1570.62 UB -1397.47 (경과 744s)
+         α-B&B: 노드 51, 이완 17s, 평가 9s, 범위 11s (MIP 0, 실패 0), 재확인 0s, ipopt 1, 고정 비율 0.30, 수치 오류 0
+  [node   4] root o4=1                          깊이 1: RMP -1551.73, LB -1551.82, 정수, 열린 0, 주차 1, LB* -1570.62 UB -1397.47, 마스터 inc -1551.73 (PT -1553.28), 블록 11, MILP 53 (경과 855s)
+  [마스터 풀림] 주차 2, 막힘 0, LB -1551.82, cinc {6:300;15:400} (mval -1551.73, PT -1553.28, 목표 UB ≤ -1545.91) → oracle
+    [LP] 비유계 보고 → 재시도 결과 OPTIMAL
+  [orcl] x={6:300;15:400}           V in [-3251.82, -3246.64] (정확값 -3251.82), t0 -3251.73, 목표 -3245.91 (43s, 상한 585s, 이어 풂) none, 블록 11, LB -1551.82 UB -1546.64 (경과 897s)
+         α-B&B: 노드 315, 이완 83s, 평가 33s, 범위 66s (MIP 0, 실패 0), 재확인 0s, ipopt 1, 고정 비율 0.30, 수치 오류 1
+nz_alpha_bnb_dr: 기본이 아닌 구성으로 실행 — resp = true
+RESULT ccgbp g=13 status=Optimal x={6:300;15:400} LB=-1551.8245 UB=-1546.6373 gap=0.335% beliefs=11 노드 4 (가지침 0, 정확 3, 정수 2, 남은 2, 주차 0, 막힘 0) 안전장치 0 (no-good 0, restricted 0, μ 올림 0) time=897.5 (1 단계 134s)
+  시간: oracle 3 번 137s, 탐색 31 번 28s, 블록 LP 7603 번 45s, 가격 MILP 53 번 608s (노드 375337), RMP 765 번 4s (crossover 재시도 0), 생성기 구성 52s; 서로 다른 점 2296 / 8464
+  v12: 주차 3 번, 다시 엶 3 번, 마스터 incumbent oracle 2 번, 엄격 정확 CG 0 번, 후보점 18
+  v13: α 재사용 위반 0 번 (정확 평가 7 번 1s), α 풀 3
+  열: RMP 에 들어간 열 (블록 합) 1682, 서로 다른 열 790, 번호를 붙인 점 2940 / |X| 8464

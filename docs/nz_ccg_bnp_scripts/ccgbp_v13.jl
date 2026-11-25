@@ -3,7 +3,11 @@
 #      α-B&B 를 부르지 않음. 대등한 점들은 같은 α 에서 위반이 나는 경우가 많음 (v12 S = 20: 세 점의 oracle incumbent 가 −3,403.40 · −3,403.48 · −3,403.40,
 #      마스터 incumbent 의 위반 1.58 을 찾는 데 900 s). (점, α) 쌍은 한 번만 평가 (블록이 늘면 t₀ 는 오르기만 하므로 실패한 쌍은 계속 실패).
 #      oracle_at! 의 처음과 trysearch (belief 탐색이 실패한 점) 에서 부름. 유효성: 정확 평가한 α 의 belief 블록은 다른 블록과 같은 하한.
-#  (2) 1 단계에서는 이미 oracle 을 부른 점을 다시 부르지 않고 2 단계로 (v12 S = 20: 같은 점 이어 풀기 900 s 가 결론 없음, 그 점은 마스터 incumbent 가 아니었음).
+#      다른 점의 α 는 그 점에서 실행 불가능할 수 있음 (닫힌 거점의 약정 등, 지리 13 점검에서 거리 0.73) → 먼저 그 점의 follower 실행 가능 영역으로
+#      ℓ₁ 최근접 이동 (transplant_alpha, nz_feasible_alpha 와 같은 LP 에서 거리 제한만 없앰) 한 뒤 정확 평가. 옮긴 α 도 정확값이라 하한 유효.
+#  (2) 1 단계에서 같은 점을 다시 부르면 (이어 풀기) 상한 PH1_RECAP (300 s). v12 S = 20: 같은 점 이어 풀기 900 s 가 결론 없음, 그 점은 마스터 incumbent 가 아니었음.
+#      처음 판은 아예 다시 안 불렀는데, 지리 13 점검에서 1 단계 점이 최적점이라 나무를 세 번 다시 풀어 515 → 897 s (v12 는 1 단계 세 호출 55·43·40 s 로 197 s 에 인증).
+#      이어 풀기는 α-B&B 상태가 남으므로 끊어도 잃는 작업이 없음.
 # (아래는 v12 머리말) # ccgbp_v12.jl — v11 + 허용오차 예산 분할 (원고 Algorithm 2 의 τ⁺ = t₀ + m 을 한 나무로, 2026-11-25 시험판). docs/nz_ccg_bnp_2026-11-23.md 11.10·11.11.
 #  (1) oracle 목표 τ⁺ = t₀ + ORCL_THETA·m (m = tol·max(1, |mval(x̄)|)), 지금 LB 와 무관. v11 은 LB + 0.95 tol − q 라 LB 가 생기면 목표가 조여짐.
 #  (2) 나무는 노드 하한이 PT = mval(cinc) − TREE_SHARE·m 이상이면 그 노드를 주차 (증명된 하한 유지, 분기 안 함). 마스터를 TREE_SHARE·m 안으로 푸는 것.
@@ -36,7 +40,7 @@ const TL = parse(Float64, envf("TL", "3600")); const TOL = parse(Float64, envf("
 const MU = parse(Float64, envf("MU", "1e4")); const ETA = parse(Float64, envf("ETA", "1e-4")); const MU_MAX = parse(Float64, envf("MU_MAX", "1e4"))
 const NS = parse(Int, envf("NS", "10")); const SEED_ALL = envf("SEED_ALL", "0") == "1"; const NTOP = parse(Int, envf("NTOP", "5"))
 const CGTOL = parse(Float64, envf("CGTOL", "1e-3")); const NRAND = parse(Int, envf("NRAND", "40"))
-const SB_K = parse(Int, envf("SB_K", "3")); const PH1 = envf("PH1", "1") == "1"; const ORCL_TL = parse(Float64, envf("ORCL_TL", "900")); const PSTOP = envf("PSTOP", "1") == "1"
+const PH1_RECAP = parse(Float64, envf("PH1_RECAP", "300")); const SB_K = parse(Int, envf("SB_K", "3")); const PH1 = envf("PH1", "1") == "1"; const ORCL_TL = parse(Float64, envf("ORCL_TL", "900")); const PSTOP = envf("PSTOP", "1") == "1"
 const LAMU = parse(Float64, envf("LAMU", "1e4")); const ORCL_RESP = envf("ORCL_RESP", "1") == "1"   # oracle 의 λᵁ (loc_tkp 자체 기본은 100), resp 켬/끔
 const HUCAP = envf("HUCAP", "1") == "1"   # v11: oracle 정의역 h_i ≤ b_i(x̄)
 const ORCL_THETA = parse(Float64, envf("ORCL_THETA", "0.75")); const TREE_SHARE = parse(Float64, envf("TREE_SHARE", "0.2"))
@@ -48,8 +52,8 @@ nd = make_loc_tkp(; g=GEO, S=parse(Int, envf("S", "10")), seed=1, eps_hat=RR, ep
 @printf("  [설정] η %.1e, μ %.1e (상한 %.1e), oracle λᵁ %.1e, μη = %.3g\n", ETA, MU, MU_MAX, LAMU, MU * ETA)
 K = nd.meta[:K]; nx = nd.nx; m, ny = nz_m(nd), nz_ny(nd); A = nd.A; XE = nz_xentries(nd); S = nd.S
 NT = Threads.nthreads()
-@printf("--- ccgbp v13 (v12 + oracle α 재사용·1 단계 반복 금지; 예산 분할: oracle θ %.2f, 나무 몫 %.2f, 루트 정확 CG %s; HUCAP=%s, resp=%s; 평가기 κ 단계 %s) | SB_K %d PH1 %s ORCL_TL %.0f PSTOP %s\n",
-        ORCL_THETA, TREE_SHARE, ROOT_EXACT, HUCAP, ORCL_RESP, string(_BCCG_KAPPAS), SB_K, PH1, ORCL_TL, PSTOP); @printf(" g=%d coupled r=%.2f S=%d, 스레드 %d, tol %.1e, μ %.3g, η %.3g, NS %d, SEED_ALL %s, NTOP %d, CGTOL %.1e\n", GEO, RR, S, NT, TOL, MU, ETA, NS, SEED_ALL, NTOP, CGTOL); flush(stdout)
+@printf("--- ccgbp v13 (v12 + oracle α 재사용·1 단계 이어 풀기 상한 %.0fs; 예산 분할: oracle θ %.2f, 나무 몫 %.2f, 루트 정확 CG %s; HUCAP=%s, resp=%s; 평가기 κ 단계 %s) | SB_K %d PH1 %s ORCL_TL %.0f PSTOP %s\n",
+        PH1_RECAP, ORCL_THETA, TREE_SHARE, ROOT_EXACT, HUCAP, ORCL_RESP, string(_BCCG_KAPPAS), SB_K, PH1, ORCL_TL, PSTOP); @printf(" g=%d coupled r=%.2f S=%d, 스레드 %d, tol %.1e, μ %.3g, η %.3g, NS %d, SEED_ALL %s, NTOP %d, CGTOL %.1e\n", GEO, RR, S, NT, TOL, MU, ETA, NS, SEED_ALL, NTOP, CGTOL); flush(stdout)
 wall = time()
 site(i) = (i - 1) ÷ K + 1
 al = findall(nd.x_allowed); sites = unique(site.(al))
@@ -414,6 +418,19 @@ orstate = Dict{Int,Any}()     # v7: 점 → 마지막 α-B&B 상태 (같은 점�
 alpool = Vector{Vector{Float64}}()       # v13: oracle incumbent α
 alv = Dict{Tuple{Int,Int},Float64}()     # v13: (점, α 번호) → 정확값 (한 번만 평가)
 n_seed = Ref(0); t_seed = Ref(0.0); n_seedev = Ref(0)
+"v13: α̂ 를 xb 의 follower 실행 가능 영역 (α ∈ H, 모든 시나리오 recourse 실행 가능) 으로 ℓ₁ 최근접 이동. 없으면 nothing"
+function transplant_alpha(xb, α̂)
+    nh = nz_nh(nd); M = Model(lp_opt)
+    @variable(M, 0 <= a[i=1:nh] <= nd.hU[i]); @variable(M, dev[1:nh] >= 0); @variable(M, y[1:ny, 1:S] >= 0)
+    @constraint(M, nd.W * a .<= nd.wvec)
+    @constraint(M, [i=1:nh], dev[i] >= a[i] - α̂[i]); @constraint(M, [i=1:nh], dev[i] >= α̂[i] - a[i])
+    for k in 1:m, s in 1:S
+        @constraint(M, sum(av * y[j, s] for (j, av) in C.rowA[k]) - (nd.hrow[k] > 0 ? nd.hcoef[k] * a[nd.hrow[k]] : 0.0) <= nd.u[k, s] + nz_gx(nd, k, s, xb))
+    end
+    @objective(M, Min, sum(dev)); optimize!(M)
+    termination_status(M) == MOI.OPTIMAL || return nothing
+    return [clamp(value(a[i]), 0.0, nd.hU[i]) for i in 1:nh]
+end
 "v13: 앞선 oracle 의 incumbent α 를 c 에서 정확 평가. t₀ + 0.05 m 을 넘으면 그 belief 를 블록으로 넣고 true"
 function alseed!(c)
     isempty(alpool) && return false
@@ -421,7 +438,11 @@ function alseed!(c)
     for k in eachindex(alpool)
         haskey(alv, (c, k)) && continue
         vx = nothing
-        t_seed[] += @elapsed (vx = exact_value(pts[c], alpool[k])); n_seedev[] += 1
+        t_seed[] += @elapsed begin
+            at = transplant_alpha(pts[c], alpool[k])
+            vx = at === nothing ? (-Inf, nothing, nothing, nothing) : exact_value(pts[c], at)
+        end
+        n_seedev[] += 1
         alv[(c, k)] = vx[2] === nothing ? -Inf : vx[1]
         if vx[2] !== nothing && vx[1] > t0v + thr
             add_and_secure!(c, vx[1], vx[2], vx[3]); n_seed[] += 1
@@ -511,8 +532,7 @@ if PH1
         r = dwsolve!(ROOT; exact=false); upd_inc!(r[6])
         @printf("  [ph1] 루트 RMP %.2f, 마스터 UB %.2f (x=%s), 블록 %d, LP 누적 %d (경과 %.0fs)\n", r[2], r[4], loc_tkp_xstr(nd, pts[r[5]]), length(blks), n_lp[], time() - wall); flush(stdout)
         trysearch(r[6]) && continue
-        haskey(orstate, r[5]) && break            # v13: 1 단계에선 한 점에 oracle 을 두 번 부르지 않음 (인증은 2 단계에서 마스터 incumbent 에)
-        oracle_at!(r[5]) == :none && break
+        oracle_at!(r[5]; cap=(haskey(orstate, r[5]) ? PH1_RECAP : ORCL_TL)) == :none && break   # v13: 1 단계의 같은 점 이어 풀기는 PH1_RECAP 까지 (상태는 남아 2 단계에서 이어 풂)
     end
 end
 t_ph1 = time() - wall
