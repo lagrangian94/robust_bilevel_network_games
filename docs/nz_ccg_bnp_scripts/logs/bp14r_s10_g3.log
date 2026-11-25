@@ -1,0 +1,77 @@
+  [설정] η 1.0e-04, μ 1.0e+04 (상한 1.0e+04), oracle λᵁ 1.0e+04, μη = 1
+--- ccgbp v14 (v13 + 1 단계 oracle 상한 300s (새 점도), LB 가 생기면 마감까지 oracle·나무; v13 = v12 + oracle α 재사용; 예산 분할: oracle θ 0.75, 나무 몫 0.20, 루트 정확 CG end; HUCAP=true, resp=true; 평가기 κ 단계 (0.0, 1.0e-11, 1.0e-9, 1.0e-7)) | SB_K 3 PH1 true ORCL_TL 900 PSTOP true
+ g=3 coupled r=0.20 S=10, 스레드 12, tol 5.0e-03, μ 1e+04, η 0.0001, NS 10, SEED_ALL false, NTOP 5, CGTOL 1.0e-03
+Academic license 926906 - for non-commercial use only - registered to [가림]
+Academic license 926906 - for non-commercial use only - registered to [가림]
+Academic license 926906 - for non-commercial use only - registered to [가림]
+Academic license 926906 - for non-commercial use only - registered to [가림]
+Academic license 926906 - for non-commercial use only - registered to [가림]
+Academic license 926906 - for non-commercial use only - registered to [가림]
+Academic license 926906 - for non-commercial use only - registered to [가림]
+Academic license 926906 - for non-commercial use only - registered to [가림]
+Academic license 926906 - for non-commercial use only - registered to [가림]
+Academic license 926906 - for non-commercial use only - registered to [가림]
+Academic license 926906 - for non-commercial use only - registered to [가림]
+Academic license 926906 - for non-commercial use only - registered to [가림]
+Academic license 926906 - for non-commercial use only - registered to [가림]
+Academic license 926906 - for non-commercial use only - registered to [가림]
+Academic license 926906 - for non-commercial use only - registered to [가림]
+  [시작] t 하한 -8000.01 (낙관값 LP 0.4s)
+  [ph1] 루트 RMP -1486.17, 마스터 UB -1486.17 (x={8:200;13:300;15:400}), 블록 1, LP 누적 59 (경과 14s)
+    [탐색] x={8:200;13:300;15:400}    t -3736.17 → -3128.75 (block), 블록 2
+  [ph1] 루트 RMP -1541.28, 마스터 UB -1541.28 (x={8:300;13:200;15:300}), 블록 2, LP 누적 718 (경과 24s)
+    [탐색] x={8:300;13:200;15:300}    t -3591.28 → -3530.03 (block), 블록 3
+  [ph1] 루트 RMP -1525.03, 마스터 UB -1498.45 (x={8:400;13:200;15:300}), 블록 3, LP 누적 1082 (경과 31s)
+    [탐색] x={8:400;13:200;15:300}    t -3748.45 → -3604.24 (block), 블록 4
+  [ph1] 루트 RMP -1499.30, 마스터 UB -1483.43 (x={6:300;8:300;13:200}), 블록 4, LP 누적 1643 (경과 38s)
+    [탐색] x={6:300;8:300;13:200}     t -3533.43 → -3467.75 (block), 블록 5
+  [ph1] 루트 RMP -1499.30, 마스터 UB -1466.50 (x={8:300;13:200;15:300}), 블록 5, LP 누적 1913 (경과 44s)
+    [탐색] x={8:300;13:200;15:300}    t -3516.50 → -3476.16 (block), 블록 6
+  [ph1] 루트 RMP -1433.47, 마스터 UB -1428.28 (x={6:300;11:300;13:200}), 블록 6, LP 누적 2415 (경과 52s)
+    [탐색] x={6:300;11:300;13:200}    t -3478.28 → -3443.61 (block), 블록 7
+  [ph1] 루트 RMP -1433.47, 마스터 UB -1426.16 (x={11:300;13:200;15:300}), 블록 7, LP 누적 2780 (경과 59s)
+    [탐색] x={11:300;13:200;15:300}   t -3476.16 → -3463.67 (block), 블록 8
+  [ph1] 루트 RMP -1433.47, 마스터 UB -1426.16 (x={8:300;13:200;15:300}), 블록 8, LP 누적 3024 (경과 67s)
+    [탐색] x={6:300;8:300;13:200}     t -3455.61 → -3443.61 (block), 블록 9
+  [ph1] 루트 RMP -1433.47, 마스터 UB -1426.16 (x={8:300;13:200;15:300}), 블록 9, LP 누적 3540 (경과 76s)
+    [탐색] x={8:400;13:200;15:300}    t -3604.24 → -3589.88 (block), 블록 10
+  [ph1] 루트 RMP -1433.31, 마스터 UB -1426.16 (x={8:300;13:200;15:300}), 블록 10, LP 누적 4235 (경과 89s)
+    [탐색] x={6:300;8:300;13:200}     t -3439.88 → -3435.87 (block), 블록 11
+  [ph1] 루트 RMP -1433.31, 마스터 UB -1426.16 (x={8:300;13:200;15:300}), 블록 11, LP 누적 4651 (경과 100s)
+
+******************************************************************************
+This program contains Ipopt, a library for large-scale nonlinear optimization.
+ Ipopt is released as open source code under the Eclipse Public License (EPL).
+         For more information visit https://github.com/coin-or/Ipopt
+******************************************************************************
+
+  [orcl] x={8:300;13:200;15:300}    V in [-3465.77, -3184.49] (정확값 -3465.77), t0 -3476.16, 목표 -3470.81 (71s, 상한 300s) block, 블록 12, LB -Inf UB -1134.49 (경과 183s)
+         α-B&B: 노드 367, 이완 187s, 평가 57s, 범위 80s (MIP 0, 실패 0), 재확인 0s, ipopt 2, 고정 비율 0.20, 수치 오류 1
+  [ph1] 루트 RMP -1433.31, 마스터 UB -1415.66 (x={8:300;13:200;15:300}), 블록 12, LP 누적 5944 (경과 189s)
+  [orcl] x={8:300;13:200;15:300}    V in [-3460.89, -3458.08] (정확값 -3460.89), t0 -3465.66, 목표 -3460.35 (265s, 상한 300s, 이어 풂) block, 블록 13, LB -Inf UB -1408.08 (경과 466s)
+         α-B&B: 노드 3231, 이완 1013s, 평가 325s, 범위 731s (MIP 0, 실패 0), 재확인 2s, ipopt 8, 고정 비율 0.33, 수치 오류 8
+  [ph1] 루트 RMP -1433.31, 마스터 UB -1410.56 (x={8:300;13:200;15:300}), 블록 13, LP 누적 6266 (경과 468s)
+  [orcl] x={8:300;13:200;15:300}    V in [-3460.89, -3458.08] (정확값 -3460.89), t0 -3460.56, 목표 -3455.27 (2s, 상한 300s, 이어 풂) none, 블록 13, LB -Inf UB -1408.08 (경과 475s)
+         α-B&B: 노드 0, 이완 0s, 평가 0s, 범위 0s (MIP 0, 실패 0), 재확인 0s, ipopt 0, 고정 비율 NaN, 수치 오류 0
+  [1 단계 끝] 475s, belief 13, UB -1408.08
+  [node   1] root                               깊이 0: RMP -1433.31, LB -Inf, 분수, 열린 0, 주차 0, LB* -Inf UB -1408.08, 마스터 inc -1410.56 (PT Inf), 블록 13, MILP 0 (경과 476s)
+      [sb] o6 (0.623): 열림 -1429.51, 닫힘 -1425.24, 점수 30.7
+      [sb] o9 (0.377): 열림 -1425.24, 닫힘 -1429.51, 점수 30.7
+      [sb] o13 (0.623): 열림 -1432.87, 닫힘 -1412.62, 점수 9.17
+  [node   2] root o6=1                          깊이 1: RMP -1429.51, LB -Inf, 분수, 열린 1, 주차 0, LB* -Inf UB -1408.08, 마스터 inc -1410.56 (PT Inf), 블록 13, MILP 0 (경과 505s)
+  [node   3] root o6=1 x17=1                    깊이 2: RMP -1415.05, LB -1415.05, 분수, 열린 2, 주차 0, LB* -Inf UB -1408.08, 마스터 inc -1410.56 (PT Inf), 블록 13, MILP 14 (경과 545s)
+  [node   4] root o6=1 x17=0                    깊이 2: RMP -1367.83, LB -1396.00, 분수, 열린 1, 주차 0, LB* -Inf UB -1408.08, 마스터 inc -1410.56 (PT Inf), 블록 13, MILP 26 (경과 610s)
+  [node   5] root o6=0                          깊이 1: RMP -1425.24, LB -Inf, 분수, 열린 0, 주차 0, LB* -Inf UB -1408.08, 마스터 inc -1410.56 (PT Inf), 블록 13, MILP 26 (경과 611s)
+      [sb] o4 (0.798): 열림 -1393.61, 닫힘 -1415.12, 점수 320
+      [sb] o13 (0.202): 열림 -1415.12, 닫힘 -1394.52, 점수 311
+  [node   6] root o6=0 o4=0                     깊이 2: RMP -1415.12, LB -Inf, 분수, 열린 1, 주차 0, LB* -Inf UB -1408.08, 마스터 inc -1410.56 (PT Inf), 블록 13, MILP 26 (경과 619s)
+  [node   7] root o6=0 o4=0 x26=1               깊이 3: RMP -1410.56, LB -1410.73, 정수, 열린 2, 주차 0, LB* -Inf UB -1408.08, 마스터 inc -1410.56 (PT Inf), 블록 13, MILP 35 (경과 628s)
+  [node   8] root o6=0 o4=0 x26=0               깊이 3: RMP -1379.48, LB -1414.71, 분수, 열린 1, 주차 0, LB* -Inf UB -1408.08, 마스터 inc -1410.56 (PT Inf), 블록 13, MILP 38 (경과 675s)
+  [node   9] root o6=0 o4=1                     깊이 2: RMP -1393.61, LB -1409.04, 정수, 열린 0, 주차 0, LB* -Inf UB -1408.08, 마스터 inc -1410.56 (PT Inf), 블록 13, MILP 50 (경과 739s)
+nz_alpha_bnb_dr: 기본이 아닌 구성으로 실행 — resp = true
+RESULT ccgbp g=3 status=Optimal x={8:300;13:200;15:300} LB=-1415.1199 UB=-1408.0795 gap=0.500% beliefs=13 노드 9 (가지침 5, 정확 5, 정수 2, 남은 0, 주차 0, 막힘 0) 안전장치 0 (no-good 0, restricted 0, μ 올림 0) time=739.4 (1 단계 475s)
+  시간: oracle 3 번 338s, 탐색 34 번 32s, 블록 LP 13121 번 66s, 가격 MILP 50 번 207s (노드 106903), RMP 850 번 8s (crossover 재시도 0), 생성기 구성 58s; 서로 다른 점 3185 / 8464
+  v12: 주차 0 번, 다시 엶 0 번, 마스터 incumbent oracle 0 번, 엄격 정확 CG 0 번, 후보점 24
+  v13: α 재사용 위반 0 번 (정확 평가 10 번 2s), α 풀 2
+  v14: 1 단계 상한 300s, 마감 루트 CG 건너뜀, 2 단계 마감 TL (하한 있음)
+  열: RMP 에 들어간 열 (블록 합) 3409, 서로 다른 열 1378, 번호를 붙인 점 4278 / |X| 8464
