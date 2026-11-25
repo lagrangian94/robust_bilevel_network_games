@@ -126,7 +126,8 @@ function nz_alpha_bnb_dr(nd::NZData, x̄;
                          # 이어 풀기: 같은 x̄ 의 이전 호출이 돌려준 r[:state]
                          resume=nothing,
                          # 패치: dd = true 일 때 DD 를 구하는 방식 (:screen 기본 | :full), 선별 DD 의 MIP 하나 시간 상한
-                         dd_mode::Symbol=:screen, dd_mip_tl::Float64=2.0)
+                         #   dd_maxw: 선별 DD 는 활성 좌표의 최대 상자 폭이 이 값 이하인 노드에서만 (넓은 상자에서는 차이가 상수가 아니라 효과 없고 비쌈)
+                         dd_mode::Symbol=:screen, dd_mip_tl::Float64=2.0, dd_maxw::Float64=25.0)
     branch_point in (:alphahat, :mid) || error("branch_point = :alphahat | :mid")
     config = (dual_range=dual_range, comp=dual_range && comp, vcut=dual_range && vcut, cslift=dual_range && cslift,
               branch_point=branch_point, child_rounds=child_rounds, maxrounds=maxrounds, dive_max=dive_max,
@@ -390,7 +391,8 @@ function nz_alpha_bnb_dr(nd::NZData, x̄;
                     tr = pre_inf ? 0.0 : @elapsed (z = zpad((sticky ? _nz_sticky_solve! : _nz_sep_solve!)(P; maxrounds=(ubp == Inf ? maxrounds : child_rounds), maxadd=sep_maxadd)))
                     pre_inf && (z = -Inf)
                     dd_empty = false                          # 패치 (screen): 가지치기 못 한 노드에서 선별 DD → 상자가 비었거나 조여지면 다시 풂
-                    if config.dd && dd_mode == :screen && range_lp && !pre_inf && ubp != Inf && isfinite(z) && z > LB[] + tol(LB[])
+                    if config.dd && dd_mode == :screen && range_lp && !pre_inf && ubp != Inf && isfinite(z) && z > LB[] + tol(LB[]) &&
+                       maximum((u[i] - l[i] for i in 1:nh if nd.hU[i] > 1e-9); init=0.0) <= dd_maxw
                         tdd = @elapsed (ddr = _abb_dd_screen!(CLs[wid], DR, nd, x̄, l, u, lo, hi, dlo, dhi; mip_tl=dd_mip_tl, deadline=t_end))
                         Threads.atomic_add!(t_range, tdd); tn_rg += tdd; Threads.atomic_add!(n_ddnode, 1); Threads.atomic_add!(n_ddmip, ddr[3])
                         if ddr[1] === :empty

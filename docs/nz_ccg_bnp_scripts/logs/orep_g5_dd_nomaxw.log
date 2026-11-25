@@ -1,0 +1,30 @@
+  [HUCAP] 거점 4: hᵁ 300 → 200
+  [HUCAP] 거점 7: hᵁ 300 → 200
+--- oracle 재현 g=5 S=10 x={4:200;7:200;12:300} λᵁ=10000 목표 -3151.6 gap 1.0e-03 상한 1800s, 스레드 12, 추가 인자 (resp = true, dd = true)
+Academic license 926906 - for non-commercial use only - registered to [가림]
+Academic license 926906 - for non-commercial use only - registered to [가림]
+Academic license 926906 - for non-commercial use only - registered to [가림]
+Academic license 926906 - for non-commercial use only - registered to [가림]
+Academic license 926906 - for non-commercial use only - registered to [가림]
+Academic license 926906 - for non-commercial use only - registered to [가림]
+Academic license 926906 - for non-commercial use only - registered to [가림]
+Academic license 926906 - for non-commercial use only - registered to [가림]
+Academic license 926906 - for non-commercial use only - registered to [가림]
+Academic license 926906 - for non-commercial use only - registered to [가림]
+Academic license 926906 - for non-commercial use only - registered to [가림]
+Academic license 926906 - for non-commercial use only - registered to [가림]
+
+******************************************************************************
+This program contains Ipopt, a library for large-scale nonlinear optimization.
+ Ipopt is released as open source code under the Eclipse Public License (EPL).
+         For more information visit https://github.com/coin-or/Ipopt
+******************************************************************************
+
+    [nz-α-B&B-dr] t=  68.7s nodes=    2 open=    0 LB=-3253.427584 UB=-1787.743053 gap=4.505e-01
+    [nz-α-B&B-dr] t= 129.0s nodes=    5 open=    0 LB=-3172.761645 UB=-1839.898548 gap=4.201e-01
+    [nz-α-B&B-dr] t= 189.1s nodes=   19 open=    5 LB=-3172.677055 UB=-1859.853484 gap=4.138e-01
+    [nz-α-B&B-dr] t= 249.1s nodes=   41 open=   15 LB=-3172.523883 UB=-1859.853484 gap=4.138e-01
+    [nz-α-B&B-dr] t= 309.3s nodes=   73 open=   25 LB=-3172.523883 UB=-1868.818637 gap=4.109e-01
+    [nz-α-B&B-dr] t= 369.3s nodes=  108 open=   32 LB=-3172.523883 UB=-1900.863566 gap=4.008e-01
+    [nz-α-B&B-dr] t= 429.4s nodes=  135 open=   43 LB=-3172.523883 UB=-1900.864364 gap=4.008e-01
+    [nz-α-B&B-dr] t= 489.4s nodes=  170 open=   44 LB=-3172.523883 UB=-1954.057727 gap=3.841e-01

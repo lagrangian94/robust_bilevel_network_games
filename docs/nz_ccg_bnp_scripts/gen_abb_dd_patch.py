@@ -5,6 +5,7 @@
 #   dd_mode = :full   꼭짓점 범위 뒤 두 성분 모두 안 고정인 쌍 전부를 KKT-MIP 로 (_nz_dr_dranges!). 상자당 150 ~ 190 s.
 #   dd_mode = :screen 노드 LP 로 가지치기 못 한 노드에서만, 두 꼭짓점의 최적 쌍대 면에서 차이가 모인 (쌍, s) 를 골라 KKT-MIP 로 인증하고 다시 풂
 #                     (front_dd_lazy.jl SCREEN=corner: 상자 8 개 모두 가지치기, 상자당 약 18 s). MIP 하나 dd_mip_tl 초, 시간 상한이면 objective_bound.
+#                     활성 좌표의 최대 폭이 dd_maxw (25) 이하인 노드만. 첫 판 (문턱 없음) 은 489 s 에 노드 170 개 (기본 판 5,032 개) 로 위쪽 넓은 상자에서 시간을 다 씀.
 #   유효성: 범위 MIP 판의 DD 와 같은 논증 (상자 안 α 의 recourse 최적 쌍대의 차이 범위). 고른 쌍만 조이는 것은 덜 조일 뿐.
 #   자식은 조인 dlo·dhi 를 물려받음 (자식 상자 ⊆ 부모 상자).
 # 사용: python gen_abb_dd_patch.py  → abb_dd_patch.jl. 스크립트에서 nz_benders.jl 을 include 한 뒤 include("abb_dd_patch.jl"), dd = true 로 부름.
@@ -28,7 +29,8 @@ def rep(a, b, cnt=1):
 rep('                         resume=nothing)',
     '                         resume=nothing,\n'
     '                         # 패치: dd = true 일 때 DD 를 구하는 방식 (:screen 기본 | :full), 선별 DD 의 MIP 하나 시간 상한\n'
-    '                         dd_mode::Symbol=:screen, dd_mip_tl::Float64=2.0)')
+    '                         #   dd_maxw: 선별 DD 는 활성 좌표의 최대 상자 폭이 이 값 이하인 노드에서만 (넓은 상자에서는 차이가 상수가 아니라 효과 없고 비쌈)\n'
+    '                         dd_mode::Symbol=:screen, dd_mip_tl::Float64=2.0, dd_maxw::Float64=25.0)')
 # (1) range_lp 와 dd 함께 허용
 rep('    range_lp &&(dd || isfinite(range_time) || range_nodes != typemax(Int) || !range_mip || !dual_range) &&',
     '    range_lp &&(isfinite(range_time) || range_nodes != typemax(Int) || !range_mip || !dual_range) &&   # 패치: dd 허용')
@@ -53,7 +55,8 @@ rep('''                    tr = pre_inf ? 0.0 : @elapsed (z = zpad((sticky ? _nz
 ''', '''                    tr = pre_inf ? 0.0 : @elapsed (z = zpad((sticky ? _nz_sticky_solve! : _nz_sep_solve!)(P; maxrounds=(ubp == Inf ? maxrounds : child_rounds), maxadd=sep_maxadd)))
                     pre_inf && (z = -Inf)
                     dd_empty = false                          # 패치 (screen): 가지치기 못 한 노드에서 선별 DD → 상자가 비었거나 조여지면 다시 풂
-                    if config.dd && dd_mode == :screen && range_lp && !pre_inf && ubp != Inf && isfinite(z) && z > LB[] + tol(LB[])
+                    if config.dd && dd_mode == :screen && range_lp && !pre_inf && ubp != Inf && isfinite(z) && z > LB[] + tol(LB[]) &&
+                       maximum((u[i] - l[i] for i in 1:nh if nd.hU[i] > 1e-9); init=0.0) <= dd_maxw
                         tdd = @elapsed (ddr = _abb_dd_screen!(CLs[wid], DR, nd, x̄, l, u, lo, hi, dlo, dhi; mip_tl=dd_mip_tl, deadline=t_end))
                         Threads.atomic_add!(t_range, tdd); tn_rg += tdd; Threads.atomic_add!(n_ddnode, 1); Threads.atomic_add!(n_ddmip, ddr[3])
                         if ddr[1] === :empty
