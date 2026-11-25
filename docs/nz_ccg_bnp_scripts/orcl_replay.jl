@@ -1,5 +1,5 @@
 # oracle (α-B&B) 한 번을 B&P 와 같은 인자로 따로 다시 부름 (2026-11-24, S=20 병목 분석)
-#  환경 변수: HUCAP 0 (1 이면 연 B 거점 약정 상한 = 용량), GEO 1, S 10, XSTR (예 "{9:200;10:300;15:200}"), TAU (목표, 없으면 끔), GAP 1e-3, TLIM 3600, LAMU 1e4, LOG 60, KW (α-B&B 추가 인자), TAG (전선 파일 꼬리표)
+#  환경 변수: ABB_PATCH (α-B&B 재정의 파일), HUCAP 0 (1 이면 연 B 거점 약정 상한 = 용량), GEO 1, S 10, XSTR (예 "{9:200;10:300;15:200}"), TAU (목표, 없으면 끔), GAP 1e-3, TLIM 3600, LAMU 1e4, LOG 60, KW (α-B&B 추가 인자), TAG (전선 파일 꼬리표)
 #  ccgbp.jl 의 oracle_at! 과 같은 호출: nworkers = 스레드 − 1, rel_gap = GAP, target = TAU. verbose 로 하한·상한 경과를 찍음
 root = "C:/Users/user/robust_bilevel_network_games"
 using JuMP, Gurobi, Printf, LinearAlgebra, Random, Serialization
@@ -7,6 +7,7 @@ import MathOptInterface as MOI
 include(joinpath(root, "nonzero_sum", "loc_tkp.jl")); include(joinpath(root, "nonzero_sum", "nz_omega.jl"))
 include(joinpath(root, "nonzero_sum", "nz_benders.jl")); include(joinpath(root, "nonzero_sum", "nz_exact_eval.jl"))
 include(joinpath(root, "nonzero_sum", "nz_belief_ccg.jl"))
+haskey(ENV, "ABB_PATCH") && include(ENV["ABB_PATCH"])   # 실험용 α-B&B 재정의 (예 abb_dd_patch.jl, 2026-11-25)
 envf(k, d) = get(ENV, k, d)
 g = parse(Int, envf("GEO", "1")); S = parse(Int, envf("S", "10")); lam = parse(Float64, envf("LAMU", "1e4"))
 xs = envf("XSTR", "{9:200;10:300;15:200}"); tl = parse(Float64, envf("TLIM", "3600")); gap = parse(Float64, envf("GAP", "1e-3"))
@@ -37,6 +38,7 @@ t = @elapsed res = nz_alpha_bnb_dr(nd, x̄; nworkers=max(1, Threads.nthreads() -
 @printf("RESULT g=%d S=%d x=%s V in [%.4f, %.4f] (%.0fs) 노드 %d, 이완 %.0fs, 평가 %.0fs, 범위 %.0fs (MIP %d, 실패 %d), 재확인 %.0fs, ipopt %d, 고정 비율 %.2f, 수치 오류 %d, 루트 UB %.4f\n",
         g, S, xs, res[:LB], res[:UB], t, res[:nodes], res[:t_relax], res[:t_eval], res[:t_range], res[:range_mips], res[:range_fail], res[:t_recheck],
         res[:ipopt_calls], res[:fixfrac], res[:numerr], res[:root_UB])
+haskey(res, :dd_screen) && println("DD 선별 (패치): ", res[:dd_screen])
 println("느린 노드 (상위 10): ", first(res[:slow_nodes], 10))
 # 남은 전선 저장 (nonzero_sum/lab_frontier.jl 과 같은 형식 + loc_tkp 인자): 완화 오차 진단용
 boxes = [(l=n[1], u=n[2], ub=n[3], lo=n[4], hi=n[5], phib=n[7], eq=collect(n[8].eq)) for n in res[:state].open]
