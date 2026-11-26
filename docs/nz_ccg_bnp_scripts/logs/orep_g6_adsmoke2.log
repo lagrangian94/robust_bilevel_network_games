@@ -1,0 +1,31 @@
+  [HUCAP] 거점 10: hᵁ 300 → 200
+--- oracle 재현 g=6 S=10 x={6:300;10:200;15:300} λᵁ=10000 목표 -3618.1 gap 1.0e-03 상한 120s, 스레드 12, 추가 인자 (resp = true, dd = true, dd_maxw = 25.0, dd_warm = 5, dd_minrate = 0.99)
+Academic license 926906 - for non-commercial use only - registered to [가림]
+Academic license 926906 - for non-commercial use only - registered to [가림]
+Academic license 926906 - for non-commercial use only - registered to [가림]
+Academic license 926906 - for non-commercial use only - registered to [가림]
+Academic license 926906 - for non-commercial use only - registered to [가림]
+Academic license 926906 - for non-commercial use only - registered to [가림]
+Academic license 926906 - for non-commercial use only - registered to [가림]
+Academic license 926906 - for non-commercial use only - registered to [가림]
+Academic license 926906 - for non-commercial use only - registered to [가림]
+Academic license 926906 - for non-commercial use only - registered to [가림]
+Academic license 926906 - for non-commercial use only - registered to [가림]
+Academic license 926906 - for non-commercial use only - registered to [가림]
+
+******************************************************************************
+This program contains Ipopt, a library for large-scale nonlinear optimization.
+ Ipopt is released as open source code under the Eclipse Public License (EPL).
+         For more information visit https://github.com/coin-or/Ipopt
+******************************************************************************
+
+    [nz-α-B&B-dr] t=  38.3s nodes=  214 open=   58 LB=-3623.999992 UB=-3101.001619 gap=1.443e-01
+    [nz-α-B&B-dr] t=  68.6s nodes=  596 open=  148 LB=-3623.999992 UB=-3311.050599 gap=8.635e-02
+    [nz-α-B&B-dr] t=  98.7s nodes=  895 open=  217 LB=-3623.999992 UB=-3366.413543 gap=7.108e-02
+[abb_dd_patch] nz_alpha_bnb_dr 재정의: range_lp + dd 허용 (실험용)
+nz_alpha_bnb_dr: 기본이 아닌 구성으로 실행 — dd = true, resp = true
+RESULT g=6 S=10 x={6:300;10:200;15:300} V in [-3624.0000, -3410.7122] (125s) 노드 1161, 이완 498s, 평가 168s, 범위 391s (MIP 422, 실패 0), 재확인 1s, ipopt 3, 고정 비율 0.17, 수치 오류 0, 루트 UB -2447.7412
+DD 선별 (패치): (nodes = 36, mips = 422, empty = 0, cut = 34, skip = 34)
+느린 노드 (상위 10): NTuple{4, Float64}[]
+전선 저장: orep_front_g6_S10_g6_adsmoke2.jls (열린 노드 312)
+전선: 열린 노드 312, 상한 ≤ 목표 0 (0%), 상한 범위 [-3607.86, -3410.71], 목표 -3618.10, incumbent -3624.00

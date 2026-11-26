@@ -34,7 +34,16 @@ if get(ENV, "HUCAP", "0") == "1"
     global nd = nz_with_hU(nd, hU)
 end
 @printf("--- oracle 재현 g=%d S=%d x=%s λᵁ=%.0f 목표 %s gap %.1e 상한 %.0fs, 스레드 %d, 추가 인자 %s\n", g, S, xs, lam, string(tau), gap, tl, Threads.nthreads(), string(kw)); flush(stdout)
-t = @elapsed res = nz_alpha_bnb_dr(nd, x̄; nworkers=max(1, Threads.nthreads() - 1), time_limit=tl, rel_gap=gap, target=tau, verbose=true, log_every=le, kw...)
+tsplit = parse(Float64, envf("TSPLIT", "0"))   # 2026-11-26: > 0 이면 TSPLIT 초에서 끊고 이어 풀기 (resume) 로 나머지를 — 패치의 이어 풀기 점검용
+if tsplit > 0
+    t1 = @elapsed (r1 = nz_alpha_bnb_dr(nd, x̄; nworkers=max(1, Threads.nthreads() - 1), time_limit=tsplit, rel_gap=gap, target=tau, verbose=true, log_every=le, kw...))
+    @printf("  [이어 풀기 점검] 1 차 %.0fs: V in [%.4f, %.4f], 노드 %d, 열린 %d%s\n", t1, r1[:LB], r1[:UB], r1[:nodes], length(r1[:state].open),
+            haskey(r1, :dd_screen) ? ", DD $(r1[:dd_screen])" : ""); flush(stdout)
+    t = t1 + @elapsed (global res = nz_alpha_bnb_dr(nd, x̄; nworkers=max(1, Threads.nthreads() - 1), time_limit=tl - tsplit, rel_gap=gap, target=tau, verbose=true, log_every=le, resume=r1[:state], kw...))
+    res[:resumed] || error("orcl_replay: 이어 풀기가 안 됨")
+else
+    t = @elapsed (global res = nz_alpha_bnb_dr(nd, x̄; nworkers=max(1, Threads.nthreads() - 1), time_limit=tl, rel_gap=gap, target=tau, verbose=true, log_every=le, kw...))
+end
 @printf("RESULT g=%d S=%d x=%s V in [%.4f, %.4f] (%.0fs) 노드 %d, 이완 %.0fs, 평가 %.0fs, 범위 %.0fs (MIP %d, 실패 %d), 재확인 %.0fs, ipopt %d, 고정 비율 %.2f, 수치 오류 %d, 루트 UB %.4f\n",
         g, S, xs, res[:LB], res[:UB], t, res[:nodes], res[:t_relax], res[:t_eval], res[:t_range], res[:range_mips], res[:range_fail], res[:t_recheck],
         res[:ipopt_calls], res[:fixfrac], res[:numerr], res[:root_UB])

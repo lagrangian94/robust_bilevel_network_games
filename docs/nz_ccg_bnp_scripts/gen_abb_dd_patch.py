@@ -11,6 +11,8 @@
 #   2026-11-26: dd_sigbd (기본 켬) — 선별 DD 의 KKT-MIP 에 상자의 꼭짓점 LP 범위 [lo, hi] 를 H 행 쌍대의 변수 경계로 넣음 (front_ddmip.jl:
 #                MIP 평균 0.87 → 0.19 s, bound 는 같거나 0.01 이하로 더 느슨). 범위는 상자 안 α 의 모든 (정규형) 최적 쌍대를 담아 유효.
 #                경계를 넣은 MIP 가 실행 불가능이면 경계를 빼고 다시 풀어 확인한 뒤에만 상자를 비움 (허용오차로 인한 거짓 가지치기 방지).
+#   2026-11-26: dd_adapt (기본 켬) — 선별 DD 의 성공률 (상한이 내려간 노드 / DD 받은 노드) 이 낮으면 선별 빈도를 1/dd_probe 로.
+#                지리 5 막힌 점은 77% (DD 가 기본 판을 이김), 지리 6 막힌 점은 7% (선별 LP 비용으로 처리량 반) 였음 (md 11.14 (9)).
 # 사용: python gen_abb_dd_patch.py  → abb_dd_patch.jl. 스크립트에서 nz_benders.jl 을 include 한 뒤 include("abb_dd_patch.jl"), dd = true 로 부름.
 import os
 here = os.path.dirname(os.path.abspath(__file__))
@@ -33,13 +35,16 @@ rep('                         resume=nothing)',
     '                         resume=nothing,\n'
     '                         # 패치: dd = true 일 때 DD 를 구하는 방식 (:screen 기본 | :full), 선별 DD 의 MIP 하나 시간 상한\n'
     '                         #   dd_maxw: 선별 DD 는 활성 좌표의 최대 상자 폭이 이 값 이하인 노드에서만 (넓은 상자에서는 차이가 상수가 아니라 효과 없고 비쌈)\n'
-    '                         dd_mode::Symbol=:screen, dd_mip_tl::Float64=2.0, dd_maxw::Float64=25.0, dd_sigbd::Bool=true)')
+    '                         #   dd_adapt: DD 를 받은 노드가 dd_warm 개를 넘었는데 상한이 내려간 비율이 dd_minrate 보다 낮으면 dd_probe 번째 노드마다만 선별\n'
+    '                         dd_mode::Symbol=:screen, dd_mip_tl::Float64=2.0, dd_maxw::Float64=25.0, dd_sigbd::Bool=true,\n'
+    '                         dd_adapt::Bool=true, dd_warm::Int=200, dd_minrate::Float64=0.25, dd_probe::Int=10)')
 # (1) range_lp 와 dd 함께 허용
 rep('    range_lp &&(dd || isfinite(range_time) || range_nodes != typemax(Int) || !range_mip || !dual_range) &&',
     '    range_lp &&(isfinite(range_time) || range_nodes != typemax(Int) || !range_mip || !dual_range) &&   # 패치: dd 허용')
 rep('    n_cap = Threads.Atomic{Int}(0)',
     '    n_cap = Threads.Atomic{Int}(0)\n'
-    '    n_ddnode = Threads.Atomic{Int}(0); n_ddmip = Threads.Atomic{Int}(0); n_ddempty = Threads.Atomic{Int}(0); n_ddcut = Threads.Atomic{Int}(0)   # 패치 (screen)')
+    '    n_ddnode = Threads.Atomic{Int}(0); n_ddmip = Threads.Atomic{Int}(0); n_ddempty = Threads.Atomic{Int}(0); n_ddcut = Threads.Atomic{Int}(0)   # 패치 (screen)\n'
+    '    n_ddelig = Threads.Atomic{Int}(0); n_ddskip = Threads.Atomic{Int}(0)   # 패치 (dd_adapt)')
 # (2) :full — 꼭짓점 범위 뒤 DD 전부
 rep('''                    _nz_dr_set!(P, DR, nd, l, u, lo, hi, phib; comp=comp, eq=eqp, dlo=dlo, dhi=dhi)
                     fixfrac = count(hi .- lo .<= 1e-4) / max(1, length(lo))
@@ -59,7 +64,8 @@ rep('''                    tr = pre_inf ? 0.0 : @elapsed (z = zpad((sticky ? _nz
                     pre_inf && (z = -Inf)
                     dd_empty = false                          # 패치 (screen): 가지치기 못 한 노드에서 선별 DD → 상자가 비었거나 조여지면 다시 풂
                     if config.dd && dd_mode == :screen && range_lp && !pre_inf && ubp != Inf && isfinite(z) && z > LB[] + tol(LB[]) &&
-                       maximum((u[i] - l[i] for i in 1:nh if nd.hU[i] > 1e-9); init=0.0) <= dd_maxw
+                       maximum((u[i] - l[i] for i in 1:nh if nd.hU[i] > 1e-9); init=0.0) <= dd_maxw &&
+                       _abb_dd_go(dd_adapt, n_ddelig, n_ddnode, n_ddcut, n_ddskip, dd_warm, dd_minrate, dd_probe)
                         tdd = @elapsed (ddr = _abb_dd_screen!(CLs[wid], DR, nd, x̄, l, u, lo, hi, dlo, dhi; mip_tl=dd_mip_tl, deadline=t_end, sigbd=dd_sigbd))
                         Threads.atomic_add!(t_range, tdd); tn_rg += tdd; Threads.atomic_add!(n_ddnode, 1); Threads.atomic_add!(n_ddmip, ddr[3])
                         if ddr[1] === :empty
@@ -76,7 +82,7 @@ rep('''                    tr = pre_inf ? 0.0 : @elapsed (z = zpad((sticky ? _nz
 rep('''                    if z == -Inf && dual_range
                         fk = pre_inf''', '''                    if z == -Inf && dual_range && !dd_empty      # 패치: DD MIP 가 상자를 비웠으면 (KKT-MIP 실행 불가능) 재확인할 LP 가 없음
                         fk = pre_inf''')
-rep(':gc_wait', ':dd_screen => (nodes=n_ddnode[], mips=n_ddmip[], empty=n_ddempty[], cut=n_ddcut[]), :gc_wait', cnt=body.count(':gc_wait'))
+rep(':gc_wait', ':dd_screen => (nodes=n_ddnode[], mips=n_ddmip[], empty=n_ddempty[], cut=n_ddcut[], skip=n_ddskip[]), :gc_wait', cnt=body.count(':gc_wait'))
 
 helper = r'''
 "패치 (screen): 두 꼭짓점의 최적 쌍대 면에서 차이가 모인 (쌍, s) 를 골라 KKT-MIP 로 차이 범위를 인증. 반환 (:none | :tight | :empty, (dlo, dhi), MIP 수)"
@@ -166,6 +172,19 @@ function _abb_sigbd!(M, DR, nd, lo, hi, s)
             set_lower_bound(M.σ[k], max(0.0, lo[a, s])); set_upper_bound(M.σ[k], max(hi[a, s], max(0.0, lo[a, s])))
         end
     end
+end
+
+"패치 (dd_adapt): 이 노드에서 선별 DD 를 돌릴지. MIP 솔버가 분리기 호출 빈도를 성공률로 조절하는 것과 같은 꼴 —
+ DD 를 받은 노드가 warm 개 이상인데 상한이 내려간 비율이 minrate 미만이면 자격 있는 노드 probe 개 중 하나만 (비율은 그 노드들로 계속 갱신).
+ 돌리지 않는 것은 덜 조일 뿐이라 유효성과 무관"
+function _abb_dd_go(adapt, nelig, nnode, ncut, nskip, warm, minrate, probe)
+    adapt || return true
+    k = Threads.atomic_add!(nelig, 1)
+    nn = nnode[]; nc = ncut[]
+    (nn < warm || nc >= minrate * nn) && return true
+    k % probe == 0 && return true
+    Threads.atomic_add!(nskip, 1)
+    return false
 end
 '''
 

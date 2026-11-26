@@ -91,6 +91,19 @@ function _abb_sigbd!(M, DR, nd, lo, hi, s)
     end
 end
 
+"패치 (dd_adapt): 이 노드에서 선별 DD 를 돌릴지. MIP 솔버가 분리기 호출 빈도를 성공률로 조절하는 것과 같은 꼴 —
+ DD 를 받은 노드가 warm 개 이상인데 상한이 내려간 비율이 minrate 미만이면 자격 있는 노드 probe 개 중 하나만 (비율은 그 노드들로 계속 갱신).
+ 돌리지 않는 것은 덜 조일 뿐이라 유효성과 무관"
+function _abb_dd_go(adapt, nelig, nnode, ncut, nskip, warm, minrate, probe)
+    adapt || return true
+    k = Threads.atomic_add!(nelig, 1)
+    nn = nnode[]; nc = ncut[]
+    (nn < warm || nc >= minrate * nn) && return true
+    k % probe == 0 && return true
+    Threads.atomic_add!(nskip, 1)
+    return false
+end
+
 function nz_alpha_bnb_dr(nd::NZData, x̄;
                          # 호출마다 정하는 것
                          nworkers=Threads.nthreads() - 2, time_limit=300.0, rel_gap=1e-4, target=nothing,
@@ -147,7 +160,9 @@ function nz_alpha_bnb_dr(nd::NZData, x̄;
                          resume=nothing,
                          # 패치: dd = true 일 때 DD 를 구하는 방식 (:screen 기본 | :full), 선별 DD 의 MIP 하나 시간 상한
                          #   dd_maxw: 선별 DD 는 활성 좌표의 최대 상자 폭이 이 값 이하인 노드에서만 (넓은 상자에서는 차이가 상수가 아니라 효과 없고 비쌈)
-                         dd_mode::Symbol=:screen, dd_mip_tl::Float64=2.0, dd_maxw::Float64=25.0, dd_sigbd::Bool=true)
+                         #   dd_adapt: DD 를 받은 노드가 dd_warm 개를 넘었는데 상한이 내려간 비율이 dd_minrate 보다 낮으면 dd_probe 번째 노드마다만 선별
+                         dd_mode::Symbol=:screen, dd_mip_tl::Float64=2.0, dd_maxw::Float64=25.0, dd_sigbd::Bool=true,
+                         dd_adapt::Bool=true, dd_warm::Int=200, dd_minrate::Float64=0.25, dd_probe::Int=10)
     branch_point in (:alphahat, :mid) || error("branch_point = :alphahat | :mid")
     config = (dual_range=dual_range, comp=dual_range && comp, vcut=dual_range && vcut, cslift=dual_range && cslift,
               branch_point=branch_point, child_rounds=child_rounds, maxrounds=maxrounds, dive_max=dive_max,
@@ -168,7 +183,8 @@ function nz_alpha_bnb_dr(nd::NZData, x̄;
     t_pre = Threads.Atomic{Float64}(0.0); n_preretry = Threads.Atomic{Int}(0)  # infeas_pre_retry: 재시도에서 증명된 노드
     n_bload = Threads.Atomic{Int}(0); n_bfail = Threads.Atomic{Int}(0)       # parent_basis: 부모 basis 를 넣은 노드 / 못 넣은 노드
     n_cap = Threads.Atomic{Int}(0)
-    n_ddnode = Threads.Atomic{Int}(0); n_ddmip = Threads.Atomic{Int}(0); n_ddempty = Threads.Atomic{Int}(0); n_ddcut = Threads.Atomic{Int}(0)   # 패치 (screen)                                           # node_lp_cap 에 걸린 노드
+    n_ddnode = Threads.Atomic{Int}(0); n_ddmip = Threads.Atomic{Int}(0); n_ddempty = Threads.Atomic{Int}(0); n_ddcut = Threads.Atomic{Int}(0)   # 패치 (screen)
+    n_ddelig = Threads.Atomic{Int}(0); n_ddskip = Threads.Atomic{Int}(0)   # 패치 (dd_adapt)                                           # node_lp_cap 에 걸린 노드
     bdive = get(ENV, "NZ_BASIS_DIVE", "0") == "1"           # 진단 (parent_basis): dive 노드에도 실어 둔 부모 basis 를 명시적으로 넣음
     skeys = Tuple{Int,Int,Bool}[]; skset = Set{Tuple{Int,Int,Bool}}(); sk_lk = ReentrantLock()   # parent_basis: worker 공유 분리 행 키
     precheck = get(ENV, "NZ_PRE_CHECK", "0") == "1"; n_predis = Threads.Atomic{Int}(0); n_preto = Threads.Atomic{Int}(0)
@@ -181,7 +197,7 @@ function nz_alpha_bnb_dr(nd::NZData, x̄;
     end
     Threads.nthreads(:interactive) >= 1 || error("nz_alpha_bnb_dr: julia -t $(nworkers + 2),1 로 실행하세요")
     t0 = time(); t_end = t0 + time_limit
-    gcw0 = Base.gc_num().total_time_to_safepoint       # GC safepoint 대기 (전체 스레드가 멈춘 wall 시간) — :dd_screen => (nodes=n_ddnode[], mips=n_ddmip[], empty=n_ddempty[], cut=n_ddcut[]), :gc_wait 로 보고
+    gcw0 = Base.gc_num().total_time_to_safepoint       # GC safepoint 대기 (전체 스레드가 멈춘 wall 시간) — :dd_screen => (nodes=n_ddnode[], mips=n_ddmip[], empty=n_ddempty[], cut=n_ddcut[], skip=n_ddskip[]), :gc_wait 로 보고
     nh, S = nz_nh(nd), nd.S
     Hr = findall(nd.hrow .> 0)
     mk(env) = () -> (o = Gurobi.Optimizer(env); MOI.set(o, MOI.Silent(), true);
@@ -412,7 +428,8 @@ function nz_alpha_bnb_dr(nd::NZData, x̄;
                     pre_inf && (z = -Inf)
                     dd_empty = false                          # 패치 (screen): 가지치기 못 한 노드에서 선별 DD → 상자가 비었거나 조여지면 다시 풂
                     if config.dd && dd_mode == :screen && range_lp && !pre_inf && ubp != Inf && isfinite(z) && z > LB[] + tol(LB[]) &&
-                       maximum((u[i] - l[i] for i in 1:nh if nd.hU[i] > 1e-9); init=0.0) <= dd_maxw
+                       maximum((u[i] - l[i] for i in 1:nh if nd.hU[i] > 1e-9); init=0.0) <= dd_maxw &&
+                       _abb_dd_go(dd_adapt, n_ddelig, n_ddnode, n_ddcut, n_ddskip, dd_warm, dd_minrate, dd_probe)
                         tdd = @elapsed (ddr = _abb_dd_screen!(CLs[wid], DR, nd, x̄, l, u, lo, hi, dlo, dhi; mip_tl=dd_mip_tl, deadline=t_end, sigbd=dd_sigbd))
                         Threads.atomic_add!(t_range, tdd); tn_rg += tdd; Threads.atomic_add!(n_ddnode, 1); Threads.atomic_add!(n_ddmip, ddr[3])
                         if ddr[1] === :empty
@@ -658,5 +675,5 @@ function nz_alpha_bnb_dr(nd::NZData, x̄;
                 :range_mips => dual_range ? sum(D.nmip for D in DRs) : 0, :range_fail => dual_range ? sum(D.nfail for D in DRs) : 0,
                 :fixfrac => nodes[] > 0 ? nfixed_sum[] / nodes[] : NaN, :infeas => n_infeas[], :infeas_recovered => n_infrec[],
                 :numerr => _NZ_NUMERR[] - numerr0, :numerr_fail => _NZ_NUMERR_FAIL[] - numfail0,
-                :cbranch => n_cbranch[], :resp_fix => n_rfix[], :farkas => n_fk[], :farkas_disagree => n_fkdis[], :farkas_check_timeout => n_fkto[], :infeas_pre => n_pre[], :infeas_pre_tried => n_pretry[], :infeas_pre_retry => n_preretry[], :t_pre => t_pre[], :infeas_pre_disagree => n_predis[], :infeas_pre_check_timeout => n_preto[], :basis_loaded => n_bload[], :node_lp_cap_hits => n_cap[], :basis_failed => n_bfail[], :prune_checked => n_prchk[], :prune_disagree => n_prdis[], :resp_hits => n_resp[], :gcsafe => _NZ_GCSAFE_STATE[], :dd_screen => (nodes=n_ddnode[], mips=n_ddmip[], empty=n_ddempty[], cut=n_ddcut[]), :gc_wait => (Base.gc_num().total_time_to_safepoint - gcw0) / 1e9)
+                :cbranch => n_cbranch[], :resp_fix => n_rfix[], :farkas => n_fk[], :farkas_disagree => n_fkdis[], :farkas_check_timeout => n_fkto[], :infeas_pre => n_pre[], :infeas_pre_tried => n_pretry[], :infeas_pre_retry => n_preretry[], :t_pre => t_pre[], :infeas_pre_disagree => n_predis[], :infeas_pre_check_timeout => n_preto[], :basis_loaded => n_bload[], :node_lp_cap_hits => n_cap[], :basis_failed => n_bfail[], :prune_checked => n_prchk[], :prune_disagree => n_prdis[], :resp_hits => n_resp[], :gcsafe => _NZ_GCSAFE_STATE[], :dd_screen => (nodes=n_ddnode[], mips=n_ddmip[], empty=n_ddempty[], cut=n_ddcut[], skip=n_ddskip[]), :gc_wait => (Base.gc_num().total_time_to_safepoint - gcw0) / 1e9)
 end
