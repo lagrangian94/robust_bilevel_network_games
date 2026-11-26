@@ -413,7 +413,9 @@ end
 """상자 [l, u] 의 쌍대 범위를 두 꼭짓점의 LP 로 (부모 범위 lo0, hi0 와 교집합). 범위 MIP 의 바깥쪽 여유 1e-6 과 같게.
 등식 쌍 (nz_eq_pairs, 약정 물량) 은 성분 대신 승수 ν = σ⁺ − σ⁻ 의 범위를 같은 전제 (ν 는 α 의 모든 좌표에 단조 감소) 로 구하고
 정규형 σ⁺ ∈ [ν_lo⁺, ν_hi⁺], σ⁻ ∈ [(−ν_hi)⁺, (−ν_lo)⁺] 로 나눈다. 우변이 −α 인 σ⁻ 는 α 에 증가하므로 성분 그대로 두 꼭짓점을 쓰면 틀린다."""
-function _nz_dr_corner_ranges(CL::Vector{_NZCornerLP}, DR::_NZDR, nd::NZData, x̄, l, u, lo0, hi0; fixtol=1e-4)
+function _nz_dr_corner_ranges(CL::Vector{_NZCornerLP}, DR::_NZDR, nd::NZData, x̄, l, u, lo0, hi0; fixtol=1e-4, skip_l::Bool=false, skip_u::Bool=false)
+    # skip_l / skip_u (corner_reuse): 그 꼭짓점 (α = l 은 hi 쪽, α = u 는 lo 쪽) 이 부모 상자와 같아 LP 를 건너뛰고 lo0·hi0 (부모 범위) 를 그대로 둔다
+    skip_l && skip_u && return copy(lo0), copy(hi0)
     lo = copy(lo0); hi = copy(hi0); S, m = nd.S, nz_m(nd)
     pos = Dict(k => a for (a, k) in enumerate(DR.Hk))
     prs = Tuple{Int,Int}[]                                       # (σ⁺ 의 위치, σ⁻ 의 위치) in Hk
@@ -429,6 +431,7 @@ function _nz_dr_corner_ranges(CL::Vector{_NZCornerLP}, DR::_NZDR, nd::NZData, x�
         C = CL[s]
         νlo = fill(-Inf, length(todop)); νhi = fill(Inf, length(todop))
         for (αc, ismax) in ((u, false), (l, true))
+            ((ismax && skip_l) || (!ismax && skip_u)) && continue
             rr = nz_rhs(nd, x̄, αc, s)
             for k in 1:m; nd.hrow[k] > 0 && set_normalized_coefficient(C.opt, C.σ[k], rr[k]); end
             set_normalized_rhs(C.opt, 1e20)
@@ -872,10 +875,11 @@ end
 const _NZ_DR_ANNOUNCED = Set{Any}()
 const _NZ_DR_ANNOUNCE_LOCK = ReentrantLock()
 
-"기본 구성 (2026-10-13, 2026-10-30 갱신: 꼭짓점 LP 범위·Farkas·사전 판정·부모 basis·노드 LP 상한, 문서 §10.29). 이 값과 다른 항목이 있으면 _nz_dr_announce 가 stderr 에 알린다"
+"기본 구성 (2026-10-13, 2026-10-30 갱신: 꼭짓점 LP 범위·Farkas·사전 판정·부모 basis·노드 LP 상한, 문서 §10.29; 2026-11-27: 꼭짓점 재사용·α̂ 평가 적응, docs/nz_ccg_bnp_2026-11-23.md 11.21). 이 값과 다른 항목이 있으면 _nz_dr_announce 가 stderr 에 알린다"
 const _NZ_DR_DEFAULT = (dual_range=true, comp=true, vcut=true, cslift=true, fwd=true, kmc=true, dd=false, cbranch=true, sticky=true,
                         lp_tol=1e-7, branch_point=:mid, child_rounds=1, resp=false, range_mip=true, range_nodes=typemax(Int), range_time=Inf,
-                        range_lp=true, resp_fix=false, farkas=true, lp_method=1, lp_presolve=0, lp_crossover=-1, infeas_pre=true, infeas_pre_retry=true, parent_basis=true, share_rows=false, node_lp_cap=120.0, hucap=true)
+                        range_lp=true, resp_fix=false, farkas=true, lp_method=1, lp_presolve=0, lp_crossover=-1, infeas_pre=true, infeas_pre_retry=true, parent_basis=true, share_rows=false, node_lp_cap=120.0, hucap=true,
+                        corner_reuse=true, ev_adapt=true, ev_warm=300, ev_probe=10)
 
 """
     nz_presolve_hU_feas(nd, x̄, hU; optimizer) -> (hU', 줄인 좌표 수)
@@ -982,6 +986,8 @@ nz_alpha_bnb (기존, `bnb = :legacy`) 의 탐색 — worker 병렬, best-first 
 | | `lp_tol` | 1e-7 | 노드 LP 의 Feasibility/OptimalityTol (+ NumericFocus 0). 상한에 상대 1e-6 여유를 더함. 1e-9 면 build_nz_omega 의 설정 그대로 |
 | | `resp` | false | primal 휴리스틱: 노드 완화의 belief 에서 follower 의 실제 최적 반응을 평가 (nz_resp_heuristic.jl). 이득을 확인하지 못해 기본 끔 |
 | | `hucap` | true | 루트 전에 h 상한을 recourse 실행 가능성으로 조임 (`nz_presolve_hU_feas`, location 에선 약정 ≤ 거점 용량, 2026-11-25) |
+| 노드 비용 (2026-11-27) | `corner_reuse` | true | 자식 상자가 부모와 공유하는 꼭짓점의 범위 LP 를 건너뛰고 부모 범위를 씀 (같은 LP 라 결과 같음). 환경변수 NZ_EFF_CHECK=1 이면 전부 계산해 비교 (1e-5 넘게 다르면 오류) |
+| | `ev_adapt`, `ev_warm`, `ev_probe` | true, 300, 10 | α̂ 정확 평가 (resp 포함) 가 ev_warm 번 연속 incumbent 를 못 바꾸면 ev_probe 노드에 한 번만 평가, incumbent 가 바뀌면 처음으로. 평가는 incumbent 에만 쓰여 상한·가지치기와 무관 |
 | 이어 풀기 | `resume` | nothing | 같은 x̄ 의 이전 호출이 돌려준 `r[:state]`. 주면 그 호출이 멈춘 곳 (열린 노드, incumbent) 에서 이어 푼다 |
 
 이어 풀기 (`resume`): Ω(x̄) 는 x̄ 만으로 정해지므로 같은 x̄ 에서는 이전 호출의 B&B 전선 (열린 노드와 그 상한, 가지친 노드의 상한,
@@ -996,7 +1002,7 @@ incumbent) 이 그대로 유효하다. Benders 가 목표값 조기 종료로 �
 `:solver` (= :nz_alpha_bnb_dr), `:config` (강화·탐색 설정), `:state` (이어 풀기용), `:resumed`, 계측 (`:t_relax`, `:t_range`, `:range_mips`, `:fixfrac`),
 수치 문제 횟수 (`:range_fail`, `:infeas`, `:infeas_recovered`, `:numerr`, `:numerr_fresh`, `:numerr_fail`), `:cbranch` (상보성 분기 횟수),
 `:t_recheck` (실행 불가능 재확인 시간), `:slow_nodes` (20 s 넘게 걸린 노드의 (전체, 범위 MIP, 완화 LP, 재확인) 초),
-`:gc_wait` (GC safepoint 대기, 초), `:gcsafe` (Gurobi 호출을 GC-safe 구간에서 했는가).
+`:gc_wait` (GC safepoint 대기, 초), `:gcsafe` (Gurobi 호출을 GC-safe 구간에서 했는가), `:eff` (corner_reuse 로 꼭짓점을 건너뛴 노드, α̂ 평가·건너뛴 수).
 """
 function nz_alpha_bnb_dr(nd::NZData, x̄;
                          # 호출마다 정하는 것
@@ -1050,6 +1056,11 @@ function nz_alpha_bnb_dr(nd::NZData, x̄;
                          # hucap = true: 루트 전에 h 상한을 recourse 실행 가능성으로 조임 (nz_presolve_hU_feas, location 에선 약정 ≤ 거점 용량).
                          #   최적 반응은 모두 남아 상한·incumbent 유효성 그대로. 재현에서 인증 약 2 배 (문서 docs/nz_ccg_bnp_2026-11-23.md 11.6, 2026-11-25)
                          hucap::Bool=true,
+                         # corner_reuse = true (range_lp 전용): 꼭짓점 범위는 hi 를 α = l, lo 를 α = u 의 LP 로 구함. 왼쪽 자식 [l, u′] 은 부모와 l 이, 오른쪽 자식 [l′, u] 는
+                         #   u 가 같아 그 꼭짓점 LP 는 부모와 같은 계산 → 건너뛰고 부모 범위 (상보성 분기의 둘째 자식은 상자가 같아 둘 다). 노드 비용의 23% 가 범위 (문서 11.21)
+                         # ev_adapt = true: 노드마다 하는 α̂ 정확 평가 (resp 포함) 가 ev_warm 번 연속 incumbent 를 못 바꾸면 ev_probe 노드에 한 번만. incumbent 가 바뀌면 처음으로.
+                         #   평가는 incumbent (하한) 에만 쓰여 상한·가지치기 유효성과 무관 (문서 11.21)
+                         corner_reuse::Bool=true, ev_adapt::Bool=true, ev_warm::Int=300, ev_probe::Int=10,
                          # 이어 풀기: 같은 x̄ 의 이전 호출이 돌려준 r[:state]
                          resume=nothing)
     branch_point in (:alphahat, :mid) || error("branch_point = :alphahat | :mid")
@@ -1058,7 +1069,8 @@ function nz_alpha_bnb_dr(nd::NZData, x̄;
               sep_maxadd=sep_maxadd, presolve=presolve, heuristic=heuristic,
               fwd=dual_range && cslift && fwd, kmc=dual_range && cslift && kmc, dd=dual_range && dd,
               cbranch=dual_range && comp && cbranch, sticky=sticky, lp_tol=lp_tol, resp=resp, range_mip=range_mip, range_nodes=range_nodes, range_time=range_time,
-              range_lp=range_lp, resp_fix=resp_fix, farkas=farkas, lp_method=lp_method, lp_presolve=lp_presolve, lp_crossover=lp_crossover, infeas_pre=infeas_pre, infeas_pre_retry=infeas_pre && infeas_pre_retry, parent_basis=parent_basis, share_rows=share_rows, node_lp_cap=node_lp_cap, hucap=hucap)
+              range_lp=range_lp, resp_fix=resp_fix, farkas=farkas, lp_method=lp_method, lp_presolve=lp_presolve, lp_crossover=lp_crossover, infeas_pre=infeas_pre, infeas_pre_retry=infeas_pre && infeas_pre_retry, parent_basis=parent_basis, share_rows=share_rows, node_lp_cap=node_lp_cap, hucap=hucap,
+              corner_reuse=range_lp && corner_reuse, ev_adapt=ev_adapt, ev_warm=ev_warm, ev_probe=ev_probe)
     resp_fix && !range_lp && error("nz_alpha_bnb_dr: resp_fix = true 는 range_lp = true 와 함께")
     range_lp &&(dd || isfinite(range_time) || range_nodes != typemax(Int) || !range_mip || !dual_range) &&
         error("nz_alpha_bnb_dr: range_lp = true 는 dual_range = true, dd = false 와 함께 쓰고 range_mip·range_time·range_nodes 는 기본값으로")
@@ -1072,6 +1084,9 @@ function nz_alpha_bnb_dr(nd::NZData, x̄;
     t_pre = Threads.Atomic{Float64}(0.0); n_preretry = Threads.Atomic{Int}(0)  # infeas_pre_retry: 재시도에서 증명된 노드
     n_bload = Threads.Atomic{Int}(0); n_bfail = Threads.Atomic{Int}(0)       # parent_basis: 부모 basis 를 넣은 노드 / 못 넣은 노드
     n_cap = Threads.Atomic{Int}(0)                                           # node_lp_cap 에 걸린 노드
+    n_cskip = Threads.Atomic{Int}(0); effcheck = get(ENV, "NZ_EFF_CHECK", "0") == "1"   # corner_reuse: 꼭짓점 하나 이상 건너뛴 노드 / 점검 모드
+    n_ev = Threads.Atomic{Int}(0); n_evskip = Threads.Atomic{Int}(0)        # ev_adapt: α̂ 평가한 노드 / 건너뛴 노드
+    n_evsince = Threads.Atomic{Int}(0); n_evtick = Threads.Atomic{Int}(0)   # ev_adapt: incumbent 못 바꾼 연속 평가 수 / 건너뛰기 계수기
     bdive = get(ENV, "NZ_BASIS_DIVE", "0") == "1"           # 진단 (parent_basis): dive 노드에도 실어 둔 부모 basis 를 명시적으로 넣음
     skeys = Tuple{Int,Int,Bool}[]; skset = Set{Tuple{Int,Int,Bool}}(); sk_lk = ReentrantLock()   # parent_basis: worker 공유 분리 행 키
     precheck = get(ENV, "NZ_PRE_CHECK", "0") == "1"; n_predis = Threads.Atomic{Int}(0); n_preto = Threads.Atomic{Int}(0)
@@ -1255,7 +1270,14 @@ function nz_alpha_bnb_dr(nd::NZData, x̄;
                 _nz_sep_set_wbox!(P, P.Lw, P.Uw)
                 empty_box = false
                 if dual_range && range_lp                     # 꼭짓점 LP 범위 (모든 노드). 값 상한 φ̄ 는 부모 값
-                    tg = @elapsed ((lo, hi) = _nz_dr_corner_ranges(CLs[wid], DR, nd, x̄, l, u, lop, hip))
+                    skl = config.corner_reuse && get(ext, :sl, false); sku = config.corner_reuse && get(ext, :su, false)
+                    (skl || sku) && Threads.atomic_add!(n_cskip, 1)
+                    tg = @elapsed ((lo, hi) = _nz_dr_corner_ranges(CLs[wid], DR, nd, x̄, l, u, lop, hip; skip_l=skl, skip_u=sku))
+                    if effcheck && (skl || sku)
+                        lof, hif = _nz_dr_corner_ranges(CLs[wid], DR, nd, x̄, l, u, lop, hip)
+                        dmax = max(maximum(abs.(lof .- lo); init=0.0), maximum(abs.(hif .- hi); init=0.0))
+                        dmax <= 1e-5 || error("nz_alpha_bnb_dr: corner_reuse 범위가 전부 계산한 것과 $(dmax) 다름 (skip_l=$skl, skip_u=$sku)")
+                    end
                     Threads.atomic_add!(t_range, tg); tn_rg += tg
                     if resp_fix                               # 상자를 줄이면 범위는 그대로 유효 (부분 상자). 줄인 상자로 범위를 한 번 더
                         l, u, nrf = _nz_dr_resp_fix(nd, DR, l, u, lo, hi, solo)
@@ -1365,7 +1387,7 @@ function nz_alpha_bnb_dr(nd::NZData, x̄;
                         i = argmax(u .- l)
                         if u[i] - l[i] > min_width
                             t = 0.5 * (l[i] + u[i]); u1 = copy(u); u1[i] = t; l2 = copy(l); l2[i] = t
-                            children = ((copy(l), u1, z, lo, hi, wit, phib, (eq=eqp, dlo=dlo, dhi=dhi)), (l2, copy(u), z, lo, hi, wit, phib, (eq=eqp, dlo=dlo, dhi=dhi)))
+                            children = ((copy(l), u1, z, lo, hi, wit, phib, (eq=eqp, dlo=dlo, dhi=dhi, sl=true)), (l2, copy(u), z, lo, hi, wit, phib, (eq=eqp, dlo=dlo, dhi=dhi, su=true)))
                         else
                             pruned_val = z
                         end
@@ -1386,10 +1408,12 @@ function nz_alpha_bnb_dr(nd::NZData, x̄;
                         for k in Hr, s in 1:S; ϖv[k, s] = value(v[:ϖ][k, s]); end
                         ζLv = value.(v[:ζL]); ζFv = value.(v[:ζF]); ζWv = value.(v[:ζW])
                         set_time_limit_sec(F.model, max(t_end - time(), 0.1))
-                        te = @elapsed (zE = nz_eval_alpha!(F, nd, α̂c))
+                        doev = !config.ev_adapt || n_evsince[] < ev_warm || Threads.atomic_add!(n_evtick, 1) % ev_probe == 0   # ev_adapt
+                        doev ? Threads.atomic_add!(n_ev, 1) : Threads.atomic_add!(n_evskip, 1)
+                        te = @elapsed (zE = doev ? nz_eval_alpha!(F, nd, α̂c) : -Inf)
                         isnan(zE) && (zE = -Inf)
                         αE = α̂c                                 # zE 를 준 점 (incumbent 후보)
-                        if resp
+                        if resp && doev
                             te += @elapsed begin
                                 αr = _nz_resp!(Rs[wid], nd, max.(dv, 0.0), α̂)
                                 if αr !== nothing
@@ -1428,13 +1452,13 @@ function nz_alpha_bnb_dr(nd::NZData, x̄;
                         end
                         if ic > 0
                             u1 = copy(u); u1[ic] = l[ic]; eqB = copy(eqp); eqB[ic] = true
-                            children = ((copy(l), u1, z, lo, hi, wit, phib, (eq=eqp, dlo=dlo, dhi=dhi, bas=basP)), (copy(l), copy(u), z, lo, hi, wit, phib, (eq=eqB, dlo=dlo, dhi=dhi, bas=basP, side=2)))
+                            children = ((copy(l), u1, z, lo, hi, wit, phib, (eq=eqp, dlo=dlo, dhi=dhi, bas=basP, sl=true)), (copy(l), copy(u), z, lo, hi, wit, phib, (eq=eqB, dlo=dlo, dhi=dhi, bas=basP, side=2, sl=true, su=true)))
                             Threads.atomic_add!(n_cbranch, 1)
                         elseif viol[i] > 1e-9
                             width = u[i] - l[i]; t = α̂[i]
                             (branch_point != :alphahat || t - l[i] < 0.1 * width || u[i] - t < 0.1 * width) && (t = 0.5 * (l[i] + u[i]))
                             u1 = copy(u); u1[i] = t; l2 = copy(l); l2[i] = t
-                            children = ((copy(l), u1, z, lo, hi, wit, phib, (eq=eqp, dlo=dlo, dhi=dhi, bas=basP)), (l2, copy(u), z, lo, hi, wit, phib, (eq=eqp, dlo=dlo, dhi=dhi, bas=basP, side=2)))
+                            children = ((copy(l), u1, z, lo, hi, wit, phib, (eq=eqp, dlo=dlo, dhi=dhi, bas=basP, sl=true)), (l2, copy(u), z, lo, hi, wit, phib, (eq=eqp, dlo=dlo, dhi=dhi, bas=basP, side=2, su=true)))
                         else
                             z > zE && (zE = z; αE = α̂)     # 곱 위반이 없으면 완화가 정확
                         end
@@ -1458,6 +1482,9 @@ function nz_alpha_bnb_dr(nd::NZData, x̄;
                 if zE > LB[]
                     (αE === α̂c || αE === α̂) || Threads.atomic_add!(n_resp, 1)
                     LB[] = zE; best_α[] = copy(αE)
+                    n_evsince[] = 0                                                   # ev_adapt: incumbent 가 바뀌면 처음으로
+                elseif α̂ !== nothing && doev
+                    Threads.atomic_add!(n_evsince, 1)
                 end
                 if α̂ !== nothing
                     push!(node_cands, (z, copy(α̂)))
@@ -1541,5 +1568,5 @@ function nz_alpha_bnb_dr(nd::NZData, x̄;
                 :range_mips => dual_range ? sum(D.nmip for D in DRs) : 0, :range_fail => dual_range ? sum(D.nfail for D in DRs) : 0,
                 :fixfrac => nodes[] > 0 ? nfixed_sum[] / nodes[] : NaN, :infeas => n_infeas[], :infeas_recovered => n_infrec[],
                 :numerr => _NZ_NUMERR[] - numerr0, :numerr_fail => _NZ_NUMERR_FAIL[] - numfail0,
-                :cbranch => n_cbranch[], :resp_fix => n_rfix[], :farkas => n_fk[], :farkas_disagree => n_fkdis[], :farkas_check_timeout => n_fkto[], :infeas_pre => n_pre[], :infeas_pre_tried => n_pretry[], :infeas_pre_retry => n_preretry[], :t_pre => t_pre[], :infeas_pre_disagree => n_predis[], :infeas_pre_check_timeout => n_preto[], :basis_loaded => n_bload[], :node_lp_cap_hits => n_cap[], :basis_failed => n_bfail[], :prune_checked => n_prchk[], :prune_disagree => n_prdis[], :resp_hits => n_resp[], :gcsafe => _NZ_GCSAFE_STATE[], :gc_wait => (Base.gc_num().total_time_to_safepoint - gcw0) / 1e9)
+                :cbranch => n_cbranch[], :resp_fix => n_rfix[], :farkas => n_fk[], :farkas_disagree => n_fkdis[], :farkas_check_timeout => n_fkto[], :infeas_pre => n_pre[], :infeas_pre_tried => n_pretry[], :infeas_pre_retry => n_preretry[], :t_pre => t_pre[], :infeas_pre_disagree => n_predis[], :infeas_pre_check_timeout => n_preto[], :basis_loaded => n_bload[], :node_lp_cap_hits => n_cap[], :basis_failed => n_bfail[], :prune_checked => n_prchk[], :prune_disagree => n_prdis[], :resp_hits => n_resp[], :eff => (corner_skip=n_cskip[], ev=n_ev[], ev_skip=n_evskip[]), :gcsafe => _NZ_GCSAFE_STATE[], :gc_wait => (Base.gc_num().total_time_to_safepoint - gcw0) / 1e9)
 end

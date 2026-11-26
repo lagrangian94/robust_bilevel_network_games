@@ -1,0 +1,29 @@
+  [HUCAP] 거점 4: hᵁ 300 → 200
+  [HUCAP] 거점 7: hᵁ 300 → 200
+--- oracle 재현 g=5 S=10 x={4:200;7:200;12:300} λᵁ=10000 목표 -3151.6 gap 1.0e-03 상한 150s, 스레드 12, 추가 인자 (resp = true,)
+Academic license 926906 - for non-commercial use only - registered to [가림]
+Academic license 926906 - for non-commercial use only - registered to [가림]
+Academic license 926906 - for non-commercial use only - registered to [가림]
+Academic license 926906 - for non-commercial use only - registered to [가림]
+Academic license 926906 - for non-commercial use only - registered to [가림]
+Academic license 926906 - for non-commercial use only - registered to [가림]
+Academic license 926906 - for non-commercial use only - registered to [가림]
+Academic license 926906 - for non-commercial use only - registered to [가림]
+Academic license 926906 - for non-commercial use only - registered to [가림]
+Academic license 926906 - for non-commercial use only - registered to [가림]
+Academic license 926906 - for non-commercial use only - registered to [가림]
+Academic license 926906 - for non-commercial use only - registered to [가림]
+
+******************************************************************************
+This program contains Ipopt, a library for large-scale nonlinear optimization.
+ Ipopt is released as open source code under the Eclipse Public License (EPL).
+         For more information visit https://github.com/coin-or/Ipopt
+******************************************************************************
+
+    [nz-α-B&B-dr] t=  68.7s nodes=  475 open=  143 LB=-3169.631727 UB=-2451.650650 gap=2.265e-01
+    [nz-α-B&B-dr] t= 129.0s nodes= 1179 open=  351 LB=-3169.631727 UB=-2609.396430 gap=1.768e-01
+nz_alpha_bnb_dr: 기본이 아닌 구성으로 실행 — resp = true
+RESULT g=5 S=10 x={4:200;7:200;12:300} V in [-3169.6317, -2641.1024] (155s) 노드 1433, 이완 725s, 평가 150s, 범위 165s (MIP 0, 실패 0), 재확인 0s, ipopt 4, 고정 비율 0.18, 수치 오류 0, 루트 UB -1787.7431
+느린 노드 (상위 10): NTuple{4, Float64}[]
+전선 저장: orep_front_g5_S10.jls (열린 노드 430)
+전선: 열린 노드 430, 상한 ≤ 목표 0 (0%), 상한 범위 [-3087.71, -2641.10], 목표 -3151.60, incumbent -3169.63
