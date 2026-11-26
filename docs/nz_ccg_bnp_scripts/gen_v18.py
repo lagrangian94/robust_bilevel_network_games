@@ -25,7 +25,7 @@ head = ('# ccgbp_v18.jl — gen_v18.py 가 v17 에서 만든 파일 (손으로 �
 s = head + s
 rep('(TB_START >= 1 && TB_IT >= 1 && TB_NS >= 1 && TB_LEN >= 1 && TB_CMAX >= 1) || error("ccgbp v17: TB_* 는 1 이상")',
     '(TB_START >= 1 && TB_IT >= 1 && TB_NS >= 1 && TB_LEN >= 1 && TB_CMAX >= 1) || error("ccgbp v17: TB_* 는 1 이상")\n'
-    'const PADM = envf("PADM", "1") == "1"                                       # v18: PADM 가격 생성기 켬/끔\n'
+    'const PADM = envf("PADM", "0") == "1"                                       # v18: PADM 가격 생성기 켬/끔 (2026-11-26 밤 기본 끔: 점검에서 음의 감축 비용 열 0, md 11.19)\n'
     'const PD_RHO = parse.(Float64, split(envf("PD_RHO", "0.01,0.1,1,10,100,1000,10000"), ","))   # v18: 벌점 일정\n'
     'const PD_INNER = parse(Int, envf("PD_INNER", "3"))      # v18: 벌점마다 교대 상한\n'
     'const PD_START = parse(Int, envf("PD_START", "1"))      # v18: 블록당 시작점 수\n'
