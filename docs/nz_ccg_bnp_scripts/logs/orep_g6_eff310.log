@@ -1,0 +1,32 @@
+  [HUCAP] 거점 10: hᵁ 300 → 200
+--- oracle 재현 g=6 S=10 x={6:300;10:200;15:300} λᵁ=10000 목표 -3618.1 gap 1.0e-03 상한 310s, 스레드 12, 추가 인자 (resp = true,)
+Academic license 926906 - for non-commercial use only - registered to [가림]
+Academic license 926906 - for non-commercial use only - registered to [가림]
+Academic license 926906 - for non-commercial use only - registered to [가림]
+Academic license 926906 - for non-commercial use only - registered to [가림]
+Academic license 926906 - for non-commercial use only - registered to [가림]
+Academic license 926906 - for non-commercial use only - registered to [가림]
+Academic license 926906 - for non-commercial use only - registered to [가림]
+Academic license 926906 - for non-commercial use only - registered to [가림]
+Academic license 926906 - for non-commercial use only - registered to [가림]
+Academic license 926906 - for non-commercial use only - registered to [가림]
+Academic license 926906 - for non-commercial use only - registered to [가림]
+Academic license 926906 - for non-commercial use only - registered to [가림]
+
+******************************************************************************
+This program contains Ipopt, a library for large-scale nonlinear optimization.
+ Ipopt is released as open source code under the Eclipse Public License (EPL).
+         For more information visit https://github.com/coin-or/Ipopt
+******************************************************************************
+
+    [nz-α-B&B-dr] t=  68.3s nodes=  746 open=  200 LB=-3623.999989 UB=-3340.459224 gap=7.824e-02
+    [nz-α-B&B-dr] t= 128.7s nodes= 2066 open=  504 LB=-3623.999989 UB=-3456.153921 gap=4.632e-02
+    [nz-α-B&B-dr] t= 188.7s nodes= 3418 open=  732 LB=-3623.999989 UB=-3533.917218 gap=2.486e-02
+    [nz-α-B&B-dr] t= 248.7s nodes= 4825 open=  947 LB=-3623.999989 UB=-3562.247431 gap=1.704e-02
+    [nz-α-B&B-dr] t= 308.9s nodes= 6282 open= 1114 LB=-3623.999989 UB=-3579.615424 gap=1.225e-02
+abb_eff_patch: nz_alpha_bnb_dr 재정의 (corner_reuse, ev_adapt)
+nz_alpha_bnb_dr: 기본이 아닌 구성으로 실행 — resp = true
+RESULT g=6 S=10 x={6:300;10:200;15:300} V in [-3624.0000, -3579.7574] (315s) 노드 6312, 이완 1991s, 평가 201s, 범위 757s (MIP 0, 실패 0), 재확인 0s, ipopt 8, 고정 비율 0.19, 수치 오류 5, 루트 UB -2447.7412
+느린 노드 (상위 10): NTuple{4, Float64}[]
+전선 저장: orep_front_g6_S10.jls (열린 노드 1131)
+전선: 열린 노드 1131, 상한 ≤ 목표 28 (2%), 상한 범위 [-3620.18, -3579.76], 목표 -3618.10, incumbent -3624.00

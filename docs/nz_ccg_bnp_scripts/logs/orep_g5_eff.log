@@ -1,0 +1,39 @@
+  [HUCAP] 거점 4: hᵁ 300 → 200
+  [HUCAP] 거점 7: hᵁ 300 → 200
+--- oracle 재현 g=5 S=10 x={4:200;7:200;12:300} λᵁ=10000 목표 -3151.6 gap 1.0e-03 상한 620s, 스레드 12, 추가 인자 (resp = true,)
+Academic license 926906 - for non-commercial use only - registered to [가림]
+Academic license 926906 - for non-commercial use only - registered to [가림]
+Academic license 926906 - for non-commercial use only - registered to [가림]
+Academic license 926906 - for non-commercial use only - registered to [가림]
+Academic license 926906 - for non-commercial use only - registered to [가림]
+Academic license 926906 - for non-commercial use only - registered to [가림]
+Academic license 926906 - for non-commercial use only - registered to [가림]
+Academic license 926906 - for non-commercial use only - registered to [가림]
+Academic license 926906 - for non-commercial use only - registered to [가림]
+Academic license 926906 - for non-commercial use only - registered to [가림]
+Academic license 926906 - for non-commercial use only - registered to [가림]
+Academic license 926906 - for non-commercial use only - registered to [가림]
+
+******************************************************************************
+This program contains Ipopt, a library for large-scale nonlinear optimization.
+ Ipopt is released as open source code under the Eclipse Public License (EPL).
+         For more information visit https://github.com/coin-or/Ipopt
+******************************************************************************
+
+    [LP] 비유계 보고 → 재시도 결과 OPTIMAL
+    [nz-α-B&B-dr] t=  68.4s nodes=  571 open=  177 LB=-3169.623773 UB=-2418.141155 gap=2.371e-01
+    [nz-α-B&B-dr] t= 128.8s nodes= 1437 open=  455 LB=-3169.623773 UB=-2635.980736 gap=1.684e-01
+    [nz-α-B&B-dr] t= 188.9s nodes= 2399 open=  723 LB=-3169.623773 UB=-2708.379448 gap=1.455e-01
+    [nz-α-B&B-dr] t= 249.1s nodes= 3241 open=  807 LB=-3169.623773 UB=-2768.655009 gap=1.265e-01
+    [nz-α-B&B-dr] t= 309.1s nodes= 4047 open=  927 LB=-3156.500000 UB=-2817.462345 gap=1.074e-01
+    [nz-α-B&B-dr] t= 369.2s nodes= 4920 open= 1178 LB=-3156.500000 UB=-2848.391945 gap=9.761e-02
+    [nz-α-B&B-dr] t= 429.3s nodes= 5817 open= 1411 LB=-3156.500000 UB=-2877.226765 gap=8.848e-02
+    [nz-α-B&B-dr] t= 489.5s nodes= 6584 open= 1560 LB=-3156.500000 UB=-2896.141968 gap=8.248e-02
+    [nz-α-B&B-dr] t= 549.5s nodes= 7383 open= 1733 LB=-3156.500000 UB=-2914.727111 gap=7.660e-02
+    [nz-α-B&B-dr] t= 609.6s nodes= 8088 open= 1842 LB=-3156.500000 UB=-2927.406837 gap=7.258e-02
+abb_eff_patch: nz_alpha_bnb_dr 재정의 (corner_reuse, ev_adapt)
+nz_alpha_bnb_dr: 기본이 아닌 구성으로 실행 — resp = true
+RESULT g=5 S=10 x={4:200;7:200;12:300} V in [-3156.5000, -2932.6250] (625s) 노드 8204, 이완 5009s, 평가 313s, 범위 944s (MIP 0, 실패 0), 재확인 0s, ipopt 18, 고정 비율 0.20, 수치 오류 60, 루트 UB -1787.7431
+느린 노드 (상위 10): [(49.039000034332275, 0.1105003, 48.8835129, 0.0), (29.335999965667725, 0.1092396, 29.1796212, 0.0), (27.98900008201599, 0.1559988, 27.8092697, 0.0), (26.858999967575073, 0.1060069, 26.722459, 0.0), (24.927000045776367, 0.1212983, 24.7622444, 0.0), (24.89199995994568, 0.111554, 24.3789231, 0.0), (23.639000177383423, 0.1383353, 23.4492886, 0.0), (23.120999813079834, 0.1063801, 22.9773779, 0.0), (20.493000030517578, 0.1508262, 20.3057327, 0.0), (20.00600004196167, 0.1356587, 19.8325928, 0.0)]
+전선 저장: orep_front_g5_S10.jls (열린 노드 1867)
+전선: 열린 노드 1867, 상한 ≤ 목표 2 (0%), 상한 범위 [-3152.25, -2932.62], 목표 -3151.60, incumbent -3156.50

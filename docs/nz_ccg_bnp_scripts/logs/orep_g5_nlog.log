@@ -1,0 +1,32 @@
+  [HUCAP] 거점 4: hᵁ 300 → 200
+  [HUCAP] 거점 7: hᵁ 300 → 200
+--- oracle 재현 g=5 S=10 x={4:200;7:200;12:300} λᵁ=10000 목표 -3151.6 gap 1.0e-03 상한 300s, 스레드 12, 추가 인자 (resp = true,)
+Academic license 926906 - for non-commercial use only - registered to [가림]
+Academic license 926906 - for non-commercial use only - registered to [가림]
+Academic license 926906 - for non-commercial use only - registered to [가림]
+Academic license 926906 - for non-commercial use only - registered to [가림]
+Academic license 926906 - for non-commercial use only - registered to [가림]
+Academic license 926906 - for non-commercial use only - registered to [가림]
+Academic license 926906 - for non-commercial use only - registered to [가림]
+Academic license 926906 - for non-commercial use only - registered to [가림]
+Academic license 926906 - for non-commercial use only - registered to [가림]
+Academic license 926906 - for non-commercial use only - registered to [가림]
+Academic license 926906 - for non-commercial use only - registered to [가림]
+Academic license 926906 - for non-commercial use only - registered to [가림]
+
+******************************************************************************
+This program contains Ipopt, a library for large-scale nonlinear optimization.
+ Ipopt is released as open source code under the Eclipse Public License (EPL).
+         For more information visit https://github.com/coin-or/Ipopt
+******************************************************************************
+
+    [nz-α-B&B-dr] t=  68.6s nodes=  478 open=  140 LB=-3178.858061 UB=-2465.489806 gap=2.244e-01
+    [nz-α-B&B-dr] t= 129.0s nodes= 1178 open=  342 LB=-3169.629122 UB=-2612.343197 gap=1.758e-01
+    [nz-α-B&B-dr] t= 189.2s nodes= 1909 open=  563 LB=-3156.500000 UB=-2686.218062 gap=1.490e-01
+    [nz-α-B&B-dr] t= 249.3s nodes= 2641 open=  703 LB=-3156.500000 UB=-2738.425437 gap=1.324e-01
+nz_alpha_bnb_dr: 기본이 아닌 구성으로 실행 — resp = true
+    [LP] 비유계 보고 → 재시도 결과 OPTIMAL
+RESULT g=5 S=10 x={4:200;7:200;12:300} V in [-3156.5000, -2782.3712] (305s) 노드 3266, 이완 1675s, 평가 516s, 범위 754s (MIP 0, 실패 0), 재확인 0s, ipopt 7, 고정 비율 0.19, 수치 오류 15, 루트 UB -1787.7431
+느린 노드 (상위 10): [(33.72000002861023, 0.3234672, 33.360172, 0.0), (29.319000005722046, 0.2541716, 29.0279318, 0.0), (22.22099995613098, 0.2185922, 21.9578187, 0.0)]
+전선 저장: orep_front_g5_S10.jls (열린 노드 789)
+전선: 열린 노드 789, 상한 ≤ 목표 0 (0%), 상한 범위 [-3140.56, -2782.37], 목표 -3151.60, incumbent -3156.50
