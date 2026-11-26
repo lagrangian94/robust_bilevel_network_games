@@ -1,10 +1,11 @@
-# ccgbp.jl — belief 블록 CCG 를 Dantzig–Wolfe branch-and-price 한 나무로. **기본 판 (v8, 2026-11-24 확정)**. 절차는 docs/nz_ccg_bnp_2026-11-23.md 10·11 절.
-#  v8 = v6 (ccgbp_v6.jl) + 같은 점의 oracle 재호출은 이전 α-B&B 상태에서 이어 풂 (resume, v7) + oracle 의 follower 반응 휴리스틱 resp (ORCL_RESP, 기본 1).
-#  저장소 부품 (블록 생성기 _bccg_gen, belief 탐색 평가기, α-B&B oracle nz_alpha_bnb_dr, 확보 규칙) 을 그대로 부름. X 를 미리 나열하지 않음 (만난 점에만 번호).
-#  기본값 = 인증용 설정: η = 1/λᵁ, μ = μ 상한 = λᵁ = 1e4 (블록 = 원고 Prop certificate (ii) 의 벌점값을 belief 로 제한한 것, μ 올림 없음 → 모자라면 no-good).
-#  환경 변수 (기본값): GEO 1, R 0.2, NB 3 (거점 수 상한), TL 3600, TOL 5e-3, ETA 1e-4, MU 1e4, MU_MAX 1e4, LAMU 1e4 (oracle λᵁ),
-#    S 10 (시나리오 수), NS 10 (지지 열당 이웃 표본, 0 = 전부), SEED_ALL 0 (1 이면 새 블록에 평가한 점 전부를 LP 로), NTOP 5 (탐색할 상위 정수점), CGTOL 1e-3,
-#    NRAND 40 (무작위 belief 후보), SB_K 3 (strong branching 후보), PH1 1 (1 단계), ORCL_TL 900 (oracle 호출당 상한), PSTOP 1 (가지치기 기준 가격 멈춤), ORCL_RESP 1 (oracle resp)
+# ccgbp.jl — belief 블록 CCG 를 Dantzig–Wolfe branch-and-price 한 나무로. **기본 판 = v17 (2026-11-27 고정, 사용자 "17로 고정")**.
+#  절차·근거는 docs/nz_ccg_bnp_2026-11-23.md 10·11 절 (v9~v17 의 변경은 11.8~11.19). 지난 판 (v3~v18)·생성기·큐는 old/ 에 있음.
+#  구성: 1 단계 (루트 휴리스틱 열 생성 + belief 탐색 + oracle) → 2 단계 B&P (노드마다 휴리스틱 열 생성, 자르거나 주차할 수 있을 때만 정확 가격 MILP·Farley 하한).
+#  가격 생성기 순서: 한 걸음 이웃 → tabu (DLH 2008 식, TABU) → 정확 MILP. oracle = 저장소 α-B&B nz_alpha_bnb_dr (HUCAP).
+#  주요 환경 변수 (기본값): GEO 1, S 10, NB 3, R 0.2, TL 3600, TOL 5e-3, ETA 1e-4, MU·MU_MAX·LAMU 1e4,
+#    NS 10, TABU 1 (TB_START 3, TB_IT 5, TB_NS 10, TB_LEN 5, TB_CMAX 10), HUCAP 1, ORCL_RESP 1, ORCL_TL 900,
+#    ORCL_THETA 0.75, TREE_SHARE 0.2, ROOT_EXACT end, PH1_CAP 300, PH1_TOT 900, PH1_SHARE 0.3,
+#    ABB_PATCH "" (빈 값 = 저장소 α-B&B; 실험용 α-B&B 재정의 파일 경로를 주면 include, 예 abb_dd_patch.jl), ORCL_KW (α-B&B 추가 인자, 기본 없음; DD 는 "(dd=true, dd_maxw=25.0)").
 #  실행: GRB_LICENSE_FILE=... julia -t 12,1 --project=. docs/nz_ccg_bnp_scripts/ccgbp.jl   (oracle 때문에 interactive 스레드 1 개 필요)
 root = "C:/Users/user/robust_bilevel_network_games"
 using JuMP, Gurobi, Printf, LinearAlgebra, Random, Serialization
@@ -12,19 +13,39 @@ import MathOptInterface as MOI
 include(joinpath(root, "nonzero_sum", "loc_tkp.jl")); include(joinpath(root, "nonzero_sum", "nz_omega.jl"))
 include(joinpath(root, "nonzero_sum", "nz_benders.jl")); include(joinpath(root, "nonzero_sum", "nz_exact_eval.jl"))
 include(joinpath(root, "nonzero_sum", "nz_belief_ccg.jl")); include(joinpath(root, "nonzero_sum", "nz_belief_ccg_tree.jl"))
+const ABB_PATCH = get(ENV, "ABB_PATCH", ""); isempty(ABB_PATCH) || include(ABB_PATCH)   # 실험용 α-B&B 재정의 파일 (기본 "" = 저장소 판; v15~v17 시험판은 기본이 abb_dd_patch.jl 이었음)
 envf(k, d) = get(ENV, k, d)
 const GEO = parse(Int, envf("GEO", "1")); const RR = parse(Float64, envf("R", "0.2"))
 const TL = parse(Float64, envf("TL", "3600")); const TOL = parse(Float64, envf("TOL", "5e-3"))
 const MU = parse(Float64, envf("MU", "1e4")); const ETA = parse(Float64, envf("ETA", "1e-4")); const MU_MAX = parse(Float64, envf("MU_MAX", "1e4"))
 const NS = parse(Int, envf("NS", "10")); const SEED_ALL = envf("SEED_ALL", "0") == "1"; const NTOP = parse(Int, envf("NTOP", "5"))
 const CGTOL = parse(Float64, envf("CGTOL", "1e-3")); const NRAND = parse(Int, envf("NRAND", "40"))
-const SB_K = parse(Int, envf("SB_K", "3")); const PH1 = envf("PH1", "1") == "1"; const ORCL_TL = parse(Float64, envf("ORCL_TL", "900")); const PSTOP = envf("PSTOP", "1") == "1"
+const PH1_CAP = parse(Float64, envf("PH1_CAP", "300")); const SB_K = parse(Int, envf("SB_K", "3")); const PH1 = envf("PH1", "1") == "1"; const ORCL_TL = parse(Float64, envf("ORCL_TL", "900")); const PSTOP = envf("PSTOP", "1") == "1"
 const LAMU = parse(Float64, envf("LAMU", "1e4")); const ORCL_RESP = envf("ORCL_RESP", "1") == "1"   # oracle 의 λᵁ (loc_tkp 자체 기본은 100), resp 켬/끔
+const HUCAP = envf("HUCAP", "1") == "1"   # v11: oracle 정의역 h_i ≤ b_i(x̄)
+const ORCL_KW = eval(Meta.parse(envf("ORCL_KW", isempty(ABB_PATCH) ? "NamedTuple()" : "(dd=true, dd_maxw=25.0)")))   # v15: α-B&B 추가 인자
+const PH1_TOT = parse(Float64, envf("PH1_TOT", "900"))   # v15: 1 단계에서 결론 없는 점의 누적 oracle 시간 상한
+const PH1_SHARE = parse(Float64, envf("PH1_SHARE", "0.3"))   # v16: 1 단계 총량 몫 (경과가 PH1_SHARE·TL 을 넘으면 다음 반복 안 함)
+const ORCL_THETA = parse(Float64, envf("ORCL_THETA", "0.75")); const TREE_SHARE = parse(Float64, envf("TREE_SHARE", "0.2"))
+const ROOT_EXACT = envf("ROOT_EXACT", "end")   # end (기본: B&P 가 끝나지 않으면 마감 직전에 루트 정확 CG 한 번) | start (v10·v11 처럼 2 단계 전) | off
+ROOT_EXACT in ("end", "start", "off") || error("ccgbp: ROOT_EXACT 는 end·start·off")
+const RESERVE = ROOT_EXACT == "end" ? min(1200.0, 0.2 * TL) : 0.0; const TLB = TL - RESERVE   # B&P·oracle 마감 (남은 RESERVE 는 마감 루트 CG 몫)
+dl() = isfinite(LB) ? TL : TLB   # v14: 나무가 유효 하한을 가지면 루트 CG 대비책이 필요 없으므로 TL 까지
+0 < PH1_SHARE <= 1 || error("ccgbp: PH1_SHARE 는 (0, 1]")
+const TABU = envf("TABU", "1") == "1"                    # v17: tabu 가격 생성기 켬/끔
+const TB_START = parse(Int, envf("TB_START", "3"))       # v17: 블록당 시작점 수 (λ 큰 지지점부터)
+const TB_IT = parse(Int, envf("TB_IT", "5"))             # v17: 시작점당 걸음 수 (DLH 의 I_max)
+const TB_NS = parse(Int, envf("TB_NS", "10"))            # v17: 걸음마다 재는 이웃 수
+const TB_LEN = parse(Int, envf("TB_LEN", "5"))           # v17: tabu 목록 길이 (최근 지난 점 재방문 금지)
+const TB_CMAX = parse(Int, envf("TB_CMAX", "10"))        # v17: tabu 한 번에 블록당 넣는 열 상한 (DLH 의 C_max)
+(TB_START >= 1 && TB_IT >= 1 && TB_NS >= 1 && TB_LEN >= 1 && TB_CMAX >= 1) || error("ccgbp: TB_* 는 1 이상")
+ORCL_THETA + TREE_SHARE < 1 || error("ccgbp: ORCL_THETA + TREE_SHARE 는 1 보다 작아야 함 (여유 = |UB| 와 |mval| 차이)")
 nd = make_loc_tkp(; g=GEO, S=parse(Int, envf("S", "10")), seed=1, eps_hat=RR, eps_tilde=RR, delta=RR / 3, beta=0.4, lambdaU=LAMU, NB=parse(Int, envf("NB", "3")))
 @printf("  [설정] η %.1e, μ %.1e (상한 %.1e), oracle λᵁ %.1e, μη = %.3g\n", ETA, MU, MU_MAX, LAMU, MU * ETA)
 K = nd.meta[:K]; nx = nd.nx; m, ny = nz_m(nd), nz_ny(nd); A = nd.A; XE = nz_xentries(nd); S = nd.S
 NT = Threads.nthreads()
-@printf("--- ccgbp (기본 판 v8: oracle 이어 풀기 + resp=%s) | SB_K %d PH1 %s ORCL_TL %.0f PSTOP %s\n", ORCL_RESP, SB_K, PH1, ORCL_TL, PSTOP); @printf(" g=%d coupled r=%.2f S=%d, 스레드 %d, tol %.1e, μ %.3g, η %.3g, NS %d, SEED_ALL %s, NTOP %d, CGTOL %.1e\n", GEO, RR, S, NT, TOL, MU, ETA, NS, SEED_ALL, NTOP, CGTOL); flush(stdout)
+@printf("--- ccgbp (기본 판 = v17) | tabu 가격 %s: 시작 %d·걸음 %d·이웃 %d·tabu 길이 %d·열 상한 %d) | ccgbp v16 (v15 + 1 단계 총량 몫 %.2f·TL = %.0fs) | ccgbp v15 (v14 + oracle 패치 %s 인자 %s, 1 단계 결론 없으면 누적 %.0fs 까지 이어 풂) | ccgbp v14 (v13 + 1 단계 oracle 상한 %.0fs (새 점도), LB 가 생기면 마감까지 oracle·나무; v13 = v12 + oracle α 재사용; 예산 분할: oracle θ %.2f, 나무 몫 %.2f, 루트 정확 CG %s; HUCAP=%s, resp=%s; 평가기 κ 단계 %s) | SB_K %d PH1 %s ORCL_TL %.0f PSTOP %s\n",
+        TABU ? "켬" : "끔", TB_START, TB_IT, TB_NS, TB_LEN, TB_CMAX, PH1_SHARE, PH1_SHARE * TL, isempty(ABB_PATCH) ? "없음" : basename(ABB_PATCH), string(ORCL_KW), PH1_TOT, PH1_CAP, ORCL_THETA, TREE_SHARE, ROOT_EXACT, HUCAP, ORCL_RESP, string(_BCCG_KAPPAS), SB_K, PH1, ORCL_TL, PSTOP); @printf(" g=%d coupled r=%.2f S=%d, 스레드 %d, tol %.1e, μ %.3g, η %.3g, NS %d, SEED_ALL %s, NTOP %d, CGTOL %.1e\n", GEO, RR, S, NT, TOL, MU, ETA, NS, SEED_ALL, NTOP, CGTOL); flush(stdout)
 wall = time()
 site(i) = (i - 1) ÷ K + 1
 al = findall(nd.x_allowed); sites = unique(site.(al))
@@ -164,7 +185,7 @@ function pricemip(b, wb, πb, σb, stopv, N; tlim=600.0)
 end
 
 # ---------------- DW 열 생성 (노드) ----------------
-cols = Vector{Set{Int}}(); n_rmpfix = Ref(0)
+cols = Vector{Set{Int}}(); n_rmpfix = Ref(0); lamval = Dict{Tuple{Int,Int},Float64}()   # v17: 마지막 RMP 의 λ
 function rmp(N)
     M = Model(() -> Gurobi.Optimizer(envs[NT + 2])); set_silent(M)
     set_optimizer_attribute(M, "Method", 2); set_optimizer_attribute(M, "Crossover", 0)
@@ -186,20 +207,69 @@ function rmp(N)
     termination_status(M) == MOI.OPTIMAL || error("ccgbp: RMP $(termination_status(M))")
     w = dual.(ct); π = [[i in al ? dual(cl[b][i]) : 0.0 for i in 1:nx] for b in 1:nb]; σ = dual.(cc)
     supp = [Set(c for c in cN[b] if value(lam[(b, c)]) > 1e-9) for b in 1:nb]
+    global lamval = Dict(k => value(v) for (k, v) in lam)   # v17
     xv = zeros(nx); for i in al; xv[i] = value(x[i]); end
     objective_value(M), w, π, σ, supp, xv
 end
 rcv(b, c, w, π, σ) = w[b] * getL(c, b) - dot(π[b], pts[c]) - σ[b]
 rng_ns = MersenneTwister(7)
-"노드 N 에서 열 생성. 반환 (lb (exact 일 때만, 아니면 −Inf; 실행불가면 Inf), RMP 값, x̃, 마스터 UB, 그 점, 상위 정수점, 정보)"
-function dwsolve!(N; exact=true, ubglob=Inf)
+# ---------------- v17: tabu 가격 생성기 (DLH 2008 §4.3–4.4) ----------------
+rng_tb = MersenneTwister(11)
+n_tbr = Ref(0); n_tbok = Ref(0); n_tbcol = Ref(0); n_tblp = Ref(0); t_tb = Ref(0.0)
+hamd(a, c) = count(i -> (pts[a][i] > 0.5) != (pts[c][i] > 0.5), eachindex(pts[a]))
+mipdist = Dict{Int,Int}()   # 진단: 정확 가격 MILP 가 넣은 열과 그 블록 지지점의 최소 해밍 거리 → 개수
+"한 걸음 생성기가 열을 못 찾았을 때의 tabu 걸음. 반환 = 넣은 열 수"
+function tabu_round!(N, w, π, σ, supp, tolabs)
+    n_tbr[] += 1; lp0 = n_lp[]; added = 0
+    t_tb[] += @elapsed begin
+        walks = Tuple{Int,Int,Vector{Int}}[]           # (블록, 현재 점, tabu 목록)
+        for b in eachindex(blks)
+            (w[b] > 1e-9 && blks[b].kind == :lp) || continue
+            st = sort(collect(supp[b]); by=c -> -get(lamval, (b, c), 0.0))
+            for c in st[1:min(TB_START, length(st))]; push!(walks, (b, c, [c])); end
+        end
+        found = Dict{Int,Dict{Int,Float64}}()            # 블록 → (점 → 감축 비용 < −tolabs)
+        for it in 1:TB_IT
+            isempty(walks) && break
+            samp = Vector{Vector{Int}}(undef, length(walks))
+            for k in eachindex(walks)
+                b, c, tl = walks[k]
+                nb_ = filter(c2 -> consistent(c2, N) && !(c2 in tl), nbrs(c))
+                samp[k] = length(nb_) <= TB_NS ? nb_ : shuffle(rng_tb, nb_)[1:TB_NS]
+            end
+            evalpairs!([(c2, walks[k][1]) for k in eachindex(walks) for c2 in samp[k]])
+            nw = Tuple{Int,Int,Vector{Int}}[]
+            for k in eachindex(walks)
+                b, c, tl = walks[k]; isempty(samp[k]) && continue
+                rs = [rcv(b, c2, w, π, σ) for c2 in samp[k]]
+                for (c2, r) in zip(samp[k], rs)
+                    (r < -tolabs && !(c2 in cols[b])) && (get!(found, b, Dict{Int,Float64}())[c2] = r)
+                end
+                cn = samp[k][argmin(rs)]                  # 나빠져도 가장 좋은 이웃으로
+                push!(tl, cn); length(tl) > TB_LEN && popfirst!(tl)
+                push!(nw, (b, cn, tl))
+            end
+            walks = nw
+            all(k -> length(get(found, walks[k][1], Dict{Int,Float64}())) >= TB_CMAX, eachindex(walks)) && break   # 모든 블록이 열 상한을 채움
+        end
+        for (b, fd) in found
+            for (c2, _) in sort(collect(fd); by=last)[1:min(TB_CMAX, length(fd))]; push!(cols[b], c2); added += 1; end
+        end
+    end
+    n_tblp[] += n_lp[] - lp0; n_tbcol[] += added; added > 0 && (n_tbok[] += 1)
+    return added
+end
+"""노드 N 에서 열 생성. 반환 (lb (exact 일 때만, 아니면 −Inf; 실행불가면 Inf), RMP 값, x̃, 마스터 UB, 그 점, 상위 정수점, 정보).
+v12: stopat (주차 기준 PT) 과 가지치기 기준 UB − tol 중 작은 값 cut 에 lb 가 닿으면 멈춤. RMP 값 v ≥ cut 인 동안은 CGTOL 로 멈추지 않음
+(그래야 주차할 노드의 하한이 cut 에 닿음). cgtol·trel 은 엄격한 정확 CG 용."""
+function dwsolve!(N; exact=true, ubglob=Inf, stopat=Inf, cgtol=CGTOL, trel=1e-4, deadline=Inf)
     lb = -Inf; ubm = Inf; cbest = 0; it = 0; nex = 0; topl = Int[]; v = NaN; xv = zeros(nx)
     s0 = seedpt(N); s0 == 0 && return Inf, Inf, xv, Inf, 0, Int[], (it = 0, nex = 0)
     evalall!([s0]); for b in eachindex(blks); push!(cols[b], s0); end
     while true
         it += 1
         v, w, π, σ, supp, xv = rmp(N)
-        tolabs = 1e-4 * max(1, abs(v))
+        tolabs = trel * max(1, abs(v))
         need = Tuple{Int,Int}[]; candb = Dict{Int,Vector{Int}}()
         for b in eachindex(blks)
             (w[b] > 1e-9 && blks[b].kind == :lp) || continue
@@ -223,23 +293,28 @@ function dwsolve!(N; exact=true, ubglob=Inf)
             if r < -tolabs && !(c in cols[b]); push!(cols[b], c); added += 1; end
         end
         added > 0 && continue
+        TABU && tabu_round!(N, w, π, σ, supp, tolabs) > 0 && continue   # v17: 한 걸음 생성기 실패 → tabu 걸음 (DLH 순서, 찾으면 RMP 로)
         sp = unique([c for b in eachindex(blks) for c in supp[b]]); evalall!(sp); global lastsupp = sp
         for c in sp; mv = mval(c); mv < ubm && (ubm = mv; cbest = c); end
         topl = sort(sp; by=mval)[1:min(NTOP, length(sp))]
         exact || return -Inf, v, xv, ubm, cbest, topl, (it = it, nex = 0)
         lbit = v; added2 = 0
-        # 가격 MILP 멈춤 기준: 가지치기에 필요한 여유 (RMP − (UB − tol)) 를 블록에 나눔. 여유가 없으면 엄격 (tolabs)
+        # 가격 MILP 멈춤 기준: 가지치기·주차에 필요한 여유 (RMP − cut) 를 블록에 나눔. 여유가 없으면 엄격 (tolabs)
         nw = count(b -> blks[b].kind == :lp && w[b] > 1e-9, eachindex(blks))
-        need = isfinite(ubglob) ? v - (ubglob - TOL * max(1.0, abs(ubglob))) : 0.0
+        cut = min(isfinite(ubglob) ? ubglob - TOL * max(1.0, abs(ubglob)) : Inf, stopat)
+        need = isfinite(cut) ? v - cut : 0.0
         allow = (PSTOP && need > 0 && nw > 0) ? max(tolabs, 0.9 * need / nw) : tolabs
         for b in eachindex(blks)
             if blks[b].kind == :lp && w[b] > 1e-9
-                bnd, zs, inc = pricemip(b, w[b], π[b], σ[b], σ[b] - allow, N)
+                bnd, zs, inc = pricemip(b, w[b], π[b], σ[b], σ[b] - allow, N; tlim=min(600.0, max(1.0, deadline - time())))
                 lbit += min(0.0, bnd - σ[b])
                 if inc - σ[b] < -tolabs
                     evalpairs!([(zc, b) for zc in zs])
                     for zc in zs
-                        if consistent(zc, N) && rcv(b, zc, w, π, σ) < -tolabs && !(zc in cols[b]); push!(cols[b], zc); added2 += 1; end
+                        if consistent(zc, N) && rcv(b, zc, w, π, σ) < -tolabs && !(zc in cols[b])
+                            dd = isempty(supp[b]) ? -1 : minimum(hamd(zc, sc) for sc in supp[b]); mipdist[dd] = get(mipdist, dd, 0) + 1   # v17 진단
+                            push!(cols[b], zc); added2 += 1
+                        end
                     end
                 end
             else
@@ -249,10 +324,11 @@ function dwsolve!(N; exact=true, ubglob=Inf)
             end
         end
         nex += 1; lb = max(lb, lbit)
-        # 노드를 자를 수 있으면 더 조일 필요 없음 (가지치기 기준 = UB − tol)
-        (isfinite(ubglob) && lb >= ubglob - TOL * max(1.0, abs(ubglob))) && return lb, v, xv, ubm, cbest, topl, (it = it, nex = nex)
+        time() > deadline && return lb, v, xv, ubm, cbest, topl, (it = it, nex = nex)   # 마감 (Farley 하한은 어느 반복에서나 유효, 시간 상한에 멈춘 MILP 도 bound 를 씀)
+        # 노드를 자르거나 주차할 수 있으면 더 조일 필요 없음
+        (isfinite(cut) && lb >= cut) && return lb, v, xv, ubm, cbest, topl, (it = it, nex = nex)
         tgt = min(ubm, ubglob)
-        (added2 == 0 || tgt - lb <= CGTOL * max(1, abs(tgt))) && return lb, v, xv, ubm, cbest, topl, (it = it, nex = nex)
+        (added2 == 0 || (tgt - lb <= cgtol * max(1, abs(tgt)) && !(isfinite(cut) && v >= cut))) && return lb, v, xv, ubm, cbest, topl, (it = it, nex = nex)
     end
 end
 cinc = 0          # 마스터 incumbent (모든 블록으로 평가된 점 중 최소 mval)
@@ -357,41 +433,111 @@ function trysearch(topl)
             @printf("    [탐색] x=%-24s t %.2f → %.2f (%s), 블록 %d\n", loc_tkp_xstr(nd, pts[c]), tc, bb.v, how, length(blks)); flush(stdout)
             return true
         end
+        alseed!(c) && return true                 # v13
     end
     false
 end
-UB = Inf; LB = -Inf; xbest = 0; status = :TimeLimit; t_or = 0.0; n_or = 0; certified = Dict{Int,Float64}()   # 점 → oracle 로 확인했을 때의 마스터 값 (값이 오를 때만 다시)
-needs_oracle(c) = (evalall!([c]); mval(c) > get(certified, c, -Inf) + 1e-6 * max(1.0, abs(mval(c))))
+UB = Inf; LB = -Inf; xbest = 0; status = :TimeLimit; t_or = 0.0; n_or = 0
+intpts = Set{Int}()      # v12: 만난 정수 후보점 (belief 가 늘면 이 점들로 마스터 incumbent 를 다시 고름)
 function upd_inc!(cs)
     for c in cs
+        push!(intpts, c)
         all(b -> blks[b].kind == :aff || haskey(cache, (c, b)), eachindex(blks)) || continue
         (cinc == 0 || mval(c) < mval(cinc) - 1e-9) && (global cinc = c)
     end
 end
-"oracle (α-B&B) 을 c 에서. 목표는 지금 LB 기준 (끝에 UB − LB ≤ tol 이 되게)"
+"v12: belief 가 늘었을 때 마스터 incumbent 를 후보점 전체에서 다시 고름 (새 블록으로 평가). cinc 의 값이 오르면 다른 점이 incumbent 가 될 수 있음"
+function refresh_cinc!()
+    cs = collect(intpts); evalall!(cs)
+    isempty(cs) || (global cinc = cs[argmin([mval(c) for c in cs])])
+end
+mref(c) = TOL * max(1.0, abs(mval(c)))                                              # 허용 m (원고 Algorithm 2 의 m, 마스터 값 기준)
+ub_ok() = cinc > 0 && isfinite(UB) && UB <= mval(cinc) + ORCL_THETA * mref(cinc) + 1e-9 * max(1.0, abs(UB))   # UB 가 cinc 기준으로 충분 → 주차 끔
+PT() = (cinc > 0 && !ub_ok()) ? mval(cinc) - TREE_SHARE * mref(cinc) : Inf        # 주차 기준 (Inf = 주차 안 함)
+"oracle (α-B&B) 을 c 에서. v12: 목표 τ⁺ = t₀ + ORCL_THETA·m (원고 Algorithm 2 의 τ⁺ = t₀ + m 을 나무 몫만큼 줄인 것, 지금 LB 와 무관)"
 orLB = Dict{Int,Float64}(); orcap = Dict{Int,Float64}()
+orcert = Dict{Int,Bool}(); orph1 = Dict{Int,Float64}()   # v15: 점 → 마지막 호출이 인증 (상한 ≤ 목표) 했는지, 1 단계 누적 oracle 시간
 orcl_log = NamedTuple[]
 orstate = Dict{Int,Any}()     # v7: 점 → 마지막 α-B&B 상태 (같은 점을 다시 부르면 이어 풂)
+alpool = Vector{Vector{Float64}}()       # v13: oracle incumbent α
+alv = Dict{Tuple{Int,Int},Float64}()     # v13: (점, α 번호) → 정확값 (한 번만 평가)
+n_seed = Ref(0); t_seed = Ref(0.0); n_seedev = Ref(0)
+"v13: α̂ 를 xb 의 follower 실행 가능 영역 (α ∈ H, 모든 시나리오 recourse 실행 가능) 으로 ℓ₁ 최근접 이동. 없으면 nothing"
+function transplant_alpha(xb, α̂)
+    nh = nz_nh(nd); M = Model(lp_opt)
+    @variable(M, 0 <= a[i=1:nh] <= nd.hU[i]); @variable(M, dev[1:nh] >= 0); @variable(M, y[1:ny, 1:S] >= 0)
+    @constraint(M, nd.W * a .<= nd.wvec)
+    @constraint(M, [i=1:nh], dev[i] >= a[i] - α̂[i]); @constraint(M, [i=1:nh], dev[i] >= α̂[i] - a[i])
+    for k in 1:m, s in 1:S
+        @constraint(M, sum(av * y[j, s] for (j, av) in C.rowA[k]) - (nd.hrow[k] > 0 ? nd.hcoef[k] * a[nd.hrow[k]] : 0.0) <= nd.u[k, s] + nz_gx(nd, k, s, xb))
+    end
+    @objective(M, Min, sum(dev)); optimize!(M)
+    termination_status(M) == MOI.OPTIMAL || return nothing
+    return [clamp(value(a[i]), 0.0, nd.hU[i]) for i in 1:nh]
+end
+"v13: 앞선 oracle 의 incumbent α 를 c 에서 정확 평가. t₀ + 0.05 m 을 넘으면 그 belief 를 블록으로 넣고 true"
+function alseed!(c)
+    isempty(alpool) && return false
+    evalall!([c]); t0v = mval(c) - qv[c]; thr = 0.05 * mref(c)
+    for k in eachindex(alpool)
+        haskey(alv, (c, k)) && continue
+        vx = nothing
+        t_seed[] += @elapsed begin
+            at = transplant_alpha(pts[c], alpool[k])
+            vx = at === nothing ? (-Inf, nothing, nothing, nothing) : exact_value(pts[c], at)
+        end
+        n_seedev[] += 1
+        alv[(c, k)] = vx[2] === nothing ? -Inf : vx[1]
+        if vx[2] !== nothing && vx[1] > t0v + thr
+            add_and_secure!(c, vx[1], vx[2], vx[3]); n_seed[] += 1
+            @printf("    [α 재사용] x=%-24s t %.2f → %.2f (oracle α %d), 블록 %d\n", loc_tkp_xstr(nd, pts[c]), t0v, vx[1], k, length(blks)); flush(stdout)
+            return true
+        end
+    end
+    false
+end
+function alpush!(α)
+    α === nothing && return
+    any(a -> maximum(abs.(a .- α)) <= 1e-6, alpool) || push!(alpool, copy(α))
+end
+# v11: oracle 정의역에서 연 B 거점 약정 상한 = 그 거점 용량 (h_i ≤ b_i(x̄)). 약정 등식과 용량 행에서 h_i > b_i 면 retailer recourse 가 실행 불가능 →
+#   그런 α 는 retailer 의 실행 가능한 1 단계가 아니라 어떤 belief 의 최적 반응도 아님. 정의역을 줄인 Ω_λ 도 최적 반응 α* (벌점 0) 를 품으므로 ≥ V*(x̄): 상한 인증은 그대로 유효.
+#   줄인 정의역의 α 는 원래 정의역에도 있으므로 하한 (incumbent) 쪽도 그대로. orcl_replay.jl HUCAP=1 로 지리 1 S=10 인증 386 → 211 s, 지리 5 같은 시간 상한 간격 절반 (2026-11-25)
+nd_hc = Dict{Int,Any}()
+function nd_hucap(c)
+    haskey(nd_hc, c) && return nd_hc[c]
+    xb = pts[c]; K = nd.meta[:K]; tiers = nd.meta[:tiers]; hU = copy(nd.hU); hidx = nd.meta[:hidx]; sx = nd.meta[:site_x]
+    for i in nd.meta[:nA]+1:nd.meta[:nst]
+        b = sum(tiers[(t - 1) % K + 1] * xb[t] for t in sx[i]; init=0.0)
+        k = hidx(i, 1); (b > 0.5 && b < hU[k]) && (hU[k] = b)
+    end
+    nd_hc[c] = nz_with_hU(nd, hU)
+end
 function oracle_at!(c; cap=ORCL_TL)
+    alseed!(c) && return :seed                    # v13
     evalall!([c]); t0v = mval(c) - qv[c]; xb = pts[c]
-    tau = isfinite(LB) ? max(t0v + 1e-6 * max(1.0, abs(t0v)), LB + 0.95 * TOL * max(1.0, abs(LB)) - qv[c]) : t0v + 0.9 * TOL * max(1.0, abs(qv[c] + t0v))
-    gap_o = min(1e-3, 0.4 * TOL * max(1.0, abs(qv[c] + t0v)) / max(1.0, abs(t0v)))
-    lim = max(10.0, min(cap, TL - (time() - wall))); orcap[c] = cap
-    to = @elapsed (res = nz_alpha_bnb_dr(nd, xb; nworkers=max(1, NT - 1), time_limit=lim, rel_gap=gap_o, target=tau, verbose=false, resume=get(orstate, c, nothing), resp=ORCL_RESP))
-    orstate[c] = res[:state]
-    global t_or += to; global n_or += 1; orLB[c] = max(get(orLB, c, -Inf), res[:LB])
+    tau = t0v + ORCL_THETA * mref(c)
+    gap_o = min(1e-3, 0.4 * mref(c) / max(1.0, abs(t0v)))      # 원고: 허용오차 < m/2 (멈추면 상한 ≤ 하한 + 0.4 m ≤ τ⁺ 또는 위반)
+    lim = max(10.0, min(cap, dl() - (time() - wall))); orcap[c] = cap
+    to = @elapsed (res = nz_alpha_bnb_dr(HUCAP ? nd_hucap(c) : nd, xb; nworkers=max(1, NT - 1), time_limit=lim, rel_gap=gap_o, target=tau, verbose=false, resume=get(orstate, c, nothing), resp=ORCL_RESP, ORCL_KW...))
+    orcert[c] = res[:UB] <= tau
+    orstate[c] = res[:state]; alpush!(res[:α])
+    global t_or += to; global n_or += 1
+    # v9: 위반 판정은 incumbent α 의 정확값으로. 벌점 Ω 의 incumbent 값 res[:LB] 는 α 가 꺾임점에서 1e-5 만 벗어나도 λᵁ 벌점으로 몇 단위 낮다 (2026-11-24 진단)
+    vx = res[:α] !== nothing ? exact_value(xb, res[:α]) : nothing
+    lbx = max(res[:LB], (vx !== nothing && vx[2] !== nothing) ? vx[1] : -Inf)
+    orLB[c] = max(get(orLB, c, -Inf), lbx)
     if qv[c] + res[:UB] < UB; global UB = qv[c] + res[:UB]; global xbest = c; end
     how = :none
-    if res[:α] !== nothing && res[:LB] > t0v + 1e-6 * max(1.0, abs(t0v))
-        vv, dd, r2, a1 = exact_value(xb, res[:α])
+    if vx !== nothing && lbx > t0v + 1e-6 * max(1.0, abs(t0v))
+        vv, dd, r2, a1 = vx
         if dd !== nothing
             how = add_and_secure!(c, vv, dd, r2)
             vv <= t0v + 1e-6 * max(1.0, abs(t0v)) && restricted!(c, a1)
         end
     end
     if how == :none && res[:LB] > t0v + 1e-6 * max(1.0, abs(t0v)); nogood!(c, res[:LB]); how = :nogood_lb; end
-    certified[c] = mval(c)
-    @printf("  [orcl] x=%-24s V in [%.2f, %.2f], t0 %.2f, 목표 %.2f (%.0fs, 상한 %.0fs%s) %s, 블록 %d, LB %.2f UB %.2f (경과 %.0fs)\n", loc_tkp_xstr(nd, xb), res[:LB], res[:UB], t0v, tau, to, lim, res[:resumed] ? ", 이어 풂" : "", how, length(blks), LB, UB, time() - wall)
+    @printf("  [orcl] x=%-24s V in [%.2f, %.2f] (정확값 %.2f), t0 %.2f, 목표 %.2f (%.0fs, 상한 %.0fs%s) %s, 블록 %d, LB %.2f UB %.2f (경과 %.0fs)\n", loc_tkp_xstr(nd, xb), res[:LB], res[:UB], lbx, t0v, tau, to, lim, res[:resumed] ? ", 이어 풂" : "", how, length(blks), LB, UB, time() - wall)
     @printf("         α-B&B: 노드 %d, 이완 %.0fs, 평가 %.0fs, 범위 %.0fs (MIP %d, 실패 %d), 재확인 %.0fs, ipopt %d, 고정 비율 %.2f, 수치 오류 %d\n",
             res[:nodes], res[:t_relax], res[:t_eval], res[:t_range], res[:range_mips], res[:range_fail], res[:t_recheck], res[:ipopt_calls], res[:fixfrac], res[:numerr]); flush(stdout)
     # 재현용 기록 (α-B&B 조정): 같은 인자로 nz_alpha_bnb_dr 를 따로 부를 수 있게
@@ -402,21 +548,46 @@ end
 
 # ---- 시작 ----
 b1 = add_lpblk!(qh, qh, MU); evalpairs!([(1, b1)]); push!(cols, Set([1]))
-bnd = 0.0; tl0 = @elapsed (global bnd = first(pricemip(b1, 1.0, zeros(nx), 0.0, Inf, ROOT)))
+# v12: t_low (no-good 상수) 는 min_{x ∈ X} V*(x) 의 유효한 하한이면 된다. 블록 L_b(x) = min_plan [C_L + μ(C_F − ηC_L⁺ + 쌍대 목적)] 의 벌점항은
+#   정수 x 에서 약쌍대로 ≥ 0 이므로 L_b(x) ≥ min_plan C_L. 그래서 follower 최적성을 뺀 낙관값 LP (x 는 conv X 로 완화, 명목 r = q̂) 의 값이 하한이다.
+#   v11 까지는 명목 블록 가격 MILP 를 끝까지 (S = 20 에서 355 ~ 376 s). 시간 상한을 둔 MILP bound 는 블록 LP 완화가 약해 −10⁷ (변수 하한) 에 머묾 (지리 13 점검).
+function tlow_lp()
+    M = Model(lp_opt); nh = nz_nh(nd)
+    @variable(M, 0 <= xr[i=1:nx] <= (nd.x_allowed[i] ? 1.0 : 0.0)); @constraint(M, sum(xr) <= nd.gamma)
+    for (ix, rhs) in get(nd.meta, :omp_card, Tuple{Vector{Int},Int}[]); @constraint(M, sum(xr[i] for i in ix) <= rhs); end
+    @variable(M, 0 <= h[i=1:nh] <= nd.hU[i]); @constraint(M, nd.W * h .<= nd.wvec); @variable(M, y[1:ny, 1:S] >= 0)
+    for k in 1:m, s in 1:S
+        @constraint(M, sum(a * y[j, s] for (j, a) in C.rowA[k]) - (nd.hrow[k] > 0 ? nd.hcoef[k] * h[nd.hrow[k]] : 0.0) - sum(e.g[s] * xr[e.i] for e in C.ents_of_row[k]; init=0.0) <= nd.u[k, s])
+    end
+    @objective(M, Min, sum(qh[s] * nd.ell[j] * y[j, s] for j in 1:ny, s in 1:S if nd.ell[j] != 0; init=AffExpr(0.0)))
+    optimize!(M)
+    return termination_status(M) == MOI.OPTIMAL ? objective_value(M) : -Inf
+end
+bnd = 0.0; tl0 = @elapsed (global bnd = tlow_lp()); how_tl = "낙관값 LP"
+if !isfinite(bnd)                                   # LP 가 안 풀리면 예전처럼 명목 블록 가격 MILP 를 끝까지
+    tl0 += @elapsed (global bnd = first(pricemip(b1, 1.0, zeros(nx), 0.0, Inf, ROOT))); how_tl = "가격 MILP"
+end
+isfinite(bnd) || error("ccgbp: t_low 를 못 구함")
 global tlow = bnd - 1e-6 * max(1.0, abs(bnd))
-@printf("  [시작] t 하한 %.2f (가격 MILP %.1fs)\n", tlow, tl0); flush(stdout)
+@printf("  [시작] t 하한 %.2f (%s %.1fs)\n", tlow, how_tl, tl0); flush(stdout)
 
 # ---- 1 단계 (루트, 휴리스틱 열 생성 + 탐색 + oracle): belief 와 UB 모으기 ----
+ph1_why = "총량 몫"   # v16: 1 단계가 끝난 까닭 (break 가 고쳐 씀)
 if PH1
-    while time() - wall < TL
+    while time() - wall < min(TLB, PH1_SHARE * TL)   # v16: 1 단계 총량 몫
         r = dwsolve!(ROOT; exact=false); upd_inc!(r[6])
         @printf("  [ph1] 루트 RMP %.2f, 마스터 UB %.2f (x=%s), 블록 %d, LP 누적 %d (경과 %.0fs)\n", r[2], r[4], loc_tkp_xstr(nd, pts[r[5]]), length(blks), n_lp[], time() - wall); flush(stdout)
         trysearch(r[6]) && continue
-        oracle_at!(r[5]) == :none && break
+        tph = time(); hw = oracle_at!(r[5]; cap=PH1_CAP); orph1[r[5]] = get(orph1, r[5], 0.0) + (time() - tph)   # v14: 1 단계 oracle 은 모두 PH1_CAP 까지
+        if hw == :none                                # v15: 결론 없음이면 같은 점을 누적 PH1_TOT 까지 이어 풂 (다음 반복의 dwsolve 가 같은 점을 줌)
+            (get(orcert, r[5], false) || orph1[r[5]] >= PH1_TOT) && (global ph1_why = get(orcert, r[5], false) ? "인증" : "같은 점 누적 PH1_TOT"; break)
+            @printf("  [ph1] 결론 없음 → 같은 점 이어 풂 (누적 %.0fs / %.0fs)\n", orph1[r[5]], PH1_TOT); flush(stdout)
+        end
     end
 end
 t_ph1 = time() - wall
-@printf("  [1 단계 끝] %.0fs, belief %d, UB %.2f\n", t_ph1, count(B -> B.kind == :lp, blks), UB); flush(stdout)
+@printf("  [1 단계 끝] %.0fs, belief %d, UB %.2f%s\n", t_ph1, count(B -> B.kind == :lp, blks), UB,
+        PH1 ? @sprintf(" (v16: 끝난 까닭 %s, 총량 몫 %.0fs)", ph1_why, PH1_SHARE * TL) : ""); flush(stdout)
 
 # ---- 2 단계: branch-and-price ----
 "분기: 거점 개설 o_j (분수) 를 strong branching (휴리스틱 열 생성 값의 곱 점수) 으로, 없으면 크기 x_jk"
@@ -444,36 +615,60 @@ function children(N, xv, vpar)
     return (Node(copy(N.f0), union(N.f1, [i]), copy(N.opn), N.lb, vpar, N.depth + 1, N.tag * @sprintf(" x%d=1", i)),
             Node(union(N.f0, [i]), copy(N.f1), copy(N.opn), N.lb, vpar, N.depth + 1, N.tag * @sprintf(" x%d=0", i)))
 end
-closedq = Tuple{Node,Int}[]       # 정수로 닫은 노드와 그 점 (하한 = max(마스터 값, q + oracle 하한))
-closed_lb(e) = (evalall!([e[2]]); max(e[1].lb, mval(e[2]), qv[e[2]] + get(orLB, e[2], -Inf)))   # 닫은 뒤 생긴 블록도 먼저 평가 (2026-11-24 지리 14 KeyError)
-global_lb(extra=Inf) = min(extra, minimum((o.lb for o in openq); init=Inf), minimum((closed_lb(e) for e in closedq); init=Inf))
-function finish_or_deepen!()
-    while time() - wall < TL
-        if isempty(openq)
-            lbg = isfinite(UB) ? min(UB - TOL * max(1.0, abs(UB)), global_lb()) : global_lb()
-            global LB = max(LB, lbg)
-            if isfinite(UB) && (isempty(closedq) || UB - LB <= TOL * max(1.0, abs(UB)) * (1 + 1e-9)); global status = :Optimal; return; end   # 모든 노드가 UB − tol 로 잘림
-            k = argmin([closed_lb(e) for e in closedq]); N, c = closedq[k]
-            cap2 = 2 * get(orcap, c, ORCL_TL)
-            @printf("  [deepen] 닫힌 노드 %s (점 %s, 하한 %.2f) 이 막음 → oracle 상한 %.0fs 로 다시\n", N.tag, loc_tkp_xstr(nd, pts[c]), closed_lb(closedq[k]), cap2); flush(stdout)
-            h = oracle_at!(c; cap=cap2)
-            if h != :none
-                deleteat!(closedq, k); push!(openq, N)          # 블록이 늘었으니 이 노드를 다시 엶
-                return :reopen
-            end
-            continue
-        end
-        return :open
+# v12: 주차 노드 = 하한 ≥ PT 라 분기하지 않고 둔 노드 (노드, 점; 점은 정수 노드면 그 점, 아니면 0). 하한은 증명된 Farley 하한만 쓴다
+#   (v11 의 closed_lb 는 정수 노드에서 mval(c) 와 q + oracle 하한을 썼는데, 둘 다 노드 전체의 증명된 하한이 아님).
+#   막힌 정수 노드 (엄격한 정확 CG 뒤에도 하한 < 기준) 는 stuckq 에 남겨 LB 에만 넣는다.
+parkq = Tuple{Node,Int}[]; stuckq = Tuple{Node,Int}[]
+gapcut() = isfinite(UB) ? UB - TOL * max(1.0, abs(UB)) : Inf
+gapok(lb) = isfinite(UB) && lb >= gapcut()
+global_lb(extra=Inf) = min(extra, minimum((o.lb for o in openq); init=Inf), minimum((e[1].lb for e in parkq); init=Inf), minimum((e[1].lb for e in stuckq); init=Inf))
+nb_seen = Ref(0); n_park = Ref(0); n_reopen = Ref(0); n_cinc_or = Ref(0); n_strict = Ref(0)
+"belief·UB 가 바뀌면 cinc 를 다시 고르고, 하한 < PT 인 주차 노드를 다시 엶 (PT = Inf, 곧 UB 가 충분하면 모두 다시 열어 가지치기로 정리)"
+function sync_park!()
+    if length(blks) != nb_seen[]
+        refresh_cinc!(); nb_seen[] = length(blks)
     end
+    pt = PT(); keep = Tuple{Node,Int}[]
+    for e in parkq
+        if !isfinite(pt) || e[1].lb < pt - 1e-9 * max(1.0, abs(pt))
+            push!(openq, e[1]); n_reopen[] += 1
+        else
+            push!(keep, e)
+        end
+    end
+    global parkq = keep
 end
-openq = [ROOT]; nproc = 0; nprune = 0; nexact = 0; nint = 0
-gapok(lb) = isfinite(UB) && lb >= UB - TOL * max(1.0, abs(UB))
-while time() - wall < TL
-while !isempty(openq) && time() - wall < TL
+park!(N, lb, v, c) = (push!(parkq, (Node(N.f0, N.f1, N.opn, lb, v, N.depth, N.tag), c)); n_park[] += 1)
+# v10: 루트 정확 가격 CG (Lagrangian 하한, X 전체에 유효). v12: ROOT_EXACT = end 가 기본 — B&P 가 마감 (TL − RESERVE) 까지 못 끝내면 그때 한 번 돌려 LB 로 보고.
+#   start (v10·v11) 는 2 단계 전에 돌리는데, S = 10 에서 전체 시간의 38 ~ 72 % 였다 (지리 1 1,268 s, 지리 13 점검 1,200 s, 대부분 가지치기에 안 쓰이는 정밀도).
+function root_exact!(tag; deadline=Inf)
+    tre = @elapsed (rr = dwsolve!(ROOT; exact=true, ubglob=UB, stopat=PT(), deadline=deadline))
+    rr[1] < Inf && (upd_inc!(rr[6]); global LB = max(LB, rr[1]))
+    @printf("  [루트 정확 CG, %s] 하한 %.2f, RMP %.2f, UB %.2f, 간격 %.3f%%, 주차 기준 PT %.2f (%.0fs, 정확 반복 %d)\n", tag, rr[1], rr[2], UB, 100 * (UB - rr[1]) / abs(UB), PT(), tre, rr[7].nex); flush(stdout)
+    rr
+end
+if ROOT_EXACT == "start" && time() - wall < TLB
+    rr = root_exact!("시작")
+    rr[1] < Inf && (global ROOT = Node(ROOT.f0, ROOT.f1, ROOT.opn, rr[1], rr[2], 0, "root"))
+end
+openq = [ROOT]; nproc = 0; nprune = 0; nexact = 0; nint = 0; nb_seen[] = length(blks)
+while time() - wall < dl()
+    sync_park!()
+    global LB = max(LB, min(gapcut(), global_lb()))
+    if isfinite(UB) && UB - LB <= TOL * max(1.0, abs(UB)) * (1 + 1e-9); global status = :Optimal; break; end
+    if isempty(openq)
+        # 마스터가 나무 몫 안으로 풀림 (열린 노드 없음, 남은 것은 주차) → 마스터 incumbent 에서 oracle (같은 점이면 이어 풂)
+        ub_ok() && error("ccgbp: UB 가 충분한데 열린·주차 노드 없이 간격이 남음 (LB $LB, UB $UB)")
+        cinc > 0 || error("ccgbp: 마스터 incumbent 없음")
+        n_cinc_or[] += 1
+        @printf("  [마스터 풀림] 주차 %d, 막힘 %d, LB %.2f, cinc %s (mval %.2f, PT %.2f, 목표 UB ≤ %.2f) → oracle\n", length(parkq), length(stuckq), LB,
+                loc_tkp_xstr(nd, pts[cinc]), mval(cinc), PT(), mval(cinc) + ORCL_THETA * mref(cinc)); flush(stdout)
+        oracle_at!(cinc)
+        continue
+    end
     sort!(openq; by=N -> (N.lb, N.est)); N = popfirst!(openq)
-    global LB = max(LB, global_lb(N.lb))
-    if isfinite(UB) && UB - LB <= TOL * max(1.0, abs(UB)); global status = :Optimal; break; end
     gapok(N.lb) && (global nprune += 1; continue)
+    (isfinite(PT()) && N.lb >= PT()) && (park!(N, N.lb, N.est, 0); continue)
     global nproc += 1
     local r
     while true
@@ -481,40 +676,51 @@ while !isempty(openq) && time() - wall < TL
         upd_inc!(r[6]); trysearch(filter(c -> !gapok(mval(c)), r[6])) || break    # 이미 UB − tol 위인 점의 belief 는 가지치기를 못 바꿈
     end
     if r[1] == Inf; global nprune += 1; continue; end            # 실행불가 노드
+    length(blks) != nb_seen[] && (refresh_cinc!(); nb_seen[] = length(blks))
     v, xv = r[2], r[3]; lbN = N.lb
     integral = all(i -> abs(xv[i] - round(xv[i])) < 1e-6, al)
-    if gapok(v) || integral
-        r = dwsolve!(N; exact=true, ubglob=UB); global nexact += 1; upd_inc!(r[6])
+    if v >= min(gapcut(), PT()) || integral                     # 자르거나 주차할 수 있을 때만 정확 가격 (v12: 주차 기준 PT 도)
+        r = dwsolve!(N; exact=true, ubglob=UB, stopat=PT()); global nexact += 1; upd_inc!(r[6])
         lbN = max(lbN, r[1]); v, xv = r[2], r[3]; integral = all(i -> abs(xv[i] - round(xv[i])) < 1e-6, al)
     end
-    @printf("  [node %3d] %-34s 깊이 %d: RMP %.2f, LB %.2f, %s, 열린 %d, LB* %.2f UB %.2f, 마스터 inc %.2f, 블록 %d, MILP %d (경과 %.0fs)\n",
-            nproc, N.tag, N.depth, v, lbN, integral ? "정수" : "분수", length(openq), LB, UB, cinc > 0 ? mval(cinc) : NaN, length(blks), n_mip[], time() - wall); flush(stdout)
-    # oracle: 마스터 incumbent 가 UB 를 고칠 수 있고 지금 블록으로 확인 안 된 경우
-    if cinc > 0 && mval(cinc) < UB - 0.1 * TOL * max(1.0, abs(UB)) && needs_oracle(cinc)
-        h = oracle_at!(cinc)
-        if h != :none; push!(openq, Node(N.f0, N.f1, N.opn, lbN, v, N.depth, N.tag)); continue; end   # 블록이 늘었으니 이 노드를 다시
-    end
-    gapok(lbN) && (global nprune += 1; continue)
+    c = integral ? pid(round.(xv)) : 0
     if integral
-        c = pid(round.(xv)); global nint += 1
-        if needs_oracle(c)
-            h = oracle_at!(c)
-            h != :none && (push!(openq, Node(N.f0, N.f1, N.opn, lbN, v, N.depth, N.tag)); continue)
+        global nint += 1; upd_inc!([c])
+        if lbN < min(gapcut(), PT())                              # 정수 RMP 인데 증명된 하한이 모자람 → 엄격한 정확 CG 한 번
+            r = dwsolve!(N; exact=true, ubglob=UB, stopat=PT(), cgtol=0.0, trel=1e-7); n_strict[] += 1; lbN = max(lbN, r[1])
         end
-        push!(closedq, (Node(N.f0, N.f1, N.opn, lbN, v, N.depth, N.tag), c))   # 정수 노드: 하한을 남기고 닫음
+    end
+    @printf("  [node %3d] %-34s 깊이 %d: RMP %.2f, LB %.2f, %s, 열린 %d, 주차 %d, LB* %.2f UB %.2f, 마스터 inc %.2f (PT %.2f), 블록 %d, MILP %d (경과 %.0fs)\n",
+            nproc, N.tag, N.depth, v, lbN, integral ? "정수" : "분수", length(openq), length(parkq), LB, UB, cinc > 0 ? mval(cinc) : NaN, PT(), length(blks), n_mip[], time() - wall); flush(stdout)
+    gapok(lbN) && (global nprune += 1; continue)
+    (isfinite(PT()) && lbN >= PT()) && (park!(N, lbN, v, c); continue)
+    if integral
+        push!(stuckq, (Node(N.f0, N.f1, N.opn, lbN, v, N.depth, N.tag), c))
+        @printf("  [!] 정수 노드 %s 의 하한 %.2f 가 기준 %.2f 아래 (엄격 CG 뒤) → 막힌 노드로 둠\n", N.tag, lbN, min(gapcut(), PT())); flush(stdout)
         continue
     end
     ch = children(N, xv, v)
-    ch === nothing && (println("  [!] 분기 변수 없음"); continue)
+    ch === nothing && error("ccgbp: 분수 노드인데 분기 변수 없음 ($(N.tag))")
     push!(openq, ch[1]); push!(openq, ch[2])
-end   # while (B&P 노드)
-status == :Optimal && break
-finish_or_deepen!() == :reopen || break
-end   # 바깥
+end
+# v16 (2026-11-26 밤 수정): 마지막 노드를 마감 TLB 뒤에 가지치기하면 while 머리의 LB 갱신을 못 거치고 루프가 끝나 나무가 닫혔는데도
+#   TimeLimit 으로 보고되고 마감 루트 CG 가 쓸모없는 하한을 냄 (N_B 4 지리 12 v17: 3,568 s 에 루트 가지치기, 보고 LB −9,999,422). 루프 머리와 같은 갱신을 한 번 더.
+global LB = max(LB, min(gapcut(), global_lb()))
+isfinite(UB) && UB - LB <= TOL * max(1.0, abs(UB)) * (1 + 1e-9) && (global status = :Optimal)
+ran_final_cg = false
+if status != :Optimal && ROOT_EXACT == "end" && !isfinite(LB) && time() - wall < TL   # v14: 나무 하한이 있으면 dl() = TL 이라 여기 오지 않음
+    root_exact!("마감"; deadline=wall + TL); global ran_final_cg = true
+    isfinite(UB) && UB - LB <= TOL * max(1.0, abs(UB)) * (1 + 1e-9) && (global status = :Optimal)
+end
 tot = time() - wall
 nbel = count(B -> B.kind == :lp, blks)
-@printf("RESULT ccgbp g=%d status=%s x=%s LB=%.4f UB=%.4f gap=%.3f%% beliefs=%d 노드 %d (가지침 %d, 정확 %d, 정수 %d, 남은 %d, 닫힌 정수 %d) 안전장치 %d (no-good %d, restricted %d, μ 올림 %d) time=%.1f (1 단계 %.0fs)\n",
-        GEO, status, xbest == 0 ? "-" : loc_tkp_xstr(nd, pts[xbest]), LB, UB, 100 * (UB - LB) / abs(UB), nbel, nproc, nprune, nexact, nint, length(openq), length(closedq), n_ng[] + n_rc[], n_ng[], n_rc[], n_mu[], tot, t_ph1)
+@printf("RESULT ccgbp g=%d status=%s x=%s LB=%.4f UB=%.4f gap=%.3f%% beliefs=%d 노드 %d (가지침 %d, 정확 %d, 정수 %d, 남은 %d, 주차 %d, 막힘 %d) 안전장치 %d (no-good %d, restricted %d, μ 올림 %d) time=%.1f (1 단계 %.0fs)\n",
+        GEO, status, xbest == 0 ? "-" : loc_tkp_xstr(nd, pts[xbest]), LB, UB, 100 * (UB - LB) / abs(UB), nbel, nproc, nprune, nexact, nint, length(openq), length(parkq), length(stuckq), n_ng[] + n_rc[], n_ng[], n_rc[], n_mu[], tot, t_ph1)
 @printf("  시간: oracle %d 번 %.0fs, 탐색 %d 번 %.0fs, 블록 LP %d 번 %.0fs, 가격 MILP %d 번 %.0fs (노드 %d), RMP %d 번 %.0fs (crossover 재시도 %d), 생성기 구성 %.0fs; 서로 다른 점 %d / %d\n",
         n_or, t_or, n_srch[], t_srch[], n_lp[], t_lp[], n_mip[], t_mip[], nodes_mip[], n_rmp[], t_rmp[], n_rmpfix[], t_build[], length(unique([c for (c, _) in keys(cache)])), NP)
+@printf("  v12: 주차 %d 번, 다시 엶 %d 번, 마스터 incumbent oracle %d 번, 엄격 정확 CG %d 번, 후보점 %d\n", n_park[], n_reopen[], n_cinc_or[], n_strict[], length(intpts))
+@printf("  v13: α 재사용 위반 %d 번 (정확 평가 %d 번 %.0fs), α 풀 %d\n", n_seed[], n_seedev[], t_seed[], length(alpool))
+@printf("  v14: 1 단계 상한 %.0fs, 마감 루트 CG %s, 2 단계 마감 %s\n", PH1_CAP, ran_final_cg ? "돌림" : "건너뜀", isfinite(LB) ? "TL (하한 있음)" : "TL − RESERVE")
 @printf("  열: RMP 에 들어간 열 (블록 합) %d, 서로 다른 열 %d, 번호를 붙인 점 %d / |X| %d\n", sum(length.(cols)), length(union(cols...)), length(pts), NP)
+@printf("  v17: tabu %s, 라운드 %d (열 찾음 %d), 넣은 열 %d, LP %d 번, %.0fs; 정확 MILP 가 넣은 열 %d 개의 지지점 최소 해밍 거리 %s\n",
+        TABU ? "켬" : "끔", n_tbr[], n_tbok[], n_tbcol[], n_tblp[], t_tb[], sum(values(mipdist); init=0), join(["$k:$(mipdist[k])" for k in sort(collect(keys(mipdist)))], " "))
