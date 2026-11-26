@@ -1,0 +1,73 @@
+LP 59 개 (C:/Users/user/AppData/Local/Temp/claude/a31bffbb1639accd/310f4530-ff69-4912-9a26-69df1bdd76ba/scratchpad/lpdump_g5), 첫 LP 행 14801 열 14232 비영 98774
+base      최적 59/59  반복 합   250069 (중앙   1513)  시간 합   36.87 s (중앙 0.232, 최대 13.778)  기준 대비 시간  1.00  목적 차 최대 0.0e+00
+price1    최적 59/59  반복 합   160436 (중앙   1513)  시간 합   26.35 s (중앙 0.238, 최대 3.943)  기준 대비 시간  0.71  목적 차 최대 6.2e-08
+scale2    최적 59/59  반복 합   111283 (중앙   1302)  시간 합   17.38 s (중앙 0.208, 최대 1.220)  기준 대비 시간  0.47  목적 차 최대 9.1e-03
+perturb0  최적 59/59  반복 합   184076 (중앙   1651)  시간 합   29.15 s (중앙 0.247, 최대 5.867)  기준 대비 시간  0.79  목적 차 최대 5.5e-09
+ref       최적 59/59  반복 합   539459 (중앙   9076)  시간 합  168.98 s (중앙 2.794, 최대 4.249)  기준 대비 시간  4.58  목적 차 최대 9.1e-03
+
+변형별: ref 보다 여유 넘게 낮은 LP 수, 가지치기 판정이 ref 와 다른 LP 수, ref 대비 최대 절대 차 (|ref| < 1e5 인 LP 만, 문턱 근처)
+base      낮음  1  판정 다름  0  최대 절대 차 26.2  dv_45.mps:-0.00462
+price1    낮음  1  판정 다름  0  최대 절대 차 26.2  dv_45.mps:-0.00462
+scale2    낮음  1  판정 다름  0  최대 절대 차 2.24  dv_45.mps:-0.00462
+perturb0  낮음  1  판정 다름  0  최대 절대 차 26.2  dv_45.mps:-0.00462
+
+LP 별 (ref 값, 문턱, 변형 − ref)
+dv_1.mps   ref   -2512.289841 thr  -3177.038 | base +1.05e-11 price1 -4.46e-11 scale2 -2.13e-10 perturb0 +1.05e-11
+dv_2.mps   ref   -2635.365525 thr  -3166.458 | base +1.46e-10 price1 +1.37e-10 scale2 -4.05e-06 perturb0 +2.27e-10
+dv_3.mps   ref   -2520.564972 thr  -3166.458 | base +8.91e-11 price1 +2.46e-10 scale2 +3.47e-10 perturb0 +1.11e-10
+dv_4.mps   ref -42835295.911085 thr  -3166.458 | base +4.47e-08 price1 +4.47e-08 scale2 -5.06e-06 perturb0 +4.47e-08
+dv_5.mps   ref -1954746.844381 thr  -3166.458 | base -2.93e-06 price1 -2.93e-06 scale2 -2.92e-06 perturb0 +2.11e-06
+dv_6.mps   ref   -2731.766489 thr  -3166.458 | base -3.91e-11 price1 -3.91e-11 scale2 -8.37e-11 perturb0 +2.18e-11
+dv_7.mps   ref   -2703.793986 thr  -3166.458 | base -1.18e-11 price1 -1.18e-11 scale2 +2.14e-10 perturb0 -3.38e-10
+dv_8.mps   ref -204909.762024 thr  -3166.458 | base +4.57e-06 price1 +4.57e-06 scale2 +3.57e-06 perturb0 +8.79e-06
+dv_9.mps   ref   -2541.660562 thr  -3166.458 | base -3.32e-10 price1 -3.32e-10 scale2 -2.03e-10 perturb0 -3.32e-10
+dv_10.mps  ref   -2897.635516 thr  -3166.458 | base +2.62e+01 price1 +2.62e+01 scale2 -3.05e-11 perturb0 +2.62e+01
+dv_11.mps  ref -3378433.283338 thr  -3166.458 | base +4.91e-06 price1 +4.91e-06 scale2 +5.02e-06 perturb0 +4.91e-06
+dv_12.mps  ref   -2664.918305 thr  -3166.458 | base -1.18e-09 price1 -1.18e-09 scale2 -7.00e-10 perturb0 -1.18e-09
+dv_13.mps  ref   -2631.736807 thr  -3166.458 | base +1.61e-10 price1 +1.61e-10 scale2 +1.40e-10 perturb0 +1.61e-10
+dv_14.mps  ref   -3650.418210 thr  -3166.458 | base -2.37e-06 price1 -2.37e-06 scale2 -3.24e-06 perturb0 -2.84e-06
+dv_15.mps  ref -25024144.935454 thr  -3166.458 | base +4.50e-04 price1 -7.28e-06 scale2 -7.80e-06 perturb0 +1.64e-07
+dv_16.mps  ref   -2602.095986 thr  -3166.458 | base -1.25e-10 price1 -1.05e-10 scale2 -2.30e-10 perturb0 +7.87e-11
+dv_17.mps  ref -8082128.698255 thr  -3166.458 | base +2.62e-02 price1 +2.62e-02 scale2 -2.33e-06 perturb0 +3.60e-02
+dv_19.mps  ref   -2607.668200 thr  -3166.458 | base -1.09e-10 price1 -7.78e-11 scale2 -2.44e-10 perturb0 -3.09e-10
+dv_20.mps  ref   -2610.782427 thr  -3166.458 | base -3.94e-10 price1 -3.94e-10 scale2 -2.86e-10 perturb0 -3.94e-10
+dv_21.mps  ref -2905712.941772 thr  -3166.458 | base -3.88e-06 price1 -3.88e-06 scale2 -1.32e-06 perturb0 -2.55e-06
+dv_22.mps  ref -3676035.655085 thr  -3166.458 | base +8.14e-07 price1 +5.30e-06 scale2 +3.81e-07 perturb0 -2.36e-06
+dv_23.mps  ref   -2667.195716 thr  -3166.458 | base +7.51e-10 price1 +7.51e-10 scale2 +9.95e-10 perturb0 +7.51e-10
+dv_24.mps  ref   -2770.978970 thr  -3166.458 | base -5.64e-09 price1 -5.64e-09 scale2 -1.28e-08 perturb0 -5.64e-09
+dv_25.mps  ref   -2591.841064 thr  -3166.458 | base +5.32e-01 price1 +5.32e-01 scale2 -2.80e-05 perturb0 +5.32e-01
+dv_26.mps  ref   -2634.330419 thr  -3166.458 | base -2.23e-11 price1 -2.23e-11 scale2 -1.28e-10 perturb0 -2.23e-11
+dv_27.mps  ref   -2630.726712 thr  -3166.458 | base +3.91e-11 price1 +3.91e-11 scale2 -1.33e-10 perturb0 +3.91e-11
+dv_28.mps  ref -4374512.597913 thr  -3166.458 | base +4.02e+00 price1 +4.02e+00 scale2 +6.10e-07 perturb0 +4.02e+00
+dv_29.mps  ref   -2679.029486 thr  -3166.458 | base +1.25e-09 price1 +1.25e-09 scale2 -4.32e-10 perturb0 -7.00e-10
+dv_30.mps  ref   -2716.065923 thr  -3166.458 | base +9.55e-11 price1 -8.05e-11 scale2 -8.09e-11 perturb0 +1.59e-11
+dv_31.mps  ref   -2596.860153 thr  -3166.458 | base +5.47e-02 price1 +5.47e-02 scale2 +2.99e-10 perturb0 +5.47e-02
+dv_32.mps  ref   -2642.493950 thr  -3166.458 | base +2.04e-01 price1 +2.04e-01 scale2 +2.04e-01 perturb0 +2.04e-01
+dv_33.mps  ref -370377.449271 thr  -3166.458 | base -8.40e-06 price1 -5.37e-06 scale2 +1.68e-06 perturb0 -8.40e-06
+dv_34.mps  ref -3756370.583933 thr  -3166.458 | base +3.36e+00 price1 +3.36e+00 scale2 +1.39e-05 perturb0 +3.36e+00
+dv_35.mps  ref   -2672.562724 thr  -3166.458 | base +9.55e-12 price1 +9.55e-12 scale2 +6.05e-11 perturb0 +9.55e-12
+dv_36.mps  ref -15528096.504252 thr  -3166.458 | base -1.18e-06 price1 -1.18e-06 scale2 +2.47e-06 perturb0 -1.18e-06
+dv_37.mps  ref -12604455.447116 thr  -3166.458 | base +2.45e+00 price1 +2.45e+00 scale2 -6.18e-07 perturb0 +2.45e+00
+dv_38.mps  ref  -25044.347227 thr  -3166.458 | base +7.24e-06 price1 +4.79e-06 scale2 +2.24e+00 perturb0 +7.24e-06
+dv_39.mps  ref   -2761.247447 thr  -3166.458 | base +4.73e-11 price1 +4.73e-11 scale2 -8.19e-11 perturb0 -3.09e-11
+dv_40.mps  ref -460548.810691 thr  -3166.458 | base +7.63e-06 price1 +7.63e-06 scale2 -2.90e-07 perturb0 +3.64e-06
+dv_41.mps  ref   -2840.635835 thr  -3166.458 | base -3.38e-09 price1 -3.38e-09 scale2 +3.93e-03 perturb0 -1.16e-08
+dv_42.mps  ref -15366827.811212 thr  -3166.458 | base -4.64e-07 price1 -4.64e-07 scale2 -7.45e-07 perturb0 -4.64e-07
+dv_43.mps  ref   -2592.081969 thr  -3166.458 | base +6.29e-10 price1 +4.77e-10 scale2 -3.64e-12 perturb0 +3.57e-10
+dv_44.mps  ref   -2860.270879 thr  -3166.458 | base -1.07e-09 price1 -1.07e-09 scale2 +2.45e-02 perturb0 -2.32e-10
+dv_45.mps  ref   -2717.698065 thr  -3166.458 | base -4.62e-03 price1 -4.62e-03 scale2 -4.62e-03 perturb0 -4.62e-03
+dv_46.mps  ref   -2602.395990 thr  -3166.458 | base +1.30e-10 price1 +1.30e-10 scale2 +3.17e-10 perturb0 +1.30e-10
+dv_47.mps  ref   -2673.395987 thr  -3166.458 | base +2.42e-05 price1 +2.42e-05 scale2 +3.30e-10 perturb0 +2.42e-05
+dv_48.mps  ref -5248437.037532 thr  -3166.458 | base -1.16e-06 price1 -1.16e-06 scale2 -5.20e-06 perturb0 -2.74e-06
+dv_49.mps  ref   -2693.541446 thr  -3166.458 | base +7.41e-11 price1 +7.41e-11 scale2 +1.17e-10 perturb0 +7.41e-11
+dv_50.mps  ref   -2724.893232 thr  -3166.458 | base -3.11e-10 price1 -3.11e-10 scale2 -2.39e-10 perturb0 -3.12e-10
+dv_51.mps  ref   -2706.342762 thr  -3166.458 | base +2.18e-10 price1 +2.18e-10 scale2 -7.55e-11 perturb0 +2.18e-10
+dv_52.mps  ref   -2694.416182 thr  -3166.458 | base -6.19e-08 price1 -6.19e-08 scale2 -1.98e-08 perturb0 -6.19e-08
+dv_53.mps  ref   -2922.493519 thr  -3166.458 | base +3.46e-11 price1 +3.46e-11 scale2 -1.49e-10 perturb0 +3.46e-11
+dv_54.mps  ref -2877905.064208 thr  -3166.458 | base -2.05e-06 price1 -2.05e-06 scale2 -4.07e-06 perturb0 -2.05e-06
+dv_55.mps  ref -1628137.285749 thr  -3166.458 | base +1.10e-06 price1 +1.10e-06 scale2 +8.12e-06 perturb0 +2.44e-06
+dv_56.mps  ref -1628520.243063 thr  -3166.458 | base +4.55e-06 price1 +4.55e-06 scale2 +4.69e-06 perturb0 +4.55e-06
+dv_57.mps  ref -156618.166904 thr  -3166.458 | base +5.57e-06 price1 +5.57e-06 scale2 +1.20e-06 perturb0 +5.57e-06
+dv_58.mps  ref   -2701.261527 thr  -3166.458 | base -3.38e-10 price1 -3.38e-10 scale2 -2.83e-10 perturb0 -3.38e-10
+dv_59.mps  ref   -2670.963461 thr  -3166.458 | base +1.00e-10 price1 +1.00e-10 scale2 +7.46e-11 perturb0 +1.00e-10
+dv_60.mps  ref   -2704.887907 thr  -3166.458 | base +6.49e-01 price1 +6.48e-01 scale2 +9.64e-02 perturb0 +6.49e-01

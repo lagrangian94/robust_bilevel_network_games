@@ -1,0 +1,33 @@
+  [HUCAP] 거점 4: hᵁ 300 → 200
+  [HUCAP] 거점 7: hᵁ 300 → 200
+--- oracle 재현 g=5 S=10 x={4:200;7:200;12:300} λᵁ=10000 목표 -3151.6 gap 1.0e-03 상한 300s, 스레드 12, 추가 인자 (resp = true, lp_params = ["ScaleFlag" => 2])
+Academic license 926906 - for non-commercial use only - registered to [가림]
+Academic license 926906 - for non-commercial use only - registered to [가림]
+Academic license 926906 - for non-commercial use only - registered to [가림]
+Academic license 926906 - for non-commercial use only - registered to [가림]
+Academic license 926906 - for non-commercial use only - registered to [가림]
+Academic license 926906 - for non-commercial use only - registered to [가림]
+Academic license 926906 - for non-commercial use only - registered to [가림]
+Academic license 926906 - for non-commercial use only - registered to [가림]
+Academic license 926906 - for non-commercial use only - registered to [가림]
+Academic license 926906 - for non-commercial use only - registered to [가림]
+Academic license 926906 - for non-commercial use only - registered to [가림]
+Academic license 926906 - for non-commercial use only - registered to [가림]
+
+******************************************************************************
+This program contains Ipopt, a library for large-scale nonlinear optimization.
+ Ipopt is released as open source code under the Eclipse Public License (EPL).
+         For more information visit https://github.com/coin-or/Ipopt
+******************************************************************************
+
+    [nz-α-B&B-dr] t=  68.6s nodes=  716 open=  190 LB=-3178.955937 UB=-2531.695204 gap=2.036e-01
+    [nz-α-B&B-dr] t= 129.0s nodes= 1693 open=  481 LB=-3176.810304 UB=-2673.223184 gap=1.585e-01
+    [nz-α-B&B-dr] t= 189.2s nodes= 2819 open=  709 LB=-3176.810304 UB=-2753.970589 gap=1.331e-01
+    [nz-α-B&B-dr] t= 249.2s nodes= 3711 open=  847 LB=-3156.500000 UB=-2811.630918 gap=1.093e-01
+abb_lpparam_patch: nz_alpha_bnb_dr 재정의 (lp_params)
+nz_alpha_bnb_dr: 기본이 아닌 구성으로 실행 — resp = true
+abb_lpparam_patch: 노드 LP 설정 ScaleFlag = 2
+RESULT g=5 S=10 x={4:200;7:200;12:300} V in [-3156.5000, -2843.9181] (305s) 노드 4630, 이완 2028s, 평가 336s, 범위 546s (MIP 0, 실패 0), 재확인 0s, ipopt 8, 고정 비율 0.20, 수치 오류 12, 루트 UB -1787.7431
+느린 노드 (상위 10): NTuple{4, Float64}[]
+전선 저장: orep_front_g5_S10.jls (열린 노드 1139)
+전선: 열린 노드 1139, 상한 ≤ 목표 0 (0%), 상한 범위 [-3137.60, -2843.92], 목표 -3151.60, incumbent -3156.50

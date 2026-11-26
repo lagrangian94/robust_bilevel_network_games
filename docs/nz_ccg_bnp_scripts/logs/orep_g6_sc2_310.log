@@ -1,0 +1,33 @@
+  [HUCAP] 거점 10: hᵁ 300 → 200
+--- oracle 재현 g=6 S=10 x={6:300;10:200;15:300} λᵁ=10000 목표 -3618.1 gap 1.0e-03 상한 310s, 스레드 12, 추가 인자 (resp = true, lp_params = ["ScaleFlag" => 2])
+Academic license 926906 - for non-commercial use only - registered to [가림]
+Academic license 926906 - for non-commercial use only - registered to [가림]
+Academic license 926906 - for non-commercial use only - registered to [가림]
+Academic license 926906 - for non-commercial use only - registered to [가림]
+Academic license 926906 - for non-commercial use only - registered to [가림]
+Academic license 926906 - for non-commercial use only - registered to [가림]
+Academic license 926906 - for non-commercial use only - registered to [가림]
+Academic license 926906 - for non-commercial use only - registered to [가림]
+Academic license 926906 - for non-commercial use only - registered to [가림]
+Academic license 926906 - for non-commercial use only - registered to [가림]
+Academic license 926906 - for non-commercial use only - registered to [가림]
+Academic license 926906 - for non-commercial use only - registered to [가림]
+
+******************************************************************************
+This program contains Ipopt, a library for large-scale nonlinear optimization.
+ Ipopt is released as open source code under the Eclipse Public License (EPL).
+         For more information visit https://github.com/coin-or/Ipopt
+******************************************************************************
+
+    [nz-α-B&B-dr] t=  68.3s nodes=  794 open=  208 LB=-3623.999992 UB=-3353.953789 gap=7.452e-02
+    [nz-α-B&B-dr] t= 128.7s nodes= 2086 open=  512 LB=-3623.999992 UB=-3482.177661 gap=3.913e-02
+    [nz-α-B&B-dr] t= 188.8s nodes= 3552 open=  774 LB=-3623.999992 UB=-3537.755831 gap=2.380e-02
+    [nz-α-B&B-dr] t= 248.8s nodes= 4980 open=  924 LB=-3623.999992 UB=-3564.103047 gap=1.653e-02
+    [nz-α-B&B-dr] t= 308.8s nodes= 6403 open= 1133 LB=-3623.999992 UB=-3580.320352 gap=1.205e-02
+abb_lpparam_patch: nz_alpha_bnb_dr 재정의 (lp_params)
+nz_alpha_bnb_dr: 기본이 아닌 구성으로 실행 — resp = true
+abb_lpparam_patch: 노드 LP 설정 ScaleFlag = 2
+RESULT g=6 S=10 x={6:300;10:200;15:300} V in [-3624.0000, -3580.7194] (315s) 노드 6435, 이완 1912s, 평가 230s, 범위 801s (MIP 0, 실패 0), 재확인 0s, ipopt 8, 고정 비율 0.19, 수치 오류 4, 루트 UB -2447.7412
+느린 노드 (상위 10): [(21.049000024795532, 0.1224952, 20.8943056, 0.0)]
+전선 저장: orep_front_g6_S10.jls (열린 노드 1144)
+전선: 열린 노드 1144, 상한 ≤ 목표 30 (3%), 상한 범위 [-3620.30, -3580.72], 목표 -3618.10, incumbent -3624.00

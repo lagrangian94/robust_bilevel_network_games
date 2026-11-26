@@ -1,0 +1,30 @@
+  [HUCAP] 거점 4: hᵁ 300 → 200
+  [HUCAP] 거점 7: hᵁ 300 → 200
+--- oracle 재현 g=5 S=10 x={4:200;7:200;12:300} λᵁ=10000 목표 -3151.6 gap 1.0e-03 상한 150s, 스레드 12, 추가 인자 (resp = true,)
+Academic license 926906 - for non-commercial use only - registered to [가림]
+Academic license 926906 - for non-commercial use only - registered to [가림]
+Academic license 926906 - for non-commercial use only - registered to [가림]
+Academic license 926906 - for non-commercial use only - registered to [가림]
+Academic license 926906 - for non-commercial use only - registered to [가림]
+Academic license 926906 - for non-commercial use only - registered to [가림]
+Academic license 926906 - for non-commercial use only - registered to [가림]
+Academic license 926906 - for non-commercial use only - registered to [가림]
+Academic license 926906 - for non-commercial use only - registered to [가림]
+Academic license 926906 - for non-commercial use only - registered to [가림]
+Academic license 926906 - for non-commercial use only - registered to [가림]
+Academic license 926906 - for non-commercial use only - registered to [가림]
+
+******************************************************************************
+This program contains Ipopt, a library for large-scale nonlinear optimization.
+ Ipopt is released as open source code under the Eclipse Public License (EPL).
+         For more information visit https://github.com/coin-or/Ipopt
+******************************************************************************
+
+    [nz-α-B&B-dr] t=  68.2s nodes=  544 open=  164 LB=-3169.628008 UB=-2485.825888 gap=2.157e-01
+    [nz-α-B&B-dr] t= 128.5s nodes= 1424 open=  430 LB=-3169.628008 UB=-2640.985761 gap=1.668e-01
+abb_lpdump_patch: nz_alpha_bnb_dr 재정의 (NZ_LPDUMP = C:/Users/user/AppData/Local/Temp/claude/a31bffbb1639accd/310f4530-ff69-4912-9a26-69df1bdd76ba/scratchpad/lpdump_g5)
+nz_alpha_bnb_dr: 기본이 아닌 구성으로 실행 — resp = true
+RESULT g=5 S=10 x={4:200;7:200;12:300} V in [-3169.6280, -2676.9250] (155s) 노드 1838, 이완 969s, 평가 175s, 범위 215s (MIP 0, 실패 0), 재확인 0s, ipopt 5, 고정 비율 0.18, 수치 오류 3, 루트 UB -1787.7431
+느린 노드 (상위 10): NTuple{4, Float64}[]
+전선 저장: orep_front_g5_S10.jls (열린 노드 561)
+전선: 열린 노드 561, 상한 ≤ 목표 0 (0%), 상한 범위 [-3127.94, -2676.92], 목표 -3151.60, incumbent -3169.63
