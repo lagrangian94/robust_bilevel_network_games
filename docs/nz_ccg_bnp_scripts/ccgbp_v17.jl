@@ -736,6 +736,10 @@ while time() - wall < dl()
     ch === nothing && error("ccgbp v17: 분수 노드인데 분기 변수 없음 ($(N.tag))")
     push!(openq, ch[1]); push!(openq, ch[2])
 end
+# v16 (2026-11-26 밤 수정): 마지막 노드를 마감 TLB 뒤에 가지치기하면 while 머리의 LB 갱신을 못 거치고 루프가 끝나 나무가 닫혔는데도
+#   TimeLimit 으로 보고되고 마감 루트 CG 가 쓸모없는 하한을 냄 (N_B 4 지리 12 v17: 3,568 s 에 루트 가지치기, 보고 LB −9,999,422). 루프 머리와 같은 갱신을 한 번 더.
+global LB = max(LB, min(gapcut(), global_lb()))
+isfinite(UB) && UB - LB <= TOL * max(1.0, abs(UB)) * (1 + 1e-9) && (global status = :Optimal)
 ran_final_cg = false
 if status != :Optimal && ROOT_EXACT == "end" && !isfinite(LB) && time() - wall < TL   # v14: 나무 하한이 있으면 dl() = TL 이라 여기 오지 않음
     root_exact!("마감"; deadline=wall + TL); global ran_final_cg = true

@@ -36,6 +36,12 @@ rep('            (get(orcert, r[5], false) || orph1[r[5]] >= PH1_TOT) && break',
 rep('@printf("  [1 단계 끝] %.0fs, belief %d, UB %.2f\\n", t_ph1, count(B -> B.kind == :lp, blks), UB); flush(stdout)',
     '@printf("  [1 단계 끝] %.0fs, belief %d, UB %.2f%s\\n", t_ph1, count(B -> B.kind == :lp, blks), UB,\n'
     '        PH1 ? @sprintf(" (v16: 끝난 까닭 %s, 총량 몫 %.0fs)", ph1_why, PH1_SHARE * TL) : ""); flush(stdout)')
+rep('ran_final_cg = false\n',
+    '# v16 (2026-11-26 밤 수정): 마지막 노드를 마감 TLB 뒤에 가지치기하면 while 머리의 LB 갱신을 못 거치고 루프가 끝나 나무가 닫혔는데도\n'
+    '#   TimeLimit 으로 보고되고 마감 루트 CG 가 쓸모없는 하한을 냄 (N_B 4 지리 12 v17: 3,568 s 에 루트 가지치기, 보고 LB −9,999,422). 루프 머리와 같은 갱신을 한 번 더.\n'
+    'global LB = max(LB, min(gapcut(), global_lb()))\n'
+    'isfinite(UB) && UB - LB <= TOL * max(1.0, abs(UB)) * (1 + 1e-9) && (global status = :Optimal)\n'
+    'ran_final_cg = false\n')
 rep('isfinite(bnd) || error("ccgbp v15:', 'isfinite(bnd) || error("ccgbp v16:')
 rep('ub_ok() && error("ccgbp v15:', 'ub_ok() && error("ccgbp v16:')
 rep('cinc > 0 || error("ccgbp v15:', 'cinc > 0 || error("ccgbp v16:')
