@@ -875,11 +875,11 @@ end
 const _NZ_DR_ANNOUNCED = Set{Any}()
 const _NZ_DR_ANNOUNCE_LOCK = ReentrantLock()
 
-"기본 구성 (2026-10-13, 2026-10-30 갱신: 꼭짓점 LP 범위·Farkas·사전 판정·부모 basis·노드 LP 상한, 문서 §10.29; 2026-11-27: 꼭짓점 재사용·α̂ 평가 적응, docs/nz_ccg_bnp_2026-11-23.md 11.21). 이 값과 다른 항목이 있으면 _nz_dr_announce 가 stderr 에 알린다"
+"기본 구성 (2026-10-13, 2026-10-30 갱신: 꼭짓점 LP 범위·Farkas·사전 판정·부모 basis·노드 LP 상한, 문서 §10.29; 2026-11-27: 꼭짓점 재사용·α̂ 평가 적응, docs/nz_ccg_bnp_2026-11-23.md 11.21; 노드 LP ScaleFlag 2, 11.22). 이 값과 다른 항목이 있으면 _nz_dr_announce 가 stderr 에 알린다"
 const _NZ_DR_DEFAULT = (dual_range=true, comp=true, vcut=true, cslift=true, fwd=true, kmc=true, dd=false, cbranch=true, sticky=true,
                         lp_tol=1e-7, branch_point=:mid, child_rounds=1, resp=false, range_mip=true, range_nodes=typemax(Int), range_time=Inf,
                         range_lp=true, resp_fix=false, farkas=true, lp_method=1, lp_presolve=0, lp_crossover=-1, infeas_pre=true, infeas_pre_retry=true, parent_basis=true, share_rows=false, node_lp_cap=120.0, hucap=true,
-                        corner_reuse=true, ev_adapt=true, ev_warm=300, ev_probe=10)
+                        corner_reuse=true, ev_adapt=true, ev_warm=300, ev_probe=10, lp_scale=2)
 
 """
     nz_presolve_hU_feas(nd, x̄, hU; optimizer) -> (hU', 줄인 좌표 수)
@@ -987,6 +987,7 @@ nz_alpha_bnb (기존, `bnb = :legacy`) 의 탐색 — worker 병렬, best-first 
 | | `resp` | false | primal 휴리스틱: 노드 완화의 belief 에서 follower 의 실제 최적 반응을 평가 (nz_resp_heuristic.jl). 이득을 확인하지 못해 기본 끔 |
 | | `hucap` | true | 루트 전에 h 상한을 recourse 실행 가능성으로 조임 (`nz_presolve_hU_feas`, location 에선 약정 ≤ 거점 용량, 2026-11-25) |
 | 노드 비용 (2026-11-27) | `corner_reuse` | true | 자식 상자가 부모와 공유하는 꼭짓점의 범위 LP 를 건너뛰고 부모 범위를 씀 (같은 LP 라 결과 같음). 환경변수 NZ_EFF_CHECK=1 이면 전부 계산해 비교 (1e-5 넘게 다르면 오류) |
+| | `lp_scale` | 2 | 노드 LP (worker 의 분리 LP, 부분 LP 복사본 포함) 의 Gurobi ScaleFlag. 2 = 기하평균 스케일링 (노드 LP 계수가 3e-6 ~ 2e5 로 흩어져 있음), −1 = Gurobi 기본. 꼭짓점 범위 LP·α̂ 평가는 그대로. 수치 오류 재시도에서도 유지 (문서 11.22) |
 | | `ev_adapt`, `ev_warm`, `ev_probe` | true, 300, 10 | α̂ 정확 평가 (resp 포함) 가 ev_warm 번 연속 incumbent 를 못 바꾸면 ev_probe 노드에 한 번만 평가, incumbent 가 바뀌면 처음으로. 평가는 incumbent 에만 쓰여 상한·가지치기와 무관 |
 | 이어 풀기 | `resume` | nothing | 같은 x̄ 의 이전 호출이 돌려준 `r[:state]`. 주면 그 호출이 멈춘 곳 (열린 노드, incumbent) 에서 이어 푼다 |
 
@@ -1061,6 +1062,9 @@ function nz_alpha_bnb_dr(nd::NZData, x̄;
                          # ev_adapt = true: 노드마다 하는 α̂ 정확 평가 (resp 포함) 가 ev_warm 번 연속 incumbent 를 못 바꾸면 ev_probe 노드에 한 번만. incumbent 가 바뀌면 처음으로.
                          #   평가는 incumbent (하한) 에만 쓰여 상한·가지치기 유효성과 무관 (문서 11.21)
                          corner_reuse::Bool=true, ev_adapt::Bool=true, ev_warm::Int=300, ev_probe::Int=10,
+                         # lp_scale: 노드 LP 의 Gurobi ScaleFlag (2 = 기하평균). 저장한 dive 노드 LP 59 개에서 시간 0.46 배·가지치기 판정 변화 0 (정밀 기준 대비),
+                         #   나무 안에서 지리 5 막힌 점 같은 상한까지 약 20% 빠름, 지리 6 중립 (문서 11.22). −1 = Gurobi 기본 (자동)
+                         lp_scale::Int=2,
                          # 이어 풀기: 같은 x̄ 의 이전 호출이 돌려준 r[:state]
                          resume=nothing)
     branch_point in (:alphahat, :mid) || error("branch_point = :alphahat | :mid")
@@ -1070,7 +1074,8 @@ function nz_alpha_bnb_dr(nd::NZData, x̄;
               fwd=dual_range && cslift && fwd, kmc=dual_range && cslift && kmc, dd=dual_range && dd,
               cbranch=dual_range && comp && cbranch, sticky=sticky, lp_tol=lp_tol, resp=resp, range_mip=range_mip, range_nodes=range_nodes, range_time=range_time,
               range_lp=range_lp, resp_fix=resp_fix, farkas=farkas, lp_method=lp_method, lp_presolve=lp_presolve, lp_crossover=lp_crossover, infeas_pre=infeas_pre, infeas_pre_retry=infeas_pre && infeas_pre_retry, parent_basis=parent_basis, share_rows=share_rows, node_lp_cap=node_lp_cap, hucap=hucap,
-              corner_reuse=range_lp && corner_reuse, ev_adapt=ev_adapt, ev_warm=ev_warm, ev_probe=ev_probe)
+              corner_reuse=range_lp && corner_reuse, ev_adapt=ev_adapt, ev_warm=ev_warm, ev_probe=ev_probe, lp_scale=lp_scale)
+    lp_scale in (-1, 0, 1, 2, 3) || error("nz_alpha_bnb_dr: lp_scale = -1 | 0 | 1 | 2 | 3 (Gurobi ScaleFlag)")
     resp_fix && !range_lp && error("nz_alpha_bnb_dr: resp_fix = true 는 range_lp = true 와 함께")
     range_lp &&(dd || isfinite(range_time) || range_nodes != typemax(Int) || !range_mip || !dual_range) &&
         error("nz_alpha_bnb_dr: range_lp = true 는 dual_range = true, dd = false 와 함께 쓰고 range_mip·range_time·range_nodes 는 기본값으로")
@@ -1128,6 +1133,7 @@ function nz_alpha_bnb_dr(nd::NZData, x̄;
     end
     zpad(z) = (lp_tol > 1e-9 && isfinite(z)) ? z + 1e-6 * max(1.0, abs(z)) : z
     farkas && for P in Ps; set_optimizer_attribute(P.O.model, "InfUnbdInfo", 1); end   # Farkas 쌍대를 받기 위해
+    lp_scale == -1 || for P in Ps; set_optimizer_attribute(P.O.model, "ScaleFlag", lp_scale); end   # 노드 LP 스케일링 (부분 LP 는 이 모델을 복사해 물려받음)
     for P in Ps; P.O.model.ext[:retry_fresh] = true; end          # 노드 LP 수치 오류: NumericFocus 3 전에 처음부터 한 번 (_nz_solve_lp!)
     for P in Ps                                                   # 노드 LP 풀이 방법. ext 값은 재시도·재확인 뒤 되돌릴 값 (기본이면 기존 설정 그대로)
         P.O.model.ext[:lp_method] = lp_method; P.O.model.ext[:lp_presolve] = lp_presolve; P.O.model.ext[:lp_crossover] = lp_crossover

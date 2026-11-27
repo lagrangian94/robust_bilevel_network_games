@@ -7,6 +7,9 @@
 #   절단값 = 저장된 incumbent (CUT=lb, 기본) 또는 목표 TAU (CUT=tau). 실행 불가능이면 그 상자는 절단값 아래 → 가지치기 가능.
 #   비교: 같은 상자를 B&B 규칙으로 한 번 나눈 α 자식 2 개의 상한 최댓값 (a1).
 #  환경 변수: FR (전선 파일), HUCAP 1, K 6 (상자 수), NC 40, ROUNDS 30, OBR 3, CUT lb, TAU (CUT=tau 일 때), RV 0 (1 이면 리더 재가중 r 도 조임)
+#  2026-11-27 추가: ANC (기본 0) = 전선 상자 대신 그 상자를 품는 ANC 단계 위 조상 상자 (좌표마다 폭 2^ANC 배의 중점 분할 칸, 쌍대 범위·φ̄·상보성 등식은
+#   기본값으로) 를 뿌리로. MODE halve = 최대 폭이 마지막 OBBT 때의 절반 이하가 되면 다시 OBBT (조상에서 한 번 조인 d 범위를 자손이 물려받는 효과 측정).
+#   SCALE (기본 2) = 노드 LP ScaleFlag (저장소 기본 lp_scale 과 같게)
 root = "C:/Users/user/robust_bilevel_network_games"
 using JuMP, Gurobi, Printf, LinearAlgebra, Random, Serialization, Statistics
 import MathOptInterface as MOI
@@ -34,6 +37,7 @@ P = _nz_build_sep(nd, x̄; optimizer=mk)
 DR = _nz_dr_attach!(P, nd, x̄; optimizer=mk, dd=false)
 for a in ("FeasibilityTol", "OptimalityTol"); set_optimizer_attribute(P.O.model, a, 1e-7); end
 set_optimizer_attribute(P.O.model, "NumericFocus", 0); P.O.model.ext[:lp_tol] = 1e-7
+set_optimizer_attribute(P.O.model, "ScaleFlag", parse(Int, envf("SCALE", "2")))
 CL = [_nz_dr_build_corner(nd, x̄, s; optimizer=mk) for s in 1:S]
 lo0, hi0 = _nz_dr_global(nd, DR)
 v = P.O.v; Hr = v[:Hr]; dvar = v[:d]
@@ -74,10 +78,31 @@ zr = solve_box!(zeros(nh), copy(nd.hU), lo0, hi0, fill(Inf, S), falses(nh))[1]
 @printf("    d 상자 (볼 상자 ±ε̃/√S): dl %s du %s\n", string(round.(dl0; digits=3)), string(round.(du0; digits=3)))
 fmt(z) = isfinite(z) ? @sprintf("%+8.2f", z - LB) : (z < 0 ? "  불가능" : "     Inf")
 cand = sort(fr.boxes; by=b -> -b.ub)[1:min(NC, end)]
+ANC = parse(Int, envf("ANC", "0"))
+"좌표마다 폭을 2 배로 (중점 분할 격자의 부모 칸), ANC 번"
+function ancestor(b, k)
+    l = copy(b.l); u = copy(b.u)
+    for _ in 1:k, i in 1:nh
+        w = u[i] - l[i]; w > 1e-9 || continue
+        m = round(Int, l[i] / w)
+        isodd(m) && (l[i] -= w)
+        u[i] = min(l[i] + 2w, nd.hU[i]); l[i] = max(l[i], 0.0)
+    end
+    return (l=l, u=u, lo=lo0, hi=hi0, phib=fill(Inf, S), eq=falses(nh), ub=b.ub)
+end
+if ANC > 0
+    seen = Set{Tuple{Vector{Float64},Vector{Float64}}}(); c2 = Any[]
+    for b in cand
+        a = ancestor(b, ANC); key = (round.(a.l; digits=6), round.(a.u; digits=6))
+        key in seen && continue
+        push!(seen, key); push!(c2, a)
+    end
+    global cand = c2
+end
 act = [i for i in 1:nh if nd.hU[i] > 1e-9]
 
 MODE = envf("MODE", "none"); OBR = parse(Int, envf("OBR", "1")); TB = parse(Float64, envf("TB", "90")); CUTM = envf("CUT", "lb")
-MODE in ("none", "every", "root") || error("front_dobbt_bb: MODE = none | every | root")
+MODE in ("none", "every", "root", "halve") || error("front_dobbt_bb: MODE = none | every | root | halve")
 cutv = CUTM == "tau" ? parse(Float64, envf("TAU", "nan")) : LB
 isfinite(cutv) || error("front_dobbt_bb: CUT=tau 면 TAU 필요")
 "(목적 ≥ cut) 아래에서 변수 묶음 xs 의 범위. 반환 (lo, hi, 실행불가능?, LP 수)"
@@ -141,24 +166,26 @@ for b in cand
     nshow += 1
     t0 = time(); nodes = 1; nlp = 0; nob = 0
     exact = Float64[]
-    open = Any[(z0, ia0, copy(b.l), copy(b.u), copy(dl0), copy(du0), MODE != "none")]   # (상한, 좌표, l, u, dl, du, OBBT 할지)
+    wmax(l, u) = maximum(u .- l)
+    open = Any[(z0, ia0, copy(b.l), copy(b.u), copy(dl0), copy(du0), MODE != "none", Inf)]   # (상한, 좌표, l, u, dl, du, OBBT 할지, 마지막 OBBT 때 최대 폭)
     while !isempty(open) && time() - t0 < TB
-        kk = argmax([o[1] for o in open]); z, ia, l, u, dl, du, dob = open[kk]; deleteat!(open, kk)
+        kk = argmax([o[1] for o in open]); z, ia, l, u, dl, du, dob, wl = open[kk]; deleteat!(open, kk)
+        MODE == "halve" && (dob = wmax(l, u) <= 0.5 * wl)
         if dob
-            z, ia, dl, du, n1 = tighten(b, l, u, dl, du, z, ia); nlp += n1; nob += 1
+            z, ia, dl, du, n1 = tighten(b, l, u, dl, du, z, ia); nlp += n1; nob += 1; wl = wmax(l, u)
             (!isfinite(z) || z <= cutv) && continue
         end
         ia == 0 && (push!(exact, z); continue)      # 나눌 좌표 없음 (완화가 정확) → 그 값은 따로 둠
         tm = 0.5 * (l[ia] + u[ia]); u1 = copy(u); u1[ia] = tm; l2 = copy(l); l2[ia] = tm
         for (lc, uc) in ((l, u1), (l2, u))
             zc, ic = evalnode(b, lc, uc, dl, du); nodes += 1
-            (isfinite(zc) && zc > cutv) && push!(open, (zc, ic, copy(lc), copy(uc), copy(dl), copy(du), MODE == "every"))
+            (isfinite(zc) && zc > cutv) && push!(open, (zc, ic, copy(lc), copy(uc), copy(dl), copy(du), MODE == "every", wl))
         end
     end
     zt = max(isempty(open) ? -Inf : maximum(o[1] for o in open), isempty(exact) ? -Inf : maximum(exact)); push!(res, isfinite(zt) ? zt - LB : -Inf)
-    @printf("  상자 %d: 뿌리 %s → %.0fs 뒤 하위 나무 상한 %s (노드 %d, 열린 %d, OBBT %d 번 LP %d)
+    @printf("  상자 %d (폭 최대 %.1f): 뿌리 %s → %.0fs 뒤 하위 나무 상한 %s (노드 %d, 열린 %d, OBBT %d 번 LP %d)
 ",
-            nshow, fmt(z0), time() - t0, fmt(zt), nodes, length(open), nob, nlp)
+            nshow, wmax(b.l, b.u), fmt(z0), time() - t0, fmt(zt), nodes, length(open), nob, nlp)
     flush(stdout)
 end
 @printf("끝 (%.0fs), 상자별 상한 − incumbent: %s
