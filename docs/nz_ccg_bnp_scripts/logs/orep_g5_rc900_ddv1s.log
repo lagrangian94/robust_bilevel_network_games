@@ -1,0 +1,43 @@
+  [HUCAP] 거점 4: hᵁ 300 → 200
+  [HUCAP] 거점 7: hᵁ 300 → 200
+--- oracle 재현 g=5 S=10 x={4:200;7:200;12:300} λᵁ=10000 목표 -3151.6 gap 1.0e-03 상한 900s, 스레드 12, 추가 인자 (resp = true, dd = true, dd_maxw = 25.0, dd_inc = :viol1s, dd_objstop = true)
+Academic license 926906 - for non-commercial use only - registered to [가림]
+Academic license 926906 - for non-commercial use only - registered to [가림]
+Academic license 926906 - for non-commercial use only - registered to [가림]
+Academic license 926906 - for non-commercial use only - registered to [가림]
+Academic license 926906 - for non-commercial use only - registered to [가림]
+Academic license 926906 - for non-commercial use only - registered to [가림]
+Academic license 926906 - for non-commercial use only - registered to [가림]
+Academic license 926906 - for non-commercial use only - registered to [가림]
+Academic license 926906 - for non-commercial use only - registered to [가림]
+Academic license 926906 - for non-commercial use only - registered to [가림]
+Academic license 926906 - for non-commercial use only - registered to [가림]
+Academic license 926906 - for non-commercial use only - registered to [가림]
+
+******************************************************************************
+This program contains Ipopt, a library for large-scale nonlinear optimization.
+ Ipopt is released as open source code under the Eclipse Public License (EPL).
+         For more information visit https://github.com/coin-or/Ipopt
+******************************************************************************
+
+    [nz-α-B&B-dr] t=  68.6s nodes=  615 open=  171 LB=-3179.441146 UB=-2502.549966 gap=2.129e-01
+    [nz-α-B&B-dr] t= 129.0s nodes= 1486 open=  382 LB=-3179.441146 UB=-2651.782907 gap=1.660e-01
+    [nz-α-B&B-dr] t= 189.0s nodes= 2064 open=  410 LB=-3172.915120 UB=-2709.905723 gap=1.459e-01
+    [nz-α-B&B-dr] t= 249.2s nodes= 2595 open=  365 LB=-3172.299556 UB=-2774.872060 gap=1.253e-01
+    [nz-α-B&B-dr] t= 309.2s nodes= 3122 open=  390 LB=-3166.615638 UB=-2838.474650 gap=1.036e-01
+    [nz-α-B&B-dr] t= 369.3s nodes= 3517 open=  391 LB=-3166.615638 UB=-2865.723775 gap=9.502e-02
+    [nz-α-B&B-dr] t= 429.4s nodes= 3957 open=  401 LB=-3166.615638 UB=-2897.474249 gap=8.499e-02
+    [nz-α-B&B-dr] t= 489.6s nodes= 4374 open=  394 LB=-3156.500000 UB=-2923.896249 gap=7.369e-02
+    [nz-α-B&B-dr] t= 549.6s nodes= 4842 open=  410 LB=-3156.500000 UB=-2969.962892 gap=5.910e-02
+    [nz-α-B&B-dr] t= 609.7s nodes= 5323 open=  469 LB=-3156.500000 UB=-3002.645859 gap=4.874e-02
+    [nz-α-B&B-dr] t= 669.8s nodes= 5741 open=  521 LB=-3156.500000 UB=-3020.503687 gap=4.308e-02
+    [nz-α-B&B-dr] t= 730.0s nodes= 6181 open=  511 LB=-3156.500000 UB=-3031.088748 gap=3.973e-02
+    [nz-α-B&B-dr] t= 790.1s nodes= 6632 open=  520 LB=-3156.500000 UB=-3059.291431 gap=3.080e-02
+    [nz-α-B&B-dr] t= 850.2s nodes= 7081 open=  469 LB=-3156.500000 UB=-3076.161892 gap=2.545e-02
+[abb_dd_patch] nz_alpha_bnb_dr 재정의: range_lp + dd 허용 (실험용)
+nz_alpha_bnb_dr: 기본이 아닌 구성으로 실행 — dd = true, resp = true
+RESULT g=5 S=10 x={4:200;7:200;12:300} V in [-3156.5000, -3091.9164] (905s) 노드 7445, 이완 3838s, 평가 282s, 범위 5187s (MIP 7041, 실패 0), 재확인 27s, ipopt 26, 고정 비율 0.19, 수치 오류 28, 루트 UB -1787.7431
+DD 선별 (패치): (nodes = 1419, mips = 7041, empty = 0, cut = 1331, skip = 0, pruned_after = 1018, t_lp = 1198.7, n_lp = 609120, t_mip = 3109.2, rechk = 0, rechk_inf = 0, objstop = 879)
+느린 노드 (상위 10): [(56.46399998664856, 3.498622299999999, 52.8773691, 0.0371395), (55.575000047683716, 1.9073588000000001, 53.5906258, 0.0319931), (32.26200008392334, 2.3557616, 29.8234851, 0.0345407), (29.950999975204468, 2.3780807999999998, 27.4924101, 0.031584400000000006), (26.481000185012817, 0.1134967, 26.330309, 0.0), (25.977999925613403, 2.5305402, 23.4080121, 0.0), (24.002000093460083, 0.1198201, 23.8378063, 0.0), (21.37000012397766, 2.0369707, 19.250699, 0.0339359), (20.681999921798706, 3.9280606, 16.698790900000002, 0.0)]
+전선 저장: orep_front_g5_S10_rc900_ddv1s.jls (열린 노드 448)
+전선: 열린 노드 448, 상한 ≤ 목표 10 (2%), 상한 범위 [-3153.09, -3091.92], 목표 -3151.60, incumbent -3156.50

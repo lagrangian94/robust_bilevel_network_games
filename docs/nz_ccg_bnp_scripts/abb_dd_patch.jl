@@ -4,7 +4,7 @@ println(stderr, "[abb_dd_patch] nz_alpha_bnb_dr 재정의: range_lp + dd 허용 
 
 "패치 (시간 내역, 2026-11-27): 선별 DD 의 꼭짓점·면 LP 시간·수, MIP 시간, DD 로 다시 푼 뒤 가지친 노드. 호출마다 0 으로"
 const _ABB_DD_T = (tlp=Threads.Atomic{Float64}(0.0), nlp=Threads.Atomic{Int}(0), tmip=Threads.Atomic{Float64}(0.0), nprune=Threads.Atomic{Int}(0),
-                   nrechk=Threads.Atomic{Int}(0), nrechk_inf=Threads.Atomic{Int}(0), nobjstop=Threads.Atomic{Int}(0))   # 재확인 MIP 수 / 재확인에서도 실행 불가능
+                   nrechk=Threads.Atomic{Int}(0), nrechk_inf=Threads.Atomic{Int}(0), nobjstop=Threads.Atomic{Int}(0), nfhit=Threads.Atomic{Int}(0))   # 재확인 MIP 수 / 재확인에서도 실행 불가능
 "패치 (screen): 두 꼭짓점의 최적 쌍대 면에서 차이가 모인 (쌍, s) 를 골라 KKT-MIP 로 차이 범위를 인증. 반환 (:none | :tight | :empty, (dlo, dhi), MIP 수)"
 function _abb_dd_screen!(CL, DR, nd, x̄, l, u, lo, hi, dlo0, dhi0; mip_tl=2.0, deadline=Inf, fixtol=1e-4, sigbd::Bool=true)
     S, m, nh = nd.S, nz_m(nd), nz_nh(nd); dlo = copy(dlo0); dhi = copy(dhi0); nmip = 0; tight = false
@@ -91,7 +91,7 @@ function _abb_dd_screen!(CL, DR, nd, x̄, l, u, lo, hi, dlo0, dhi0; mip_tl=2.0, 
 end
 
 "패치 (dd_inc): 선별만 — _abb_dd_screen! 의 앞부분. 반환 [(모임 비율, 쌍 p, 시나리오 s, 꼭짓점 구간 c1, c2)]"
-function _abb_dd_cands(CL, DR, nd, x̄, l, u, lo, hi, dlo, dhi; deadline=Inf, fixtol=1e-4, only_s::Int=0)
+function _abb_dd_cands(CL, DR, nd, x̄, l, u, lo, hi, dlo, dhi; deadline=Inf, fixtol=1e-4, only_s::Int=0, fl=nothing, fu=nothing)
     S, m = nd.S, nz_m(nd); out = Tuple{Float64,Int,Int,Float64,Float64}[]
     for s in (only_s > 0 ? (only_s:only_s) : (1:S))
         time() > deadline && break
@@ -102,26 +102,39 @@ function _abb_dd_cands(CL, DR, nd, x̄, l, u, lo, hi, dlo, dhi; deadline=Inf, fi
             wh - wl > 1.0 && push!(ps, p)
         end
         isempty(ps) && continue
-        C = CL[s]; ext = Dict{Int,Tuple{Float64,Float64}}(); tlp0 = time()
-        for αc in (l, u)
+        C = CL[s]; ext = Dict{Int,Tuple{Float64,Float64}}(); tlp0 = time(); nlp_ = 0
+        for (ci, αc) in enumerate((l, u))
+            # dd_fcache: 꼭짓점 αc 의 면 LP 결과는 그 꼭짓점과 시나리오만으로 정해짐 → 부모와 같은 꼭짓점이면 물려받은 값을 씀 (같은 LP)
+            fc = ci == 1 ? fl : fu
+            dct = fc === nothing ? nothing : get!(() -> Dict{Int,Tuple{Float64,Float64}}(), fc, s)
+            need = dct === nothing ? ps : [p for p in ps if !haskey(dct, p)]
+            if dct !== nothing && length(need) < length(ps)
+                Threads.atomic_add!(_ABB_DD_T.nfhit, length(ps) - length(need))
+                for p in ps
+                    haskey(dct, p) || continue
+                    mn, mx = dct[p]; o = get(ext, p, (Inf, -Inf)); ext[p] = (min(o[1], mn), max(o[2], mx))
+                end
+            end
+            isempty(need) && continue
             rr = nz_rhs(nd, x̄, αc, s)
             for k in 1:m; nd.hrow[k] > 0 && set_normalized_coefficient(C.opt, C.σ[k], rr[k]); end
             set_normalized_rhs(C.opt, 1e20)
             @objective(C.model, Min, sum(rr[k] * C.σ[k] for k in 1:m if rr[k] != 0)); optimize!(C.model)
             termination_status(C.model) == MOI.OPTIMAL || error("_abb_dd_cands: 꼭짓점 LP (s=$s) $(termination_status(C.model))")
-            zc = objective_value(C.model); set_normalized_rhs(C.opt, zc + 1e-7 * max(1.0, abs(zc)))
-            for p in ps
+            zc = objective_value(C.model); set_normalized_rhs(C.opt, zc + 1e-7 * max(1.0, abs(zc))); nlp_ += 1
+            for p in need
                 a, b = DR.pairs[p]; e = C.σ[DR.Hk[a]] - C.σ[DR.Hk[b]]
                 @objective(C.model, Min, e); optimize!(C.model)
                 termination_status(C.model) == MOI.OPTIMAL || error("_abb_dd_cands: 꼭짓점 차이 LP (s=$s) $(termination_status(C.model))")
                 mn = objective_value(C.model)
                 @objective(C.model, Max, e); optimize!(C.model)
                 termination_status(C.model) == MOI.OPTIMAL || error("_abb_dd_cands: 꼭짓점 차이 LP (s=$s) $(termination_status(C.model))")
-                mx = objective_value(C.model)
+                mx = objective_value(C.model); nlp_ += 2
+                dct === nothing || (dct[p] = (mn, mx))
                 o = get(ext, p, (Inf, -Inf)); ext[p] = (min(o[1], mn), max(o[2], mx))
             end
         end
-        Threads.atomic_add!(_ABB_DD_T.tlp, time() - tlp0); Threads.atomic_add!(_ABB_DD_T.nlp, 2 + 4 * length(ps))
+        Threads.atomic_add!(_ABB_DD_T.tlp, time() - tlp0); Threads.atomic_add!(_ABB_DD_T.nlp, nlp_)
         for p in ps
             a, b = DR.pairs[p]
             wl = max(dlo[p, s], lo[a, s] - hi[b, s]); wh = min(dhi[p, s], hi[a, s] - lo[b, s])
@@ -273,7 +286,7 @@ function nz_alpha_bnb_dr(nd::NZData, x̄;
                          #   dd_inc (2026-11-27, md 11.24): 선별 후보를 나눠 인증하고 다시 풀어 가지치기되면 멈춤. :off (후보 전부, 예전) | :ratio (모임 비율 순, 양쪽 MIP)
                          #     | :viol1 (지금 LP 해가 꼭짓점 구간에서 벗어난 양 순, 벗어난 쪽 MIP 만) | :viol1s (:viol1 을 시나리오 하나씩, 가지치기되면 선별도 멈춤). dd_batch = 한 번에 인증할 후보 수
                          #   dd_objstop: :viol1·:viol1s 에서 노드 LP 해를 자를 수 없다고 판명되면 MIP 를 멈춤 (BestObjStop = δ̂), dd_gap: DD MIP 의 MIPGap (NaN = 그대로)
-                         dd_inc::Symbol=:viol1, dd_batch::Int=2, dd_objstop::Bool=true, dd_gap::Float64=NaN)
+                         dd_inc::Symbol=:viol1, dd_batch::Int=2, dd_objstop::Bool=true, dd_gap::Float64=NaN, dd_fcache::Bool=true)
     branch_point in (:alphahat, :mid) || error("branch_point = :alphahat | :mid")
     config = (dual_range=dual_range, comp=dual_range && comp, vcut=dual_range && vcut, cslift=dual_range && cslift,
               branch_point=branch_point, child_rounds=child_rounds, maxrounds=maxrounds, dive_max=dive_max,
@@ -298,7 +311,7 @@ function nz_alpha_bnb_dr(nd::NZData, x̄;
     n_cap = Threads.Atomic{Int}(0)
     n_ddnode = Threads.Atomic{Int}(0); n_ddmip = Threads.Atomic{Int}(0); n_ddempty = Threads.Atomic{Int}(0); n_ddcut = Threads.Atomic{Int}(0)   # 패치 (screen)
     n_ddelig = Threads.Atomic{Int}(0); n_ddskip = Threads.Atomic{Int}(0)   # 패치 (dd_adapt)
-    for c in (_ABB_DD_T.tlp, _ABB_DD_T.tmip); c[] = 0.0; end; for c in (_ABB_DD_T.nlp, _ABB_DD_T.nprune, _ABB_DD_T.nrechk, _ABB_DD_T.nrechk_inf, _ABB_DD_T.nobjstop); c[] = 0; end   # 패치 (시간 내역)                                           # node_lp_cap 에 걸린 노드
+    for c in (_ABB_DD_T.tlp, _ABB_DD_T.tmip); c[] = 0.0; end; for c in (_ABB_DD_T.nlp, _ABB_DD_T.nprune, _ABB_DD_T.nrechk, _ABB_DD_T.nrechk_inf, _ABB_DD_T.nobjstop, _ABB_DD_T.nfhit); c[] = 0; end   # 패치 (시간 내역)                                           # node_lp_cap 에 걸린 노드
     n_cskip = Threads.Atomic{Int}(0); effcheck = get(ENV, "NZ_EFF_CHECK", "0") == "1"   # corner_reuse: 꼭짓점 하나 이상 건너뛴 노드 / 점검 모드
     n_ev = Threads.Atomic{Int}(0); n_evskip = Threads.Atomic{Int}(0)        # ev_adapt: α̂ 평가한 노드 / 건너뛴 노드
     n_evsince = Threads.Atomic{Int}(0); n_evtick = Threads.Atomic{Int}(0)   # ev_adapt: incumbent 못 바꾼 연속 평가 수 / 건너뛰기 계수기
@@ -314,7 +327,7 @@ function nz_alpha_bnb_dr(nd::NZData, x̄;
     end
     Threads.nthreads(:interactive) >= 1 || error("nz_alpha_bnb_dr: julia -t $(nworkers + 2),1 로 실행하세요")
     t0 = time(); t_end = t0 + time_limit
-    gcw0 = Base.gc_num().total_time_to_safepoint       # GC safepoint 대기 (전체 스레드가 멈춘 wall 시간) — :dd_screen => (nodes=n_ddnode[], mips=n_ddmip[], empty=n_ddempty[], cut=n_ddcut[], skip=n_ddskip[], pruned_after=_ABB_DD_T.nprune[], t_lp=round(_ABB_DD_T.tlp[]; digits=1), n_lp=_ABB_DD_T.nlp[], t_mip=round(_ABB_DD_T.tmip[]; digits=1), rechk=_ABB_DD_T.nrechk[], rechk_inf=_ABB_DD_T.nrechk_inf[], objstop=_ABB_DD_T.nobjstop[]), :gc_wait 로 보고
+    gcw0 = Base.gc_num().total_time_to_safepoint       # GC safepoint 대기 (전체 스레드가 멈춘 wall 시간) — :dd_screen => (nodes=n_ddnode[], mips=n_ddmip[], empty=n_ddempty[], cut=n_ddcut[], skip=n_ddskip[], pruned_after=_ABB_DD_T.nprune[], t_lp=round(_ABB_DD_T.tlp[]; digits=1), n_lp=_ABB_DD_T.nlp[], t_mip=round(_ABB_DD_T.tmip[]; digits=1), rechk=_ABB_DD_T.nrechk[], rechk_inf=_ABB_DD_T.nrechk_inf[], objstop=_ABB_DD_T.nobjstop[], face_hit=_ABB_DD_T.nfhit[]), :gc_wait 로 보고
     nh, S = nz_nh(nd), nd.S
     Hr = findall(nd.hrow .> 0)
     mk(env) = () -> (o = Gurobi.Optimizer(env); MOI.set(o, MOI.Silent(), true);
@@ -479,6 +492,7 @@ function nz_alpha_bnb_dr(nd::NZData, x̄;
                 nown = length(P.allrows)
             end
             z = -Inf; α̂ = nothing; children = nothing; zE = -Inf; unfinished = false; αE = nothing
+            ddfl = nothing; ddfu = nothing                                   # 패치 (dd_fcache): 이 노드에서 구한 꼭짓점 l·u 의 면 LP 결과
             pruned_val = -Inf; lo = lop; hi = hip; wit = witp; phib = phibp; fixfrac = NaN
             boxok(l) && ubp <= LB[] + tol(LB[]) && (pruned_val = ubp)
             if ubp > LB[] + tol(LB[]) && boxok(l)
@@ -563,11 +577,15 @@ function nz_alpha_bnb_dr(nd::NZData, x̄;
                             vv_ = P.O.v; α̂d = value.(vv_[:α]); d̂d = value.(vv_[:d]); ζFd = value.(vv_[:ζF])
                             sord = sortperm([sum(abs(ζFd[i, s_] - α̂d[i] * d̂d[s_]) for i in 1:nh) for s_ in 1:nd.S]; rev=true)
                         end
-                        tdd = @elapsed (cands = dd_inc === :viol1s ? Tuple{Float64,Int,Int,Float64,Float64}[] : _abb_dd_cands(CLs[wid], DR, nd, x̄, l, u, lo, hi, dlo, dhi; deadline=t_end))
+                        if dd_fcache                                           # 부모와 같은 꼭짓점의 면 LP 결과를 복사해 씀 (자식끼리 공유하지 않게 복사)
+                            ddfl = (get(ext, :sl, false) && get(ext, :fl, nothing) !== nothing) ? deepcopy(ext.fl) : Dict{Int,Dict{Int,Tuple{Float64,Float64}}}()
+                            ddfu = (get(ext, :su, false) && get(ext, :fu, nothing) !== nothing) ? deepcopy(ext.fu) : Dict{Int,Dict{Int,Tuple{Float64,Float64}}}()
+                        end
+                        tdd = @elapsed (cands = dd_inc === :viol1s ? Tuple{Float64,Int,Int,Float64,Float64}[] : _abb_dd_cands(CLs[wid], DR, nd, x̄, l, u, lo, hi, dlo, dhi; deadline=t_end, fl=ddfl, fu=ddfu))
                         dlo = copy(dlo); dhi = copy(dhi); z0dd = z; nmdd = 0; kdd = 0
                         for s_ in sord
                             (dd_empty || !isfinite(z) || z <= LB[] + tol(LB[]) || time() >= t_end) && break
-                            tdd += @elapsed (cs = _abb_dd_cands(CLs[wid], DR, nd, x̄, l, u, lo, hi, dlo, dhi; deadline=t_end, only_s=s_))
+                            tdd += @elapsed (cs = _abb_dd_cands(CLs[wid], DR, nd, x̄, l, u, lo, hi, dlo, dhi; deadline=t_end, only_s=s_, fl=ddfl, fu=ddfu))
                             while !isempty(cs) && !dd_empty && isfinite(z) && z > LB[] + tol(LB[]) && time() < t_end
                                 sv = [_abb_dd_lpviol(P, DR, c[2], c[3], c[4], c[5]) for c in cs]
                                 od = sortperm([x[1] for x in sv]; rev=true); cs = cs[od]; sv = sv[od]
@@ -757,13 +775,13 @@ function nz_alpha_bnb_dr(nd::NZData, x̄;
                         end
                         if ic > 0
                             u1 = copy(u); u1[ic] = l[ic]; eqB = copy(eqp); eqB[ic] = true
-                            children = ((copy(l), u1, z, lo, hi, wit, phib, (eq=eqp, dlo=dlo, dhi=dhi, bas=basP, sl=true)), (copy(l), copy(u), z, lo, hi, wit, phib, (eq=eqB, dlo=dlo, dhi=dhi, bas=basP, side=2, sl=true, su=true)))
+                            children = ((copy(l), u1, z, lo, hi, wit, phib, (eq=eqp, dlo=dlo, dhi=dhi, bas=basP, sl=true, fl=ddfl)), (copy(l), copy(u), z, lo, hi, wit, phib, (eq=eqB, dlo=dlo, dhi=dhi, bas=basP, side=2, sl=true, su=true, fl=ddfl, fu=ddfu)))
                             Threads.atomic_add!(n_cbranch, 1)
                         elseif viol[i] > 1e-9
                             width = u[i] - l[i]; t = α̂[i]
                             (branch_point != :alphahat || t - l[i] < 0.1 * width || u[i] - t < 0.1 * width) && (t = 0.5 * (l[i] + u[i]))
                             u1 = copy(u); u1[i] = t; l2 = copy(l); l2[i] = t
-                            children = ((copy(l), u1, z, lo, hi, wit, phib, (eq=eqp, dlo=dlo, dhi=dhi, bas=basP, sl=true)), (l2, copy(u), z, lo, hi, wit, phib, (eq=eqp, dlo=dlo, dhi=dhi, bas=basP, side=2, su=true)))
+                            children = ((copy(l), u1, z, lo, hi, wit, phib, (eq=eqp, dlo=dlo, dhi=dhi, bas=basP, sl=true, fl=ddfl)), (l2, copy(u), z, lo, hi, wit, phib, (eq=eqp, dlo=dlo, dhi=dhi, bas=basP, side=2, su=true, fu=ddfu)))
                         else
                             z > zE && (zE = z; αE = α̂)     # 곱 위반이 없으면 완화가 정확
                         end
@@ -873,5 +891,5 @@ function nz_alpha_bnb_dr(nd::NZData, x̄;
                 :range_mips => dual_range ? sum(D.nmip for D in DRs) : 0, :range_fail => dual_range ? sum(D.nfail for D in DRs) : 0,
                 :fixfrac => nodes[] > 0 ? nfixed_sum[] / nodes[] : NaN, :infeas => n_infeas[], :infeas_recovered => n_infrec[],
                 :numerr => _NZ_NUMERR[] - numerr0, :numerr_fail => _NZ_NUMERR_FAIL[] - numfail0,
-                :cbranch => n_cbranch[], :resp_fix => n_rfix[], :farkas => n_fk[], :farkas_disagree => n_fkdis[], :farkas_check_timeout => n_fkto[], :infeas_pre => n_pre[], :infeas_pre_tried => n_pretry[], :infeas_pre_retry => n_preretry[], :t_pre => t_pre[], :infeas_pre_disagree => n_predis[], :infeas_pre_check_timeout => n_preto[], :basis_loaded => n_bload[], :node_lp_cap_hits => n_cap[], :basis_failed => n_bfail[], :prune_checked => n_prchk[], :prune_disagree => n_prdis[], :resp_hits => n_resp[], :eff => (corner_skip=n_cskip[], ev=n_ev[], ev_skip=n_evskip[]), :gcsafe => _NZ_GCSAFE_STATE[], :dd_screen => (nodes=n_ddnode[], mips=n_ddmip[], empty=n_ddempty[], cut=n_ddcut[], skip=n_ddskip[], pruned_after=_ABB_DD_T.nprune[], t_lp=round(_ABB_DD_T.tlp[]; digits=1), n_lp=_ABB_DD_T.nlp[], t_mip=round(_ABB_DD_T.tmip[]; digits=1), rechk=_ABB_DD_T.nrechk[], rechk_inf=_ABB_DD_T.nrechk_inf[], objstop=_ABB_DD_T.nobjstop[]), :gc_wait => (Base.gc_num().total_time_to_safepoint - gcw0) / 1e9)
+                :cbranch => n_cbranch[], :resp_fix => n_rfix[], :farkas => n_fk[], :farkas_disagree => n_fkdis[], :farkas_check_timeout => n_fkto[], :infeas_pre => n_pre[], :infeas_pre_tried => n_pretry[], :infeas_pre_retry => n_preretry[], :t_pre => t_pre[], :infeas_pre_disagree => n_predis[], :infeas_pre_check_timeout => n_preto[], :basis_loaded => n_bload[], :node_lp_cap_hits => n_cap[], :basis_failed => n_bfail[], :prune_checked => n_prchk[], :prune_disagree => n_prdis[], :resp_hits => n_resp[], :eff => (corner_skip=n_cskip[], ev=n_ev[], ev_skip=n_evskip[]), :gcsafe => _NZ_GCSAFE_STATE[], :dd_screen => (nodes=n_ddnode[], mips=n_ddmip[], empty=n_ddempty[], cut=n_ddcut[], skip=n_ddskip[], pruned_after=_ABB_DD_T.nprune[], t_lp=round(_ABB_DD_T.tlp[]; digits=1), n_lp=_ABB_DD_T.nlp[], t_mip=round(_ABB_DD_T.tmip[]; digits=1), rechk=_ABB_DD_T.nrechk[], rechk_inf=_ABB_DD_T.nrechk_inf[], objstop=_ABB_DD_T.nobjstop[], face_hit=_ABB_DD_T.nfhit[]), :gc_wait => (Base.gc_num().total_time_to_safepoint - gcw0) / 1e9)
 end
