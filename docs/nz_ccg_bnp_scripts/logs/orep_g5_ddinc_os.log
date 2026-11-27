@@ -1,0 +1,33 @@
+  [HUCAP] 거점 4: hᵁ 300 → 200
+  [HUCAP] 거점 7: hᵁ 300 → 200
+--- oracle 재현 g=5 S=10 x={4:200;7:200;12:300} λᵁ=10000 목표 -3151.6 gap 1.0e-03 상한 300s, 스레드 12, 추가 인자 (resp = true, dd = true, dd_maxw = 25.0, dd_inc = :viol1, dd_objstop = true)
+Academic license 926906 - for non-commercial use only - registered to [가림]
+Academic license 926906 - for non-commercial use only - registered to [가림]
+Academic license 926906 - for non-commercial use only - registered to [가림]
+Academic license 926906 - for non-commercial use only - registered to [가림]
+Academic license 926906 - for non-commercial use only - registered to [가림]
+Academic license 926906 - for non-commercial use only - registered to [가림]
+Academic license 926906 - for non-commercial use only - registered to [가림]
+Academic license 926906 - for non-commercial use only - registered to [가림]
+Academic license 926906 - for non-commercial use only - registered to [가림]
+Academic license 926906 - for non-commercial use only - registered to [가림]
+Academic license 926906 - for non-commercial use only - registered to [가림]
+Academic license 926906 - for non-commercial use only - registered to [가림]
+
+******************************************************************************
+This program contains Ipopt, a library for large-scale nonlinear optimization.
+ Ipopt is released as open source code under the Eclipse Public License (EPL).
+         For more information visit https://github.com/coin-or/Ipopt
+******************************************************************************
+
+    [nz-α-B&B-dr] t=  68.8s nodes=  579 open=  165 LB=-3169.626720 UB=-2498.586818 gap=2.117e-01
+    [nz-α-B&B-dr] t= 129.2s nodes= 1374 open=  354 LB=-3169.626720 UB=-2639.133269 gap=1.674e-01
+    [nz-α-B&B-dr] t= 189.4s nodes= 1986 open=  400 LB=-3166.552511 UB=-2708.234148 gap=1.447e-01
+    [nz-α-B&B-dr] t= 249.5s nodes= 2504 open=  338 LB=-3166.552511 UB=-2773.109027 gap=1.242e-01
+[abb_dd_patch] nz_alpha_bnb_dr 재정의: range_lp + dd 허용 (실험용)
+nz_alpha_bnb_dr: 기본이 아닌 구성으로 실행 — dd = true, resp = true
+RESULT g=5 S=10 x={4:200;7:200;12:300} V in [-3166.5525, -2825.8781] (305s) 노드 2954, 이완 1488s, 평가 201s, 범위 1259s (MIP 1040, 실패 0), 재확인 2s, ipopt 9, 고정 비율 0.19, 수치 오류 9, 루트 UB -1787.7431
+DD 선별 (패치): (nodes = 285, mips = 1040, empty = 0, cut = 277, skip = 0, pruned_after = 274, t_lp = 348.2, n_lp = 178560, t_mip = 564.4, rechk = 0, rechk_inf = 0, objstop = 47)
+느린 노드 (상위 10): [(33.53999996185303, 0.1635245, 33.3259031, 0.0)]
+전선 저장: orep_front_g5_S10_ddinc_os.jls (열린 노드 377)
+전선: 열린 노드 377, 상한 ≤ 목표 0 (0%), 상한 범위 [-3127.94, -2825.88], 목표 -3151.60, incumbent -3166.55

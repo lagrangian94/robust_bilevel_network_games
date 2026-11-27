@@ -1,0 +1,45 @@
+  [HUCAP] 거점 4: hᵁ 300 → 200
+  [HUCAP] 거점 7: hᵁ 300 → 200
+--- oracle 재현 g=5 S=10 x={4:200;7:200;12:300} λᵁ=10000 목표 -3151.6 gap 1.0e-03 상한 900s, 스레드 12, 추가 인자 (resp = true, dd = true, dd_maxw = 25.0, dd_inc = :viol1, dd_objstop = true)
+Academic license 926906 - for non-commercial use only - registered to [가림]
+Academic license 926906 - for non-commercial use only - registered to [가림]
+Academic license 926906 - for non-commercial use only - registered to [가림]
+Academic license 926906 - for non-commercial use only - registered to [가림]
+Academic license 926906 - for non-commercial use only - registered to [가림]
+Academic license 926906 - for non-commercial use only - registered to [가림]
+Academic license 926906 - for non-commercial use only - registered to [가림]
+Academic license 926906 - for non-commercial use only - registered to [가림]
+Academic license 926906 - for non-commercial use only - registered to [가림]
+Academic license 926906 - for non-commercial use only - registered to [가림]
+Academic license 926906 - for non-commercial use only - registered to [가림]
+Academic license 926906 - for non-commercial use only - registered to [가림]
+
+******************************************************************************
+This program contains Ipopt, a library for large-scale nonlinear optimization.
+ Ipopt is released as open source code under the Eclipse Public License (EPL).
+         For more information visit https://github.com/coin-or/Ipopt
+******************************************************************************
+
+    [LP] 비유계 보고 → 재시도 결과 OPTIMAL
+    [LP] 비유계 보고 → 재시도 결과 OPTIMAL
+    [nz-α-B&B-dr] t=  68.3s nodes=  635 open=  181 LB=-3179.441146 UB=-2510.185682 gap=2.105e-01
+    [nz-α-B&B-dr] t= 128.6s nodes= 1502 open=  380 LB=-3179.441146 UB=-2648.339280 gap=1.670e-01
+    [nz-α-B&B-dr] t= 188.6s nodes= 2140 open=  404 LB=-3172.763823 UB=-2713.791115 gap=1.447e-01
+    [nz-α-B&B-dr] t= 248.8s nodes= 2720 open=  358 LB=-3172.763823 UB=-2793.116126 gap=1.197e-01
+    [nz-α-B&B-dr] t= 308.9s nodes= 3200 open=  394 LB=-3158.996458 UB=-2842.011634 gap=1.003e-01
+    [nz-α-B&B-dr] t= 369.0s nodes= 3657 open=  391 LB=-3158.315250 UB=-2880.344417 gap=8.801e-02
+    [nz-α-B&B-dr] t= 429.1s nodes= 4027 open=  363 LB=-3158.315250 UB=-2901.368936 gap=8.136e-02
+    [nz-α-B&B-dr] t= 489.1s nodes= 4503 open=  357 LB=-3158.315250 UB=-2949.047082 gap=6.626e-02
+    [nz-α-B&B-dr] t= 549.3s nodes= 4967 open=  405 LB=-3158.315250 UB=-2987.949080 gap=5.394e-02
+    [nz-α-B&B-dr] t= 609.4s nodes= 5382 open=  450 LB=-3156.500000 UB=-3013.450817 gap=4.532e-02
+    [nz-α-B&B-dr] t= 669.4s nodes= 5751 open=  471 LB=-3156.500000 UB=-3025.544824 gap=4.149e-02
+    [nz-α-B&B-dr] t= 729.5s nodes= 6085 open=  435 LB=-3156.500000 UB=-3040.414296 gap=3.678e-02
+    [nz-α-B&B-dr] t= 789.6s nodes= 6486 open=  442 LB=-3156.500000 UB=-3063.167242 gap=2.957e-02
+    [nz-α-B&B-dr] t= 849.7s nodes= 6914 open=  391 LB=-3156.500000 UB=-3080.750945 gap=2.400e-02
+[abb_dd_patch] nz_alpha_bnb_dr 재정의: range_lp + dd 허용 (실험용)
+nz_alpha_bnb_dr: 기본이 아닌 구성으로 실행 — dd = true, resp = true
+RESULT g=5 S=10 x={4:200;7:200;12:300} V in [-3156.5000, -3099.7988] (905s) 노드 7287, 이완 3760s, 평가 231s, 범위 5326s (MIP 6136, 실패 0), 재확인 30s, ipopt 27, 고정 비율 0.19, 수치 오류 25, 루트 UB -1787.7431
+DD 선별 (패치): (nodes = 1446, mips = 6136, empty = 0, cut = 1326, skip = 0, pruned_after = 1170, t_lp = 1613.1, n_lp = 824632, t_mip = 2861.5, rechk = 0, rechk_inf = 0, objstop = 759)
+느린 노드 (상위 10): [(58.562999963760376, 7.803882699999999, 50.7061811, 0.0), (44.0, 7.6181541, 36.299090799999995, 0.033419000000000004), (33.050999879837036, 0.1133052, 32.9034808, 0.0), (28.82800006866455, 2.8554994, 25.9351125, 0.0), (28.652999877929688, 2.8353641, 25.771277100000002, 0.0), (25.85599994659424, 2.1127299, 23.671189799999997, 0.0), (25.234999895095825, 5.314271, 19.788057199999997, 0.0), (25.186000108718872, 2.8571839000000003, 22.2700388, 0.0), (24.569999933242798, 5.316771699999999, 19.2005476, 0.0), (23.292999982833862, 3.6762634000000003, 19.5792653, 0.0)]
+전선 저장: orep_front_g5_S10_rc900_ddinc.jls (열린 노드 365)
+전선: 열린 노드 365, 상한 ≤ 목표 16 (4%), 상한 범위 [-905236.94, -3099.80], 목표 -3151.60, incumbent -3156.50

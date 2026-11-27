@@ -2,6 +2,9 @@
 #   꼭짓점 LP 범위 (range_lp) 와 쌍대 차이 범위 (dd = true; dd_mode :screen 기본, :full) 를 함께 쓸 수 있게 함. 나머지는 저장소 판 그대로.
 println(stderr, "[abb_dd_patch] nz_alpha_bnb_dr 재정의: range_lp + dd 허용 (실험용)")
 
+"패치 (시간 내역, 2026-11-27): 선별 DD 의 꼭짓점·면 LP 시간·수, MIP 시간, DD 로 다시 푼 뒤 가지친 노드. 호출마다 0 으로"
+const _ABB_DD_T = (tlp=Threads.Atomic{Float64}(0.0), nlp=Threads.Atomic{Int}(0), tmip=Threads.Atomic{Float64}(0.0), nprune=Threads.Atomic{Int}(0),
+                   nrechk=Threads.Atomic{Int}(0), nrechk_inf=Threads.Atomic{Int}(0), nobjstop=Threads.Atomic{Int}(0))   # 재확인 MIP 수 / 재확인에서도 실행 불가능
 "패치 (screen): 두 꼭짓점의 최적 쌍대 면에서 차이가 모인 (쌍, s) 를 골라 KKT-MIP 로 차이 범위를 인증. 반환 (:none | :tight | :empty, (dlo, dhi), MIP 수)"
 function _abb_dd_screen!(CL, DR, nd, x̄, l, u, lo, hi, dlo0, dhi0; mip_tl=2.0, deadline=Inf, fixtol=1e-4, sigbd::Bool=true)
     S, m, nh = nd.S, nz_m(nd), nz_nh(nd); dlo = copy(dlo0); dhi = copy(dhi0); nmip = 0; tight = false
@@ -15,6 +18,7 @@ function _abb_dd_screen!(CL, DR, nd, x̄, l, u, lo, hi, dlo0, dhi0; mip_tl=2.0, 
         end
         isempty(ps) && continue
         C = CL[s]; ext = Dict{Int,Tuple{Float64,Float64}}()
+        tlp0 = time()
         for αc in (l, u)
             rr = nz_rhs(nd, x̄, αc, s)
             for k in 1:m; nd.hrow[k] > 0 && set_normalized_coefficient(C.opt, C.σ[k], rr[k]); end
@@ -33,6 +37,7 @@ function _abb_dd_screen!(CL, DR, nd, x̄, l, u, lo, hi, dlo0, dhi0; mip_tl=2.0, 
                 o = get(ext, p, (Inf, -Inf)); ext[p] = (min(o[1], mn), max(o[2], mx))
             end
         end
+        Threads.atomic_add!(_ABB_DD_T.tlp, time() - tlp0); Threads.atomic_add!(_ABB_DD_T.nlp, 2 + 4 * length(ps))
         M = DR.mips[s]; boxset = false
         for p in ps
             a, b = DR.pairs[p]
@@ -51,20 +56,25 @@ function _abb_dd_screen!(CL, DR, nd, x̄, l, u, lo, hi, dlo0, dhi0; mip_tl=2.0, 
                 @objective(M.model, ismax ? MAX_SENSE : MIN_SENSE, M.σ[DR.Hk[a]] - M.σ[DR.Hk[b]])
                 set_time_limit_sec(M.model, max(0.01, min(mip_tl, deadline - time())))
                 nmip += 1
-                _nz_dr_opt!(DR, M, l, u, "dd screen s=$s 쌍 ($(DR.Hk[a]), $(DR.Hk[b]))") || continue
+                tm0 = time(); okm = _nz_dr_opt!(DR, M, l, u, "dd screen s=$s 쌍 ($(DR.Hk[a]), $(DR.Hk[b]))"); Threads.atomic_add!(_ABB_DD_T.tmip, time() - tm0)
+                okm || continue
                 st = termination_status(M.model)
+                getbd(st) = st == MOI.OPTIMAL ? objective_bound(M.model) : (st == MOI.TIME_LIMIT ? _nz_dr_bound_or_nan(M.model) : NaN)
+                bd = getbd(st)
                 if sigbd && st in (MOI.INFEASIBLE, MOI.INFEASIBLE_OR_UNBOUNDED)   # 경계를 빼고 다시 풀어 확인 (허용오차 거짓 판정 방지)
-                    _abb_sigbd!(M, DR, nd, nothing, nothing, s); nmip += 1
+                    _abb_sigbd!(M, DR, nd, nothing, nothing, s); nmip += 1; Threads.atomic_add!(_ABB_DD_T.nrechk, 1)
                     ok = _nz_dr_opt!(DR, M, l, u, "dd screen 재확인 s=$s")
+                    # 2026-11-27 고침: 상태·bound 를 경계를 되돌리기 전에 읽음 (되돌리면 JuMP 가 결과를 지워 상태가 OPTIMIZE_NOT_CALLED 가 되어
+                    #   재확인 결과가 버려지고 있었음 — 유효성은 그대로, 그 쌍을 덜 조였을 뿐)
+                    ok && (st = termination_status(M.model); bd = getbd(st))
                     sigbd && _abb_sigbd!(M, DR, nd, lo, hi, s)
                     ok || continue
-                    st = termination_status(M.model)
+                    st in (MOI.INFEASIBLE, MOI.INFEASIBLE_OR_UNBOUNDED) && Threads.atomic_add!(_ABB_DD_T.nrechk_inf, 1)
                 end
                 if st in (MOI.INFEASIBLE, MOI.INFEASIBLE_OR_UNBOUNDED)       # 상자 안에 recourse 최적 쌍대를 갖는 α 없음
                     set_time_limit_sec(M.model, nothing); sigbd && _abb_sigbd!(M, DR, nd, nothing, nothing, s)
                     return :empty, (dlo, dhi), nmip
                 end
-                bd = st == MOI.OPTIMAL ? objective_bound(M.model) : (st == MOI.TIME_LIMIT ? _nz_dr_bound_or_nan(M.model) : NaN)
                 isfinite(bd) || continue
                 if ismax
                     bd + 1e-6 < dhi[p, s] && (dhi[p, s] = bd + 1e-6; tight = true)
@@ -78,6 +88,95 @@ function _abb_dd_screen!(CL, DR, nd, x̄, l, u, lo, hi, dlo0, dhi0; mip_tl=2.0, 
         boxset && sigbd && _abb_sigbd!(M, DR, nd, nothing, nothing, s)
     end
     return (tight ? :tight : :none), (dlo, dhi), nmip
+end
+
+"패치 (dd_inc): 선별만 — _abb_dd_screen! 의 앞부분. 반환 [(모임 비율, 쌍 p, 시나리오 s, 꼭짓점 구간 c1, c2)]"
+function _abb_dd_cands(CL, DR, nd, x̄, l, u, lo, hi, dlo, dhi; deadline=Inf, fixtol=1e-4, only_s::Int=0)
+    S, m = nd.S, nz_m(nd); out = Tuple{Float64,Int,Int,Float64,Float64}[]
+    for s in (only_s > 0 ? (only_s:only_s) : (1:S))
+        time() > deadline && break
+        ps = Int[]
+        for (p, (a, b)) in enumerate(DR.pairs)
+            (hi[a, s] - lo[a, s] > fixtol && hi[b, s] - lo[b, s] > fixtol) || continue
+            wl = max(dlo[p, s], lo[a, s] - hi[b, s]); wh = min(dhi[p, s], hi[a, s] - lo[b, s])
+            wh - wl > 1.0 && push!(ps, p)
+        end
+        isempty(ps) && continue
+        C = CL[s]; ext = Dict{Int,Tuple{Float64,Float64}}(); tlp0 = time()
+        for αc in (l, u)
+            rr = nz_rhs(nd, x̄, αc, s)
+            for k in 1:m; nd.hrow[k] > 0 && set_normalized_coefficient(C.opt, C.σ[k], rr[k]); end
+            set_normalized_rhs(C.opt, 1e20)
+            @objective(C.model, Min, sum(rr[k] * C.σ[k] for k in 1:m if rr[k] != 0)); optimize!(C.model)
+            termination_status(C.model) == MOI.OPTIMAL || error("_abb_dd_cands: 꼭짓점 LP (s=$s) $(termination_status(C.model))")
+            zc = objective_value(C.model); set_normalized_rhs(C.opt, zc + 1e-7 * max(1.0, abs(zc)))
+            for p in ps
+                a, b = DR.pairs[p]; e = C.σ[DR.Hk[a]] - C.σ[DR.Hk[b]]
+                @objective(C.model, Min, e); optimize!(C.model)
+                termination_status(C.model) == MOI.OPTIMAL || error("_abb_dd_cands: 꼭짓점 차이 LP (s=$s) $(termination_status(C.model))")
+                mn = objective_value(C.model)
+                @objective(C.model, Max, e); optimize!(C.model)
+                termination_status(C.model) == MOI.OPTIMAL || error("_abb_dd_cands: 꼭짓점 차이 LP (s=$s) $(termination_status(C.model))")
+                mx = objective_value(C.model)
+                o = get(ext, p, (Inf, -Inf)); ext[p] = (min(o[1], mn), max(o[2], mx))
+            end
+        end
+        Threads.atomic_add!(_ABB_DD_T.tlp, time() - tlp0); Threads.atomic_add!(_ABB_DD_T.nlp, 2 + 4 * length(ps))
+        for p in ps
+            a, b = DR.pairs[p]
+            wl = max(dlo[p, s], lo[a, s] - hi[b, s]); wh = min(dhi[p, s], hi[a, s] - lo[b, s])
+            c1, c2 = ext[p]
+            c2 - c1 < 0.5 * (wh - wl) && push!(out, ((c2 - c1) / (wh - wl), p, s, c1, c2))
+        end
+    end
+    return out
+end
+
+"패치 (dd_inc): (쌍 p, 시나리오 s) 차이의 한쪽 (ismax) 을 KKT-MIP 로 인증해 dlo·dhi 를 제자리 조임. 반환 (:empty | :tight | :none, MIP 수)"
+function _abb_dd_mip!(DR, nd, l, u, lo, hi, dlo, dhi, p, s, ismax; mip_tl=2.0, deadline=Inf, sigbd::Bool=true, objstop::Float64=NaN, gap::Float64=NaN)
+    M = DR.mips[s]; a, b = DR.pairs[p]; nh = nz_nh(nd); n = 0
+    time() > deadline && return :none, 0
+    for i in 1:nh; set_lower_bound(M.α[i], l[i]); set_upper_bound(M.α[i], u[i]); end
+    sigbd && _abb_sigbd!(M, DR, nd, lo, hi, s)
+    @objective(M.model, ismax ? MAX_SENSE : MIN_SENSE, M.σ[DR.Hk[a]] - M.σ[DR.Hk[b]])
+    set_time_limit_sec(M.model, max(0.01, min(mip_tl, deadline - time())))
+    getbd(st) = st == MOI.OPTIMAL ? objective_bound(M.model) : (st in (MOI.TIME_LIMIT, MOI.OBJECTIVE_LIMIT) ? _nz_dr_bound_or_nan(M.model) : NaN)
+    # objstop (dd_objstop): 이 쪽 MIP 가 노드 LP 해를 자르려면 최댓값 < δ̂ (최솟값이면 > δ̂) 여야 함 → 해가 δ̂ 이상 (이하) 이면 자를 수 없으니 멈춤 (BestObjStop).
+    #   멈춰도 objective_bound 는 유효한 범위. gap (dd_gap): MIPGap. 둘 다 풀이 뒤 원래 값으로
+    ob0 = isfinite(objstop) ? get_optimizer_attribute(M.model, "BestObjStop") : NaN; gp0 = isfinite(gap) ? get_optimizer_attribute(M.model, "MIPGap") : NaN
+    isfinite(objstop) && set_optimizer_attribute(M.model, "BestObjStop", objstop); isfinite(gap) && set_optimizer_attribute(M.model, "MIPGap", gap)
+    tm0 = time(); n += 1
+    ok = _nz_dr_opt!(DR, M, l, u, "dd inc s=$s 쌍 ($(DR.Hk[a]), $(DR.Hk[b]))")
+    st = ok ? termination_status(M.model) : MOI.OTHER_ERROR; bd = ok ? getbd(st) : NaN
+    if ok && sigbd && st in (MOI.INFEASIBLE, MOI.INFEASIBLE_OR_UNBOUNDED)     # 경계를 빼고 다시 풀어 확인 (결과는 되돌리기 전에 읽음)
+        _abb_sigbd!(M, DR, nd, nothing, nothing, s); n += 1; Threads.atomic_add!(_ABB_DD_T.nrechk, 1)
+        ok = _nz_dr_opt!(DR, M, l, u, "dd inc 재확인 s=$s")
+        st = ok ? termination_status(M.model) : MOI.OTHER_ERROR; bd = ok ? getbd(st) : NaN
+        ok && st in (MOI.INFEASIBLE, MOI.INFEASIBLE_OR_UNBOUNDED) && Threads.atomic_add!(_ABB_DD_T.nrechk_inf, 1)
+    end
+    Threads.atomic_add!(_ABB_DD_T.tmip, time() - tm0)
+    ok && st == MOI.OBJECTIVE_LIMIT && Threads.atomic_add!(_ABB_DD_T.nobjstop, 1)
+    isfinite(objstop) && set_optimizer_attribute(M.model, "BestObjStop", ob0); isfinite(gap) && set_optimizer_attribute(M.model, "MIPGap", gp0)
+    set_time_limit_sec(M.model, nothing); sigbd && _abb_sigbd!(M, DR, nd, nothing, nothing, s)
+    ok || return :none, n
+    st in (MOI.INFEASIBLE, MOI.INFEASIBLE_OR_UNBOUNDED) && return :empty, n      # 상자 안에 recourse 최적 쌍대를 갖는 α 없음
+    isfinite(bd) || return :none, n
+    tight = false
+    if ismax
+        bd + 1e-6 < dhi[p, s] && (dhi[p, s] = bd + 1e-6; tight = true)
+    else
+        bd - 1e-6 > dlo[p, s] && (dlo[p, s] = bd - 1e-6; tight = true)
+    end
+    dhi[p, s] < dlo[p, s] && (dhi[p, s] = dlo[p, s] = 0.5 * (dlo[p, s] + dhi[p, s]))
+    return (tight ? :tight : :none), n
+end
+
+"패치 (dd_inc = :viol1): 노드 LP 해의 (쌍 p, 시나리오 s) follower 쌍대 차이가 꼭짓점 구간 [c1, c2] 에서 벗어난 양 (× d̂_s) 과 쪽 (+1 위, −1 아래, 0 안)"
+function _abb_dd_lpviol(P, DR, p, s, c1, c2)
+    v = P.O.v; a, b = DR.pairs[p]; ka, kb = DR.Hk[a], DR.Hk[b]; ds = value(v[:d][s])
+    ds > 1e-7 || return 0.0, 0, NaN
+    δ = (value(v[:π̃][ka, s]) - value(v[:π̃][kb, s])) / ds
+    return (δ > c2 ? (δ - c2) * ds : (δ < c1 ? (c1 - δ) * ds : 0.0)), (δ > c2 ? 1 : (δ < c1 ? -1 : 0)), δ
 end
 
 "패치 (dd_sigbd): 시나리오 s 의 범위 MIP 에 H 행 쌍대 경계 [max(0, lo), hi] 를 넣거나 (lo = nothing 이면) 원래 경계 [0, ϖᵁ] 로 되돌림"
@@ -170,7 +269,11 @@ function nz_alpha_bnb_dr(nd::NZData, x̄;
                          #   dd_maxw: 선별 DD 는 활성 좌표의 최대 상자 폭이 이 값 이하인 노드에서만 (넓은 상자에서는 차이가 상수가 아니라 효과 없고 비쌈)
                          #   dd_adapt: DD 를 받은 노드가 dd_warm 개를 넘었는데 상한이 내려간 비율이 dd_minrate 보다 낮으면 dd_probe 번째 노드마다만 선별
                          dd_mode::Symbol=:screen, dd_mip_tl::Float64=2.0, dd_maxw::Float64=25.0, dd_sigbd::Bool=true,
-                         dd_adapt::Bool=true, dd_warm::Int=200, dd_minrate::Float64=0.25, dd_probe::Int=10)
+                         dd_adapt::Bool=true, dd_warm::Int=200, dd_minrate::Float64=0.25, dd_probe::Int=10,
+                         #   dd_inc (2026-11-27, md 11.24): 선별 후보를 나눠 인증하고 다시 풀어 가지치기되면 멈춤. :off (후보 전부, 예전) | :ratio (모임 비율 순, 양쪽 MIP)
+                         #     | :viol1 (지금 LP 해가 꼭짓점 구간에서 벗어난 양 순, 벗어난 쪽 MIP 만) | :viol1s (:viol1 을 시나리오 하나씩, 가지치기되면 선별도 멈춤). dd_batch = 한 번에 인증할 후보 수
+                         #   dd_objstop: :viol1·:viol1s 에서 노드 LP 해를 자를 수 없다고 판명되면 MIP 를 멈춤 (BestObjStop = δ̂), dd_gap: DD MIP 의 MIPGap (NaN = 그대로)
+                         dd_inc::Symbol=:ratio, dd_batch::Int=2, dd_objstop::Bool=false, dd_gap::Float64=NaN)
     branch_point in (:alphahat, :mid) || error("branch_point = :alphahat | :mid")
     config = (dual_range=dual_range, comp=dual_range && comp, vcut=dual_range && vcut, cslift=dual_range && cslift,
               branch_point=branch_point, child_rounds=child_rounds, maxrounds=maxrounds, dive_max=dive_max,
@@ -194,7 +297,8 @@ function nz_alpha_bnb_dr(nd::NZData, x̄;
     n_bload = Threads.Atomic{Int}(0); n_bfail = Threads.Atomic{Int}(0)       # parent_basis: 부모 basis 를 넣은 노드 / 못 넣은 노드
     n_cap = Threads.Atomic{Int}(0)
     n_ddnode = Threads.Atomic{Int}(0); n_ddmip = Threads.Atomic{Int}(0); n_ddempty = Threads.Atomic{Int}(0); n_ddcut = Threads.Atomic{Int}(0)   # 패치 (screen)
-    n_ddelig = Threads.Atomic{Int}(0); n_ddskip = Threads.Atomic{Int}(0)   # 패치 (dd_adapt)                                           # node_lp_cap 에 걸린 노드
+    n_ddelig = Threads.Atomic{Int}(0); n_ddskip = Threads.Atomic{Int}(0)   # 패치 (dd_adapt)
+    for c in (_ABB_DD_T.tlp, _ABB_DD_T.tmip); c[] = 0.0; end; for c in (_ABB_DD_T.nlp, _ABB_DD_T.nprune, _ABB_DD_T.nrechk, _ABB_DD_T.nrechk_inf, _ABB_DD_T.nobjstop); c[] = 0; end   # 패치 (시간 내역)                                           # node_lp_cap 에 걸린 노드
     n_cskip = Threads.Atomic{Int}(0); effcheck = get(ENV, "NZ_EFF_CHECK", "0") == "1"   # corner_reuse: 꼭짓점 하나 이상 건너뛴 노드 / 점검 모드
     n_ev = Threads.Atomic{Int}(0); n_evskip = Threads.Atomic{Int}(0)        # ev_adapt: α̂ 평가한 노드 / 건너뛴 노드
     n_evsince = Threads.Atomic{Int}(0); n_evtick = Threads.Atomic{Int}(0)   # ev_adapt: incumbent 못 바꾼 연속 평가 수 / 건너뛰기 계수기
@@ -210,7 +314,7 @@ function nz_alpha_bnb_dr(nd::NZData, x̄;
     end
     Threads.nthreads(:interactive) >= 1 || error("nz_alpha_bnb_dr: julia -t $(nworkers + 2),1 로 실행하세요")
     t0 = time(); t_end = t0 + time_limit
-    gcw0 = Base.gc_num().total_time_to_safepoint       # GC safepoint 대기 (전체 스레드가 멈춘 wall 시간) — :dd_screen => (nodes=n_ddnode[], mips=n_ddmip[], empty=n_ddempty[], cut=n_ddcut[], skip=n_ddskip[]), :gc_wait 로 보고
+    gcw0 = Base.gc_num().total_time_to_safepoint       # GC safepoint 대기 (전체 스레드가 멈춘 wall 시간) — :dd_screen => (nodes=n_ddnode[], mips=n_ddmip[], empty=n_ddempty[], cut=n_ddcut[], skip=n_ddskip[], pruned_after=_ABB_DD_T.nprune[], t_lp=round(_ABB_DD_T.tlp[]; digits=1), n_lp=_ABB_DD_T.nlp[], t_mip=round(_ABB_DD_T.tmip[]; digits=1), rechk=_ABB_DD_T.nrechk[], rechk_inf=_ABB_DD_T.nrechk_inf[], objstop=_ABB_DD_T.nobjstop[]), :gc_wait 로 보고
     nh, S = nz_nh(nd), nd.S
     Hr = findall(nd.hrow .> 0)
     mk(env) = () -> (o = Gurobi.Optimizer(env); MOI.set(o, MOI.Silent(), true);
@@ -450,6 +554,73 @@ function nz_alpha_bnb_dr(nd::NZData, x̄;
                     dd_empty = false                          # 패치 (screen): 가지치기 못 한 노드에서 선별 DD → 상자가 비었거나 조여지면 다시 풂
                     if config.dd && dd_mode == :screen && range_lp && !pre_inf && ubp != Inf && isfinite(z) && z > LB[] + tol(LB[]) &&
                        maximum((u[i] - l[i] for i in 1:nh if nd.hU[i] > 1e-9); init=0.0) <= dd_maxw &&
+                       dd_inc !== :off && _abb_dd_go(dd_adapt, n_ddelig, n_ddnode, n_ddcut, n_ddskip, dd_warm, dd_minrate, dd_probe)
+                        # 패치 (dd_inc): 후보를 dd_batch 개씩 인증 → 조여지면 다시 풂 → 가지치기 (또는 비움) 되면 멈춤. 남은 후보는 풀지 않음 (덜 조일 뿐)
+                        Threads.atomic_add!(n_ddnode, 1)
+                        # :viol1s 는 시나리오 하나씩 선별 (ζF 곱 위반이 큰 시나리오부터) → 그 시나리오 후보를 :viol1 처럼 인증 → 가지치기되면 남은 시나리오는 선별도 안 함
+                        sord = Int[]
+                        if dd_inc === :viol1s
+                            vv_ = P.O.v; α̂d = value.(vv_[:α]); d̂d = value.(vv_[:d]); ζFd = value.(vv_[:ζF])
+                            sord = sortperm([sum(abs(ζFd[i, s_] - α̂d[i] * d̂d[s_]) for i in 1:nh) for s_ in 1:nd.S]; rev=true)
+                        end
+                        tdd = @elapsed (cands = dd_inc === :viol1s ? Tuple{Float64,Int,Int,Float64,Float64}[] : _abb_dd_cands(CLs[wid], DR, nd, x̄, l, u, lo, hi, dlo, dhi; deadline=t_end))
+                        dlo = copy(dlo); dhi = copy(dhi); z0dd = z; nmdd = 0; kdd = 0
+                        for s_ in sord
+                            (dd_empty || !isfinite(z) || z <= LB[] + tol(LB[]) || time() >= t_end) && break
+                            tdd += @elapsed (cs = _abb_dd_cands(CLs[wid], DR, nd, x̄, l, u, lo, hi, dlo, dhi; deadline=t_end, only_s=s_))
+                            while !isempty(cs) && !dd_empty && isfinite(z) && z > LB[] + tol(LB[]) && time() < t_end
+                                sv = [_abb_dd_lpviol(P, DR, c[2], c[3], c[4], c[5]) for c in cs]
+                                od = sortperm([x[1] for x in sv]; rev=true); cs = cs[od]; sv = sv[od]
+                                sv[1][1] <= 1e-6 && break                              # 이 시나리오에는 지금 LP 해를 자를 후보 없음
+                                bt = cs[1:min(dd_batch, end)]; cs = cs[(length(bt)+1):end]; tgt = false
+                                tdd += @elapsed for (c, (_, sd_, δ_)) in zip(bt, sv)
+                                    sd_ == 0 && continue
+                                    rr_, nm_ = _abb_dd_mip!(DR, nd, l, u, lo, hi, dlo, dhi, c[2], c[3], sd_ > 0; mip_tl=dd_mip_tl, deadline=t_end, sigbd=dd_sigbd,
+                                                            objstop=(dd_objstop ? δ_ : NaN), gap=dd_gap)
+                                    nmdd += nm_; rr_ === :empty && (dd_empty = true; break); rr_ === :tight && (tgt = true)
+                                end
+                                if dd_empty
+                                    z = -Inf; Threads.atomic_add!(n_ddempty, 1)
+                                elseif tgt
+                                    _nz_dr_set!(P, DR, nd, l, u, lo, hi, phib; comp=comp, eq=eqp, dlo=dlo, dhi=dhi)
+                                    tr += @elapsed (z = zpad((sticky ? _nz_sticky_solve! : _nz_sep_solve!)(P; maxrounds=child_rounds, maxadd=sep_maxadd)))
+                                end
+                            end
+                        end
+                        dd_inc === :ratio && sort!(cands; by=c -> c[1])
+                        while kdd < length(cands) && !dd_empty && isfinite(z) && z > LB[] + tol(LB[]) && time() < t_end
+                            if dd_inc === :viol1                                   # 지금 LP 해 기준으로 남은 후보를 다시 줄 세움
+                                rest = cands[(kdd+1):end]; sv = [_abb_dd_lpviol(P, DR, c[2], c[3], c[4], c[5]) for c in rest]
+                                od = sortperm([x[1] for x in sv]; rev=true); cands = vcat(cands[1:kdd], rest[od]); sv = sv[od]
+                                sv[1][1] <= 1e-6 && break                          # 지금 LP 해를 자를 후보 없음
+                            end
+                            bt = cands[(kdd+1):min(kdd + dd_batch, end)]; kdd += length(bt); tgt = false
+                            tdd += @elapsed for c in bt
+                                _, p_, s_, c1_, c2_ = c
+                                sides = (false, true)
+                                δ1_ = NaN
+                                if dd_inc === :viol1
+                                    _, sd_, δ1_ = _abb_dd_lpviol(P, DR, p_, s_, c1_, c2_); sd_ == 0 && continue; sides = (sd_ > 0,)
+                                end
+                                for sd in sides
+                                    rr_, nm_ = _abb_dd_mip!(DR, nd, l, u, lo, hi, dlo, dhi, p_, s_, sd; mip_tl=dd_mip_tl, deadline=t_end, sigbd=dd_sigbd,
+                                                            objstop=(dd_objstop && dd_inc === :viol1 ? δ1_ : NaN), gap=dd_gap)
+                                    nmdd += nm_; rr_ === :empty && (dd_empty = true; break); rr_ === :tight && (tgt = true)
+                                end
+                                dd_empty && break
+                            end
+                            if dd_empty
+                                z = -Inf; Threads.atomic_add!(n_ddempty, 1)
+                            elseif tgt
+                                _nz_dr_set!(P, DR, nd, l, u, lo, hi, phib; comp=comp, eq=eqp, dlo=dlo, dhi=dhi)
+                                tr += @elapsed (z = zpad((sticky ? _nz_sticky_solve! : _nz_sep_solve!)(P; maxrounds=child_rounds, maxadd=sep_maxadd)))
+                            end
+                        end
+                        Threads.atomic_add!(t_range, tdd); tn_rg += tdd; Threads.atomic_add!(n_ddmip, nmdd)
+                        (!isnan(z) && z < z0dd) && Threads.atomic_add!(n_ddcut, 1)
+                        (!isnan(z) && z <= LB[] + tol(LB[])) && Threads.atomic_add!(_ABB_DD_T.nprune, 1)
+                    elseif config.dd && dd_mode == :screen && range_lp && !pre_inf && ubp != Inf && isfinite(z) && z > LB[] + tol(LB[]) &&
+                       maximum((u[i] - l[i] for i in 1:nh if nd.hU[i] > 1e-9); init=0.0) <= dd_maxw && dd_inc === :off &&
                        _abb_dd_go(dd_adapt, n_ddelig, n_ddnode, n_ddcut, n_ddskip, dd_warm, dd_minrate, dd_probe)
                         tdd = @elapsed (ddr = _abb_dd_screen!(CLs[wid], DR, nd, x̄, l, u, lo, hi, dlo, dhi; mip_tl=dd_mip_tl, deadline=t_end, sigbd=dd_sigbd))
                         Threads.atomic_add!(t_range, tdd); tn_rg += tdd; Threads.atomic_add!(n_ddnode, 1); Threads.atomic_add!(n_ddmip, ddr[3])
@@ -460,6 +631,7 @@ function nz_alpha_bnb_dr(nd::NZData, x̄;
                             _nz_dr_set!(P, DR, nd, l, u, lo, hi, phib; comp=comp, eq=eqp, dlo=dlo, dhi=dhi)
                             tr += @elapsed (z2 = zpad((sticky ? _nz_sticky_solve! : _nz_sep_solve!)(P; maxrounds=child_rounds, maxadd=sep_maxadd)))
                             (!isnan(z2) && z2 < z) && Threads.atomic_add!(n_ddcut, 1)
+                            (!isnan(z2) && z2 <= LB[] + tol(LB[])) && Threads.atomic_add!(_ABB_DD_T.nprune, 1)   # 패치 (시간 내역)
                             z = z2
                         end
                     end
@@ -701,5 +873,5 @@ function nz_alpha_bnb_dr(nd::NZData, x̄;
                 :range_mips => dual_range ? sum(D.nmip for D in DRs) : 0, :range_fail => dual_range ? sum(D.nfail for D in DRs) : 0,
                 :fixfrac => nodes[] > 0 ? nfixed_sum[] / nodes[] : NaN, :infeas => n_infeas[], :infeas_recovered => n_infrec[],
                 :numerr => _NZ_NUMERR[] - numerr0, :numerr_fail => _NZ_NUMERR_FAIL[] - numfail0,
-                :cbranch => n_cbranch[], :resp_fix => n_rfix[], :farkas => n_fk[], :farkas_disagree => n_fkdis[], :farkas_check_timeout => n_fkto[], :infeas_pre => n_pre[], :infeas_pre_tried => n_pretry[], :infeas_pre_retry => n_preretry[], :t_pre => t_pre[], :infeas_pre_disagree => n_predis[], :infeas_pre_check_timeout => n_preto[], :basis_loaded => n_bload[], :node_lp_cap_hits => n_cap[], :basis_failed => n_bfail[], :prune_checked => n_prchk[], :prune_disagree => n_prdis[], :resp_hits => n_resp[], :eff => (corner_skip=n_cskip[], ev=n_ev[], ev_skip=n_evskip[]), :gcsafe => _NZ_GCSAFE_STATE[], :dd_screen => (nodes=n_ddnode[], mips=n_ddmip[], empty=n_ddempty[], cut=n_ddcut[], skip=n_ddskip[]), :gc_wait => (Base.gc_num().total_time_to_safepoint - gcw0) / 1e9)
+                :cbranch => n_cbranch[], :resp_fix => n_rfix[], :farkas => n_fk[], :farkas_disagree => n_fkdis[], :farkas_check_timeout => n_fkto[], :infeas_pre => n_pre[], :infeas_pre_tried => n_pretry[], :infeas_pre_retry => n_preretry[], :t_pre => t_pre[], :infeas_pre_disagree => n_predis[], :infeas_pre_check_timeout => n_preto[], :basis_loaded => n_bload[], :node_lp_cap_hits => n_cap[], :basis_failed => n_bfail[], :prune_checked => n_prchk[], :prune_disagree => n_prdis[], :resp_hits => n_resp[], :eff => (corner_skip=n_cskip[], ev=n_ev[], ev_skip=n_evskip[]), :gcsafe => _NZ_GCSAFE_STATE[], :dd_screen => (nodes=n_ddnode[], mips=n_ddmip[], empty=n_ddempty[], cut=n_ddcut[], skip=n_ddskip[], pruned_after=_ABB_DD_T.nprune[], t_lp=round(_ABB_DD_T.tlp[]; digits=1), n_lp=_ABB_DD_T.nlp[], t_mip=round(_ABB_DD_T.tmip[]; digits=1), rechk=_ABB_DD_T.nrechk[], rechk_inf=_ABB_DD_T.nrechk_inf[], objstop=_ABB_DD_T.nobjstop[]), :gc_wait => (Base.gc_num().total_time_to_safepoint - gcw0) / 1e9)
 end
