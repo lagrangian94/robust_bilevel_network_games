@@ -11,7 +11,7 @@
 #   2026-11-26: dd_sigbd (기본 켬) — 선별 DD 의 KKT-MIP 에 상자의 꼭짓점 LP 범위 [lo, hi] 를 H 행 쌍대의 변수 경계로 넣음 (front_ddmip.jl:
 #                MIP 평균 0.87 → 0.19 s, bound 는 같거나 0.01 이하로 더 느슨). 범위는 상자 안 α 의 모든 (정규형) 최적 쌍대를 담아 유효.
 #                경계를 넣은 MIP 가 실행 불가능이면 경계를 빼고 다시 풀어 확인한 뒤에만 상자를 비움 (허용오차로 인한 거짓 가지치기 방지).
-#   2026-11-27: dd_inc (기본 :ratio) — 선별 후보를 dd_batch 개씩 인증하고 다시 풀어 가지치기되면 멈춤 (front_dd_inc.jl: 상자 10 개 MIP 224 → 44, 시간 69 → 27 s). md 11.24.
+#   2026-11-27: dd_inc (기본 :viol1 + dd_objstop, 900 s 확인 판의 설정) — 선별 후보를 dd_batch 개씩 인증하고 다시 풀어 가지치기되면 멈춤 (front_dd_inc.jl: 상자 10 개 MIP 224 → 44, 시간 69 → 27 s). md 11.24.
 #   2026-11-27: 재확인 MIP 결과를 경계를 되돌리기 전에 읽도록 고침 (전에는 버려짐, 유효성 무관). 재확인 수 rechk·rechk_inf 보고.
 #   2026-11-27: 시간 내역 계수기 _ABB_DD_T (꼭짓점·면 LP 시간·수, MIP 시간, DD 로 다시 푼 뒤 가지친 노드) 를 :dd_screen 에 보고 (md 11.24).
 #   2026-11-26: dd_adapt (기본 켬) — 선별 DD 의 성공률 (상한이 내려간 노드 / DD 받은 노드) 이 낮으면 선별 빈도를 1/dd_probe 로.
@@ -44,7 +44,7 @@ rep('                         resume=nothing)',
     '                         #   dd_inc (2026-11-27, md 11.24): 선별 후보를 나눠 인증하고 다시 풀어 가지치기되면 멈춤. :off (후보 전부, 예전) | :ratio (모임 비율 순, 양쪽 MIP)\n'
     '                         #     | :viol1 (지금 LP 해가 꼭짓점 구간에서 벗어난 양 순, 벗어난 쪽 MIP 만) | :viol1s (:viol1 을 시나리오 하나씩, 가지치기되면 선별도 멈춤). dd_batch = 한 번에 인증할 후보 수\n'
     '                         #   dd_objstop: :viol1·:viol1s 에서 노드 LP 해를 자를 수 없다고 판명되면 MIP 를 멈춤 (BestObjStop = δ̂), dd_gap: DD MIP 의 MIPGap (NaN = 그대로)\n'
-    '                         dd_inc::Symbol=:ratio, dd_batch::Int=2, dd_objstop::Bool=false, dd_gap::Float64=NaN)')
+    '                         dd_inc::Symbol=:viol1, dd_batch::Int=2, dd_objstop::Bool=true, dd_gap::Float64=NaN)')
 # (1) range_lp 와 dd 함께 허용
 rep('    range_lp &&(dd || isfinite(range_time) || range_nodes != typemax(Int) || !range_mip || !dual_range) &&',
     '    range_lp &&(isfinite(range_time) || range_nodes != typemax(Int) || !range_mip || !dual_range) &&   # 패치: dd 허용')
