@@ -1,0 +1,38 @@
+  [HUCAP] 거점 9: hᵁ 300 → 200
+  [HUCAP] 거점 13: hᵁ 300 → 200
+--- oracle 재현 g=2 S=10 x={4:300;9:200;13:200} λᵁ=10000 목표 -3059.59 gap 1.0e-03 상한 300s, 스레드 8, 추가 인자 (resp = true, dd = true)
+Set parameter Username
+Academic license - for non-commercial use only - expires 2027-06-29
+Set parameter Username
+Academic license - for non-commercial use only - expires 2027-06-29
+Set parameter Username
+Academic license - for non-commercial use only - expires 2027-06-29
+Set parameter Username
+Academic license - for non-commercial use only - expires 2027-06-29
+Set parameter Username
+Academic license - for non-commercial use only - expires 2027-06-29
+Set parameter Username
+Academic license - for non-commercial use only - expires 2027-06-29
+Set parameter Username
+Academic license - for non-commercial use only - expires 2027-06-29
+Set parameter Username
+Academic license - for non-commercial use only - expires 2027-06-29
+
+******************************************************************************
+This program contains Ipopt, a library for large-scale nonlinear optimization.
+ Ipopt is released as open source code under the Eclipse Public License (EPL).
+         For more information visit https://github.com/coin-or/Ipopt
+******************************************************************************
+
+    [nz-α-B&B-dr] t=  73.4s nodes=  173 open=   45 LB=-3114.404226 UB=-2406.284779 gap=2.274e-01
+    [nz-α-B&B-dr] t= 134.3s nodes=  426 open=  116 LB=-3072.537561 UB=-2634.651707 gap=1.425e-01
+    [nz-α-B&B-dr] t= 194.5s nodes=  749 open=  215 LB=-3069.676471 UB=-2763.052838 gap=9.989e-02
+    [LP] 비유계 보고 → 재시도 결과 OPTIMAL
+    [nz-α-B&B-dr] t= 254.6s nodes= 1051 open=  285 LB=-3069.676471 UB=-2824.266396 gap=7.995e-02
+nz_alpha_bnb_dr: 기본이 아닌 구성으로 실행 — dd = true, resp = true
+nz_alpha_bnb_dr: dd_sdcut — KKT-MIP 에 강쌍대 McCormick 행 (곱 28 개 × 시나리오 10 × worker 7)
+RESULT g=2 S=10 x={4:300;9:200;13:200} V in [-3069.6765, -2862.3260] (310s) 노드 1316, 이완 1356s, 평가 369s, 범위 66s (MIP 38, 실패 0), 재확인 0s, ipopt 5, 고정 비율 0.22, 수치 오류 2, 루트 UB -1903.6628
+DD 선별 (패치): (nodes = 30, mips = 38, empty = 0, cut = 4, skip = 0, pruned_after = 0, t_lp = 7.1, n_lp = 11799, t_mip = 3.2, rechk = 0, rechk_inf = 0, objstop = 24, face_hit = 834, sdchk = 0, sdref = 0, sdviol = 0, sdinf = 0, sdmaxv = -Inf)
+느린 노드 (상위 10): NTuple{4, Float64}[]
+전선 저장: orep_front_g2_S10_dd14B_g2.jls (열린 노드 373)
+전선: 열린 노드 373, 상한 ≤ 목표 0 (0%), 상한 범위 [-3052.93, -2862.33], 목표 -3059.59, incumbent -3069.68

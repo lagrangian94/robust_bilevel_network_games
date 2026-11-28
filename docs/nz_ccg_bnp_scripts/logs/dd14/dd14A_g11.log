@@ -1,0 +1,33 @@
+--- oracle 재현 g=11 S=10 x={5:300;9:300} λᵁ=10000 목표 -2886.69 gap 1.0e-03 상한 300s, 스레드 8, 추가 인자 (resp = true,)
+Set parameter Username
+Academic license - for non-commercial use only - expires 2027-06-29
+Set parameter Username
+Academic license - for non-commercial use only - expires 2027-06-29
+Set parameter Username
+Academic license - for non-commercial use only - expires 2027-06-29
+Set parameter Username
+Academic license - for non-commercial use only - expires 2027-06-29
+Set parameter Username
+Academic license - for non-commercial use only - expires 2027-06-29
+Set parameter Username
+Academic license - for non-commercial use only - expires 2027-06-29
+Set parameter Username
+Academic license - for non-commercial use only - expires 2027-06-29
+Set parameter Username
+Academic license - for non-commercial use only - expires 2027-06-29
+
+******************************************************************************
+This program contains Ipopt, a library for large-scale nonlinear optimization.
+ Ipopt is released as open source code under the Eclipse Public License (EPL).
+         For more information visit https://github.com/coin-or/Ipopt
+******************************************************************************
+
+    [nz-α-B&B-dr] t=  73.4s nodes=  319 open=   69 LB=-2893.596785 UB=-2673.263813 gap=7.615e-02
+    [nz-α-B&B-dr] t= 133.8s nodes=  920 open=  154 LB=-2893.596785 UB=-2840.935996 gap=1.820e-02
+    [nz-α-B&B-dr] t= 194.0s nodes= 1637 open=  139 LB=-2893.596785 UB=-2878.635001 gap=5.171e-03
+nz_alpha_bnb_dr: 기본이 아닌 구성으로 실행 — resp = true
+RESULT g=11 S=10 x={5:300;9:300} V in [-2893.5968, -2886.7990] (229s) 노드 2059, 이완 989s, 평가 162s, 범위 56s (MIP 0, 실패 0), 재확인 0s, ipopt 5, 고정 비율 0.20, 수치 오류 8, 루트 UB -1949.0034
+DD 선별 (패치): (nodes = 0, mips = 0, empty = 0, cut = 0, skip = 0, pruned_after = 0, t_lp = 0.0, n_lp = 0, t_mip = 0.0, rechk = 0, rechk_inf = 0, objstop = 0, face_hit = 0, sdchk = 0, sdref = 0, sdviol = 0, sdinf = 0, sdmaxv = -Inf)
+느린 노드 (상위 10): [(50.210434913635254, 0.215339168, 49.92919244, 0.0)]
+전선 저장: orep_front_g11_S10_dd14A_g11.jls (열린 노드 120)
+전선: 열린 노드 120, 상한 ≤ 목표 120 (100%), 상한 범위 [-2890.68, -2886.80], 목표 -2886.69, incumbent -2893.60

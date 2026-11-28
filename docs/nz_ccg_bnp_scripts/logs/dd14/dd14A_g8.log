@@ -1,0 +1,36 @@
+  [HUCAP] 거점 10: hᵁ 300 → 200
+  [HUCAP] 거점 13: hᵁ 300 → 200
+--- oracle 재현 g=8 S=10 x={7:300;10:200;13:200} λᵁ=10000 목표 -3206.93 gap 1.0e-03 상한 300s, 스레드 8, 추가 인자 (resp = true,)
+Set parameter Username
+Academic license - for non-commercial use only - expires 2027-06-29
+Set parameter Username
+Academic license - for non-commercial use only - expires 2027-06-29
+Set parameter Username
+Academic license - for non-commercial use only - expires 2027-06-29
+Set parameter Username
+Academic license - for non-commercial use only - expires 2027-06-29
+Set parameter Username
+Academic license - for non-commercial use only - expires 2027-06-29
+Set parameter Username
+Academic license - for non-commercial use only - expires 2027-06-29
+Set parameter Username
+Academic license - for non-commercial use only - expires 2027-06-29
+Set parameter Username
+Academic license - for non-commercial use only - expires 2027-06-29
+
+******************************************************************************
+This program contains Ipopt, a library for large-scale nonlinear optimization.
+ Ipopt is released as open source code under the Eclipse Public License (EPL).
+         For more information visit https://github.com/coin-or/Ipopt
+******************************************************************************
+
+    [nz-α-B&B-dr] t=  76.5s nodes=  130 open=   46 LB=-3322.514722 UB=-2365.827389 gap=2.879e-01
+    [nz-α-B&B-dr] t= 137.0s nodes=  352 open=   82 LB=-3229.272691 UB=-2594.366935 gap=1.966e-01
+    [nz-α-B&B-dr] t= 197.0s nodes=  826 open=  202 LB=-3229.272691 UB=-2819.967923 gap=1.267e-01
+    [nz-α-B&B-dr] t= 257.1s nodes= 1858 open=  438 LB=-3228.188471 UB=-3017.864546 gap=6.515e-02
+nz_alpha_bnb_dr: 기본이 아닌 구성으로 실행 — resp = true
+RESULT g=8 S=10 x={7:300;10:200;13:200} V in [-3228.0449, -3069.7618] (309s) 노드 2542, 이완 1319s, 평가 352s, 범위 62s (MIP 0, 실패 0), 재확인 0s, ipopt 7, 고정 비율 0.20, 수치 오류 0, 루트 UB -1942.0204
+DD 선별 (패치): (nodes = 0, mips = 0, empty = 0, cut = 0, skip = 0, pruned_after = 0, t_lp = 0.0, n_lp = 0, t_mip = 0.0, rechk = 0, rechk_inf = 0, objstop = 0, face_hit = 0, sdchk = 0, sdref = 0, sdviol = 0, sdinf = 0, sdmaxv = -Inf)
+느린 노드 (상위 10): NTuple{4, Float64}[]
+전선 저장: orep_front_g8_S10_dd14A_g8.jls (열린 노드 597)
+전선: 열린 노드 597, 상한 ≤ 목표 14 (2%), 상한 범위 [-3220.52, -3069.76], 목표 -3206.93, incumbent -3228.04
