@@ -13,6 +13,8 @@
 #                경계를 넣은 MIP 가 실행 불가능이면 경계를 빼고 다시 풀어 확인한 뒤에만 상자를 비움 (허용오차로 인한 거짓 가지치기 방지).
 #   2026-11-27: dd_fcache (기본 켬) — 선별 면 LP 결과를 꼭짓점별로 자식에 물려줌 (자식은 부모와 꼭짓점 하나를 공유, 같은 LP). md 11.24 (8).
 #   2026-11-27: dd_inc (기본 :viol1 + dd_objstop, 900 s 확인 판의 설정) — 선별 후보를 dd_batch 개씩 인증하고 다시 풀어 가지치기되면 멈춤 (front_dd_inc.jl: 상자 10 개 MIP 224 → 44, 시간 69 → 27 s). md 11.24.
+#   2026-11-28: dd_sdcut (기본 끔) — KKT-MIP 에 강쌍대 b(α)ᵀσ ≤ cᵀy 의 McCormick 선형화. 유효 (KKT 점을 자르지 않음), 계수는 _nz_dr_opt! 재정의가 풀이마다 갱신.
+#                저장한 MIP 222 개에서 4.1 배 (md 11.30), 나무 안 비교는 md 11.31. 검증용 환경 변수 ABB_SD_CHECK·ABB_SD_TIGHT.
 #   2026-11-27: 재확인 MIP 결과를 경계를 되돌리기 전에 읽도록 고침 (전에는 버려짐, 유효성 무관). 재확인 수 rechk·rechk_inf 보고.
 #   2026-11-27: 시간 내역 계수기 _ABB_DD_T (꼭짓점·면 LP 시간·수, MIP 시간, DD 로 다시 푼 뒤 가지친 노드) 를 :dd_screen 에 보고 (md 11.24).
 #   2026-11-26: dd_adapt (기본 켬) — 선별 DD 의 성공률 (상한이 내려간 노드 / DD 받은 노드) 이 낮으면 선별 빈도를 1/dd_probe 로.
@@ -45,7 +47,12 @@ rep('                         resume=nothing)',
     '                         #   dd_inc (2026-11-27, md 11.24): 선별 후보를 나눠 인증하고 다시 풀어 가지치기되면 멈춤. :off (후보 전부, 예전) | :ratio (모임 비율 순, 양쪽 MIP)\n'
     '                         #     | :viol1 (지금 LP 해가 꼭짓점 구간에서 벗어난 양 순, 벗어난 쪽 MIP 만) | :viol1s (:viol1 을 시나리오 하나씩, 가지치기되면 선별도 멈춤). dd_batch = 한 번에 인증할 후보 수\n'
     '                         #   dd_objstop: :viol1·:viol1s 에서 노드 LP 해를 자를 수 없다고 판명되면 MIP 를 멈춤 (BestObjStop = δ̂), dd_gap: DD MIP 의 MIPGap (NaN = 그대로)\n'
-    '                         dd_inc::Symbol=:viol1, dd_batch::Int=2, dd_objstop::Bool=true, dd_gap::Float64=NaN, dd_fcache::Bool=true)')
+    '                         dd_inc::Symbol=:viol1, dd_batch::Int=2, dd_objstop::Bool=true, dd_gap::Float64=NaN, dd_fcache::Bool=true,\n'
+    '                         #   dd_sdcut (2026-11-28, md 11.31): KKT-MIP 에 강쌍대 b(α)ᵀσ ≤ cᵀy 의 McCormick 선형화 (_abb_sd_attach!). KKT 점을 자르지 않음, 계수는 풀이마다 지금 경계로\n'
+    '                         dd_sdcut::Bool=false)')
+rep('                                       fwd=config.fwd, kmc=config.kmc, dd=config.dd) for i in 1:nworkers] : nothing\n',
+    '                                       fwd=config.fwd, kmc=config.kmc, dd=config.dd) for i in 1:nworkers] : nothing\n'
+    '    dd_sdcut && dual_range && _abb_sd_attach_all!(DRs, nd, x̄)            # 패치 (dd_sdcut)\n')
 # (1) range_lp 와 dd 함께 허용
 rep('    range_lp &&(dd || isfinite(range_time) || range_nodes != typemax(Int) || !range_mip || !dual_range) &&',
     '    range_lp &&(isfinite(range_time) || range_nodes != typemax(Int) || !range_mip || !dual_range) &&   # 패치: dd 허용')
@@ -53,7 +60,8 @@ rep('    n_cap = Threads.Atomic{Int}(0)',
     '    n_cap = Threads.Atomic{Int}(0)\n'
     '    n_ddnode = Threads.Atomic{Int}(0); n_ddmip = Threads.Atomic{Int}(0); n_ddempty = Threads.Atomic{Int}(0); n_ddcut = Threads.Atomic{Int}(0)   # 패치 (screen)\n'
     '    n_ddelig = Threads.Atomic{Int}(0); n_ddskip = Threads.Atomic{Int}(0)   # 패치 (dd_adapt)\n'
-    '    for c in (_ABB_DD_T.tlp, _ABB_DD_T.tmip); c[] = 0.0; end; for c in (_ABB_DD_T.nlp, _ABB_DD_T.nprune, _ABB_DD_T.nrechk, _ABB_DD_T.nrechk_inf, _ABB_DD_T.nobjstop, _ABB_DD_T.nfhit); c[] = 0; end   # 패치 (시간 내역)')
+    '    for c in (_ABB_DD_T.tlp, _ABB_DD_T.tmip); c[] = 0.0; end; for c in (_ABB_DD_T.nlp, _ABB_DD_T.nprune, _ABB_DD_T.nrechk, _ABB_DD_T.nrechk_inf, _ABB_DD_T.nobjstop, _ABB_DD_T.nfhit); c[] = 0; end   # 패치 (시간 내역)\n'
+    '    for c in (_ABB_SD_C.n, _ABB_SD_C.nchk, _ABB_SD_C.nref, _ABB_SD_C.nviol, _ABB_SD_C.ninf); c[] = 0; end; _ABB_SD_C.maxv[] = -Inf   # 패치 (dd_sdcut 대조)')
 rep('            z = -Inf; α̂ = nothing; children = nothing; zE = -Inf; unfinished = false; αE = nothing\n',
     '            z = -Inf; α̂ = nothing; children = nothing; zE = -Inf; unfinished = false; αE = nothing\n'
     '            ddfl = nothing; ddfu = nothing                                   # 패치 (dd_fcache): 이 노드에서 구한 꼭짓점 l·u 의 면 LP 결과\n')
@@ -170,7 +178,7 @@ rep('''                    tr = pre_inf ? 0.0 : @elapsed (z = zpad((sticky ? _nz
 rep('''                    if z == -Inf && dual_range
                         fk = pre_inf''', '''                    if z == -Inf && dual_range && !dd_empty      # 패치: DD MIP 가 상자를 비웠으면 (KKT-MIP 실행 불가능) 재확인할 LP 가 없음
                         fk = pre_inf''')
-rep(':gc_wait', ':dd_screen => (nodes=n_ddnode[], mips=n_ddmip[], empty=n_ddempty[], cut=n_ddcut[], skip=n_ddskip[], pruned_after=_ABB_DD_T.nprune[], t_lp=round(_ABB_DD_T.tlp[]; digits=1), n_lp=_ABB_DD_T.nlp[], t_mip=round(_ABB_DD_T.tmip[]; digits=1), rechk=_ABB_DD_T.nrechk[], rechk_inf=_ABB_DD_T.nrechk_inf[], objstop=_ABB_DD_T.nobjstop[], face_hit=_ABB_DD_T.nfhit[]), :gc_wait', cnt=body.count(':gc_wait'))
+rep(':gc_wait', ':dd_screen => (nodes=n_ddnode[], mips=n_ddmip[], empty=n_ddempty[], cut=n_ddcut[], skip=n_ddskip[], pruned_after=_ABB_DD_T.nprune[], t_lp=round(_ABB_DD_T.tlp[]; digits=1), n_lp=_ABB_DD_T.nlp[], t_mip=round(_ABB_DD_T.tmip[]; digits=1), rechk=_ABB_DD_T.nrechk[], rechk_inf=_ABB_DD_T.nrechk_inf[], objstop=_ABB_DD_T.nobjstop[], face_hit=_ABB_DD_T.nfhit[], sdchk=_ABB_SD_C.nchk[], sdref=_ABB_SD_C.nref[], sdviol=_ABB_SD_C.nviol[], sdinf=_ABB_SD_C.ninf[], sdmaxv=round(_ABB_SD_C.maxv[]; sigdigits=3)), :gc_wait', cnt=body.count(':gc_wait'))
 
 helper = r'''
 "패치 (시간 내역, 2026-11-27): 선별 DD 의 꼭짓점·면 LP 시간·수, MIP 시간, DD 로 다시 푼 뒤 가지친 노드. 호출마다 0 으로"
@@ -385,6 +393,139 @@ function _abb_dd_go(adapt, nelig, nnode, ncut, nskip, warm, minrate, probe)
     k % probe == 0 && return true
     Threads.atomic_add!(nskip, 1)
     return false
+end
+
+# ---- 패치 (dd_sdcut, 2026-11-28, md 11.31): KKT-MIP 의 강쌍대 McCormick 부등식 ----
+#   KKT-MIP (_nz_dr_build_mip) 은 상보성을 indicator 로만 가져 LP 완화가 상보성을 못 본다 (나무 안 MIP 노드 중앙 1,233 개, md 11.30).
+#   KKT 점은 강쌍대 b(α)ᵀσ = cᵀy 를 만족 (약쌍대 ≥ 는 원래 성립). b_k(α) = b0_k + hcoef_k α_{hrow k} 라 곱 ζ_k = α_i σ_k 가 생기고,
+#   hcoef_k > 0 이면 ζ 의 아래 envelope 두 행, < 0 이면 위 envelope 두 행을 넣어  Σ_k b0_k σ_k + Σ_k hcoef_k ζ_k ≤ cᵀy.
+#   KKT 점 (ζ = ασ) 은 envelope 와 이 식을 모두 만족하므로 범위 MIP 의 값을 바꾸지 않는다 (유효). 저장한 MIP 222 개에서 4.1 배 (md 11.30).
+#   envelope 계수는 그 MIP 의 지금 변수 경계 (상자 [l, u], dd_sigbd 의 σ 범위) 라서 _nz_dr_opt! 가 풀이마다 _abb_sd_refresh! 로 다시 쓴다.
+#   σ 의 위 경계가 없으면 그 envelope 는 다른 envelope 와 같게 둔다 (덜 조일 뿐).
+#   검증 (환경 변수): ABB_SD_CHECK = N > 0 이면 강쌍대 행이 있는 MIP 를 N 번째마다 행을 풀어 (우변 1e30) 먼저 풀고, 그 실행가능 해의 목적값과
+#     행을 넣고 푼 한계 (objective_bound) 를 대조한다 (한계가 그 값보다 1e-6 넘게 안쪽이면 위반). ABB_SD_TIGHT = 1 이면 KKT-MIP 허용오차 1e-9.
+const _ABB_SD_CHECK = parse(Int, get(ENV, "ABB_SD_CHECK", "0"))
+const _ABB_SD_TIGHT = get(ENV, "ABB_SD_TIGHT", "0") == "1"
+# 풀이 수 / 대조 수 / 그중 행 없는 판에 실행가능 해가 있던 수 / 위반 수 / 행 넣은 판만 실행 불가능 / 최대 (값 − 한계, 양수면 안쪽)
+const _ABB_SD_C = (n=Threads.Atomic{Int}(0), nchk=Threads.Atomic{Int}(0), nref=Threads.Atomic{Int}(0), nviol=Threads.Atomic{Int}(0),
+                   ninf=Threads.Atomic{Int}(0), maxv=Threads.Atomic{Float64}(-Inf))
+const _ABB_SD_LOCK = ReentrantLock()
+const _ABB_SD_SHOWN = Threads.Atomic{Int}(0); const _ABB_SD_VSHOWN = Threads.Atomic{Int}(0)
+
+"패치 (dd_sdcut): 시나리오 s 의 KKT-MIP 에 강쌍대 McCormick 행을 넣는다 (계수는 _abb_sd_refresh!). 반환 = 곱 수"
+function _abb_sd_attach!(M::_NZRangeMIP, nd::NZData, x̄, s)
+    mdl = M.model; m, ny = nz_m(nd), nz_ny(nd)
+    haskey(mdl.ext, :abb_sd) && error("_abb_sd_attach!: 이미 강쌍대 행이 있음")
+    Hz = [k for k in 1:m if nd.hrow[k] > 0 && nd.hcoef[k] != 0]
+    ζ = @variable(mdl, [1:length(Hz)])
+    rows = Tuple{Int,Int,Float64,ConstraintRef,ConstraintRef}[]
+    for (n, k) in enumerate(Hz)
+        i = nd.hrow[k]; a = nd.hcoef[k]
+        if a > 0
+            c1 = @constraint(mdl, ζ[n] - 0.0 * M.σ[k] - 0.0 * M.α[i] >= 0.0); c2 = @constraint(mdl, ζ[n] - 0.0 * M.σ[k] - 0.0 * M.α[i] >= 0.0)
+        else
+            c1 = @constraint(mdl, ζ[n] - 0.0 * M.σ[k] - 0.0 * M.α[i] <= 0.0); c2 = @constraint(mdl, ζ[n] - 0.0 * M.σ[k] - 0.0 * M.α[i] <= 0.0)
+        end
+        push!(rows, (k, i, a, c1, c2))
+    end
+    # 강쌍대: _nz_dr_build_mip 의 sP_k = u_ks + hcoef_k α + g_k(x̄) − (Ay)_k, sD_j = (Aᵀσ)_j − c_j 와 같은 자료
+    e = AffExpr(0.0)
+    for k in 1:m; b0 = nd.u[k, s] + nz_gx(nd, k, s, x̄); b0 != 0 && add_to_expression!(e, b0, M.σ[k]); end
+    for (n, k) in enumerate(Hz); add_to_expression!(e, nd.hcoef[k], ζ[n]); end
+    for j in 1:ny; nd.c[j] != 0 && add_to_expression!(e, -nd.c[j], M.y[j]); end
+    sd = @constraint(mdl, e <= 0.0)
+    if _ABB_SD_TIGHT
+        for (p, v) in ("FeasibilityTol" => 1e-9, "IntFeasTol" => 1e-9, "OptimalityTol" => 1e-9); set_optimizer_attribute(mdl, p, v); end
+    end
+    T = (rows=rows, sd=sd); mdl.ext[:abb_sd] = T
+    _abb_sd_refresh!(M, T)
+    return length(Hz)
+end
+
+"패치 (dd_sdcut): 모든 worker 의 시나리오별 KKT-MIP 에 강쌍대 행"
+function _abb_sd_attach_all!(DRs, nd, x̄)
+    nz = 0
+    for D in DRs, s in 1:nd.S; nz = _abb_sd_attach!(D.mips[s], nd, x̄, s); end
+    Threads.atomic_add!(_ABB_SD_SHOWN, 1) == 0 &&
+        println(stderr, "[abb_dd_patch] dd_sdcut: KKT-MIP 에 강쌍대 McCormick 행 (곱 $(nz) 개 × 시나리오 $(nd.S) × worker $(length(DRs))",
+                _ABB_SD_TIGHT ? ", 허용오차 1e-9" : "", _ABB_SD_CHECK > 0 ? ", $(_ABB_SD_CHECK) 번째마다 행 없는 판과 대조" : "", ")")
+end
+
+"패치 (dd_sdcut): McCormick 계수를 그 MIP 의 지금 변수 경계로 다시 쓴다"
+function _abb_sd_refresh!(M::_NZRangeMIP, T)
+    for (k, i, a, c1, c2) in T.rows
+        α = M.α[i]; σ = M.σ[k]
+        (has_lower_bound(α) && has_upper_bound(α) && has_lower_bound(σ)) || error("_abb_sd_refresh!: α[$i] 또는 σ[$k] 의 경계가 없음")
+        Lα, Uα, Lσ = lower_bound(α), upper_bound(α), lower_bound(σ); Uσ = has_upper_bound(σ) ? upper_bound(σ) : Inf
+        # a > 0: ζ ≥ Lα σ + Lσ α − Lα Lσ,  ζ ≥ Uα σ + Uσ α − Uα Uσ.   a < 0: ζ ≤ Uα σ + Lσ α − Uα Lσ,  ζ ≤ Lα σ + Uσ α − Lα Uσ
+        p1 = a > 0 ? (Lα, Lσ) : (Uα, Lσ)
+        p2 = isfinite(Uσ) ? (a > 0 ? (Uα, Uσ) : (Lα, Uσ)) : p1
+        for (c, (pα, pσ)) in ((c1, p1), (c2, p2))
+            set_normalized_coefficient(c, σ, -pα); set_normalized_coefficient(c, α, -pσ); set_normalized_rhs(c, -pα * pσ)
+        end
+    end
+end
+
+"패치 (ABB_SD_CHECK): 강쌍대 행을 풀고 (우변 1e30) 먼저 푼 판의 (방향, 실행가능 해의 목적값). Gurobi 오류면 nothing (대조에서 뺌)"
+function _abb_sd_nocut!(M::_NZRangeMIP, T)
+    set_normalized_rhs(T.sd, 1e30)
+    r = try
+        optimize!(M.model)
+        (max=objective_sense(M.model) == MAX_SENSE, obj=(primal_status(M.model) == MOI.FEASIBLE_POINT ? objective_value(M.model) : NaN))
+    catch e
+        e isa ErrorException || rethrow()
+        nothing
+    end
+    set_normalized_rhs(T.sd, 0.0)
+    return r
+end
+
+_abb_sd_show(msg) = Threads.atomic_add!(_ABB_SD_VSHOWN, 1) < 6 && println(stderr, "[abb_dd_patch] dd_sdcut 대조: ", msg)
+
+"패치 (ABB_SD_CHECK): 행 넣은 판의 한계가 행 없는 판의 실행가능 값보다 안쪽이면 위반"
+function _abb_sd_compare!(M::_NZRangeMIP, ref, what)
+    Threads.atomic_add!(_ABB_SD_C.nchk, 1)
+    isnan(ref.obj) && return
+    Threads.atomic_add!(_ABB_SD_C.nref, 1)
+    st = termination_status(M.model)
+    if st in (MOI.INFEASIBLE, MOI.INFEASIBLE_OR_UNBOUNDED)
+        Threads.atomic_add!(_ABB_SD_C.ninf, 1); Threads.atomic_add!(_ABB_SD_C.nviol, 1)
+        _abb_sd_show("행 넣은 판만 실행 불가능, 행 없는 판의 값 $(ref.obj) ($what)")
+        return
+    end
+    st in (MOI.OPTIMAL, MOI.TIME_LIMIT, MOI.OBJECTIVE_LIMIT) || return
+    bd = st == MOI.OPTIMAL ? objective_bound(M.model) : _nz_dr_bound_or_nan(M.model)
+    isfinite(bd) || return
+    v = ref.max ? ref.obj - bd : bd - ref.obj      # > 0: 한계가 실행가능 값보다 안쪽
+    lock(_ABB_SD_LOCK) do; _ABB_SD_C.maxv[] = max(_ABB_SD_C.maxv[], v); end
+    if v > 1e-6
+        Threads.atomic_add!(_ABB_SD_C.nviol, 1)
+        _abb_sd_show("한계 $(bd) 가 행 없는 판의 실행가능 값 $(ref.obj) 보다 $(v) 안쪽 ($what)")
+    end
+end
+
+"패치: 저장소 _nz_dr_opt! (nz_alpha_bnb_dr.jl) 와 같은 동작 + dd_sdcut 행이 있으면 풀기 전에 계수 갱신 (ABB_SD_CHECK 면 대조)"
+function _nz_dr_opt!(DR::_NZDR, M::_NZRangeMIP, l, u, what)
+    T = get(M.model.ext, :abb_sd, nothing)
+    T === nothing || _abb_sd_refresh!(M, T)
+    ref = (T !== nothing && _ABB_SD_CHECK > 0 && (Threads.atomic_add!(_ABB_SD_C.n, 1) + 1) % _ABB_SD_CHECK == 0) ? _abb_sd_nocut!(M, T) : nothing
+    ok = false
+    for attempt in 1:2
+        try
+            optimize!(M.model); DR.nmip += 1
+            ok = true; break
+        catch e
+            e isa ErrorException || rethrow()
+            if attempt == 2
+                DR.nfail += 1
+                if Threads.atomic_add!(_NZ_DR_FAIL_SHOWN, 1) < 3
+                    println(stderr, "nz_alpha_bnb_dr: 범위 MIP 실패 ($what): ", e.msg, "\n  l = ", l, "\n  u = ", u)
+                end
+            end
+        end
+    end
+    ok && ref !== nothing && _abb_sd_compare!(M, ref, what)
+    return ok
 end
 '''
 

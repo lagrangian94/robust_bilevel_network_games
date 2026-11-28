@@ -13,6 +13,7 @@ const _DDP_N = Threads.Atomic{Int}(0); const _DDP_ND = Threads.Atomic{Int}(0)
 
 function _nz_dr_opt!(DR::_NZDR, M::_NZRangeMIP, l, u, what)
     isdd = startswith(what, "dd")
+    T = get(M.model.ext, :abb_sd, nothing); T === nothing || _abb_sd_refresh!(M, T)   # dd_sdcut 행이 있으면 계수 갱신 (패치의 _nz_dr_opt! 와 같게, 대조는 안 함)
     for attempt in 1:2
         try
             k = 0; dump = ""

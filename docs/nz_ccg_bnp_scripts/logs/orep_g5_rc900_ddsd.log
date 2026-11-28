@@ -1,0 +1,45 @@
+  [HUCAP] 거점 4: hᵁ 300 → 200
+  [HUCAP] 거점 7: hᵁ 300 → 200
+--- oracle 재현 g=5 S=10 x={4:200;7:200;12:300} λᵁ=10000 목표 -3151.6 gap 1.0e-03 상한 900s, 스레드 12, 추가 인자 (resp = true, dd = true, dd_maxw = 25.0, dd_inc = :viol1, dd_objstop = true, dd_fcache = true, dd_sdcut = true)
+Academic license 926906 - for non-commercial use only - registered to [가림]
+Academic license 926906 - for non-commercial use only - registered to [가림]
+Academic license 926906 - for non-commercial use only - registered to [가림]
+Academic license 926906 - for non-commercial use only - registered to [가림]
+Academic license 926906 - for non-commercial use only - registered to [가림]
+Academic license 926906 - for non-commercial use only - registered to [가림]
+Academic license 926906 - for non-commercial use only - registered to [가림]
+Academic license 926906 - for non-commercial use only - registered to [가림]
+Academic license 926906 - for non-commercial use only - registered to [가림]
+Academic license 926906 - for non-commercial use only - registered to [가림]
+Academic license 926906 - for non-commercial use only - registered to [가림]
+Academic license 926906 - for non-commercial use only - registered to [가림]
+
+******************************************************************************
+This program contains Ipopt, a library for large-scale nonlinear optimization.
+ Ipopt is released as open source code under the Eclipse Public License (EPL).
+         For more information visit https://github.com/coin-or/Ipopt
+******************************************************************************
+
+    [nz-α-B&B-dr] t=  68.8s nodes=  562 open=  164 LB=-3169.632035 UB=-2486.159381 gap=2.156e-01
+    [nz-α-B&B-dr] t= 129.1s nodes= 1465 open=  389 LB=-3169.632035 UB=-2645.432436 gap=1.654e-01
+    [nz-α-B&B-dr] t= 189.3s nodes= 2272 open=  376 LB=-3169.632035 UB=-2734.938016 gap=1.371e-01
+    [nz-α-B&B-dr] t= 249.3s nodes= 3048 open=  406 LB=-3169.632035 UB=-2832.602921 gap=1.063e-01
+    [nz-α-B&B-dr] t= 309.3s nodes= 3620 open=  384 LB=-3169.632035 UB=-2875.854952 gap=9.268e-02
+    [nz-α-B&B-dr] t= 369.5s nodes= 4213 open=  379 LB=-3169.632035 UB=-2913.814052 gap=8.071e-02
+    [nz-α-B&B-dr] t= 429.7s nodes= 4844 open=  380 LB=-3167.309634 UB=-2977.970386 gap=5.978e-02
+    [nz-α-B&B-dr] t= 489.8s nodes= 5416 open=  458 LB=-3167.309634 UB=-3012.604206 gap=4.884e-02
+    [LP] 비유계 보고 → 재시도 결과 OPTIMAL
+    [nz-α-B&B-dr] t= 550.0s nodes= 5840 open=  460 LB=-3161.830530 UB=-3028.625003 gap=4.213e-02
+    [nz-α-B&B-dr] t= 610.1s nodes= 6386 open=  426 LB=-3156.560692 UB=-3056.365563 gap=3.174e-02
+    [nz-α-B&B-dr] t= 670.3s nodes= 6967 open=  391 LB=-3156.499993 UB=-3079.345168 gap=2.444e-02
+    [nz-α-B&B-dr] t= 730.4s nodes= 7587 open=  313 LB=-3156.499993 UB=-3105.593210 gap=1.613e-02
+    [nz-α-B&B-dr] t= 790.6s nodes= 8234 open=  348 LB=-3156.499993 UB=-3124.287786 gap=1.021e-02
+    [nz-α-B&B-dr] t= 850.6s nodes= 8980 open=  266 LB=-3156.499993 UB=-3140.823349 gap=4.966e-03
+[abb_dd_patch] nz_alpha_bnb_dr 재정의: range_lp + dd 허용 (실험용)
+nz_alpha_bnb_dr: 기본이 아닌 구성으로 실행 — dd = true, resp = true
+[abb_dd_patch] dd_sdcut: KKT-MIP 에 강쌍대 McCormick 행 (곱 28 개 × 시나리오 10 × worker 11)
+RESULT g=5 S=10 x={4:200;7:200;12:300} V in [-3156.5000, -3149.5639] (905s) 노드 9620, 이완 4787s, 평가 432s, 범위 3972s (MIP 6953, 실패 0), 재확인 31s, ipopt 26, 고정 비율 0.20, 수치 오류 32, 루트 UB -1787.7431
+DD 선별 (패치): (nodes = 2415, mips = 6953, empty = 0, cut = 1546, skip = 0, pruned_after = 1305, t_lp = 2015.6, n_lp = 1010758, t_mip = 817.3, rechk = 0, rechk_inf = 0, objstop = 1410, face_hit = 149277, sdchk = 0, sdref = 0, sdviol = 0, sdinf = 0, sdmaxv = -Inf)
+느린 노드 (상위 10): [(76.96300005912781, 2.7639368, 74.10769950000001, 0.033072500000000005), (60.46999979019165, 1.3218098, 59.053764400000006, 0.0350294), (23.092999935150146, 1.3160407, 21.7201688, 0.0), (22.483999967575073, 0.1313385, 22.3147173, 0.0), (22.414000034332275, 0.1144171, 22.2199789, 0.0), (21.389000177383423, 2.5290612, 18.770088100000002, 0.032248200000000005), (21.33399987220764, 0.1143945, 21.176267, 0.0), (20.95300006866455, 1.6940625999999999, 19.215674699999997, 0.0), (20.482999801635742, 0.1060652, 20.3285654, 0.0), (20.153000116348267, 0.6122119, 19.5032564, 0.0)]
+전선 저장: orep_front_g5_S10_rc900_ddsd.jls (열린 노드 261)
+전선: 열린 노드 261, 상한 ≤ 목표 160 (61%), 상한 범위 [-3162.61, -3149.56], 목표 -3151.60, incumbent -3156.50
