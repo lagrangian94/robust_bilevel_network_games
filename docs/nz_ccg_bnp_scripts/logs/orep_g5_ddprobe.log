@@ -1,0 +1,34 @@
+[abb_dd_patch] nz_alpha_bnb_dr 재정의: range_lp + dd 허용 (실험용)
+  [HUCAP] 거점 4: hᵁ 300 → 200
+  [HUCAP] 거점 7: hᵁ 300 → 200
+--- oracle 재현 g=5 S=10 x={4:200;7:200;12:300} λᵁ=10000 목표 -3151.6 gap 1.0e-03 상한 300s, 스레드 12, 추가 인자 (resp = true, dd = true, dd_maxw = 25.0, dd_inc = :viol1, dd_objstop = true, dd_fcache = true)
+nz_alpha_bnb_dr: 기본이 아닌 구성으로 실행 — dd = true, resp = true
+Academic license 926906 - for non-commercial use only - registered to [가림]
+Academic license 926906 - for non-commercial use only - registered to [가림]
+Academic license 926906 - for non-commercial use only - registered to [가림]
+Academic license 926906 - for non-commercial use only - registered to [가림]
+Academic license 926906 - for non-commercial use only - registered to [가림]
+Academic license 926906 - for non-commercial use only - registered to [가림]
+Academic license 926906 - for non-commercial use only - registered to [가림]
+Academic license 926906 - for non-commercial use only - registered to [가림]
+Academic license 926906 - for non-commercial use only - registered to [가림]
+Academic license 926906 - for non-commercial use only - registered to [가림]
+Academic license 926906 - for non-commercial use only - registered to [가림]
+Academic license 926906 - for non-commercial use only - registered to [가림]
+
+******************************************************************************
+This program contains Ipopt, a library for large-scale nonlinear optimization.
+ Ipopt is released as open source code under the Eclipse Public License (EPL).
+         For more information visit https://github.com/coin-or/Ipopt
+******************************************************************************
+
+    [nz-α-B&B-dr] t=  68.4s nodes=  601 open=  187 LB=-3162.436999 UB=-2501.656448 gap=2.089e-01
+    [nz-α-B&B-dr] t= 129.0s nodes= 1445 open=  395 LB=-3162.436999 UB=-2643.904807 gap=1.640e-01
+    [nz-α-B&B-dr] t= 189.0s nodes= 2057 open=  423 LB=-3162.436999 UB=-2708.234148 gap=1.436e-01
+    [nz-α-B&B-dr] t= 249.1s nodes= 2639 open=  395 LB=-3162.436999 UB=-2781.462995 gap=1.205e-01
+RESULT g=5 S=10 x={4:200;7:200;12:300} V in [-3159.1432, -2834.8250] (305s) 노드 3094, 이완 1441s, 평가 193s, 범위 1272s (MIP 1114, 실패 0), 재확인 40s, ipopt 8, 고정 비율 0.19, 수치 오류 7, 루트 UB -1787.7431
+DD 선별 (패치): (nodes = 282, mips = 1114, empty = 0, cut = 276, skip = 0, pruned_after = 274, t_lp = 334.0, n_lp = 172592, t_mip = 573.3, rechk = 0, rechk_inf = 0, objstop = 50, face_hit = 506)
+느린 노드 (상위 10): [(41.11899995803833, 4.1214078, 5.5770222, 31.3771102), (21.615000009536743, 6.8948848, 14.6735015, 0.0)]
+전선 저장: orep_front_g5_S10_ddprobe.jls (열린 노드 433)
+전선: 열린 노드 433, 상한 ≤ 목표 0 (0%), 상한 범위 [-3140.56, -2834.83], 목표 -3151.60, incumbent -3159.14
+ddmip_probe: DD MIP 1114 개 기록, 222 개 저장 → C:/Users/user/AppData/Local/Temp/claude/a31bffbb1639accd/310f4530-ff69-4912-9a26-69df1bdd76ba/scratchpad/ddmip_g5\ddmip.csv

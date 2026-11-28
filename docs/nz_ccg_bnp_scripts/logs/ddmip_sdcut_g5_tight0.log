@@ -1,0 +1,9 @@
+[orig      ] 15 s: Runtime 합 106.8 s (평균 0.481, 중앙 0.375, 최대 2.00) | 노드 중앙 1369, 최대 5057, 0~1 개 1 / 222 | 상태 2×210 9×3 15×9 | 곱 0, 빠진 envelope 0
+[sd        ] 5 s: Runtime 합 26.3 s (평균 0.119, 중앙 0.113, 최대 0.30) | 노드 중앙 64, 최대 541, 0~1 개 14 / 222 | 상태 2×214 15×8 | 곱 8, 빠진 envelope 0
+[sd_cuts0  ] 4 s: Runtime 합 19.3 s (평균 0.087, 중앙 0.081, 최대 0.24) | 노드 중앙 86, 최대 509, 0~1 개 9 / 222 | 상태 2×214 15×8 | 곱 8, 빠진 envelope 0
+검사 sd: 둘 다 OPTIMAL 인 209 개에서 목적값 최대 상대 차 2.7e-04
+검사 sd_cuts0: 둘 다 OPTIMAL 인 209 개에서 목적값 최대 상대 차 4.9e-04
+검사 실패: 목적값이 어긋난 MIP 37 개 (위 목록)
+→ C:/Users/user/AppData/Local/Temp/claude/a31bffbb1639accd/310f4530-ff69-4912-9a26-69df1bdd76ba/scratchpad/ddmip_g5\sdcut.csv
+ERROR: LoadError: 검사 실패: 목적값이 어긋난 MIP 37 개 (위 목록, CSV 는 저장함)
+in expression starting at C:\Users\user\robust_bilevel_network_games\docs\nz_ccg_bnp_scripts\ddmip_sdcut.jl:159
