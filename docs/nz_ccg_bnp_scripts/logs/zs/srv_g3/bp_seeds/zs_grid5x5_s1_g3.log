@@ -1,0 +1,83 @@
+  [zero-sum] net grid5x5, seed 1, S 10, 호 47 (차단 가능 25), γ 3, w 13.8032, ε̂ = ε̃ = 0.30, β 0.40, δ 0.100, λᵁ 1.0e+04, 카디널리티 Tuple{Int64, Int64}[]
+  [설정] η 1.0e-04, μ 1.0e+04 (상한 1.0e+04), oracle λᵁ 1.0e+04, μη = 1
+--- ccgbp (기본 판 = v17) | tabu 가격 켬: 시작 3·걸음 5·이웃 10·tabu 길이 5·열 상한 10) | ccgbp v16 (v15 + 1 단계 총량 몫 0.30·TL = 1080s) | ccgbp v15 (v14 + oracle 패치 없음 인자 NamedTuple(), 1 단계 결론 없으면 누적 900s 까지 이어 풂) | ccgbp v14 (v13 + 1 단계 oracle 상한 300s (새 점도), LB 가 생기면 마감까지 oracle·나무; v13 = v12 + oracle α 재사용; 예산 분할: oracle θ 0.75, 나무 몫 0.20, 루트 정확 CG end; HUCAP=false, resp=true; 평가기 κ 단계 (0.0, 1.0e-11, 1.0e-9, 1.0e-7)) | SB_K 3 PH1 true ORCL_TL 900 PSTOP true
+ g=1 coupled r=0.20 S=10, 스레드 16, tol 5.0e-03, μ 1e+04, η 0.0001, NS 10, SEED_ALL false, NTOP 5, CGTOL 1.0e-03
+Set parameter Username
+Academic license - for non-commercial use only - expires 2027-06-29
+Set parameter Username
+Academic license - for non-commercial use only - expires 2027-06-29
+Set parameter Username
+Academic license - for non-commercial use only - expires 2027-06-29
+Set parameter Username
+Academic license - for non-commercial use only - expires 2027-06-29
+Set parameter Username
+Academic license - for non-commercial use only - expires 2027-06-29
+Set parameter Username
+Academic license - for non-commercial use only - expires 2027-06-29
+Set parameter Username
+Academic license - for non-commercial use only - expires 2027-06-29
+Set parameter Username
+Academic license - for non-commercial use only - expires 2027-06-29
+Set parameter Username
+Academic license - for non-commercial use only - expires 2027-06-29
+Set parameter Username
+Academic license - for non-commercial use only - expires 2027-06-29
+Set parameter Username
+Academic license - for non-commercial use only - expires 2027-06-29
+Set parameter Username
+Academic license - for non-commercial use only - expires 2027-06-29
+Set parameter Username
+Academic license - for non-commercial use only - expires 2027-06-29
+Set parameter Username
+Academic license - for non-commercial use only - expires 2027-06-29
+Set parameter Username
+Academic license - for non-commercial use only - expires 2027-06-29
+Set parameter Username
+Academic license - for non-commercial use only - expires 2027-06-29
+Set parameter Username
+Academic license - for non-commercial use only - expires 2027-06-29
+Set parameter Username
+Academic license - for non-commercial use only - expires 2027-06-29
+Set parameter Username
+Academic license - for non-commercial use only - expires 2027-06-29
+  [시작] t 하한 -0.00 (낙관값 LP 0.5s)
+  [ph1] 루트 RMP 17.55, 마스터 UB 17.55 (x={24;25;36}), 블록 1, LP 누적 93 (경과 7s)
+    [탐색] x={24;25;36}               t 17.55 → 32.98 (block), 블록 2
+  [ph1] 루트 RMP 23.32, 마스터 UB 23.32 (x={24;35;36}), 블록 2, LP 누적 1029 (경과 9s)
+    [탐색] x={24;35;36}               t 23.32 → 26.59 (block), 블록 3
+  [ph1] 루트 RMP 25.73, 마스터 UB 27.07 (x={24;35;36}), 블록 3, LP 누적 1614 (경과 10s)
+    [탐색] x={24;35;36}               t 27.07 → 27.82 (block), 블록 4
+  [ph1] 루트 RMP 26.82, 마스터 UB 27.82 (x={24;35;36}), 블록 4, LP 누적 2036 (경과 10s)
+    [탐색] x={15;24;35}               t 29.78 → 29.99 (block), 블록 5
+  [ph1] 루트 RMP 26.82, 마스터 UB 27.82 (x={24;35;36}), 블록 5, LP 누적 2290 (경과 10s)
+    [탐색] x={24;35;36}               t 27.82 → 27.87 (block), 블록 6
+  [ph1] 루트 RMP 26.82, 마스터 UB 27.87 (x={24;35;36}), 블록 6, LP 누적 2413 (경과 10s)
+    [탐색] x={15;24;35}               t 29.99 → 30.17 (block), 블록 7
+  [ph1] 루트 RMP 26.82, 마스터 UB 27.87 (x={24;35;36}), 블록 7, LP 누적 2712 (경과 11s)
+
+******************************************************************************
+This program contains Ipopt, a library for large-scale nonlinear optimization.
+ Ipopt is released as open source code under the Eclipse Public License (EPL).
+         For more information visit https://github.com/coin-or/Ipopt
+******************************************************************************
+
+  [orcl] x={24;35;36}               V in [27.87, 27.87] (정확값 27.87), t0 27.87, 목표 27.98 (19s, 상한 300s) none, 블록 7, LB -Inf UB 27.87 (경과 32s)
+         α-B&B: 노드 1, 이완 1s, 평가 0s, 범위 0s (MIP 0, 실패 0), 재확인 0s, ipopt 1, 고정 비율 NaN, 수치 오류 0
+  [1 단계 끝] 32s, belief 7, UB 27.87 (v16: 끝난 까닭 인증, 총량 몫 1080s)
+  [node   1] root                               깊이 0: RMP 26.82, LB -Inf, 분수, 열린 0, 주차 0, LB* -Inf UB 27.87, 마스터 inc 27.87 (PT Inf), 블록 7, MILP 0 (경과 33s)
+      [sb] o35 (0.517): 열림 26.97, 닫힘 27.38, 점수 0.0818
+      [sb] o25 (0.483): 열림 29.37, 닫힘 26.97, 점수 0.375
+      [sb] o30 (0.483): 열림 27.38, 닫힘 26.85, 점수 0.0159
+  [node   2] root o25=0                         깊이 1: RMP 26.97, LB -Inf, 분수, 열린 1, 주차 0, LB* -Inf UB 27.87, 마스터 inc 27.87 (PT Inf), 블록 7, MILP 0 (경과 35s)
+      [sb] o15 (0.565): 열림 29.99, 닫힘 27.87, 점수 2.72
+      [sb] o36 (0.435): 열림 27.87, 닫힘 27.46, 점수 0.441
+  [node   3] root o25=0 o15=0                   깊이 2: RMP 27.87, LB 27.87, 분수, 열린 2, 주차 0, LB* -Inf UB 27.87, 마스터 inc 27.87 (PT Inf), 블록 7, MILP 2 (경과 37s)
+  [node   4] root o25=1                         깊이 1: RMP 29.37, LB 29.37, 분수, 열린 1, 주차 0, LB* -Inf UB 27.87, 마스터 inc 27.87 (PT Inf), 블록 7, MILP 4 (경과 37s)
+  [node   5] root o25=0 o15=1                   깊이 2: RMP 29.99, LB 29.99, 분수, 열린 0, 주차 0, LB* -Inf UB 27.87, 마스터 inc 27.87 (PT Inf), 블록 7, MILP 6 (경과 37s)
+RESULT ccgbp_zs net=grid5x5 seed=1 gamma=3 eps=0.30 beta=0.40 delta=0.100 lamU=1e+04 status=Optimal x={24;35;36} LB=27.7352 UB=27.8745 gap=0.500% beliefs=7 노드 5 (가지침 3, 정확 3, 정수 0, 남은 0, 주차 0, 막힘 0) 안전장치 0 (no-good 0, restricted 0, μ 올림 0) time=37.5 (1 단계 32s)
+  시간: oracle 1 번 19s, 탐색 14 번 1s, 블록 LP 5463 번 2s, 가격 MILP 6 번 1s (노드 3459), RMP 231 번 0s (crossover 재시도 0), 생성기 구성 1s; 서로 다른 점 1719 / 2626
+  v12: 주차 0 번, 다시 엶 0 번, 마스터 incumbent oracle 0 번, 엄격 정확 CG 0 번, 후보점 23
+  v13: α 재사용 위반 0 번 (정확 평가 0 번 0s), α 풀 1
+  v14: 1 단계 상한 300s, 마감 루트 CG 건너뜀, 2 단계 마감 TL (하한 있음)
+  열: RMP 에 들어간 열 (블록 합) 741, 서로 다른 열 318, 번호를 붙인 점 2305 / |X| 2626
+  v17: tabu 켬, 라운드 40 (열 찾음 15), 넣은 열 52, LP 2412 번, 1s; 정확 MILP 가 넣은 열 0 개의 지지점 최소 해밍 거리 
