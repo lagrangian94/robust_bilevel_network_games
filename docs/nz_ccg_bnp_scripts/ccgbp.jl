@@ -5,7 +5,7 @@
 #  주요 환경 변수 (기본값): GEO 1, S 10, NB 3, R 0.2, TL 3600, TOL 5e-3, ETA 1e-4, MU·MU_MAX·LAMU 1e4,
 #    NS 10, TABU 1 (TB_START 3, TB_IT 5, TB_NS 10, TB_LEN 5, TB_CMAX 10), HUCAP 1, ORCL_RESP 1, ORCL_TL 900,
 #    ORCL_THETA 0.75, TREE_SHARE 0.2, ROOT_EXACT end, PH1_CAP 300, PH1_TOT 900, PH1_SHARE 0.3,
-#    ABB_PATCH "" (빈 값 = 저장소 α-B&B; 실험용 α-B&B 재정의 파일 경로를 주면 include, 예 abb_dd_patch.jl), ORCL_KW (α-B&B 추가 인자, 2026-11-28 부터 기본 "(dd=true,)" = 저장소 선별 DD + 강쌍대 cut, md 11.33; DD 끔은 "NamedTuple()").
+#    ABB_PATCH "" (빈 값 = 저장소 α-B&B; 실험용 α-B&B 재정의 파일 경로를 주면 include, 예 abb_dd_patch.jl), ORCL_KW (α-B&B 추가 인자, 2026-11-28 부터 기본 "(dd=true,)" = 저장소 선별 DD + 강쌍대 cut, md 11.33; DD 끔은 "(dd=false,)". 2026-11-29 부터 함수 기본도 DD 켬이라 "NamedTuple()" 도 DD 켬, md 11.34).
 #  실행: GRB_LICENSE_FILE=... julia -t 12,1 --project=. docs/nz_ccg_bnp_scripts/ccgbp.jl   (oracle 때문에 interactive 스레드 1 개 필요)
 root = "C:/Users/user/robust_bilevel_network_games"
 using JuMP, Gurobi, Printf, LinearAlgebra, Random, Serialization

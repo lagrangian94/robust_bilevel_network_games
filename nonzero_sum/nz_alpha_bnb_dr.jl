@@ -1120,8 +1120,8 @@ end
 const _NZ_DR_ANNOUNCED = Set{Any}()
 const _NZ_DR_ANNOUNCE_LOCK = ReentrantLock()
 
-"기본 구성 (2026-10-13, 2026-10-30 갱신: 꼭짓점 LP 범위·Farkas·사전 판정·부모 basis·노드 LP 상한, 문서 §10.29; 2026-11-27: 꼭짓점 재사용·α̂ 평가 적응, docs/nz_ccg_bnp_2026-11-23.md 11.21; 노드 LP ScaleFlag 2, 11.22). 이 값과 다른 항목이 있으면 _nz_dr_announce 가 stderr 에 알린다"
-const _NZ_DR_DEFAULT = (dual_range=true, comp=true, vcut=true, cslift=true, fwd=true, kmc=true, dd=false, cbranch=true, sticky=true,
+"기본 구성 (2026-10-13, 2026-10-30 갱신: 꼭짓점 LP 범위·Farkas·사전 판정·부모 basis·노드 LP 상한, 문서 §10.29; 2026-11-27: 꼭짓점 재사용·α̂ 평가 적응, docs/nz_ccg_bnp_2026-11-23.md 11.21; 노드 LP ScaleFlag 2, 11.22; 2026-11-29: 선별 DD 켬, 11.34). 이 값과 다른 항목이 있으면 _nz_dr_announce 가 stderr 에 알린다"
+const _NZ_DR_DEFAULT = (dual_range=true, comp=true, vcut=true, cslift=true, fwd=true, kmc=true, dd=true, cbranch=true, sticky=true,
                         lp_tol=1e-7, branch_point=:mid, child_rounds=1, resp=false, range_mip=true, range_nodes=typemax(Int), range_time=Inf,
                         range_lp=true, resp_fix=false, farkas=true, lp_method=1, lp_presolve=0, lp_crossover=-1, infeas_pre=true, infeas_pre_retry=true, parent_basis=true, share_rows=false, node_lp_cap=120.0, hucap=true,
                         corner_reuse=true, ev_adapt=true, ev_warm=300, ev_probe=10, lp_scale=2)
@@ -1219,7 +1219,7 @@ nz_alpha_bnb (기존, `bnb = :legacy`) 의 탐색 — worker 병렬, best-first 
 | | `cslift` | true | follower 1 단계 상보성의 RLT (X) |
 | | `fwd` | true | follower 블록의 시나리오별 약쌍대 (FWD). X 가 필요 |
 | | `kmc` | true | κ 상한과 Zκ 의 위쪽 McCormick (KMC). X 가 필요 |
-| | `dd` | false | 쌍대 차이 범위 (DD). range_lp = false 면 범위 MIP 안의 차이 범위 (2026-10-13 기본은 true, 노드당 범위 MIP 37 → 69 개, 노드 1/10), range_lp = true 면 노드 LP 뒤 선별 DD (아래 `dd_*`, 2026-11-28 저장소 반영) |
+| | `dd` | nothing (= `range_lp`) | 쌍대 차이 범위 (DD). range_lp = true 면 노드 LP 뒤 선별 DD (아래 `dd_*`, 2026-11-28 저장소 반영, 2026-11-29 기본 켬: 어려운 고정 x̄ 네 점 1,800 s 에서 시간 기하평균 0.80 배, 문서 docs/nz_ccg_bnp_2026-11-23.md 11.34). range_lp = false 면 범위 MIP 안의 차이 범위 (2026-10-13 기본은 true, 노드당 범위 MIP 37 → 69 개, 노드 1/10) 이고 기본은 끔 |
 | 범위·LP (2026-10-30) | `range_lp` | true | 범위 MIP 대신 상자 두 꼭짓점의 LP 로 쌍대 범위 (전제 = recourse 값함수의 submodularity, 문서 §10.26). `dual_range = false` ablation 은 `range_lp = false` 와 함께 |
 | | `farkas` | true | 실행 불가능 노드 LP 의 Farkas 쌍대를 검증해 재확인 없이 가지치기 |
 | | `infeas_pre` | true | 노드 LP 전에 recourse 블록을 뺀 부분 LP 로 실행 불가능을 먼저 판정 (Farkas 검증) |
@@ -1234,7 +1234,7 @@ nz_alpha_bnb (기존, `bnb = :legacy`) 의 탐색 — worker 병렬, best-first 
 | 노드 비용 (2026-11-27) | `corner_reuse` | true | 자식 상자가 부모와 공유하는 꼭짓점의 범위 LP 를 건너뛰고 부모 범위를 씀 (같은 LP 라 결과 같음). 환경변수 NZ_EFF_CHECK=1 이면 전부 계산해 비교 (1e-5 넘게 다르면 오류) |
 | | `lp_scale` | 2 | 노드 LP (worker 의 분리 LP, 부분 LP 복사본 포함) 의 Gurobi ScaleFlag. 2 = 기하평균 스케일링 (노드 LP 계수가 3e-6 ~ 2e5 로 흩어져 있음), −1 = Gurobi 기본. 꼭짓점 범위 LP·α̂ 평가는 그대로. 수치 오류 재시도에서도 유지 (문서 11.22) |
 | | `ev_adapt`, `ev_warm`, `ev_probe` | true, 300, 10 | α̂ 정확 평가 (resp 포함) 가 ev_warm 번 연속 incumbent 를 못 바꾸면 ev_probe 노드에 한 번만 평가, incumbent 가 바뀌면 처음으로. 평가는 incumbent 에만 쓰여 상한·가지치기와 무관 |
-| 선별 DD (2026-11-28, `dd = true`·`range_lp` 전용) | `dd_maxw` | 25.0 | 활성 좌표의 최대 상자 폭이 이 값 이하인 노드에서만 선별 (넓은 상자에서는 차이가 모이지 않아 비쌈) |
+| 선별 DD (2026-11-28, `dd = true`·`range_lp` 전용, 2026-11-29 기본 켬) | `dd_maxw` | 25.0 | 활성 좌표의 최대 상자 폭이 이 값 이하인 노드에서만 선별 (넓은 상자에서는 차이가 모이지 않아 비쌈) |
 | | `dd_mip_tl`, `dd_batch` | 2.0, 2 | KKT-MIP 하나의 시간 상한 (넘으면 objective_bound), 한 번에 인증하는 후보 수 (그 뒤 노드 LP 를 다시 풂) |
 | | `dd_sigbd` | true | KKT-MIP 에 상자의 꼭짓점 범위를 H 행 쌍대 경계로 (MIP 평균 0.87 → 0.19 s). 실행 불가능이면 경계를 빼고 재확인 |
 | | `dd_adapt`, `dd_warm`, `dd_minrate`, `dd_probe` | true, 200, 0.25, 10 | DD 받은 노드 중 상한이 내려간 비율이 낮으면 선별 빈도를 1/dd_probe 로 |
@@ -1268,7 +1268,8 @@ function nz_alpha_bnb_dr(nd::NZData, x̄;
                          min_width=1e-7, presolve::Bool=true,
                          # 강화 스위치 (ablation 전용, 기본 모두 켬)
                          dual_range::Bool=true, comp::Bool=true, vcut::Bool=true, cslift::Bool=true,
-                         fwd::Bool=true, kmc::Bool=true, dd::Bool=false,
+                         # dd: nothing (기본) = range_lp 를 따름 (range_lp 면 선별 DD 켬, 범위 MIP 판의 DD 는 끔, 2026-11-29)
+                         fwd::Bool=true, kmc::Bool=true, dd::Union{Nothing,Bool}=nothing,
                          # 탐색·LP 구성 (ablation 전용, 기본 켬)
                          cbranch::Bool=true, sticky::Bool=true, lp_tol::Float64=1e-7,
                          # primal 휴리스틱: 노드 완화의 belief 에서 follower 의 최적 반응을 평가 (nz_resp_heuristic.jl)
@@ -1319,7 +1320,7 @@ function nz_alpha_bnb_dr(nd::NZData, x̄;
                          lp_scale::Int=2,
                          # 이어 풀기: 같은 x̄ 의 이전 호출이 돌려준 r[:state]
                          resume=nothing,
-                         # 선별 DD (dd = true 이고 range_lp = true 일 때, 2026-11-25 ~ 11-28, 문서 docs/nz_ccg_bnp_2026-11-23.md 11.13 ~ 11.33).
+                         # 선별 DD (dd = true 이고 range_lp = true 일 때, 2026-11-25 ~ 11-28, 문서 docs/nz_ccg_bnp_2026-11-23.md 11.13 ~ 11.34, 2026-11-29 부터 기본).
                          #   노드 LP 로 가지치기 못 한 노드에서 두 꼭짓점의 최적 쌍대 면을 보고 follower 쌍대 차이가 모인 (쌍, 시나리오) 를 고른 뒤,
                          #   지금 노드 LP 해가 그 꼭짓점 구간에서 벗어난 양이 큰 후보부터 dd_batch 개씩 KKT-MIP 로 차이 범위를 인증하고 다시 푼다
                          #   (가지치기되거나 자를 후보가 없으면 멈춤, 남은 후보는 덜 조일 뿐). 유효성은 범위 MIP 판 DD 와 같은 논증.
@@ -1332,6 +1333,7 @@ function nz_alpha_bnb_dr(nd::NZData, x̄;
                          dd_minrate::Float64=0.25, dd_probe::Int=10, dd_batch::Int=2, dd_objstop::Bool=true, dd_fcache::Bool=true,
                          dd_sdcut::Bool=true)
     branch_point in (:alphahat, :mid) || error("branch_point = :alphahat | :mid")
+    dd = dd === nothing ? range_lp : dd   # 기본: 꼭짓점 LP 범위 (range_lp) 판이면 선별 DD 켬. 범위 MIP 판 (range_lp = false) 의 DD 는 재지 않은 채라 끔
     config = (dual_range=dual_range, comp=dual_range && comp, vcut=dual_range && vcut, cslift=dual_range && cslift,
               branch_point=branch_point, child_rounds=child_rounds, maxrounds=maxrounds, dive_max=dive_max,
               sep_maxadd=sep_maxadd, presolve=presolve, heuristic=heuristic,

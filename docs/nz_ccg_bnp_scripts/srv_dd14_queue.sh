@@ -11,7 +11,8 @@ TL=${TLIM:-300}; SFX=""; [ "$TL" = "300" ] || SFX=_t$TL
 export GRB_LICENSE_FILE=$HOME/gurobi.lic
 #   구성 G (2026-11-28 밤, 사용자 "구로비 솔바로 푼 거랑도 비교"): 같은 점·정의역의 Ω 를 Gurobi NonConvex 로 (orcl_replay 의 SOLVER=grb, Threads = 8)
 SOLV=abb
-case $C in A) KW="(resp=true,)";; B) KW="(resp=true, dd=true)";; G) KW="NamedTuple()"; SOLV=grb;; *) echo "구성 A | B | G"; exit 1;; esac
+case $C in A) KW="(resp=true, dd=false)";;   # 2026-11-29: 함수 기본이 DD 켬으로 바뀌어 A 는 dd=false 를 명시 (돌린 때는 기본 끔)
+ B) KW="(resp=true, dd=true)";; G) KW="NamedTuple()"; SOLV=grb;; *) echo "구성 A | B | G"; exit 1;; esac
 PTS=(
 "9 {5:300;12:200} -2329.76"
 "10 {4:200;13:300} -2390.37"
