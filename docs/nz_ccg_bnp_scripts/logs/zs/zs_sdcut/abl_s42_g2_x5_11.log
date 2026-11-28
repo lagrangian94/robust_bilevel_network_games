@@ -1,0 +1,68 @@
+net abilene seed 42 γ 2 x 5,11 λᵁ 1e+04, 스레드 16, TLIM 300 s, ABB_SD_CHECK 0, ABB_SD_TIGHT false
+Set parameter Username
+Academic license - for non-commercial use only - expires 2027-06-29
+Set parameter Username
+Academic license - for non-commercial use only - expires 2027-06-29
+Set parameter Username
+Academic license - for non-commercial use only - expires 2027-06-29
+Set parameter Username
+Academic license - for non-commercial use only - expires 2027-06-29
+Set parameter Username
+Academic license - for non-commercial use only - expires 2027-06-29
+Set parameter Username
+Academic license - for non-commercial use only - expires 2027-06-29
+Set parameter Username
+Academic license - for non-commercial use only - expires 2027-06-29
+Set parameter Username
+Academic license - for non-commercial use only - expires 2027-06-29
+Set parameter Username
+Academic license - for non-commercial use only - expires 2027-06-29
+Set parameter Username
+Academic license - for non-commercial use only - expires 2027-06-29
+Set parameter Username
+Academic license - for non-commercial use only - expires 2027-06-29
+Set parameter Username
+Academic license - for non-commercial use only - expires 2027-06-29
+Set parameter Username
+Academic license - for non-commercial use only - expires 2027-06-29
+Set parameter Username
+Academic license - for non-commercial use only - expires 2027-06-29
+Set parameter Username
+Academic license - for non-commercial use only - expires 2027-06-29
+
+******************************************************************************
+This program contains Ipopt, a library for large-scale nonlinear optimization.
+ Ipopt is released as open source code under the Eclipse Public License (EPL).
+         For more information visit https://github.com/coin-or/Ipopt
+******************************************************************************
+
+    [nz-α-B&B] t=  33.0s nodes= 2724 open= 2054 LB=15.845039 UB=16.155186 gap=1.957e-02
+    [nz-α-B&B] t=  63.2s nodes= 4797 open= 2719 LB=15.845039 UB=16.044402 gap=1.258e-02
+    [nz-α-B&B] t=  93.4s nodes= 6570 open= 3270 LB=15.845039 UB=15.997111 gap=9.597e-03
+    [nz-α-B&B] t= 123.4s nodes= 8115 open= 3649 LB=15.845039 UB=15.981006 gap=8.581e-03
+    [nz-α-B&B] t= 153.6s nodes= 9372 open= 3808 LB=15.845039 UB=15.966792 gap=7.684e-03
+    [nz-α-B&B] t= 183.7s nodes=10487 open= 3989 LB=15.845039 UB=15.955057 gap=6.943e-03
+    [nz-α-B&B] t= 213.8s nodes=11585 open= 4425 LB=15.845039 UB=15.947691 gap=6.478e-03
+    [nz-α-B&B] t= 244.0s nodes=12594 open= 4722 LB=15.845039 UB=15.940229 gap=6.008e-03
+    [nz-α-B&B] t= 274.2s nodes=13800 open= 5200 LB=15.845039 UB=15.935038 gap=5.680e-03
+plain     V in [15.845039, 15.931141] gap 0.543%, status ?, 노드 14720, 301.4 s
+          t_relax = 4031.9194982859926
+Set parameter Username
+Academic license - for non-commercial use only - expires 2027-06-29
+    [LP] 비유계 보고 → 재시도 결과 INFEASIBLE
+    [LP] 비유계 보고 → 재시도 결과 INFEASIBLE
+mip       V in [15.845039, 15.950797] gap 0.667%, status ?, 노드 8040, 302.9 s
+          dd_screen (nodes = 0, mips = 0, empty = 0, cut = 0, skip = 0, pruned_after = 0, t_lp = 0.0, n_lp = 0, t_mip = 0.0, rechk = 0, rechk_inf = 0, objstop = 0, face_hit = 0, sdchk = 0, sdref = 0, sdviol = 0, sdinf = 0, sdmaxv = -Inf)
+          t_range = 1230.2966993910002          range_mips = 183504          t_relax = 2721.7007584690004
+    [LP] 비유계 보고 → 재시도 결과 OPTIMAL
+    [LP] 비유계 보고 → 재시도 결과 INFEASIBLE
+mip_sd    V in [15.845039, 15.942953] gap 0.618%, status ?, 노드 8564, 300.1 s
+          dd_screen (nodes = 0, mips = 0, empty = 0, cut = 0, skip = 0, pruned_after = 0, t_lp = 0.0, n_lp = 0, t_mip = 0.0, rechk = 0, rechk_inf = 0, objstop = 0, face_hit = 0, sdchk = 0, sdref = 0, sdviol = 0, sdinf = 0, sdmaxv = -Inf)
+          t_range = 998.9367456949976          range_mips = 186779          t_relax = 2999.559258786993
+mipdd_sd  V in [15.845040, 15.986977] gap 0.896%, status ?, 노드 4181, 300.1 s
+          dd_screen (nodes = 0, mips = 0, empty = 0, cut = 0, skip = 0, pruned_after = 0, t_lp = 0.0, n_lp = 0, t_mip = 0.0, rechk = 0, rechk_inf = 0, objstop = 0, face_hit = 0, sdchk = 0, sdref = 0, sdviol = 0, sdinf = 0, sdmaxv = -Inf)
+          t_range = 1124.987784002003          range_mips = 183419          t_relax = 2647.9311126089992
+[abb_dd_patch] nz_alpha_bnb_dr 재정의: range_lp + dd 허용 (실험용)
+nz_alpha_bnb_dr: 기본이 아닌 구성으로 실행 — range_lp = false, corner_reuse = false
+[abb_dd_patch] dd_sdcut: KKT-MIP 에 강쌍대 McCormick 행 (곱 30 개 × 시나리오 10 × worker 15)
+nz_alpha_bnb_dr: 기본이 아닌 구성으로 실행 — dd = true, range_lp = false, corner_reuse = false
