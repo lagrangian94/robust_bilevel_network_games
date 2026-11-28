@@ -1,0 +1,19 @@
+Academic license 926906 - for non-commercial use only - registered to [가림]
+(A) min-cut VI 우변 = 최대흐름 (시드 4, S 10, 망마다 x 5 개, 첫 x 는 0)
+망            nv1   t 행   x 수   P1 최대 차  P2B 최대 차
+grid5x5        26     26      5     7.11e-15     3.55e-15
+polska         11      9      5     3.55e-15     8.88e-16
+abilene        11      9      5     1.78e-15     1.11e-15
+nobel_us       13      9      5     3.55e-15     2.83e-15
+sioux_falls    23     23      5     7.11e-15     1.78e-15
+(A) 통과: 최대 차 7.105427357601002e-15
+(B) zero-sum 기본 호출: nz_alpha_bnb_dr: range_lp = true 의 전제 (recourse 값함수의 submodularity) 가 최대흐름 (meta[:kind] = :maxflow) 에서 깨짐. zero-sum 에는 nz_alpha_bnb 또는 range_lp = false
+nz_alpha_bnb_dr: 기본이 아닌 구성으로 실행 — range_lp = false, corner_reuse = false
+Academic license 926906 - for non-commercial use only - registered to [가림]
+Academic license 926906 - for non-commercial use only - registered to [가림]
+Academic license 926906 - for non-commercial use only - registered to [가림]
+Academic license 926906 - for non-commercial use only - registered to [가림]
+Academic license 926906 - for non-commercial use only - registered to [가림]
+Academic license 926906 - for non-commercial use only - registered to [가림]
+(B) range_lp = false: V in [-Inf, Inf] (20 s 제한, 참값 21.3786)
+(B) 통과

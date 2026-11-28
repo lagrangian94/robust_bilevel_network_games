@@ -195,7 +195,14 @@ function _bccg_add_block!(C, d, r, μ)
         U = d[s] * get(C, :UF, nd.piFU)[e.k] + (d[s] > 0 ? η * r[s] * maxℓ : 0.0)
         set_upper_bound(pd[e.k, s], U)
         ps = @variable(M, lower_bound = 0.0); push!(vars, ps)
-        push!(cons, @constraint(M, ps >= pd[e.k, s] - U * (1 - x[e.i])))
+        # ps = pd·x 의 McCormick. 마스터가 g·ps 를 아래로 누르므로 g ≥ 0 (x 가 용량을 늘림, 입지) 은 아래쪽 식,
+        # g < 0 (x 가 용량을 줄임, zero-sum 차단 g = −vξ) 은 위쪽 식 (ps ≤ pd, ps ≤ U x). 이진 x 에서 둘 다 ps = pd·x.
+        # 2026-11-28 수정: 예전 판은 아래쪽 식만 있어 g < 0 이면 ps 가 위로 풀려 블록 LP 가 비유계였다 (docs/nz_ccg_bnp_2026-11-23.md 11.28).
+        if e.g[s] >= 0
+            push!(cons, @constraint(M, ps >= pd[e.k, s] - U * (1 - x[e.i])))
+        else
+            push!(cons, @constraint(M, ps <= pd[e.k, s])); push!(cons, @constraint(M, ps <= U * x[e.i]))
+        end
         add_to_expression!(dobj, e.g[s], ps)
     end
     # t0 ≥ C_L + μ (C_F − η C_L⁺) + μ·(쌍대 목적 ≥ −V_F^η)

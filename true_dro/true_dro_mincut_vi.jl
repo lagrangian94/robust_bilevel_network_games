@@ -14,7 +14,7 @@ using JuMP
     extract_arc_topology(Ny, nv1) → (tail, head)
 
 Ny convention: Ny[i,k]=+1 → tail(k)=i, Ny[i,k]=-1 → head(k)=i.
-Source (removed from Ny) → tail/head = 0.  Sink = nv1 (last row).
+Source (removed from Ny) → tail/head = 0.  Sink 의 행은 `_mincut_sink_row(td)` (마지막 행이 아닐 수 있음).
 Returns vectors of length K (num arcs).
 """
 function extract_arc_topology(Ny::Matrix{Float64}, nv1::Int)
@@ -38,6 +38,22 @@ end
 
 
 """
+    _mincut_sink_row(td) → Ny 에서 sink t 의 행 번호
+
+더미 호 (t → s) 의 열 Nts 에서 읽는다. s 행은 Ny 에서 빠져 있으므로 Nts 의 비영 원소는 t 행의 +1 하나다.
+2026-11-28 수정: 예전 판은 sink = nv1 (Ny 의 마지막 행) 으로 가정했다. grid5x5·Sioux Falls 는 맞지만
+Polska·Abilene·Nobel-US 는 t 가 9 행 (nv1 = 11, 11, 13) 이라 VI 가 t 가 아닌 마디까지의 cut 을 하한으로 넣었다
+(Polska s4 x = {7,18}: 우변 28.07, 실제 h = 0 최대흐름 5.01). docs/nz_ccg_bnp_2026-11-23.md 11.28 절.
+"""
+function _mincut_sink_row(td::TrueDROData)
+    nzr = findall(!iszero, td.Nts)
+    (length(nzr) == 1 && td.Nts[nzr[1]] == 1.0) ||
+        error("_mincut_sink_row: Nts 의 비영 원소가 t 행의 +1 하나가 아님 (행 $(nzr), 값 $(td.Nts[nzr]))")
+    return nzr[1]
+end
+
+
+"""
     add_phase1_mincut_vi!(omp_model, omp_vars, td)
 
 Phase 1: h=0, all S scenarios, added once.
@@ -51,6 +67,7 @@ function add_phase1_mincut_vi!(omp_model, omp_vars, td::TrueDROData)
     nv1 = td.nv1
 
     arc_topo = extract_arc_topology(td.Ny, nv1)
+    tsk = _mincut_sink_row(td)
 
     x = omp_vars[:x]
     t_0 = omp_vars[:t_0]
@@ -65,7 +82,7 @@ function add_phase1_mincut_vi!(omp_model, omp_vars, td::TrueDROData)
 
     for j in 1:S
         # DC-2: τ_sink = 1
-        @constraint(omp_model, τ[nv1, j] == 1)
+        @constraint(omp_model, τ[tsk, j] == 1)
 
         for k in 1:K
             # DC-1: δ_k ≥ τ_{head(k)} - τ_{tail(k)}
@@ -124,7 +141,7 @@ function add_phase2B_mincut_vi!(omp_model, omp_vars, td::TrueDROData,
                   base_name="$(tag)_w")
 
     # DC-2: τ_sink = 1
-    @constraint(omp_model, τ[nv1] == 1)
+    @constraint(omp_model, τ[_mincut_sink_row(td)] == 1)
 
     for k in 1:K
         # DC-1

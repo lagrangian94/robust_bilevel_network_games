@@ -1,4 +1,5 @@
 # gen_bd_vifix.py (2026-11-28 아침): true_dro/factor_5/run_nig_coupled_scaling.jl 의 실행 사본을 만든다. 바뀌는 것은 두 가지뿐이다.
+# 2026-11-28 사용자 "다 고쳐" 로 sink 행 수정이 저장소 true_dro_mincut_vi.jl 에 반영됨. 이 생성기는 기록용 (저장소 run_nig_coupled_scaling.jl 을 그대로 써도 같음).
 #   (1) include 경로를 절대 경로 (root) 로 바꾼다.
 #   (2) belief_menu_benders.jl 뒤에 zs_vi_sinkfix.jl 을 include 해서 min-cut VI 의 sink 행을 고친다. 저장소 판은 sink = Ny 마지막 행을 가정하는데 Polska·Abilene·Nobel-US 에서 틀린다.
 #   저장소 파일은 그대로 둔다.

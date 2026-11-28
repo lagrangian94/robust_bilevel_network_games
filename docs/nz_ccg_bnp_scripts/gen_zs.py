@@ -2,6 +2,7 @@
 #   ccgbp.jl 은 그대로 두고, 바꾼 사본을 출력 경로 (기본 scratchpad 의 ccgbp_zs.jl) 에 쓴다. 저장소 코드는 건드리지 않음.
 #   인스턴스: true_dro/factor_5/run_nig_coupled_scaling.jl 과 같은 규칙 (factor_additive k = 5, 시드 ZSEED, w = 0.5 γ median, v ~ Bernoulli(0.75),
 #     γ = 2, grid5x5 구조는 seed 42 고정, 실망은 모든 호 차단 가능 + source/sink cut 카디널리티) → nz_from_true_dro → nz_with_delta.
+#   블록 LP 의 g < 0 McCormick 은 2026-11-28 부터 저장소 판 (nz_belief_ccg.jl) 을 씀.
 #   입지 전용 부분 바꿈: 거점 = 호 (K = 1), 이웃·씨앗점·선형 최소 (linmin) 가 카디널리티 (meta[:omp_card]) 를 지킴, HUCAP 끔 (입지 전용),
 #     상자 없음 (TV 만, 탐색의 상자는 [0, 1]), x 출력은 호 번호, RESULT 에 net·seed·ε·β·δ·λᵁ.
 #   환경 변수 (기본): NET abilene, ZSEED 42, S 10, ZEPS 0.3, ZBETA 0.4, ZDELTA 0.1, LAMU 1e4 (ccgbp 와 같은 이름, oracle·모형 λᵁ), 나머지는 ccgbp.jl 과 같음.
@@ -63,25 +64,10 @@ zs_ok(z) = sum(z) <= nd.gamma + 0.5 && all(nd.x_allowed[i] || z[i] < 0.5 for i i
 '''
 t = rep(t, 'envf(k, d) = get(ENV, k, d)\n', 'envf(k, d) = get(ENV, k, d)\n' + inst)
 
-# (2b) 블록 LP 의 x 곱 McCormick: 저장소 _bccg_add_block! 은 g ≥ 0 (x 가 용량을 늘림, 입지) 만 가정 (ps ≥ pd − U(1 − x), 목적 계수 g ≥ 0 이라 아래로 눌림).
-#      차단은 g = −v ξ < 0 (x 가 용량을 줄임) 이라 ps 가 위로 무한히 커져 블록 LP 가 비유계. g < 0 인 항목은 위쪽 McCormick (ps ≤ pd, ps ≤ U x) 으로:
-#      이진 x 에서 ps = pd·x 로 정확, 분수 x 에서는 dobj 가 작아져 (하한 방향) 유효. 저장소 파일은 그대로 두고 이 사본에서만 재정의.
+# (2b) 블록 LP 의 x 곱 McCormick: 2026-11-28 사용자 "다 고쳐" 로 저장소 nz_belief_ccg.jl 의 _bccg_add_block! 에 반영됨
+#      (g ≥ 0 은 아래쪽 식, g < 0 (차단 g = −vξ) 은 위쪽 식 ps ≤ pd, ps ≤ U x). 예전에는 이 사본에서 재정의했다. 저장소 판이 그 식인지만 확인한다.
 bsrc = open(here + '/../../nonzero_sum/nz_belief_ccg.jl', encoding='utf-8').read()
-j0 = bsrc.index('function _bccg_add_block!(C, d, r, μ)')
-j1 = bsrc.index('\nend\n', j0) + 5
-fn = bsrc[j0:j1]
-old_mc = ("        push!(cons, @constraint(M, ps >= pd[e.k, s] - U * (1 - x[e.i])))\n"
-          "        add_to_expression!(dobj, e.g[s], ps)\n")
-new_mc = ("        if e.g[s] >= 0\n"
-          "            push!(cons, @constraint(M, ps >= pd[e.k, s] - U * (1 - x[e.i])))\n"
-          "        else                                                  # gen_zs.py: g < 0 (차단) 은 위쪽 McCormick\n"
-          "            push!(cons, @constraint(M, ps <= pd[e.k, s])); push!(cons, @constraint(M, ps <= U * x[e.i]))\n"
-          "        end\n"
-          "        add_to_expression!(dobj, e.g[s], ps)\n")
-assert fn.count(old_mc) == 1
-fn = fn.replace(old_mc, new_mc)
-anchor = 'const ABB_PATCH = get(ENV, "ABB_PATCH", "");'
-t = rep(t, anchor, '# gen_zs.py: nz_belief_ccg.jl 의 _bccg_add_block! 를 부호 구분 McCormick 으로 재정의 (원본에서 복사, 위 설명)\n' + fn + '\n' + anchor)
+assert 'push!(cons, @constraint(M, ps <= pd[e.k, s])); push!(cons, @constraint(M, ps <= U * x[e.i]))' in bsrc, '저장소 _bccg_add_block! 에 g < 0 McCormick 없음'
 
 # (3) 인스턴스 생성
 lines = t.split('\n')

@@ -1,4 +1,5 @@
 # zs_vi_sinkfix.jl (2026-11-28 아침): 저장소 true_dro_mincut_vi.jl 의 add_phase1_mincut_vi! 를 실행 사본에서만 덮어쓰는 판.
+# 2026-11-28 사용자 "다 고쳐" 로 같은 식이 저장소 true_dro_mincut_vi.jl (_mincut_sink_row) 에 반영됨. 이 파일은 기록용 (덮어써도 결과 같음).
 #   저장소 판은 sink 를 Ny 의 마지막 행 (nv1) 으로 가정한다 (τ[nv1, j] == 1). grid5x5·Sioux Falls 는 t 가 마지막 행이라 맞지만
 #   Polska·Abilene·Nobel-US 는 t 가 9 행 (nv1 = 11, 11, 13) 이라 VI 가 t 가 아닌 마디까지의 최소 cut 을 하한으로 넣는다 (Polska s4 {7,18}: 우변 28.07 > V 21.38).
 #   여기서는 sink 행을 더미 호 (t → s) 의 열 Nts 에서 읽는다 (Nts 의 비영 원소는 t 행의 +1 하나). 나머지 식은 저장소 판과 같다.

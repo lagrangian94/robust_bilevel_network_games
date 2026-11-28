@@ -1076,6 +1076,12 @@ function nz_alpha_bnb_dr(nd::NZData, x̄;
               range_lp=range_lp, resp_fix=resp_fix, farkas=farkas, lp_method=lp_method, lp_presolve=lp_presolve, lp_crossover=lp_crossover, infeas_pre=infeas_pre, infeas_pre_retry=infeas_pre && infeas_pre_retry, parent_basis=parent_basis, share_rows=share_rows, node_lp_cap=node_lp_cap, hucap=hucap,
               corner_reuse=range_lp && corner_reuse, ev_adapt=ev_adapt, ev_warm=ev_warm, ev_probe=ev_probe, lp_scale=lp_scale)
     lp_scale in (-1, 0, 1, 2, 3) || error("nz_alpha_bnb_dr: lp_scale = -1 | 0 | 1 | 2 | 3 (Gurobi ScaleFlag)")
+    # 꼭짓점 LP 범위의 전제 (recourse 값함수가 α 에 submodular) 는 최대흐름 (zero-sum 차단, nz_from_true_dro) 에서 깨진다. 직렬 호가 보완재라서다.
+    # 2026-11-28 Polska s42 x = {6,33}: range_lp = true 는 [17.2996, 17.2996] (틀린 상한), range_lp = false [17.9315, 18.2326],
+    # nz_alpha_bnb [17.9315, 17.9349] (docs/nz_ccg_bnp_scripts/zs_orcl_check.jl, 문서 docs/nz_ccg_bnp_2026-11-23.md 11.28).
+    range_lp && get(nd.meta, :kind, nothing) === :maxflow &&
+        error("nz_alpha_bnb_dr: range_lp = true 의 전제 (recourse 값함수의 submodularity) 가 최대흐름 (meta[:kind] = :maxflow) 에서 깨짐. " *
+              "zero-sum 에는 nz_alpha_bnb 또는 range_lp = false")
     resp_fix && !range_lp && error("nz_alpha_bnb_dr: resp_fix = true 는 range_lp = true 와 함께")
     range_lp &&(dd || isfinite(range_time) || range_nodes != typemax(Int) || !range_mip || !dual_range) &&
         error("nz_alpha_bnb_dr: range_lp = true 는 dual_range = true, dd = false 와 함께 쓰고 range_mip·range_time·range_nodes 는 기본값으로")
