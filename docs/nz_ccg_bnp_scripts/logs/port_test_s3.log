@@ -1,0 +1,46 @@
+Academic license 926906 - for non-commercial use only - registered to [가림]
+Set parameter Threads to value 4
+Set parameter Threads to value 4
+Set parameter Threads to value 4
+Set parameter Threads to value 4
+Set parameter Threads to value 4
+Set parameter Threads to value 4
+Set parameter Threads to value 4
+S=3 x=[1, 2] KKT OPTIMAL V*=-1470.50000 (bound -1470.50000)
+Academic license 926906 - for non-commercial use only - registered to [가림]
+Academic license 926906 - for non-commercial use only - registered to [가림]
+Academic license 926906 - for non-commercial use only - registered to [가림]
+Academic license 926906 - for non-commercial use only - registered to [가림]
+Academic license 926906 - for non-commercial use only - registered to [가림]
+
+******************************************************************************
+This program contains Ipopt, a library for large-scale nonlinear optimization.
+ Ipopt is released as open source code under the Eclipse Public License (EPL).
+         For more information visit https://github.com/coin-or/Ipopt
+******************************************************************************
+
+RESULT S=3 x=[1, 2]  on     TimeLim LB=-1471.9417 UB=-1443.5244 gap=1.931e-02 nodes=3595 time=64.5 rootUB=-725.73 | relax 26s range 145s (MIP 0, 실패 0) 고정비율 0.00 | 유효
+RESULT S=3 x=[1, 2]  kw     TimeLim LB=-1471.9417 UB=-1448.4107 gap=1.599e-02 nodes=4441 time=60.5 rootUB=-725.73 | relax 33s range 176s (MIP 0, 실패 0) 고정비율 0.00 | 유효
+Set parameter Threads to value 4
+Set parameter Threads to value 4
+Set parameter Threads to value 4
+Set parameter Threads to value 4
+Set parameter Threads to value 4
+Set parameter Threads to value 4
+Set parameter Threads to value 4
+S=3 x=[1] KKT OPTIMAL V*=-783.50000 (bound -783.50000)
+RESULT S=3 x=[1]     on     Optimal LB=-783.5122 UB=-782.9054 gap=7.745e-04 nodes=384 time=3.8 rootUB=-489.00 | relax 2s range 10s (MIP 0, 실패 0) 고정비율 0.00 | 유효
+RESULT S=3 x=[1]     kw     Optimal LB=-783.5122 UB=-782.9054 gap=7.745e-04 nodes=384 time=4.8 rootUB=-489.00 | relax 2s range 12s (MIP 2, 실패 0) 고정비율 0.00 | 유효
+Set parameter Threads to value 4
+Set parameter Threads to value 4
+Set parameter Threads to value 4
+Set parameter Threads to value 4
+Set parameter Threads to value 4
+Set parameter Threads to value 4
+Set parameter Threads to value 4
+S=3 x=[2] KKT OPTIMAL V*=-1141.00000 (bound -1141.00000)
+RESULT S=3 x=[2]     on     Optimal LB=-1141.0070 UB=-1139.8814 gap=9.865e-04 nodes=201 time=2.3 rootUB=-717.84 | relax 1s range 6s (MIP 0, 실패 0) 고정비율 0.00 | 유효
+RESULT S=3 x=[2]     kw     Optimal LB=-1141.0070 UB=-1139.8814 gap=9.865e-04 nodes=201 time=2.3 rootUB=-717.84 | relax 1s range 6s (MIP 0, 실패 0) 고정비율 0.00 | 유효
+nz_alpha_bnb_dr: 기본이 아닌 구성으로 실행 — dd = true
+nz_alpha_bnb_dr: dd_sdcut — KKT-MIP 에 강쌍대 McCormick 행 (곱 15 개 × 시나리오 3 × worker 4, 1 번째마다 행 없는 판과 대조)
+모든 실행에서 KKT V* ∈ [LB, UB]

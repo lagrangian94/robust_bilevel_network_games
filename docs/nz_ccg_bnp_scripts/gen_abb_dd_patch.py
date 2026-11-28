@@ -22,7 +22,9 @@
 # 사용: python gen_abb_dd_patch.py  → abb_dd_patch.jl. 스크립트에서 nz_benders.jl 을 include 한 뒤 include("abb_dd_patch.jl"), dd = true 로 부름.
 import os
 here = os.path.dirname(os.path.abspath(__file__))
-src = os.path.join(here, '..', '..', 'nonzero_sum', 'nz_alpha_bnb_dr.jl')
+# 2026-11-28: 선별 DD 가 저장소에 들어가서 (nz_alpha_bnb_dr 의 dd_* 인자) 저장소 파일은 이 치환과 더는 맞지 않음 →
+#   반영 직전 저장소 판 사본 old/nz_alpha_bnb_dr_pre_dd.jl 에서 만든다 (만들어지는 abb_dd_patch.jl 은 전과 같음)
+src = os.path.join(here, 'old', 'nz_alpha_bnb_dr_pre_dd.jl')
 L = open(src, encoding='utf-8').read().split('\n')
 start = next(i for i, l in enumerate(L) if l.startswith('function nz_alpha_bnb_dr(nd::NZData, x̄;'))
 end = max(i for i, l in enumerate(L) if l == 'end')

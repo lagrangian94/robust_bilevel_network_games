@@ -5,7 +5,7 @@
 #  주요 환경 변수 (기본값): GEO 1, S 10, NB 3, R 0.2, TL 3600, TOL 5e-3, ETA 1e-4, MU·MU_MAX·LAMU 1e4,
 #    NS 10, TABU 1 (TB_START 3, TB_IT 5, TB_NS 10, TB_LEN 5, TB_CMAX 10), HUCAP 1, ORCL_RESP 1, ORCL_TL 900,
 #    ORCL_THETA 0.75, TREE_SHARE 0.2, ROOT_EXACT end, PH1_CAP 300, PH1_TOT 900, PH1_SHARE 0.3,
-#    ABB_PATCH "" (빈 값 = 저장소 α-B&B; 실험용 α-B&B 재정의 파일 경로를 주면 include, 예 abb_dd_patch.jl), ORCL_KW (α-B&B 추가 인자, 기본 없음; DD 는 "(dd=true, dd_maxw=25.0)").
+#    ABB_PATCH "" (빈 값 = 저장소 α-B&B; 실험용 α-B&B 재정의 파일 경로를 주면 include, 예 abb_dd_patch.jl), ORCL_KW (α-B&B 추가 인자, 2026-11-28 부터 기본 "(dd=true,)" = 저장소 선별 DD + 강쌍대 cut, md 11.33; DD 끔은 "NamedTuple()").
 #  실행: GRB_LICENSE_FILE=... julia -t 12,1 --project=. docs/nz_ccg_bnp_scripts/ccgbp.jl   (oracle 때문에 interactive 스레드 1 개 필요)
 root = "C:/Users/user/robust_bilevel_network_games"
 using JuMP, Gurobi, Printf, LinearAlgebra, Random, Serialization
@@ -23,7 +23,7 @@ const CGTOL = parse(Float64, envf("CGTOL", "1e-3")); const NRAND = parse(Int, en
 const PH1_CAP = parse(Float64, envf("PH1_CAP", "300")); const SB_K = parse(Int, envf("SB_K", "3")); const PH1 = envf("PH1", "1") == "1"; const ORCL_TL = parse(Float64, envf("ORCL_TL", "900")); const PSTOP = envf("PSTOP", "1") == "1"
 const LAMU = parse(Float64, envf("LAMU", "1e4")); const ORCL_RESP = envf("ORCL_RESP", "1") == "1"   # oracle 의 λᵁ (loc_tkp 자체 기본은 100), resp 켬/끔
 const HUCAP = envf("HUCAP", "1") == "1"   # v11: oracle 정의역 h_i ≤ b_i(x̄)
-const ORCL_KW = eval(Meta.parse(envf("ORCL_KW", isempty(ABB_PATCH) ? "NamedTuple()" : "(dd=true, dd_maxw=25.0)")))   # v15: α-B&B 추가 인자
+const ORCL_KW = eval(Meta.parse(envf("ORCL_KW", isempty(ABB_PATCH) ? "(dd=true,)" : "(dd=true, dd_maxw=25.0)")))   # v15: α-B&B 추가 인자 (2026-11-28 기본 = 저장소 선별 DD)
 const PH1_TOT = parse(Float64, envf("PH1_TOT", "900"))   # v15: 1 단계에서 결론 없는 점의 누적 oracle 시간 상한
 const PH1_SHARE = parse(Float64, envf("PH1_SHARE", "0.3"))   # v16: 1 단계 총량 몫 (경과가 PH1_SHARE·TL 을 넘으면 다음 반복 안 함)
 const ORCL_THETA = parse(Float64, envf("ORCL_THETA", "0.75")); const TREE_SHARE = parse(Float64, envf("TREE_SHARE", "0.2"))
