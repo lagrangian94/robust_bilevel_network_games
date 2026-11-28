@@ -1,0 +1,19 @@
+ok C:/Users/user/AppData/Local/Temp/claude/a31bffbb1639accd/310f4530-ff69-4912-9a26-69df1bdd76ba/scratchpad/ccgbp_zs.jl
+시작 05:06
+== zs20_grid5x5_s42 EXIT 0 05:14
+RESULT ccgbp_zs net=grid5x5 seed=42 eps=0.30 beta=0.40 delta=0.100 lamU=1e+04 status=Optimal x={33;37} LB=34.4621 UB=34.6353 gap=0.500% beliefs=17 노드 51 (가지침 23, 정확 29, 정수 16, 남은 0, 주차 0, 막힘 0) 안전장치 9 (no-good 9, restricted 0, μ 올림 0) time=476.8 (1 단계 2
+== zs20_polska_s42 EXIT 0 05:18
+RESULT ccgbp_zs net=polska seed=42 eps=0.30 beta=0.40 delta=0.100 lamU=1e+04 status=Optimal x={18;33} LB=19.4196 UB=19.5172 gap=0.500% beliefs=22 노드 29 (가지침 15, 정확 15, 정수 10, 남은 0, 주차 0, 막힘 0) 안전장치 16 (no-good 16, restricted 0, μ 올림 0) time=222.2 (1 단계 
+== zs20_abilene_s42 EXIT 0 05:44
+RESULT ccgbp_zs net=abilene seed=42 eps=0.30 beta=0.40 delta=0.100 lamU=1e+04 status=Optimal x={26;27} LB=13.9337 UB=13.9970 gap=0.453% beliefs=29 노드 11 (가지침 5, 정확 6, 정수 1, 남은 0, 주차 1, 막힘 0) 안전장치 20 (no-good 20, restricted 0, μ 올림 0) time=1542.0 (1 단계 5
+== zs20_nobel_us_s42 EXIT 0 05:55
+RESULT ccgbp_zs net=nobel_us seed=42 eps=0.30 beta=0.40 delta=0.100 lamU=1e+04 status=Optimal x={7;25} LB=16.0024 UB=16.0828 gap=0.500% beliefs=37 노드 41 (가지침 21, 정확 21, 정수 13, 남은 0, 주차 0, 막힘 0) 안전장치 20 (no-good 20, restricted 0, μ 올림 0) time=638.9 (1 단계
+== zs20_sioux_falls_s42 EXIT 0 06:02
+RESULT ccgbp_zs net=sioux_falls seed=42 eps=0.30 beta=0.40 delta=0.100 lamU=1e+04 status=Optimal x={35;52} LB=21.9527 UB=22.0630 gap=0.500% beliefs=17 노드 17 (가지침 9, 정확 9, 정수 4, 남은 0, 주차 0, 막힘 0) 안전장치 4 (no-good 4, restricted 0, μ 올림 0) time=415.6 (1 단계 
+== bd EXIT 0 07:36
+RESULT net=abilene variant=menu S=20 beta=0.40 eps=0.30 delta=0.100 status=Stalled Z0=14.05524720 LB=13.93401210 UB=14.05524720 iters=96 time=3664.72 x=26;27
+RESULT net=grid5x5 variant=menu S=20 beta=0.40 eps=0.30 delta=0.100 status=Optimal Z0=34.63574963 LB=34.63529450 UB=34.63574963 iters=200 time=202.33 x=33;37
+RESULT net=nobel_us variant=menu S=20 beta=0.40 eps=0.30 delta=0.100 status=Optimal Z0=16.10327937 LB=16.02500660 UB=16.10327937 iters=248 time=421.99 x=7;25
+RESULT net=polska variant=menu S=20 beta=0.40 eps=0.30 delta=0.100 status=Optimal Z0=19.55047671 LB=19.45323390 UB=19.55047671 iters=186 time=171.75 x=18;33
+RESULT net=sioux_falls variant=menu S=20 beta=0.40 eps=0.30 delta=0.100 status=Optimal Z0=22.10424348 LB=22.00218900 UB=22.10424348 iters=408 time=1136.37 x=35;52
+QUEUE DONE 07:36
