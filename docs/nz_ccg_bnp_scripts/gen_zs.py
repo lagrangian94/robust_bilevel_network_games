@@ -5,7 +5,7 @@
 #   블록 LP 의 g < 0 McCormick 은 2026-11-28 부터 저장소 판 (nz_belief_ccg.jl) 을 씀.
 #   입지 전용 부분 바꿈: 거점 = 호 (K = 1), 이웃·씨앗점·선형 최소 (linmin) 가 카디널리티 (meta[:omp_card]) 를 지킴, HUCAP 끔 (입지 전용),
 #     상자 없음 (TV 만, 탐색의 상자는 [0, 1]), x 출력은 호 번호, RESULT 에 net·seed·ε·β·δ·λᵁ.
-#   환경 변수 (기본): NET abilene, ZSEED 42, S 10, ZEPS 0.3, ZBETA 0.4, ZDELTA 0.1, LAMU 1e4 (ccgbp 와 같은 이름, oracle·모형 λᵁ), 나머지는 ccgbp.jl 과 같음.
+#   환경 변수 (기본): NET abilene, ZSEED 42, ZGAMMA 2 (차단 호 수 상한 γ, w = 0.5 γ median 도 따라감, 2026-11-28 추가), S 10, ZEPS 0.3, ZBETA 0.4, ZDELTA 0.1, LAMU 1e4 (ccgbp 와 같은 이름, oracle·모형 λᵁ), 나머지는 ccgbp.jl 과 같음.
 #   사용: python gen_zs.py [출력 경로]
 import re, sys
 here = __file__.rsplit('\\', 1)[0] if '\\' in __file__ else __file__.rsplit('/', 1)[0]
@@ -28,6 +28,7 @@ include(joinpath(root, "network_generator.jl")); using .NetworkGenerator; const 
 include(joinpath(root, "true_dro", "true_dro_data.jl"))
 using Statistics
 const NET = get(ENV, "NET", "abilene"); const ZSEED = parse(Int, get(ENV, "ZSEED", "42"))
+const ZGAMMA = parse(Int, get(ENV, "ZGAMMA", "2"))
 const ZEPS = parse(Float64, get(ENV, "ZEPS", "0.3")); const ZBETA = parse(Float64, get(ENV, "ZBETA", "0.4")); const ZDELTA = parse(Float64, get(ENV, "ZDELTA", "0.1"))
 "run_nig_coupled_scaling.jl 의 make_network·인스턴스 규칙과 같음 (grid5x5 구조는 seed 42 고정, 용량·v 는 ZSEED)"
 function zs_instance(S, lamU)
@@ -40,7 +41,7 @@ function zs_instance(S, lamU)
         net0 = gen[NET](); intd = fill(true, length(net0.arcs))
         net = NG.RealWorldNetworkData(net0.name, net0.original_node_names, net0.nodes, net0.arcs, net0.N, intd, net0.arc_adjacency, net0.node_arc_incidence)
     end
-    γ = 2; Kz = length(net.arcs) - 1
+    γ = ZGAMMA; Kz = length(net.arcs) - 1
     caps, _ = NG.generate_capacity_scenarios_factor_additive(length(net.arcs), S; interdictable_arcs=intd, seed=ZSEED, num_factors=5)
     w = round(0.5 * γ * median(caps[findall(intd[1:Kz]), :]); digits=4)
     Random.seed!(ZSEED); v = zeros(Kz, S)
@@ -142,9 +143,9 @@ t = t[:i_eol + 1] + zs_orc + t[i_eol + 1:]
 
 # (8) 출력
 t = t.replace("loc_tkp_xstr(nd, ", "zs_xstr(nd, ")
-t = rep(t, '@sprintf("orcl_calls_g%d_S%d.jls", GEO, S)', '@sprintf("orcl_calls_zs_%s_s%d_S%d.jls", NET, ZSEED, S)')
-t = rep(t, '@printf("RESULT ccgbp g=%d status=', '@printf("RESULT ccgbp_zs net=%s seed=%d eps=%.2f beta=%.2f delta=%.3f lamU=%.0e status=')
-t = rep(t, '        GEO, status, xbest == 0 ?', '        NET, ZSEED, ZEPS, ZBETA, ZDELTA, LAMU, status, xbest == 0 ?')
+t = rep(t, '@sprintf("orcl_calls_g%d_S%d.jls", GEO, S)', '@sprintf("orcl_calls_zs_%s_s%d_g%d_S%d.jls", NET, ZSEED, ZGAMMA, S)')
+t = rep(t, '@printf("RESULT ccgbp g=%d status=', '@printf("RESULT ccgbp_zs net=%s seed=%d gamma=%d eps=%.2f beta=%.2f delta=%.3f lamU=%.0e status=')
+t = rep(t, '        GEO, status, xbest == 0 ?', '        NET, ZSEED, ZGAMMA, ZEPS, ZBETA, ZDELTA, LAMU, status, xbest == 0 ?')
 assert 'loc_tkp_xstr' not in t
 open(out, 'w', encoding='utf-8', newline='\n').write(t)
 print('ok', out)
