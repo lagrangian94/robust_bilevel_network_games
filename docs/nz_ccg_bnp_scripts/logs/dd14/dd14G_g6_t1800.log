@@ -1,0 +1,130 @@
+  [HUCAP] 거점 10: hᵁ 300 → 200
+--- oracle 재현 g=6 S=10 x={6:300;10:200;15:300} λᵁ=10000 목표 -3618.1 gap 1.0e-03 상한 1800s, 스레드 8, 풀이기 Gurobi Ω (NonConvex)
+  [Gurobi] 정의역: 닫힌 거점 고정 10 개, 0 아닌 hᵁ 5 / 15
+Set parameter Username
+Academic license - for non-commercial use only - expires 2027-06-29
+Set parameter Threads to value 8
+Set parameter DisplayInterval to value 60
+Set parameter FeasibilityTol to value 1e-09
+Set parameter OptimalityTol to value 1e-09
+Set parameter NumericFocus to value 2
+Set parameter NonConvex to value 2
+Set parameter TimeLimit to value 1800
+Set parameter MIPGap to value 0.001
+Set parameter BestObjStop to value -3618.1
+Set parameter BestBdStop to value -3618.1
+Set parameter Threads to value 8
+Set parameter FeasibilityTol to value 1e-09
+Set parameter NonConvex to value 2
+Set parameter MIPGap to value 0.001
+Set parameter DisplayInterval to value 60
+Set parameter OptimalityTol to value 1e-09
+Set parameter NumericFocus to value 2
+Set parameter BestBdStop to value -3618.1
+Set parameter BestObjStop to value -3618.1
+Set parameter TimeLimit to value 1800
+Gurobi Optimizer version 13.0.3 build v13.0.3rc0 (linux64 - "Ubuntu 26.04.1 LTS")
+
+CPU model: AMD Ryzen 9 9950X 16-Core Processor, instruction set [SSE2|AVX|AVX2|AVX512]
+Thread count: 16 physical cores, 32 logical processors, using up to 8 threads
+
+Non-default parameters:
+TimeLimit  1800
+BestObjStop  -3618.1
+BestBdStop  -3618.1
+FeasibilityTol  1e-09
+MIPGap  0.001
+OptimalityTol  1e-09
+DisplayInterval  60
+NonConvex  2
+NumericFocus  2
+Threads  8
+
+Optimize a model with 11636 rows, 13547 columns and 79695 nonzeros (Max)
+Model fingerprint: 0xa76c8809
+Model has 5909 linear objective coefficients
+Model has 580 quadratic constraints
+Coefficient statistics:
+  Matrix range     [6e-01, 4e+03]
+  QMatrix range    [1e+00, 1e+00]
+  QLMatrix range   [1e+00, 1e+00]
+  Objective range  [7e-01, 4e+07]
+  Bounds range     [4e-02, 1e+05]
+  RHS range        [1e-01, 6e+02]
+
+Presolve removed 7724 rows and 5166 columns
+
+Continuous model is non-convex -- solving as a MIP
+
+
+Presolve removed 7754 rows and 6136 columns
+Presolve time: 0.03s
+Presolved: 4602 rows, 7412 columns, 33156 nonzeros
+Presolved model has 180 bilinear constraint(s)
+Variable types: 7412 continuous, 0 integer (0 binary)
+
+Root relaxation: objective 2.792149e-10, 2443 iterations, 0.07 seconds (0.23 work units)
+
+    Nodes    |    Current Node    |     Objective Bounds      |     Work
+ Expl Unexpl |  Obj  Depth IntInf | Incumbent    BestBd   Gap | It/Node Time
+
+     0     0    0.00000    0  131          -    0.00000      -     -    0s
+     0     0 -2414.3941    0  152          - -2414.3941      -     -    0s
+     0     0 -2416.7048    0  134          - -2416.7048      -     -    0s
+     0     0 -2416.7048    0  131          - -2416.7048      -     -    0s
+     0     0 -2416.7048    0  132          - -2416.7048      -     -    0s
+H    0     0                    -1.16107e+08 -2416.7048   100%     -    0s
+H    0     0                    -3670.064389 -2416.7048  34.2%     -    1s
+     0     2 -2416.7048    0  132 -3670.0644 -2416.7048  34.2%     -    1s
+H  165    64                    -3670.000000 -2538.6641  30.8%   603    3s
+H 4607   473                    -3624.060974 -3014.6662  16.8%   501   36s
+  8867   491     cutoff   32      -3624.0610 -3062.0355  15.5%   488   60s
+H 8913   491                    -3624.016382 -3062.0355  15.5%   488   60s
+H10915   706                    -3624.016381 -3115.5920  14.0%   476   72s
+H10956   706                    -3624.009293 -3116.1521  14.0%   475   72s
+H12301   828                    -3624.009292 -3140.6248  13.3%   467   77s
+ 20440  1688 -3378.6765   32  101 -3624.0093 -3228.2620  10.9%   433  122s
+ 28617  2623 -3374.1132   30   95 -3624.0093 -3274.8684  9.63%   412  180s
+ 44725  4333 infeasible   39      -3624.0093 -3325.1499  8.25%   389  240s
+H52215  5192                    -3624.009291 -3341.1550  7.81%   381  266s
+ 60678  5853 infeasible   36      -3624.0093 -3356.5492  7.38%   374  300s
+ 78231  7594 -3620.7461   45  121 -3624.0093 -3378.3109  6.78%   364  361s
+ 94911  9384 infeasible   32      -3624.0093 -3394.5707  6.33%   356  420s
+ 112596 11136 -3459.3534   36  118 -3624.0093 -3408.2153  5.95%   350  482s
+ 128242 12874 infeasible   37      -3624.0093 -3417.6800  5.69%   346  542s
+ 143543 14259 infeasible   46      -3624.0093 -3425.9806  5.46%   342  600s
+ 160776 16322 infeasible   45      -3624.0093 -3434.4873  5.23%   337  661s
+H164170 16699                    -3624.000004 -3436.2107  5.18%   337  673s
+ 173312 17677 -3493.0077   39  115 -3624.0000 -3440.0118  5.08%   335  720s
+ 189677 19163 infeasible   41      -3624.0000 -3446.5521  4.90%   333  782s
+ 206810 21344 -3525.9192   39  109 -3624.0000 -3452.3841  4.74%   330  843s
+ 222902 23042 -3580.4663   43  101 -3624.0000 -3457.3018  4.60%   328  901s
+ 240138 24677 -3566.6315   49   68 -3624.0000 -3462.1188  4.47%   326  963s
+ 259399 27131     cutoff   60      -3624.0000 -3466.8014  4.34%   323 1021s
+ 277987 29615 -3513.2848   47   86 -3624.0000 -3471.1236  4.22%   322 1081s
+ 294486 31801 -3541.6018   36  106 -3624.0000 -3474.6886  4.12%   320 1140s
+ 306845 33751     cutoff   40      -3624.0000 -3476.9675  4.06%   319 1201s
+ 323973 35955 -3515.4043   48   97 -3624.0000 -3480.4349  3.96%   318 1262s
+ 343991 38488 -3494.2762   49   97 -3624.0000 -3483.8765  3.87%   316 1322s
+ 363943 40736     cutoff   53      -3624.0000 -3487.0941  3.78%   315 1381s
+ 383732 43307 infeasible   48      -3624.0000 -3490.1742  3.69%   314 1440s
+ 404731 46121 infeasible   42      -3624.0000 -3493.1818  3.61%   312 1500s
+ 423913 48071 infeasible   46      -3624.0000 -3495.5123  3.55%   311 1561s
+ 441127 50019 infeasible   52      -3624.0000 -3497.8353  3.48%   310 1621s
+ 458316 51942 infeasible   49      -3624.0000 -3499.7798  3.43%   309 1680s
+ 473440 53747 infeasible   46      -3624.0000 -3501.5615  3.38%   308 1741s
+ 489055 55440 -3603.9656   48   68 -3624.0000 -3503.4118  3.33%   308 1800s
+
+Cutting planes:
+  RLT: 98
+
+Explored 489567 nodes (150658310 simplex iterations) in 1800.01 seconds (6998.01 work units)
+Thread count was 8 (of 32 available processors)
+
+Solution count 6: -3624 -3624.01 -3624.06 ... -1.16107e+08
+
+Time limit reached
+Best objective -3.624000004040e+03, best bound -3.503435724234e+03, gap 3.3268%
+
+User-callback calls 284682, time in user-callback 0.09 sec
+RESULT g=6 S=10 x={6:300;10:200;15:300} V in [-3624.0000, -3503.4357] (1801s, 구성 3s) Gurobi TIME_LIMIT, 미결, 노드 489567, 단체법 반복 150658310

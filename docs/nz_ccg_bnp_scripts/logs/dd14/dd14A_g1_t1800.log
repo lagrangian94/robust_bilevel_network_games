@@ -1,0 +1,34 @@
+  [HUCAP] 거점 10: hᵁ 300 → 200
+--- oracle 재현 g=1 S=10 x={3:300;10:200;15:300} λᵁ=10000 목표 -3673.31 gap 1.0e-03 상한 1800s, 스레드 8, 추가 인자 (resp = true,)
+Set parameter Username
+Academic license - for non-commercial use only - expires 2027-06-29
+Set parameter Username
+Academic license - for non-commercial use only - expires 2027-06-29
+Set parameter Username
+Academic license - for non-commercial use only - expires 2027-06-29
+Set parameter Username
+Academic license - for non-commercial use only - expires 2027-06-29
+Set parameter Username
+Academic license - for non-commercial use only - expires 2027-06-29
+Set parameter Username
+Academic license - for non-commercial use only - expires 2027-06-29
+Set parameter Username
+Academic license - for non-commercial use only - expires 2027-06-29
+Set parameter Username
+Academic license - for non-commercial use only - expires 2027-06-29
+
+******************************************************************************
+This program contains Ipopt, a library for large-scale nonlinear optimization.
+ Ipopt is released as open source code under the Eclipse Public License (EPL).
+         For more information visit https://github.com/coin-or/Ipopt
+******************************************************************************
+
+    [nz-α-B&B-dr] t=  66.8s nodes=  703 open=  217 LB=-3679.459964 UB=-3484.830956 gap=5.290e-02
+    [LP] 비유계 보고 → 재시도 결과 OPTIMAL
+    [nz-α-B&B-dr] t= 127.0s nodes= 2333 open=  457 LB=-3679.459964 UB=-3627.637841 gap=1.408e-02
+nz_alpha_bnb_dr: 기본이 아닌 구성으로 실행 — resp = true
+RESULT g=1 S=10 x={3:300;10:200;15:300} V in [-3679.4600, -3675.7141] (199s) 노드 4166, 이완 856s, 평가 138s, 범위 75s (MIP 0, 실패 0), 재확인 0s, ipopt 7, 고정 비율 0.21, 수치 오류 6, 루트 UB -2666.1539
+DD 선별 (패치): (nodes = 0, mips = 0, empty = 0, cut = 0, skip = 0, pruned_after = 0, t_lp = 0.0, n_lp = 0, t_mip = 0.0, rechk = 0, rechk_inf = 0, objstop = 0, face_hit = 0, sdchk = 0, sdref = 0, sdviol = 0, sdinf = 0, sdmaxv = -Inf)
+느린 노드 (상위 10): NTuple{4, Float64}[]
+전선 저장: orep_front_g1_S10_dd14A_g1_t1800.jls (열린 노드 1)
+전선: 열린 노드 1, 상한 ≤ 목표 1 (100%), 상한 범위 [-3675.71, -3675.71], 목표 -3673.31, incumbent -3679.46

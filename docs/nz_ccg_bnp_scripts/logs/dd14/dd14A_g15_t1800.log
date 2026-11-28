@@ -1,0 +1,55 @@
+  [HUCAP] 거점 8: hᵁ 300 → 200
+  [HUCAP] 거점 14: hᵁ 300 → 200
+--- oracle 재현 g=15 S=10 x={8:200;10:300;14:200} λᵁ=10000 목표 -3166.91 gap 1.0e-03 상한 1800s, 스레드 8, 추가 인자 (resp = true,)
+Set parameter Username
+Academic license - for non-commercial use only - expires 2027-06-29
+Set parameter Username
+Academic license - for non-commercial use only - expires 2027-06-29
+Set parameter Username
+Academic license - for non-commercial use only - expires 2027-06-29
+Set parameter Username
+Academic license - for non-commercial use only - expires 2027-06-29
+Set parameter Username
+Academic license - for non-commercial use only - expires 2027-06-29
+Set parameter Username
+Academic license - for non-commercial use only - expires 2027-06-29
+Set parameter Username
+Academic license - for non-commercial use only - expires 2027-06-29
+Set parameter Username
+Academic license - for non-commercial use only - expires 2027-06-29
+
+******************************************************************************
+This program contains Ipopt, a library for large-scale nonlinear optimization.
+ Ipopt is released as open source code under the Eclipse Public License (EPL).
+         For more information visit https://github.com/coin-or/Ipopt
+******************************************************************************
+
+    [nz-α-B&B-dr] t=  69.9s nodes=  312 open=   78 LB=-3183.790890 UB=-2458.065012 gap=2.279e-01
+    [nz-α-B&B-dr] t= 130.4s nodes=  673 open=  173 LB=-3176.853461 UB=-2621.436664 gap=1.748e-01
+    [nz-α-B&B-dr] t= 190.5s nodes= 1099 open=  289 LB=-3176.853461 UB=-2724.239068 gap=1.425e-01
+    [nz-α-B&B-dr] t= 250.7s nodes= 1676 open=  416 LB=-3176.853461 UB=-2809.579197 gap=1.156e-01
+    [nz-α-B&B-dr] t= 310.7s nodes= 2334 open=  538 LB=-3176.853461 UB=-2871.710725 gap=9.605e-02
+    [nz-α-B&B-dr] t= 370.8s nodes= 3037 open=  659 LB=-3176.853461 UB=-2915.261070 gap=8.234e-02
+    [nz-α-B&B-dr] t= 430.8s nodes= 3760 open=  816 LB=-3176.853461 UB=-2946.168566 gap=7.261e-02
+    [nz-α-B&B-dr] t= 491.0s nodes= 4481 open=  971 LB=-3176.853461 UB=-2969.869288 gap=6.515e-02
+    [nz-α-B&B-dr] t= 551.0s nodes= 5435 open= 1209 LB=-3176.853461 UB=-2991.085359 gap=5.848e-02
+    [nz-α-B&B-dr] t= 611.1s nodes= 6854 open= 1430 LB=-3176.853461 UB=-3020.506775 gap=4.921e-02
+    [LP] 비유계 보고 → 재시도 결과 OPTIMAL
+    [nz-α-B&B-dr] t= 671.1s nodes= 8240 open= 1576 LB=-3176.853461 UB=-3042.684401 gap=4.223e-02
+    [nz-α-B&B-dr] t= 731.2s nodes= 9339 open= 1687 LB=-3176.853461 UB=-3058.228599 gap=3.734e-02
+    [nz-α-B&B-dr] t= 791.3s nodes=10405 open= 1811 LB=-3176.853461 UB=-3071.770114 gap=3.308e-02
+    [nz-α-B&B-dr] t= 851.4s nodes=11885 open= 2035 LB=-3176.853461 UB=-3087.927497 gap=2.799e-02
+    [nz-α-B&B-dr] t= 911.4s nodes=13198 open= 2148 LB=-3176.853461 UB=-3099.280932 gap=2.442e-02
+    [nz-α-B&B-dr] t= 971.5s nodes=14510 open= 2280 LB=-3175.960184 UB=-3108.779816 gap=2.115e-02
+    [nz-α-B&B-dr] t=1031.6s nodes=15850 open= 2408 LB=-3175.960184 UB=-3117.735052 gap=1.833e-02
+    [nz-α-B&B-dr] t=1091.7s nodes=17705 open= 2539 LB=-3175.960184 UB=-3128.977537 gap=1.479e-02
+    [nz-α-B&B-dr] t=1151.9s nodes=19167 open= 2599 LB=-3175.960184 UB=-3136.524837 gap=1.242e-02
+    [nz-α-B&B-dr] t=1211.9s nodes=20571 open= 2621 LB=-3175.960184 UB=-3142.926724 gap=1.040e-02
+    [nz-α-B&B-dr] t=1272.1s nodes=22007 open= 2631 LB=-3175.960184 UB=-3148.532071 gap=8.636e-03
+    [nz-α-B&B-dr] t=1332.1s nodes=23568 open= 2750 LB=-3175.960184 UB=-3152.834500 gap=7.281e-03
+nz_alpha_bnb_dr: 기본이 아닌 구성으로 실행 — resp = true
+RESULT g=15 S=10 x={8:200;10:300;14:200} V in [-3161.7858, -3153.9474] (1370s) 노드 24002, 이완 7332s, 평가 538s, 범위 501s (MIP 0, 실패 0), 재확인 0s, ipopt 34, 고정 비율 0.29, 수치 오류 8, 루트 UB -1900.3475
+DD 선별 (패치): (nodes = 0, mips = 0, empty = 0, cut = 0, skip = 0, pruned_after = 0, t_lp = 0.0, n_lp = 0, t_mip = 0.0, rechk = 0, rechk_inf = 0, objstop = 0, face_hit = 0, sdchk = 0, sdref = 0, sdviol = 0, sdinf = 0, sdmaxv = -Inf)
+느린 노드 (상위 10): NTuple{4, Float64}[]
+전선 저장: orep_front_g15_S10_dd14A_g15_t1800.jls (열린 노드 2779)
+전선: 열린 노드 2779, 상한 ≤ 목표 701 (25%), 상한 범위 [-3173.56, -3153.95], 목표 -3166.91, incumbent -3161.79

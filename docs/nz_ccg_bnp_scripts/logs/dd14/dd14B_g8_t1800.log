@@ -1,0 +1,42 @@
+  [HUCAP] 거점 10: hᵁ 300 → 200
+  [HUCAP] 거점 13: hᵁ 300 → 200
+--- oracle 재현 g=8 S=10 x={7:300;10:200;13:200} λᵁ=10000 목표 -3206.93 gap 1.0e-03 상한 1800s, 스레드 8, 추가 인자 (resp = true, dd = true)
+Set parameter Username
+Academic license - for non-commercial use only - expires 2027-06-29
+Set parameter Username
+Academic license - for non-commercial use only - expires 2027-06-29
+Set parameter Username
+Academic license - for non-commercial use only - expires 2027-06-29
+Set parameter Username
+Academic license - for non-commercial use only - expires 2027-06-29
+Set parameter Username
+Academic license - for non-commercial use only - expires 2027-06-29
+Set parameter Username
+Academic license - for non-commercial use only - expires 2027-06-29
+Set parameter Username
+Academic license - for non-commercial use only - expires 2027-06-29
+Set parameter Username
+Academic license - for non-commercial use only - expires 2027-06-29
+
+******************************************************************************
+This program contains Ipopt, a library for large-scale nonlinear optimization.
+ Ipopt is released as open source code under the Eclipse Public License (EPL).
+         For more information visit https://github.com/coin-or/Ipopt
+******************************************************************************
+
+    [nz-α-B&B-dr] t=  67.8s nodes=  686 open=  174 LB=-3228.518282 UB=-2778.392463 gap=1.394e-01
+    [nz-α-B&B-dr] t= 128.1s nodes= 1449 open=  333 LB=-3227.489444 UB=-2972.582085 gap=7.898e-02
+    [nz-α-B&B-dr] t= 188.2s nodes= 2274 open=  504 LB=-3227.217193 UB=-3059.646274 gap=5.192e-02
+    [nz-α-B&B-dr] t= 248.4s nodes= 3326 open=  668 LB=-3227.217193 UB=-3120.828721 gap=3.297e-02
+    [nz-α-B&B-dr] t= 308.5s nodes= 4356 open=  774 LB=-3218.338718 UB=-3154.181925 gap=1.993e-02
+    [nz-α-B&B-dr] t= 368.6s nodes= 5368 open=  854 LB=-3218.338718 UB=-3176.170106 gap=1.310e-02
+    [nz-α-B&B-dr] t= 428.7s nodes= 6024 open=  844 LB=-3218.338718 UB=-3186.543187 gap=9.879e-03
+    [nz-α-B&B-dr] t= 488.8s nodes= 6758 open=  880 LB=-3218.338718 UB=-3192.939389 gap=7.892e-03
+    [nz-α-B&B-dr] t= 549.0s nodes= 7471 open=  847 LB=-3218.338718 UB=-3201.822681 gap=5.132e-03
+nz_alpha_bnb_dr: 기본이 아닌 구성으로 실행 — dd = true, resp = true
+nz_alpha_bnb_dr: dd_sdcut — KKT-MIP 에 강쌍대 McCormick 행 (곱 28 개 × 시나리오 10 × worker 7)
+RESULT g=8 S=10 x={7:300;10:200;13:200} V in [-3218.3387, -3206.9604] (650s) 노드 8110, 이완 2768s, 평가 413s, 범위 448s (MIP 1474, 실패 0), 재확인 3s, ipopt 14, 고정 비율 0.23, 수치 오류 2, 루트 UB -1942.0204
+DD 선별 (패치): (nodes = 2013, mips = 1474, empty = 0, cut = 496, skip = 826, pruned_after = 152, t_lp = 189.8, n_lp = 588493, t_mip = 76.7, rechk = 0, rechk_inf = 0, objstop = 798, face_hit = 186755, sdchk = 0, sdref = 0, sdviol = 0, sdinf = 0, sdmaxv = -Inf)
+느린 노드 (상위 10): [(27.65745496749878, 0.016287713, 27.609627494, 0.0)]
+전선 저장: orep_front_g8_S10_dd14B_g8_t1800.jls (열린 노드 747)
+전선: 열린 노드 747, 상한 ≤ 목표 747 (100%), 상한 범위 [-3222.97, -3206.96], 목표 -3206.93, incumbent -3218.34
